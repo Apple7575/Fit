@@ -1,19 +1,65 @@
-# cp .env.example .env && docker compose up -d && curl localhost/health
-
-name: ${COMPOSE_PROJECT_NAME:-disease-signal}
+name: ${COMPOSE_PROJECT_NAME:-company-analysis}
 
 networks:
   appnet:
     driver: bridge
 
+volumes:
+  pgdata:
+
 services:
-  nginx:
-    image: nginx:1.27-alpine
+  postgres:
+    image: postgres:18
     restart: unless-stopped
     ports:
-      - "${NGINX_HTTP_PORT:-80}:80"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-company_analysis}
+      - POSTGRES_USER=${POSTGRES_USER:-ssafy}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?환경변수에 POSTGRES_PASSWORD 설정 필요}
+      - POSTGRES_INITDB_ARGS=--locale-provider=icu --icu-locale=ko-KR --encoding=UTF8
+      - TZ=${TZ:-Asia/Seoul}
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      # pg_isready 는 인증하지 않아 계정·DB 가 없어도 통과한다. psql 로 실제 접속을 확인.
+      test: ["CMD-SHELL", "psql -U ${POSTGRES_USER:-ssafy} -d ${POSTGRES_DB:-company_analysis} -tAc 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [appnet]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    expose: ["8080"]
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-company_analysis}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-ssafy}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?환경변수에 POSTGRES_PASSWORD 설정 필요}
+      - TZ=${TZ:-Asia/Seoul}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [appnet]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ../frontend
+    restart: unless-stopped
+    expose: ["80"]
     environment:
       - TZ=${TZ:-Asia/Seoul}
     networks: [appnet]
@@ -23,19 +69,19 @@ services:
         max-size: "10m"
         max-file: "3"
 
-# 서비스 추가 시: networks 에 appnet 참여, ports 대신 expose(진입은 nginx만),
-# nginx/nginx.conf 의 해당 location 주석 해제
-#
-#  backend:
-#    build:
-#      context: ../backend
-#    restart: unless-stopped
-#    expose: ["8080"]
-#    networks: [appnet]
-#
-#  frontend:
-#    build:
-#      context: ../frontend
-#    restart: unless-stopped
-#    expose: ["80"]
-#    networks: [appnet]
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    environment:
+      - TZ=${TZ:-Asia/Seoul}
+    depends_on: [backend, frontend]
+    networks: [appnet]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
