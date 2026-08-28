@@ -5,13 +5,13 @@ import {
   useState,
   type PointerEvent,
 } from 'react';
-import { formatAmount } from '../../utils/formatAmount';
+import { METRIC_LABELS } from '../../types/metrics';
+import { formatMetricValue, metricUnitLabel } from '../../utils/formatMetric';
 import { TREND_END_YEAR, TREND_START_YEAR, type TrendSeries } from './types';
 
 interface TrendChartProps {
+  /** 지표 키(series.key)로 표시명·단위를 정한다 */
   series: TrendSeries;
-  /** 지표 표시명 (예: 매출액). Y축·표 제목에 쓴다 */
-  label: string;
 }
 
 // viewBox 폭을 컨테이너 실제 픽셀 폭과 같게 맞춘다 (1 unit = 1px).
@@ -62,7 +62,10 @@ function niceTicks(values: number[], count = 4): number[] {
   return ticks;
 }
 
-export function TrendChart({ series, label }: TrendChartProps) {
+export function TrendChart({ series }: TrendChartProps) {
+  const label = METRIC_LABELS[series.key];
+  const unit = metricUnitLabel(series.key);
+  const fmt = (v: number) => formatMetricValue(series.key, v);
   const [activeYear, setActiveYear] = useState<number | null>(null);
   const tooltipId = useId();
   const { ref: containerRef, width: VB_W } = useContainerWidth();
@@ -107,7 +110,7 @@ export function TrendChart({ series, label }: TrendChartProps) {
   const activeText =
     activeValue === null || activeValue === undefined
       ? '미제공'
-      : `${formatAmount(activeValue)} 원`;
+      : `${fmt(activeValue)} ${unit}`;
 
   return (
     <div className="relative" ref={containerRef}>
@@ -115,7 +118,7 @@ export function TrendChart({ series, label }: TrendChartProps) {
         className="mb-2 text-xs font-semibold text-slate-500"
         data-testid="y-axis-label"
       >
-        {label} (원)
+        {label} ({unit})
       </p>
 
       <svg
@@ -147,7 +150,7 @@ export function TrendChart({ series, label }: TrendChartProps) {
               x={PAD.left - 10}
               y={yOf(t)}
             >
-              {formatAmount(t)}
+              {fmt(t)}
             </text>
           </g>
         ))}
@@ -199,7 +202,7 @@ export function TrendChart({ series, label }: TrendChartProps) {
           const isActive = activeYear === year;
           return (
             <circle
-              aria-label={`${year}년 ${formatAmount(v)} 원`}
+              aria-label={`${year}년 ${fmt(v)} ${unit}`}
               className="cursor-pointer fill-blue-600 stroke-white outline-none focus-visible:stroke-blue-300"
               cx={xOf(year)}
               cy={yOf(v)}
@@ -241,7 +244,7 @@ export function TrendChart({ series, label }: TrendChartProps) {
         <thead>
           <tr>
             <th scope="col">연도</th>
-            <th scope="col">{label} (원)</th>
+            <th scope="col">{label} ({unit})</th>
           </tr>
         </thead>
         <tbody>
@@ -250,7 +253,7 @@ export function TrendChart({ series, label }: TrendChartProps) {
             return (
               <tr key={year}>
                 <th scope="row">{year}</th>
-                <td>{typeof v === 'number' ? formatAmount(v) : '미제공'}</td>
+                <td>{typeof v === 'number' ? fmt(v) : '미제공'}</td>
               </tr>
             );
           })}

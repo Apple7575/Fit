@@ -6,44 +6,48 @@ import type { KeyMetric } from '../../types/metrics';
 const metrics: KeyMetric[] = [
   { key: 'revenue', value: 300_870_903_000_000 },
   { key: 'operatingProfit', value: 6_566_976_000_000 },
-  { key: 'netIncome', value: 15_487_100_000_000 },
-  { key: 'totalAssets', value: 455_905_980_000_000 },
-  { key: 'totalLiabilities', value: 92_228_115_000_000 },
-  { key: 'totalEquity', value: null },
+  { key: 'employeeCount', value: 124_804 },
+  { key: 'averageSalary', value: 130_000_000 },
+  { key: 'averageTenure', value: 12.4 },
+  { key: 'rndToRevenueRatio', value: null },
 ];
 
 describe('KeyMetricsGrid', () => {
   it('renders six cards whose labels match their values', () => {
     render(<KeyMetricsGrid metrics={metrics} />);
 
-    const cards = screen.getAllByRole('article');
-    expect(cards).toHaveLength(6);
+    expect(screen.getAllByRole('article')).toHaveLength(6);
 
     const revenue = screen.getByRole('article', { name: '매출액' });
     expect(within(revenue).getByText('300조 8,709억')).toBeInTheDocument();
 
-    const liabilities = screen.getByRole('article', { name: '부채총계' });
-    expect(within(liabilities).getByText('92조 2,281억')).toBeInTheDocument();
+    const employees = screen.getByRole('article', { name: '직원 수' });
+    expect(within(employees).getByText('124,804')).toBeInTheDocument();
   });
 
-  it('shows the currency unit next to each value', () => {
+  it('shows the unit that matches each metric', () => {
     render(<KeyMetricsGrid metrics={metrics} />);
 
-    expect(screen.getAllByText('원')).toHaveLength(5);
+    const unitOf = (name: string) =>
+      within(screen.getByRole('article', { name })).getByText(/^(원|명|년|%)$/)
+        .textContent;
+
+    expect(unitOf('매출액')).toBe('원');
+    expect(unitOf('직원 수')).toBe('명');
+    expect(unitOf('1인 평균 급여')).toBe('원');
+    expect(unitOf('평균 근속')).toBe('년');
   });
 
   it('marks a missing value as 미제공 instead of 0', () => {
     render(<KeyMetricsGrid metrics={metrics} />);
 
-    const equity = screen.getByRole('article', { name: '자본총계' });
-    expect(within(equity).getByText('미제공')).toBeInTheDocument();
-    expect(within(equity).queryByText('0')).not.toBeInTheDocument();
+    const ratio = screen.getByRole('article', { name: 'R&D / 매출' });
+    expect(within(ratio).getByText('미제공')).toBeInTheDocument();
+    expect(within(ratio).queryByText('0')).not.toBeInTheDocument();
   });
 
   it('keeps the six cards in a fixed order even if the input order differs', () => {
-    render(
-      <KeyMetricsGrid metrics={[...metrics].reverse()} />,
-    );
+    render(<KeyMetricsGrid metrics={[...metrics].reverse()} />);
 
     const labels = screen
       .getAllByRole('article')
@@ -51,10 +55,10 @@ describe('KeyMetricsGrid', () => {
     expect(labels).toEqual([
       '매출액',
       '영업이익',
-      '당기순이익',
-      '자산총계',
-      '부채총계',
-      '자본총계',
+      '직원 수',
+      '1인 평균 급여',
+      '평균 근속',
+      'R&D / 매출',
     ]);
   });
 });

@@ -3,7 +3,6 @@ import { AppHeader } from '../../components/layout/AppHeader';
 import { FinancialTrendSection } from '../../features/financial-trend/FinancialTrendSection';
 import { IndustryComparisonSection } from '../../features/industry-comparison/IndustryComparisonSection';
 import { KeyMetricsSection } from '../../features/key-metrics/KeyMetricsSection';
-import { mockFinancialTrendByCompany } from '../../mocks/financialTrend';
 import {
   emptyIndustryComparison,
   mockIndustryComparisonByCompany,
@@ -16,8 +15,6 @@ export function CompanyDetailPage() {
   const companySummary = isSamsungElectronics
     ? '반도체 · 전자제품'
     : '기업 정보 준비 중';
-  // F-17 에서 API 연동으로 교체
-  const trendSeries = mockFinancialTrendByCompany[companyId ?? ''] ?? [];
   // F-23 에서 API 연동으로 교체
   const comparison =
     mockIndustryComparisonByCompany[companyId ?? ''] ?? emptyIndustryComparison;
@@ -49,7 +46,7 @@ export function CompanyDetailPage() {
         <div className="space-y-8">
           <KeyMetricsSection corpCode={companyId ?? ''} year={2025} />
 
-          <FinancialTrendSection series={trendSeries} />
+          <FinancialTrendSection corpCode={companyId ?? ''} />
 
           <IndustryComparisonSection
             comparison={comparison}

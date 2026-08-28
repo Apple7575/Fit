@@ -1,78 +1,175 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockFinancialTrendByCompany } from '../../mocks/financialTrend';
 import { FinancialTrendSection } from './FinancialTrendSection';
 
-const series = mockFinancialTrendByCompany['005930'];
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+/** 명세 5번 응답 형태. mock 시계열을 그대로 series[] 로 담는다 */
+const okBody = (corpCode: string) => ({
+  success: true,
+  data: {
+    corpCode,
+    from: 2021,
+    to: 2025,
+    series: mockFinancialTrendByCompany['00126380'],
+  },
+});
+
+const stubFetch = (impl: (url: string) => Promise<Response>) => {
+  const fetchMock = vi.fn((input: RequestInfo | URL) => impl(String(input)));
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+};
 
 describe('FinancialTrendSection', () => {
-  it('renders the revenue chart by default with the 2021~2025 range in the subtitle', () => {
-    render(<FinancialTrendSection series={series} />);
-
-    expect(
-      screen.getByRole('heading', { name: '최근 5개년 변화' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/2021~2025년 매출액 변화/)).toBeInTheDocument();
-    expect(
-      screen.getByRole('img', { name: '매출액 2021~2025년 변화 그래프' }),
-    ).toBeInTheDocument();
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it('offers all six metrics and marks revenue as the default selection', () => {
-    render(<FinancialTrendSection series={series} />);
+  it('shows a loading state, then draws the revenue chart from the API response', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(json(okBody('00126380'))));
 
-    const group = screen.getByRole('group', { name: '그래프 지표 선택' });
-    const radios = screen.getAllByRole('radio');
-    expect(group).toBeInTheDocument();
-    expect(radios.map((r) => r.parentElement?.textContent)).toEqual([
-      '매출액',
-      '영업이익',
-      '당기순이익',
-      '자산총계',
-      '부채총계',
-      '자본총계',
-    ]);
-    expect(screen.getByRole('radio', { name: '매출액' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: '영업이익' })).not.toBeChecked();
+    render(<FinancialTrendSection corpCode="00126380" />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('불러오는 중');
+    expect(
+      await screen.findByRole('img', { name: '매출액 2021~2025년 변화 그래프' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '2021년 279조 6,048억 원' }),
+    ).toBeInTheDocument();
+
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('/api/companies/00126380/metrics/timeseries');
+    expect(url).toContain('from=2021');
+    expect(url).toContain('to=2025');
   });
 
-  it('updates the chart immediately when another metric is selected', async () => {
+  it('keeps the metric selector usable and switches series without refetching', async () => {
     const user = userEvent.setup();
-    render(<FinancialTrendSection series={series} />);
+    const fetchMock = stubFetch(() => Promise.resolve(json(okBody('A'))));
+
+    render(<FinancialTrendSection corpCode="A" />);
+    await screen.findByRole('img', { name: '매출액 2021~2025년 변화 그래프' });
 
     await user.click(screen.getByRole('radio', { name: '영업이익' }));
 
-    expect(screen.getByRole('radio', { name: '영업이익' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: '매출액' })).not.toBeChecked();
     expect(
       screen.getByRole('img', { name: '영업이익 2021~2025년 변화 그래프' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/2021~2025년 영업이익 변화/)).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: '2021년 51조 6,339억 원' }),
-    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('honours an initial metric and still lets the user change it', async () => {
-    const user = userEvent.setup();
-    render(<FinancialTrendSection initialMetricKey="totalEquity" series={series} />);
+  it('refetches when corpCode changes', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(json(okBody('x'))));
 
-    expect(screen.getByRole('radio', { name: '자본총계' })).toBeChecked();
-    expect(
-      screen.getByRole('img', { name: '자본총계 2021~2025년 변화 그래프' }),
-    ).toBeInTheDocument();
+    const { rerender } = render(<FinancialTrendSection corpCode="A" />);
+    await screen.findByRole('img');
 
-    await user.click(screen.getByRole('radio', { name: '자산총계' }));
-    expect(
-      screen.getByRole('img', { name: '자산총계 2021~2025년 변화 그래프' }),
-    ).toBeInTheDocument();
+    rerender(<FinancialTrendSection corpCode="B" />);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/companies/B/');
   });
 
-  it('shows an empty message when the selected metric has no series', () => {
-    render(<FinancialTrendSection series={[]} />);
+  it('renders without error when the API omits a year and marks it 미제공', async () => {
+    stubFetch(() =>
+      Promise.resolve(
+        json({
+          success: true,
+          data: {
+            corpCode: 'A',
+            from: 2021,
+            to: 2025,
+            series: [
+              {
+                key: 'revenue',
+                // 2023 누락, 2024 는 null
+                points: [
+                  { year: 2021, value: 1_0000_0000_0000 },
+                  { year: 2022, value: 2_0000_0000_0000 },
+                  { year: 2024, value: null },
+                  { year: 2025, value: 5_0000_0000_0000 },
+                ],
+              },
+            ],
+          },
+        }),
+      ),
+    );
 
-    expect(screen.getByText('매출액 추이 데이터가 없습니다')).toBeInTheDocument();
+    render(<FinancialTrendSection corpCode="A" />);
+
+    await screen.findByRole('img');
+    const markers = screen.getAllByRole('button', { name: /^\d{4}년/ });
+    expect(markers.map((m) => m.getAttribute('aria-label'))).toEqual([
+      '2021년 1조 원',
+      '2022년 2조 원',
+      '2025년 5조 원',
+    ]);
+    const table = screen.getByRole('table');
+    expect(table).toHaveTextContent('2023');
+    expect(table).toHaveTextContent('미제공');
+  });
+
+  it('shows a not-found message for COMPANY_NOT_FOUND', async () => {
+    stubFetch(() =>
+      Promise.resolve(
+        json(
+          { success: false, error: { code: 'COMPANY_NOT_FOUND', message: 'x' } },
+          404,
+        ),
+      ),
+    );
+
+    render(<FinancialTrendSection corpCode="000000" />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '기업 정보를 찾을 수 없습니다',
+    );
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('shows an error with a retry button that refetches', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('offline'))
+      .mockResolvedValueOnce(json(okBody('A')));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FinancialTrendSection corpCode="A" />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '변화 그래프를 불러오지 못했습니다',
+    );
+
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(await screen.findByRole('img')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows an empty message when the selected metric is missing from the response', async () => {
+    stubFetch(() =>
+      Promise.resolve(
+        json({
+          success: true,
+          data: { corpCode: 'A', from: 2021, to: 2025, series: [] },
+        }),
+      ),
+    );
+
+    render(<FinancialTrendSection corpCode="A" />);
+
+    expect(
+      await screen.findByText('매출액 추이 데이터가 없습니다'),
+    ).toBeInTheDocument();
   });
 });

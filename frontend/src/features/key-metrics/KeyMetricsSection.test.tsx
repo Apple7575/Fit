@@ -11,10 +11,10 @@ const okBody = (corpCode: string, revenue: number | null) => ({
     metrics: [
       { key: 'revenue', value: revenue },
       { key: 'operatingProfit', value: 6_566_976_000_000 },
-      { key: 'netIncome', value: 15_487_100_000_000 },
-      { key: 'totalAssets', value: 455_905_980_000_000 },
-      { key: 'totalLiabilities', value: 92_228_115_000_000 },
-      { key: 'totalEquity', value: 363_677_865_000_000 },
+      { key: 'employeeCount', value: 124_804 },
+      { key: 'averageSalary', value: 130_000_000 },
+      { key: 'averageTenure', value: 12.4 },
+      { key: 'rndToRevenueRatio', value: 8.3 },
     ],
   },
 });
