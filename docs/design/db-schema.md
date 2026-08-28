@@ -149,8 +149,8 @@ ORDER BY cm.metric_value DESC;
   > **주의 — 현재 이 마이그레이션은 실행되지 않는다.** `build.gradle`에 JDBC 스타터가 없어
   > (`spring-boot-starter-webmvc` + postgresql 드라이버뿐) `DataSource` 빈이 만들어지지 않고,
   > Flyway 자동설정은 `DataSource` 빈이 있을 때만 동작하기 때문이다.
-  > F-31에서 영속성 방식(JPA / JDBC / MyBatis)을 정하고 해당 스타터를 추가하는 시점에
-  > Flyway가 기동과 함께 V1·V2를 적용하게 된다. 스타터 선택은 F-31의 결정 사항이라 여기서 넣지 않았다.
+  > 영속성 방식은 **Spring Data JPA**로 정해졌다. F-31에서 스타터를 추가하는 시점에
+  > Flyway가 기동과 함께 V1·V2를 적용하게 된다.
 
 ---
 
@@ -191,3 +191,38 @@ ORDER BY cm.metric_value DESC;
 
 `yoy`는 저장하지 않는다. 전년 행이 같은 테이블에 있어 조회 시점에 계산하면 되고,
 값을 저장하면 재적재 때 원본과 어긋날 여지가 생긴다.
+
+---
+
+## 8. 검증
+
+PostgreSQL 18.6 컨테이너에 `psql -v ON_ERROR_STOP=1` 로 V1·V2를 적용해 확인했다.
+
+**적용 결과** — 오류 없이 통과. 테이블 7개, 인덱스 17개, `metric` 시드 6행 생성.
+
+**조회 쿼리** — 8개 엔드포인트가 쓸 쿼리 형태를 표본 데이터로 실행해 확인했다.
+
+| 확인 항목 | 결과 |
+| --- | --- |
+| 단일지표 시계열 (`corp_code` + `metric_code` 필터, 연도 정렬) | 정상 |
+| 산업 비교 (대상 기업의 `industry_code` 로 동종 기업 조회) | 정상 |
+| yoy 계산 (전년 행 self-join, 전년 0이면 `NULL`) | 정상. 명세 예시와 동일한 `7.3` 산출 |
+| 소수 지표 보존 (`avg_tenure` = 11.5) | 정상 |
+| 기업명 부분일치 검색 | 정상 |
+
+**제약조건** — 잘못된 데이터가 실제로 거부되는지 확인했다.
+
+| 시도 | 결과 |
+| --- | --- |
+| `corp_code` 7자리 | 거부 (`company_corp_code_check`) |
+| `corp_cls = 'X'` | 거부 (`company_corp_cls_check`) |
+| 존재하지 않는 `metric_code` 참조 | 거부 (FK) |
+| 기업·연도·지표 중복 | 거부 (PK) |
+| 존재하지 않는 기업 참조 | 거부 (FK) |
+| `unit = 'DOLLAR'` | 거부 (`metric_unit_check`) |
+| `ON CONFLICT` upsert | 성공 (F-28 이 쓸 경로) |
+
+**주의 — 조회 결과의 소수 자릿수.** `metric_value` 가 `NUMERIC(24,4)` 라서 금액도
+`71000000000000.0000` 형태로 나온다. 명세는 `"value": 71000000000000` 을 기대하므로
+**응답 직렬화 시 `metric.value_scale`(금액 0, 근속연수 1)로 자릿수를 맞춰야 한다.**
+F-08 구현 시 처리한다.
