@@ -11,7 +11,7 @@ const comparison: IndustryComparison = {
     name: '전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업',
     companyCount: 42,
   },
-  metrics: ['revenue', 'operating_profit', 'employee_count', 'avg_salary'],
+  metrics: ['revenue', 'operating_profit', 'employee_count', 'avg_salary', 'avg_tenure', 'rd_ratio'],
   companies: [
     {
       corpCode: '00126380',
@@ -22,6 +22,8 @@ const comparison: IndustryComparison = {
         operating_profit: 6_566_976_000_000,
         employee_count: 124_804,
         avg_salary: 130_000_000,
+        avg_tenure: 12.4,
+        rd_ratio: 8.3,
       },
     },
     {
@@ -33,6 +35,8 @@ const comparison: IndustryComparison = {
         operating_profit: 23_467_000_000_000,
         employee_count: 31_000,
         avg_salary: 120_000_000,
+        avg_tenure: 11.2,
+        rd_ratio: 6.1,
       },
     },
     {
@@ -44,6 +48,8 @@ const comparison: IndustryComparison = {
         operating_profit: -97_000_000_000,
         employee_count: 2_100,
         avg_salary: null,
+        avg_tenure: null,
+        rd_ratio: 3.4,
       },
     },
   ],
@@ -77,7 +83,7 @@ describe('IndustryComparisonSection', () => {
     expect(screen.getByText(/2025년 매출액 기준/)).toBeInTheDocument();
   });
 
-  it('offers only the four comparison metrics from the response', () => {
+  it('offers all six metrics listed in the response', () => {
     renderSection();
 
     expect(
@@ -87,12 +93,24 @@ describe('IndustryComparisonSection', () => {
       '영업이익',
       '직원 수',
       '1인 평균 급여',
+      '평균 근속',
+      'R&D / 매출',
       '값이 큰 순',
       '값이 작은 순',
     ]);
-    expect(
-      screen.queryByRole('radio', { name: '평균 근속' }),
-    ).not.toBeInTheDocument();
+  });
+
+  it('compares tenure in years and R&D ratio in percent', () => {
+    renderSection();
+
+    fireEvent.click(screen.getByRole('radio', { name: '평균 근속' }));
+    expect(peerRow('삼성전자').getByText('12.4')).toBeInTheDocument();
+    expect(peerRow('삼성전자').getByText('년')).toBeInTheDocument();
+    expect(peerRow('DB하이텍').getByText('미제공')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'R&D / 매출' }));
+    expect(peerRow('DB하이텍').getByText('3.4')).toBeInTheDocument();
+    expect(peerRow('DB하이텍').getByText('%')).toBeInTheDocument();
   });
 
   it('lists every company with the value of the selected metric and its unit', () => {
