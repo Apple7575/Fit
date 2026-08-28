@@ -2,7 +2,7 @@
 
 브랜치 전략은 **GitLab Flow**, 커밋은 **Conventional Commits**, 이슈 트래커는 **Jira**를 사용한다.
 
-> Jira 프로젝트 키 발급 후, 문서 전체의 `<JIRA-KEY>`를 실제 키(예: `S15P11A502`)로 치환한다.
+> Jira 프로젝트 키는 `S15P21A504`.
 > 템플릿은 **📋** 라벨로 표기한다.
 
 ---
@@ -31,18 +31,18 @@ develop ──●────●────●──────●────
 
 **📋 브랜치명**
 ```
-<type>/<JIRA-KEY>-<이슈번호>-<짧은-설명-kebab-case>
+<type>/S15P21A504-<이슈번호>-<짧은-설명-kebab-case>
 ```
 
 | type | 용도 | 예시 |
 | --- | --- | --- |
-| `feature` | 신규 기능 | `feature/<JIRA-KEY>-12-kafka-collector` |
-| `fix` | 버그 수정 | `fix/<JIRA-KEY>-34-hdfs-path-scheme` |
-| `docs` | 문서 | `docs/<JIRA-KEY>-7-infra-design` |
-| `refactor` | 리팩터링(기능 변화 없음) | `refactor/<JIRA-KEY>-22-spark-etl-split` |
-| `chore` | 설정·의존성·빌드 | `chore/<JIRA-KEY>-9-compose-profiles` |
+| `feature` | 신규 기능 | `feature/S15P21A504-12-kafka-collector` |
+| `fix` | 버그 수정 | `fix/S15P21A504-34-hdfs-path-scheme` |
+| `docs` | 문서 | `docs/S15P21A504-7-infra-design` |
+| `refactor` | 리팩터링(기능 변화 없음) | `refactor/S15P21A504-22-spark-etl-split` |
+| `chore` | 설정·의존성·빌드 | `chore/S15P21A504-9-compose-profiles` |
 
-- Jira 이슈 키(`<JIRA-KEY>-<번호>`) 필수 포함.
+- Jira 이슈 키(`S15P21A504-<번호>`) 필수 포함.
 - `style`·`ci`는 브랜치를 나누지 않고 커밋 type으로만 표현(브랜치는 위 5종).
 - 영문 소문자 + 하이픈(Jira 키의 대문자는 예외).
 
@@ -52,7 +52,7 @@ develop ──●────●────●──────●────
 
 **📋 커밋 메시지**
 ```
-<type>: [<JIRA-KEY>-<번호>] <제목>
+<type>: [S15P21A504-<번호>] <제목>
 ```
 
 - **제목**: 한글, 명령형, 50자 이내, 마침표 없음.
@@ -70,9 +70,9 @@ develop ──●────●────●──────●────
 
 ### 예시
 ```
-feat: [<JIRA-KEY>-12] NAVER 뉴스 API 수집기 추가
-fix: [<JIRA-KEY>-34] HDFS 경로 스킴 오류 수정
-docs: [<JIRA-KEY>-7] 리소스 예산 실측치 반영
+feat: [S15P21A504-12] NAVER 뉴스 API 수집기 추가
+fix: [S15P21A504-34] HDFS 경로 스킴 오류 수정
+docs: [S15P21A504-7] 리소스 예산 실측치 반영
 ```
 
 ---
@@ -84,16 +84,15 @@ docs: [<JIRA-KEY>-7] 리소스 예산 실측치 반영
 
 **📋 MR 제목**
 ```
-<type>: [<JIRA-KEY>-<번호>] <제목>
+<type>: [S15P21A504-<번호>] <제목>
 ```
 
 **📋 MR 템플릿** — `.gitlab/merge_request_templates/default.md`로 저장 시 자동 적용
 ```markdown
 
-## 변경 내용
--
-
 ## 관련 Jira 이슈
-<JIRA-KEY>-
+S15P21A504-
+
+## 변경 내용
 
 ```

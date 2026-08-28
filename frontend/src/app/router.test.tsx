@@ -12,8 +12,12 @@ describe('application routes', () => {
     renderRoute('/');
 
     expect(
-      screen.getByRole('heading', { name: '기업 검색' }),
+      screen.getByRole('heading', { level: 1, name: '기업 변화 분석' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('searchbox', { name: '기업명' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '검색' })).toBeInTheDocument();
   });
 
   it('renders the company analysis layout on the detail route', () => {
