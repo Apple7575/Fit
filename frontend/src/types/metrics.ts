@@ -1,48 +1,49 @@
 /**
  * 핵심지표 6개 — 기업분석 API 명세서 기준.
- * 키 문자열은 API 의 {metric} / keys 파라미터와 응답 metrics[].key 에 그대로 쓰인다 (BE 와 합의 필요).
+ * 키는 백엔드 metric.metric_code (V2__seed_metric.sql) 와 같고, /metrics/{metric} 경로변수·
+ * keys 파라미터·응답 metrics[].key / series[].key 에 그대로 쓰인다.
  */
 export const METRIC_KEYS = [
   'revenue',
-  'operatingProfit',
-  'employeeCount',
-  'averageSalary',
-  'averageTenure',
-  'rndToRevenueRatio',
+  'operating_profit',
+  'employee_count',
+  'avg_salary',
+  'avg_tenure',
+  'rd_ratio',
 ] as const;
 
 export type MetricKey = (typeof METRIC_KEYS)[number];
 
 export const METRIC_LABELS: Record<MetricKey, string> = {
   revenue: '매출액',
-  operatingProfit: '영업이익',
-  employeeCount: '직원 수',
-  averageSalary: '1인 평균 급여',
-  averageTenure: '평균 근속',
-  rndToRevenueRatio: 'R&D / 매출',
+  operating_profit: '영업이익',
+  employee_count: '직원 수',
+  avg_salary: '1인 평균 급여',
+  avg_tenure: '평균 근속',
+  rd_ratio: 'R&D / 매출',
 };
 
-/** 값의 종류. 포맷·단위 표기가 여기에 따라 달라진다 */
-export type MetricUnit = 'krw' | 'person' | 'year' | 'percent';
+/** 백엔드 응답의 unit 코드와 동일 (metric.unit CHECK 제약: KRW, PERSON, YEAR, %) */
+export type MetricUnit = 'KRW' | 'PERSON' | 'YEAR' | '%';
 
 export const METRIC_UNITS: Record<MetricKey, MetricUnit> = {
-  revenue: 'krw',
-  operatingProfit: 'krw',
-  employeeCount: 'person',
-  averageSalary: 'krw',
-  averageTenure: 'year',
-  rndToRevenueRatio: 'percent',
+  revenue: 'KRW',
+  operating_profit: 'KRW',
+  employee_count: 'PERSON',
+  avg_salary: 'KRW',
+  avg_tenure: 'YEAR',
+  rd_ratio: '%',
 };
 
 export const UNIT_LABELS: Record<MetricUnit, string> = {
-  krw: '원',
-  person: '명',
-  year: '년',
-  percent: '%',
+  KRW: '원',
+  PERSON: '명',
+  YEAR: '년',
+  '%': '%',
 };
 
 /**
- * 값의 의미: krw 는 원, person 은 명, year 는 년(소수 허용), percent 는 % 값 그대로 (8.3 → 8.3%).
+ * 값의 의미: KRW 는 원, PERSON 은 명, YEAR 는 년(소수 허용), % 는 퍼센트 값 그대로 (8.3 → 8.3%).
  * 값이 없으면 null (0과 구분).
  */
 export interface KeyMetric {

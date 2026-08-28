@@ -9,11 +9,11 @@ export const mockKeyMetricsByCompany: Record<string, KeyMetric[]> = {
   // 키는 종목코드가 아니라 DART 고유번호(corpCode) 다. 지표 API 경로와 같은 값을 쓴다.
   '00126380': [
     { key: 'revenue', value: 300_870_903_000_000 },
-    { key: 'operatingProfit', value: 6_566_976_000_000 },
-    { key: 'employeeCount', value: 124_804 },
-    { key: 'averageSalary', value: 130_000_000 },
-    { key: 'averageTenure', value: 12.4 },
-    { key: 'rndToRevenueRatio', value: 8.3 },
+    { key: 'operating_profit', value: 6_566_976_000_000 },
+    { key: 'employee_count', value: 124_804 },
+    { key: 'avg_salary', value: 130_000_000 },
+    { key: 'avg_tenure', value: 12.4 },
+    { key: 'rd_ratio', value: 8.3 },
   ],
 };
 

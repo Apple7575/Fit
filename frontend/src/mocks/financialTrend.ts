@@ -19,7 +19,7 @@ export const mockFinancialTrendByCompany: Record<string, TrendSeries[]> = {
       ],
     },
     {
-      key: 'operatingProfit',
+      key: 'operating_profit',
       points: [
         { year: 2021, value: 51_633_900_000_000 },
         { year: 2022, value: 43_376_600_000_000 },
@@ -29,7 +29,7 @@ export const mockFinancialTrendByCompany: Record<string, TrendSeries[]> = {
       ],
     },
     {
-      key: 'employeeCount',
+      key: 'employee_count',
       points: [
         { year: 2021, value: 113_485 },
         { year: 2022, value: 121_404 },
@@ -39,7 +39,7 @@ export const mockFinancialTrendByCompany: Record<string, TrendSeries[]> = {
       ],
     },
     {
-      key: 'averageSalary',
+      key: 'avg_salary',
       points: [
         { year: 2021, value: 144_000_000 },
         { year: 2022, value: 135_000_000 },
@@ -49,7 +49,7 @@ export const mockFinancialTrendByCompany: Record<string, TrendSeries[]> = {
       ],
     },
     {
-      key: 'averageTenure',
+      key: 'avg_tenure',
       points: [
         { year: 2021, value: 12.4 },
         { year: 2022, value: null },
@@ -59,7 +59,7 @@ export const mockFinancialTrendByCompany: Record<string, TrendSeries[]> = {
       ],
     },
     {
-      key: 'rndToRevenueRatio',
+      key: 'rd_ratio',
       points: [
         { year: 2021, value: 8.1 },
         { year: 2022, value: 8.2 },

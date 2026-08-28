@@ -15,7 +15,7 @@ const comparisons: IndustryComparison[] = [
     ],
   },
   {
-    metricKey: 'operatingProfit',
+    metricKey: 'operating_profit',
     year: 2025,
     industryName: '반도체 제조업',
     peers: [
@@ -92,20 +92,20 @@ describe('IndustryComparisonSection', () => {
   it('explains when the chosen metric has no comparison data', () => {
     renderSection();
 
-    fireEvent.click(screen.getByRole('radio', { name: '자산총계' }));
+    fireEvent.click(screen.getByRole('radio', { name: '평균 근속' }));
 
-    expect(screen.getByText(/자산총계 비교 정보가 없습니다/)).toBeInTheDocument();
+    expect(screen.getByText(/평균 근속 비교 정보가 없습니다/)).toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
   it('keeps showing the industry and year when the metric has no data', () => {
     renderSection();
 
-    fireEvent.click(screen.getByRole('radio', { name: '자산총계' }));
+    fireEvent.click(screen.getByRole('radio', { name: '평균 근속' }));
 
     // 산업·연도는 지표와 무관한 값이라 사라지면 안 된다.
     expect(screen.getByText(/반도체 제조업/)).toBeInTheDocument();
-    expect(screen.getByText(/2025년 자산총계/)).toBeInTheDocument();
+    expect(screen.getByText(/2025년 평균 근속/)).toBeInTheDocument();
   });
 
   it('reverses the order when a different sort is chosen', () => {

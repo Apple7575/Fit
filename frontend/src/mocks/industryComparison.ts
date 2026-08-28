@@ -40,7 +40,7 @@ export const mockIndustryComparisonByCompany: Record<
       ]),
     },
     {
-      metricKey: 'operatingProfit',
+      metricKey: 'operating_profit',
       year: 2025,
       industryName: '반도체 제조업',
       peers: withValues([

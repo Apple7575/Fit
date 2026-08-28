@@ -4,12 +4,18 @@ import { METRIC_KEYS, type KeyMetric, type MetricKey } from '../../types/metrics
 
 /**
  * GET /api/companies/{corpCode}/metrics?year=YYYY 의 data 부분.
- * ⚠ 백엔드 미구현 상태에서 명세(metrics[6])를 바탕으로 가정한 형태. BE 완성 시 대조 필요.
+ * 백엔드 CompanyMetricsResponse 와 같다. year 는 적재값이 없으면 null.
  */
 export interface KeyMetricsResponse {
   corpCode: string;
-  year: number;
-  metrics: Array<{ key: string; value: number | null }>;
+  year: number | null;
+  metrics: Array<{
+    key: string;
+    label: string;
+    value: number | null;
+    unit: string;
+    yoy: { prevValue: number | null; changeRate: number | null } | null;
+  }>;
 }
 
 const isMetricKey = (key: string): key is MetricKey =>
@@ -17,11 +23,9 @@ const isMetricKey = (key: string): key is MetricKey =>
 
 /** 응답에서 지원 지표 6개만 추려 화면 모델로 변환한다. 모르는 키는 무시. */
 export const toKeyMetrics = (response: KeyMetricsResponse): KeyMetric[] =>
-  response.metrics
-    .filter((m): m is { key: MetricKey; value: number | null } =>
-      isMetricKey(m.key),
-    )
-    .map((m) => ({ key: m.key, value: m.value }));
+  response.metrics.flatMap((m) =>
+    isMetricKey(m.key) ? [{ key: m.key, value: m.value }] : [],
+  );
 
 /**
  * 백엔드 없이 mock 으로 동작할지 여부.
