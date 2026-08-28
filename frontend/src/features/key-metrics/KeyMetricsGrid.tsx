@@ -1,5 +1,5 @@
 import { KeyMetricCard } from './KeyMetricCard';
-import { METRIC_KEYS, METRIC_LABELS, type KeyMetric } from './types';
+import { METRIC_KEYS, METRIC_LABELS, type KeyMetric } from '../../types/metrics';
 
 interface KeyMetricsGridProps {
   metrics: KeyMetric[];

@@ -1,4 +1,4 @@
-import type { KeyMetric } from '../features/key-metrics/types';
+import type { KeyMetric } from '../types/metrics';
 
 /**
  * F-11 API 연동 전 임시 데이터. 응답 구조 확인용 예시값이며 실제 공시와 다르다.

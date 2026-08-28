@@ -1,6 +1,6 @@
 import { ApiError, apiGet } from '../../api/client';
 import { mockKeyMetricsByCompany } from '../../mocks/keyMetrics';
-import { METRIC_KEYS, type KeyMetric, type MetricKey } from './types';
+import { METRIC_KEYS, type KeyMetric, type MetricKey } from '../../types/metrics';
 
 /**
  * GET /api/companies/{corpCode}/metrics?year=YYYY 의 data 부분.

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { KeyMetricsGrid } from './KeyMetricsGrid';
-import type { KeyMetric } from './types';
+import type { KeyMetric } from '../../types/metrics';
 
 const metrics: KeyMetric[] = [
   { key: 'revenue', value: 300_870_903_000_000 },
