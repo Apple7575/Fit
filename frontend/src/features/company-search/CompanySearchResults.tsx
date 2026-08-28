@@ -6,6 +6,8 @@ type CompanySearchResultsProps = {
   status: CompanySearchStatus;
   keyword: string;
   companies: Company[];
+  /** 서버가 알려준 전체 건수. 목록보다 많으면 일부만 보여주고 있다는 뜻이다. */
+  total?: number;
   onSelect?: (company: Company) => void;
   onRetry?: () => void;
 };
@@ -17,6 +19,7 @@ export function CompanySearchResults({
   status,
   keyword,
   companies,
+  total,
   onSelect,
   onRetry,
 }: CompanySearchResultsProps) {
@@ -66,9 +69,7 @@ export function CompanySearchResults({
   if (companies.length === 0) {
     return (
       <div className={panelClassName}>
-        <p className="text-sm font-bold text-slate-900">
-          검색 결과가 없습니다
-        </p>
+        <p className="text-sm font-bold text-slate-900">검색 결과가 없습니다</p>
         <p className="mt-2 text-sm leading-6 text-slate-500">
           <span className="font-semibold text-slate-700">{keyword}</span> 에
           해당하는 기업을 찾지 못했습니다. 기업명을 다시 확인해 주세요.
@@ -77,14 +78,20 @@ export function CompanySearchResults({
     );
   }
 
+  const totalCount = total ?? companies.length;
+  const isPartial = totalCount > companies.length;
+
   return (
     <div className={panelClassName}>
       <p className="text-sm font-semibold text-slate-500">
-        검색 결과 {companies.length}건
+        검색 결과 {totalCount}건
+        {isPartial && (
+          <span className="text-slate-400"> · 상위 {companies.length}건 표시</span>
+        )}
       </p>
       <ul className="mt-3 divide-y divide-slate-100">
         {companies.map((company) => (
-          <li key={company.code}>
+          <li key={company.corpCode}>
             <button
               className="flex w-full items-center justify-between gap-4 rounded-2xl px-4 py-4 text-left transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               onClick={() => onSelect?.(company)}
@@ -92,14 +99,14 @@ export function CompanySearchResults({
             >
               <span className="min-w-0">
                 <span className="block truncate text-base font-bold text-slate-900">
-                  {company.name}
+                  {company.corpName}
                 </span>
                 <span className="mt-1 block text-sm text-slate-500">
-                  {company.industry}
+                  {company.industryName ?? '업종 정보 없음'}
                 </span>
               </span>
               <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {company.code}
+                {company.stockCode ?? '비상장'}
               </span>
             </button>
           </li>
