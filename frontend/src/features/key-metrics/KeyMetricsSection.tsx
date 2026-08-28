@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { KeyMetricsGrid } from './KeyMetricsGrid';
-import { METRIC_KEYS, METRIC_LABELS } from './types';
+import { METRIC_KEYS, METRIC_LABELS } from '../../types/metrics';
 import { useKeyMetrics } from './useKeyMetrics';
 
 interface KeyMetricsSectionProps {

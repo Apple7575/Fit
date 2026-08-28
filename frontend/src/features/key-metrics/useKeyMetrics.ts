@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../../api/client';
 import { fetchKeyMetrics } from './api';
-import type { KeyMetric } from './types';
+import type { KeyMetric } from '../../types/metrics';
 
 export type KeyMetricsState =
   | { status: 'loading' }

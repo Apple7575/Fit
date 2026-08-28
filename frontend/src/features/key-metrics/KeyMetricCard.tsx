@@ -1,4 +1,4 @@
-import { formatAmount } from './formatAmount';
+import { formatAmount } from '../../utils/formatAmount';
 
 interface KeyMetricCardProps {
   label: string;
