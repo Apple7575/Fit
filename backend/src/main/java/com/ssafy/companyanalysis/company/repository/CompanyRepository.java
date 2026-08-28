@@ -7,7 +7,31 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface CompanyRepository extends JpaRepository<Company, String> {
+
+    /**
+     * corpCode 로 기업 상세를 조회한다(분석 페이지 헤더용).
+     *
+     * <p>산업 정보가 없는 기업도 빠지면 안 되므로 LEFT JOIN 이다. market 은 corp_cls 에서
+     * 파생하므로 원본을 그대로 실어 서비스에서 변환한다. 검색 쿼리와 마찬가지로 별칭을
+     * 큰따옴표로 감싸 프로젝션 getter 와 대소문자를 맞춘다.
+     */
+    @Query(value = """
+            SELECT c.corp_code       AS "corpCode",
+                   c.corp_name       AS "corpName",
+                   c.stock_code      AS "stockCode",
+                   i.industry_code   AS "industryCode",
+                   i.industry_name   AS "industryName",
+                   c.corp_cls        AS "corpCls",
+                   c.ceo_nm          AS "ceoNm",
+                   c.established_date AS "establishedDate"
+            FROM company c
+            LEFT JOIN industry i ON i.industry_code = c.industry_code
+            WHERE c.corp_code = :corpCode
+            """, nativeQuery = true)
+    Optional<CompanyDetailProjection> findDetailByCorpCode(@Param("corpCode") String corpCode);
 
     /**
      * 기업명 부분일치 또는 종목코드 완전일치로 검색한다.
