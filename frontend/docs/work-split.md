@@ -73,7 +73,7 @@ Jira: F-15, F-16, F-17, F-21, F-22, F-23 (6개)
 
 ## 4. 시작 전 확정 필요
 
-- **`{metric}` 키 이름 6개** — 명세서에 `keys` 파라미터·`metrics[6]`만 있고 실제 키(`revenue`, `operatingProfit`…)가 없다. mock 작성 전에 백엔드와 합의.
-- ~~**핵심지표 6개 정의 불일치**~~ → **명세서 기준으로 확정 (2026-08-28)**: 매출액·영업이익·직원 수·1인 평균 급여·평균 근속·R&D/매출. 프론트 키: `revenue, operatingProfit, employeeCount, averageSalary, averageTenure, rndToRevenueRatio` (`src/types/metrics.ts`). 단위는 원/원/명/원/년/% — 백엔드 응답 키와 단위(%는 8.3 처럼 퍼센트 값 그대로) 합의 필요.
+- **`{metric}` 키 이름 6개** — 명세서에 `keys` 파라미터·`metrics[6]`만 있고 실제 키(`revenue`, `operating_profit`…)가 없다. mock 작성 전에 백엔드와 합의.
+- ~~**핵심지표 6개 정의 불일치**~~ → **명세서 기준으로 확정 (2026-08-28)**: 매출액·영업이익·직원 수·1인 평균 급여·평균 근속·R&D/매출. 프론트 키: `revenue, operating_profit, employee_count, avg_salary, avg_tenure, rd_ratio` (`src/types/metrics.ts`). 단위는 원/원/명/원/년/% — 백엔드 응답 키와 단위(%는 8.3 처럼 퍼센트 값 그대로) 합의 필요.
 - **산업 비교 범위** — KSIC 대분류(2자리) vs 중분류, 비교 대상 수(상위 N), 기본 정렬 기준.
 - **`yoy` 응답 형태** — 전년 대비 증감을 값으로 주는지 비율로 주는지.

@@ -10,14 +10,14 @@ import {
 
 /**
  * GET /api/companies/{corpCode}/metrics/timeseries?from=2021&to=2025 의 data 부분.
- * ⚠ 백엔드 미구현 상태에서 명세(series[6] × points[5])를 바탕으로 가정한 형태. BE 완성 시 대조 필요.
+ * 백엔드 MetricTimeseriesResponse 와 같다 (range + series, series 순서는 카탈로그 display_order).
  */
 export interface FinancialTrendResponse {
-  corpCode: string;
-  from: number;
-  to: number;
+  range: { from: number; to: number };
   series: Array<{
     key: string;
+    label: string;
+    unit: string;
     points: Array<{ year: number; value: number | null }>;
   }>;
 }

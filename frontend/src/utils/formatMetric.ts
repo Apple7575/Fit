@@ -13,12 +13,12 @@ const oneDecimal = (n: number) =>
 /** 단위 문자 없이 숫자 부분만 포맷한다. 단위는 metricUnitLabel 로 따로 붙인다 */
 export function formatMetricNumber(unit: MetricUnit, value: number): string {
   switch (unit) {
-    case 'krw':
+    case 'KRW':
       return formatAmount(value);
-    case 'person':
+    case 'PERSON':
       return Math.round(value).toLocaleString('ko-KR');
-    case 'year':
-    case 'percent':
+    case 'YEAR':
+    case '%':
       return oneDecimal(value);
   }
 }
@@ -28,7 +28,7 @@ export const metricUnit = (key: MetricKey): MetricUnit => METRIC_UNITS[key];
 export const metricUnitLabel = (key: MetricKey): string =>
   UNIT_LABELS[METRIC_UNITS[key]];
 
-/** 지표 키 기준으로 숫자만 포맷 (예: revenue → "300조 8,709억", averageTenure → "12.4") */
+/** 지표 키 기준으로 숫자만 포맷 (예: revenue → "300조 8,709억", avg_tenure → "12.4") */
 export const formatMetricValue = (key: MetricKey, value: number): string =>
   formatMetricNumber(METRIC_UNITS[key], value);
 
