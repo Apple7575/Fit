@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
-import { KeyMetricsGrid } from './KeyMetricsGrid';
+import { InlineNotice } from '../../components/common/InlineNotice';
 import { METRIC_KEYS, METRIC_LABELS } from '../../types/metrics';
+import { KeyMetricsGrid } from './KeyMetricsGrid';
 import { useKeyMetrics } from './useKeyMetrics';
 
 interface KeyMetricsSectionProps {
@@ -32,23 +32,16 @@ export function KeyMetricsSection({ corpCode, year }: KeyMetricsSectionProps) {
 
       {state.status === 'error' &&
         (state.error.code === 'COMPANY_NOT_FOUND' ? (
-          <Notice>
+          <InlineNotice>
             기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
-          </Notice>
+          </InlineNotice>
         ) : (
-          <Notice>
+          <InlineNotice onRetry={retry}>
             핵심지표를 불러오지 못했습니다. {state.error.message}
-            <button
-              className="ml-3 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              onClick={retry}
-              type="button"
-            >
-              다시 시도
-            </button>
-          </Notice>
+          </InlineNotice>
         ))}
 
-      {state.status === 'success' && <KeyMetricsGrid metrics={state.metrics} />}
+      {state.status === 'success' && <KeyMetricsGrid metrics={state.data} />}
     </section>
   );
 }
@@ -73,16 +66,5 @@ function LoadingGrid() {
         </div>
       ))}
     </div>
-  );
-}
-
-function Notice({ children }: { children: ReactNode }) {
-  return (
-    <p
-      className="flex flex-wrap items-center gap-y-2 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-900"
-      role="alert"
-    >
-      {children}
-    </p>
   );
 }

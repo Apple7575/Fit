@@ -6,7 +6,7 @@ import type { TrendSeries } from '../features/financial-trend/types';
  * 2022년 자본총계는 누락 케이스(null) 확인용.
  */
 export const mockFinancialTrendByCompany: Record<string, TrendSeries[]> = {
-  '005930': [
+  '00126380': [
     {
       key: 'revenue',
       points: [

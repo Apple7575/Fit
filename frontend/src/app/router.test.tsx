@@ -9,14 +9,21 @@ const renderRoute = (path: string) => {
 
 describe('application routes', () => {
   beforeEach(() => {
+    // 상세 페이지의 데이터 섹션들이 네트워크를 타지 않도록 URL 별 빈 응답을 돌려준다
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ success: true, data: { metrics: [] } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        const data = url.includes('/timeseries')
+          ? { series: [] }
+          : { metrics: [] };
+        return Promise.resolve(
+          new Response(JSON.stringify({ success: true, data }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }),
     );
   });
 
