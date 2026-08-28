@@ -1,8 +1,13 @@
 import { useParams } from 'react-router-dom';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { FinancialTrendSection } from '../../features/financial-trend/FinancialTrendSection';
+import { IndustryComparisonSection } from '../../features/industry-comparison/IndustryComparisonSection';
 import { KeyMetricsSection } from '../../features/key-metrics/KeyMetricsSection';
 import { mockFinancialTrendByCompany } from '../../mocks/financialTrend';
+import {
+  emptyIndustryComparison,
+  mockIndustryComparisonByCompany,
+} from '../../mocks/industryComparison';
 
 export function CompanyDetailPage() {
   const { companyId } = useParams();
@@ -13,6 +18,9 @@ export function CompanyDetailPage() {
     : '기업 정보 준비 중';
   // F-17 에서 API 연동으로 교체
   const trendSeries = mockFinancialTrendByCompany[companyId ?? ''] ?? [];
+  // F-23 에서 API 연동으로 교체
+  const comparison =
+    mockIndustryComparisonByCompany[companyId ?? ''] ?? emptyIndustryComparison;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -43,30 +51,10 @@ export function CompanyDetailPage() {
 
           <FinancialTrendSection series={trendSeries} />
 
-          <section
-            aria-labelledby="comparison-title"
-            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
-          >
-            <h2
-              className="text-xl font-extrabold text-slate-950 sm:text-2xl"
-              id="comparison-title"
-            >
-              같은 산업 비교
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              2025년 기준으로 검색 기업과 동종 기업을 비교할 영역입니다.
-            </p>
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
-              {['검색 기업', '비교 기업'].map((label) => (
-                <div
-                  className="min-h-48 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5"
-                  key={label}
-                >
-                  <p className="text-sm font-bold text-slate-500">{label}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          <IndustryComparisonSection
+            comparison={comparison}
+            corpCode={companyId ?? ''}
+          />
         </div>
       </main>
     </div>
