@@ -1,39 +1,53 @@
 import { useState } from 'react';
 import { METRIC_LABELS, type MetricKey } from '../../types/metrics';
-import { formatAmount } from '../../utils/formatAmount';
-// 지표 6개 pill 라디오 그룹. 특정 기능에 묶이지 않은 범용 컴포넌트지만,
-// F-17 작업이 financial-trend 를 대폭 수정 중이라 지금 옮기면 충돌한다.
-// 그 작업이 머지된 뒤 components/common 으로 옮기는 것이 맞다.
+import { formatMetricValue, metricUnitLabel } from '../../utils/formatMetric';
+// 지표 pill 라디오 그룹. financial-trend 에서 만든 범용 컴포넌트를 그대로 쓴다.
 import { MetricSelector } from '../financial-trend/MetricSelector';
 import { barWidthPercent, maxPeerValue } from './barWidth';
 import { SortOrderSelector } from './SortOrderSelector';
 import { sortPeers } from './sortPeers';
-import type { IndustryComparison, SortOrder } from './types';
+import {
+  COMPARISON_METRIC_KEYS,
+  type IndustryComparison,
+  type IndustryPeer,
+  type SortOrder,
+} from './types';
 
 /** 기본 선택 지표. 규모를 가장 먼저 보게 되므로 매출액. */
 export const DEFAULT_COMPARISON_METRIC: MetricKey = 'revenue';
 
 interface IndustryComparisonSectionProps {
-  /** 지표별 비교 결과. 선택된 지표에 해당하는 항목이 없으면 안내를 보여준다. */
-  comparisons: IndustryComparison[];
-  /** 지금 보고 있는 기업. 목록에서 강조 표시한다. */
-  corpCode: string;
+  /** 동일 산업 비교 응답 (명세 5번). companies 가 비어 있으면 안내를 보여준다. */
+  comparison: IndustryComparison;
   initialMetricKey?: MetricKey;
 }
 
+/** 응답의 companies 를 선택한 지표 하나의 행 목록으로 펼친다. */
+const toPeers = (
+  comparison: IndustryComparison,
+  metricKey: MetricKey,
+): IndustryPeer[] =>
+  comparison.companies.map((company) => ({
+    corpCode: company.corpCode,
+    corpName: company.corpName,
+    isTarget: company.isTarget,
+    value: company.values[metricKey] ?? null,
+  }));
+
 export function IndustryComparisonSection({
-  comparisons,
-  corpCode,
+  comparison,
   initialMetricKey = DEFAULT_COMPARISON_METRIC,
 }: IndustryComparisonSectionProps) {
   const [metricKey, setMetricKey] = useState<MetricKey>(initialMetricKey);
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  const selected = comparisons.find((item) => item.metricKey === metricKey);
-  // 산업명·기준연도는 지표와 무관하게 같으므로, 선택한 지표에 자료가 없어도 그대로 보여준다.
-  const context = selected ?? comparisons[0];
+  const { year, industry, companies } = comparison;
+  // 응답이 알려준 지표만 고를 수 있다. 응답에 목록이 없으면 명세의 4종.
+  const metricOptions =
+    comparison.metrics.length > 0 ? comparison.metrics : COMPARISON_METRIC_KEYS;
   const label = METRIC_LABELS[metricKey];
-  const peers = selected ? sortPeers(selected.peers, sortOrder) : [];
+  const unit = metricUnitLabel(metricKey);
+  const peers = sortPeers(toPeers(comparison, metricKey), sortOrder);
   const max = maxPeerValue(peers.map((peer) => peer.value));
 
   return (
@@ -48,14 +62,22 @@ export function IndustryComparisonSection({
         같은 산업 비교
       </h2>
       <p className="mt-2 text-sm leading-6 text-slate-500">
-        {context?.industryName ?? '산업 정보 없음'} · {context?.year ?? '—'}년{' '}
-        {label} 기준
+        {industry ? (
+          <>
+            {industry.name} · 동종 {industry.companyCount.toLocaleString('ko-KR')}
+            개사 중 {companies.length}개 ·{' '}
+          </>
+        ) : (
+          '산업 정보 없음 · '
+        )}
+        {year}년 {label} 기준
       </p>
 
       <div className="mt-5 flex flex-col gap-3 border-y border-slate-100 py-4 lg:flex-row lg:items-center lg:justify-between">
         <MetricSelector
           label="비교 지표 선택"
           onChange={setMetricKey}
+          options={metricOptions}
           value={metricKey}
         />
         <SortOrderSelector onChange={setSortOrder} value={sortOrder} />
@@ -63,12 +85,11 @@ export function IndustryComparisonSection({
 
       {peers.length === 0 ? (
         <p className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center text-sm font-semibold text-slate-400">
-          {label} 비교 정보가 없습니다
+          비교할 동종 기업 정보가 없습니다
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
           {peers.map((peer) => {
-            const isViewedCompany = peer.corpCode === corpCode;
             const isLoss = peer.value !== null && peer.value < 0;
 
             return (
@@ -77,12 +98,12 @@ export function IndustryComparisonSection({
                   <p className="flex min-w-0 items-baseline gap-2">
                     <span
                       className={`truncate text-sm font-bold ${
-                        isViewedCompany ? 'text-blue-700' : 'text-slate-700'
+                        peer.isTarget ? 'text-blue-700' : 'text-slate-700'
                       }`}
                     >
                       {peer.corpName}
                     </span>
-                    {isViewedCompany && (
+                    {peer.isTarget && (
                       <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
                         조회 기업
                       </span>
@@ -99,10 +120,10 @@ export function IndustryComparisonSection({
                           isLoss ? 'text-rose-600' : 'text-slate-950'
                         }`}
                       >
-                        {formatAmount(peer.value)}
+                        {formatMetricValue(metricKey, peer.value)}
                       </span>
                       <span className="ml-1 font-semibold text-slate-500">
-                        원
+                        {unit}
                       </span>
                     </span>
                   )}
@@ -115,7 +136,7 @@ export function IndustryComparisonSection({
                     className={`h-full rounded-full ${
                       isLoss
                         ? 'bg-rose-400'
-                        : isViewedCompany
+                        : peer.isTarget
                           ? 'bg-blue-600'
                           : 'bg-slate-300'
                     }`}

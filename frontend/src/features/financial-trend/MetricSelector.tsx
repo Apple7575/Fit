@@ -6,6 +6,8 @@ interface MetricSelectorProps {
   onChange: (key: MetricKey) => void;
   /** 그룹 레이블 (스크린리더용). 기본 "지표 선택" */
   label?: string;
+  /** 보여줄 지표. 생략하면 6개 전부 (산업 비교처럼 일부만 지원하는 곳에서 좁힌다) */
+  options?: readonly MetricKey[];
 }
 
 /**
@@ -16,13 +18,14 @@ export function MetricSelector({
   value,
   onChange,
   label = '지표 선택',
+  options = METRIC_KEYS,
 }: MetricSelectorProps) {
   const name = useId();
 
   return (
     <fieldset className="flex flex-wrap gap-2">
       <legend className="sr-only">{label}</legend>
-      {METRIC_KEYS.map((key) => {
+      {options.map((key) => {
         const checked = key === value;
         return (
           <label

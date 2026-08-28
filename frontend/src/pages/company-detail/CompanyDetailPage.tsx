@@ -16,7 +16,7 @@ export function CompanyDetailPage() {
     ? '반도체 · 전자제품'
     : '기업 정보 준비 중';
   // F-23 에서 API 연동으로 교체
-  const comparisons =
+  const comparison =
     mockIndustryComparisonByCompany[companyId ?? ''] ?? emptyIndustryComparison;
 
   return (
@@ -48,10 +48,7 @@ export function CompanyDetailPage() {
 
           <FinancialTrendSection corpCode={companyId ?? ''} />
 
-          <IndustryComparisonSection
-            comparisons={comparisons}
-            corpCode={companyId ?? ''}
-          />
+          <IndustryComparisonSection comparison={comparison} />
         </div>
       </main>
     </div>

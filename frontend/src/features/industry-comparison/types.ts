@@ -1,22 +1,50 @@
 import type { MetricKey } from '../../types/metrics';
 
-/** 비교 대상 기업 한 곳의 지표 값. 값이 없으면 null (0과 구분). */
-export interface IndustryPeer {
-  corpCode: string;
-  corpName: string;
-  value: number | null;
-}
+/** 명세서의 비교 지표 4종. 근속·R&D 는 비교 대상이 아니다. */
+export const COMPARISON_METRIC_KEYS = [
+  'revenue',
+  'operating_profit',
+  'employee_count',
+  'avg_salary',
+] as const satisfies readonly MetricKey[];
 
 /** 목록 정렬 방향. 값이 없는 기업은 방향과 무관하게 항상 마지막이다. */
 export type SortOrder = 'desc' | 'asc';
 
+/** 비교군 산업. KSIC 중분류(2자리) 기준. */
+export interface IndustryInfo {
+  code: string;
+  name: string;
+  /** 같은 산업에 속한 전체 기업 수 (목록에 실린 수보다 클 수 있다) */
+  companyCount: number;
+}
+
+/** 비교 대상 기업 한 곳. values 는 지표 키 → 값, 없으면 null (0과 구분). */
+export interface ComparisonCompany {
+  corpCode: string;
+  corpName: string;
+  /** 지금 보고 있는 기업이면 true. 목록에 반드시 포함된다. */
+  isTarget: boolean;
+  values: Partial<Record<MetricKey, number | null>>;
+}
+
 /**
- * 지표 하나에 대한 동일 산업 비교.
- * GET /api/companies/{corpCode}/metrics/{metric}/industry-comparison 응답에 대응한다.
+ * 동일 산업 비교 응답.
+ * GET /api/companies/{corpCode}/industry-comparison?year=2025 의 data 부분과 같다.
+ * 비교 대상이 없으면 companies 는 빈 배열(200)이다.
  */
 export interface IndustryComparison {
-  metricKey: MetricKey;
   year: number;
-  industryName: string | null;
-  peers: IndustryPeer[];
+  industry: IndustryInfo | null;
+  /** 이 응답에 값이 실린 지표 키. 선택 UI 는 이 목록만 보여준다. */
+  metrics: MetricKey[];
+  companies: ComparisonCompany[];
+}
+
+/** 선택한 지표 하나로 펼친 목록 행. 정렬·막대 계산의 단위. */
+export interface IndustryPeer {
+  corpCode: string;
+  corpName: string;
+  isTarget?: boolean;
+  value: number | null;
 }
