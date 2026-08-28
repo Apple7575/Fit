@@ -20,6 +20,10 @@ public interface CompanyRepository extends JpaRepository<Company, String> {
      * 별칭을 큰따옴표로 감싼 것은 PostgreSQL 이 따옴표 없는 식별자를 소문자로 접어
      * 프로젝션의 getter 와 어긋나기 때문이다.
      */
+    default Page<CompanySummaryProjection> search(String keyword, Pageable pageable) {
+        return searchByKeyword(escapeLikePattern(keyword), keyword, pageable);
+    }
+
     @Query(value = """
             SELECT c.corp_code     AS "corpCode",
                    c.corp_name     AS "corpName",
@@ -28,16 +32,29 @@ public interface CompanyRepository extends JpaRepository<Company, String> {
                    i.industry_name AS "industryName"
             FROM company c
             LEFT JOIN industry i ON i.industry_code = c.industry_code
-            WHERE c.corp_name ILIKE '%' || :keyword || '%'
+            WHERE c.corp_name ILIKE '%' || :likeKeyword || '%' ESCAPE '\\'
                OR c.stock_code = :keyword
             ORDER BY c.corp_name
             """,
             countQuery = """
             SELECT count(*)
             FROM company c
-            WHERE c.corp_name ILIKE '%' || :keyword || '%'
+            WHERE c.corp_name ILIKE '%' || :likeKeyword || '%' ESCAPE '\\'
                OR c.stock_code = :keyword
             """,
             nativeQuery = true)
-    Page<CompanySummaryProjection> search(@Param("keyword") String keyword, Pageable pageable);
+    Page<CompanySummaryProjection> searchByKeyword(@Param("likeKeyword") String likeKeyword,
+                                                  @Param("keyword") String keyword,
+                                                  Pageable pageable);
+
+    /**
+     * 검색어의 LIKE 메타문자를 리터럴로 바꾼다. 이스케이프하지 않으면 {@code %} 하나로
+     * 전체 테이블이 매치되어 trgm 인덱스를 못 타고, {@code 삼성_전자} 가 {@code 삼성X전자} 에도 걸린다.
+     * 종목코드 완전일치에는 원본 검색어를 그대로 써야 하므로 파라미터를 분리한다.
+     */
+    private static String escapeLikePattern(String keyword) {
+        return keyword.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+    }
 }
