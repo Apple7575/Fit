@@ -146,11 +146,11 @@ ORDER BY cm.metric_value DESC;
   compose는 이미 `SPRING_DATASOURCE_*` 환경변수를 주입하므로 컨테이너 환경에서는 값 주입이 따로 필요 없고,
   로컬 실행용 프로파일만 F-31에서 채우면 된다.
 
-  > **주의 — 현재 이 마이그레이션은 실행되지 않는다.** `build.gradle`에 JDBC 스타터가 없어
-  > (`spring-boot-starter-webmvc` + postgresql 드라이버뿐) `DataSource` 빈이 만들어지지 않고,
-  > Flyway 자동설정은 `DataSource` 빈이 있을 때만 동작하기 때문이다.
-  > 영속성 방식은 **Spring Data JPA**로 정해졌다. F-31에서 스타터를 추가하는 시점에
-  > Flyway가 기동과 함께 V1·V2를 적용하게 된다.
+  > **의존성은 이 MR 이 아니라 F-31 이 소유한다.** 이 브랜치는 마이그레이션 파일과 설계 문서만 담는다.
+  > Flyway·JPA 스타터를 여기서 넣으면 F-31 과 같은 줄에서 충돌하고, 무엇보다
+  > Spring Boot 4 는 자동설정을 기술별 모듈로 쪼개 두어 `org.flywaydb:flyway-core` 만으로는
+  > **자동설정이 붙지 않아 마이그레이션이 조용히 실행되지 않는다**(F-31 에서 실제로 겪었다).
+  > `org.springframework.boot:spring-boot-flyway` 를 써야 하며, 그 결정과 검증은 F-31 에 있다.
 
 ---
 
