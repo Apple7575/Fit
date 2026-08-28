@@ -1,7 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { KeyMetricsSection } from '../../features/key-metrics/KeyMetricsSection';
-import { mockKeyMetricsByCompany } from '../../mocks/keyMetrics';
 
 export function CompanyDetailPage() {
   const { companyId } = useParams();
@@ -10,7 +9,6 @@ export function CompanyDetailPage() {
   const companySummary = isSamsungElectronics
     ? '반도체 · 전자제품'
     : '기업 정보 준비 중';
-  const keyMetrics = mockKeyMetricsByCompany[companyId ?? ''] ?? [];
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -37,7 +35,7 @@ export function CompanyDetailPage() {
         </section>
 
         <div className="space-y-8">
-          <KeyMetricsSection metrics={keyMetrics} year={2025} />
+          <KeyMetricsSection corpCode={companyId ?? ''} year={2025} />
 
           <section
             aria-labelledby="trend-title"

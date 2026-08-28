@@ -1,63 +1,110 @@
-import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KeyMetricsSection } from './KeyMetricsSection';
-import type { KeyMetric } from './types';
 
-const metrics: KeyMetric[] = [
-  { key: 'revenue', value: 300_870_903_000_000 },
-  { key: 'operatingProfit', value: 6_566_976_000_000 },
-  { key: 'netIncome', value: 15_487_100_000_000 },
-  { key: 'totalAssets', value: 455_905_980_000_000 },
-  { key: 'totalLiabilities', value: 92_228_115_000_000 },
-  { key: 'totalEquity', value: null },
-];
+const okBody = (corpCode: string, revenue: number | null) => ({
+  success: true,
+  data: {
+    corpCode,
+    year: 2025,
+    metrics: [
+      { key: 'revenue', value: revenue },
+      { key: 'operatingProfit', value: 6_566_976_000_000 },
+      { key: 'netIncome', value: 15_487_100_000_000 },
+      { key: 'totalAssets', value: 455_905_980_000_000 },
+      { key: 'totalLiabilities', value: 92_228_115_000_000 },
+      { key: 'totalEquity', value: 363_677_865_000_000 },
+    ],
+  },
+});
 
-describe('KeyMetricsSection', () => {
-  it('renders six cards whose labels match their values', () => {
-    render(<KeyMetricsSection metrics={metrics} year={2025} />);
-
-    const cards = screen.getAllByRole('article');
-    expect(cards).toHaveLength(6);
-
-    const revenue = screen.getByRole('article', { name: '매출액' });
-    expect(within(revenue).getByText('300조 8,709억')).toBeInTheDocument();
-
-    const liabilities = screen.getByRole('article', { name: '부채총계' });
-    expect(within(liabilities).getByText('92조 2,281억')).toBeInTheDocument();
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
   });
 
-  it('shows the base year and the currency unit', () => {
-    render(<KeyMetricsSection metrics={metrics} year={2025} />);
+describe('KeyMetricsSection', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
+  it('shows a loading state, then the values returned by the API', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(json(okBody('00126380', 300_870_903_000_000)));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<KeyMetricsSection corpCode="00126380" year={2025} />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('불러오는 중');
+
+    const revenue = await screen.findByRole('article', { name: '매출액' });
+    expect(within(revenue).getByText('300조 8,709억')).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: '2025년 핵심지표' }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('원')).toHaveLength(5);
+
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('/api/companies/00126380/metrics');
+    expect(url).toContain('year=2025');
   });
 
-  it('marks a missing value as 미제공 instead of 0', () => {
-    render(<KeyMetricsSection metrics={metrics} year={2025} />);
+  it('refetches when corpCode changes', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      return Promise.resolve(
+        url.includes('/companies/A/')
+          ? json(okBody('A', 1_0000_0000_0000))
+          : json(okBody('B', 2_0000_0000_0000)),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
-    const equity = screen.getByRole('article', { name: '자본총계' });
-    expect(within(equity).getByText('미제공')).toBeInTheDocument();
-    expect(within(equity).queryByText('0')).not.toBeInTheDocument();
+    const { rerender } = render(<KeyMetricsSection corpCode="A" year={2025} />);
+    expect(await screen.findByText('1조')).toBeInTheDocument();
+
+    rerender(<KeyMetricsSection corpCode="B" year={2025} />);
+    expect(await screen.findByText('2조')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps the six cards in a fixed order even if the input order differs', () => {
-    render(
-      <KeyMetricsSection metrics={[...metrics].reverse()} year={2025} />,
+  it('shows a not-found message for COMPANY_NOT_FOUND', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        json(
+          { success: false, error: { code: 'COMPANY_NOT_FOUND', message: 'x' } },
+          404,
+        ),
+      ),
     );
 
-    const labels = screen
-      .getAllByRole('article')
-      .map((card) => card.getAttribute('aria-label'));
-    expect(labels).toEqual([
-      '매출액',
-      '영업이익',
-      '당기순이익',
-      '자산총계',
-      '부채총계',
-      '자본총계',
-    ]);
+    render(<KeyMetricsSection corpCode="000000" year={2025} />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '기업 정보를 찾을 수 없습니다',
+    );
+    expect(screen.queryAllByRole('article')).toHaveLength(0);
+  });
+
+  it('shows an error with a retry button that refetches', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('offline'))
+      .mockResolvedValueOnce(json(okBody('A', 5_0000_0000_0000)));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<KeyMetricsSection corpCode="A" year={2025} />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '핵심지표를 불러오지 못했습니다',
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => expect(screen.getByText('5조')).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
