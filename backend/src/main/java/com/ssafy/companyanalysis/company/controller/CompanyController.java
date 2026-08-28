@@ -1,6 +1,8 @@
 package com.ssafy.companyanalysis.company.controller;
 
+import com.ssafy.companyanalysis.company.dto.CompanyDetailResponse;
 import com.ssafy.companyanalysis.company.dto.CompanySearchResponse;
+import com.ssafy.companyanalysis.company.service.CompanyDetailService;
 import com.ssafy.companyanalysis.company.service.CompanySearchService;
 import com.ssafy.companyanalysis.global.response.ApiResponse;
 import jakarta.validation.constraints.Max;
@@ -8,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,9 +24,12 @@ public class CompanyController {
     private static final int DEFAULT_SIZE = 20;
 
     private final CompanySearchService companySearchService;
+    private final CompanyDetailService companyDetailService;
 
-    public CompanyController(CompanySearchService companySearchService) {
+    public CompanyController(CompanySearchService companySearchService,
+                            CompanyDetailService companyDetailService) {
         this.companySearchService = companySearchService;
+        this.companyDetailService = companyDetailService;
     }
 
     /**
@@ -39,5 +45,11 @@ public class CompanyController {
             @RequestParam(defaultValue = "" + DEFAULT_SIZE) @Min(1) @Max(100) int size) {
 
         return ApiResponse.ok(companySearchService.search(keyword, page, size));
+    }
+
+    /** corpCode 로 기업 기본정보를 조회한다. 없으면 404 COMPANY_NOT_FOUND 다. */
+    @GetMapping("/{corpCode}")
+    public ApiResponse<CompanyDetailResponse> getCompany(@PathVariable String corpCode) {
+        return ApiResponse.ok(companyDetailService.getCompany(corpCode));
     }
 }

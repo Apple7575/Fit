@@ -1,0 +1,19 @@
+package com.ssafy.companyanalysis.company.dto;
+
+import java.time.LocalDate;
+
+/**
+ * 기업 상세 응답. 명세의 기업 기본정보 필드와 이름·순서가 같다.
+ * market 은 corp_cls 에서 파생하며 KOSPI·KOSDAQ·KONEX 외에는 null 이다.
+ */
+public record CompanyDetailResponse(
+        String corpCode,
+        String corpName,
+        String stockCode,
+        String industryCode,
+        String industryName,
+        String market,
+        String ceo,
+        LocalDate establishedDate
+) {
+}
