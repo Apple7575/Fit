@@ -42,7 +42,7 @@ export function IndustryComparisonSection({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const { year, industry, companies } = comparison;
-  // 응답이 알려준 지표만 고를 수 있다. 응답에 목록이 없으면 명세의 4종.
+  // 응답이 알려준 지표만 고를 수 있다. 응답에 목록이 없으면 6종 전부.
   const metricOptions =
     comparison.metrics.length > 0 ? comparison.metrics : COMPARISON_METRIC_KEYS;
   const label = METRIC_LABELS[metricKey];

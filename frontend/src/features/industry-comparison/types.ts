@@ -1,12 +1,7 @@
-import type { MetricKey } from '../../types/metrics';
+import { METRIC_KEYS, type MetricKey } from '../../types/metrics';
 
-/** 명세서의 비교 지표 4종. 근속·R&D 는 비교 대상이 아니다. */
-export const COMPARISON_METRIC_KEYS = [
-  'revenue',
-  'operating_profit',
-  'employee_count',
-  'avg_salary',
-] as const satisfies readonly MetricKey[];
+/** 비교 지표 — 핵심지표 6종 전부. 응답 metrics 가 비어 있을 때의 기본 선택지. */
+export const COMPARISON_METRIC_KEYS: readonly MetricKey[] = METRIC_KEYS;
 
 /** 목록 정렬 방향. 값이 없는 기업은 방향과 무관하게 항상 마지막이다. */
 export type SortOrder = 'desc' | 'asc';
@@ -36,7 +31,7 @@ export interface ComparisonCompany {
 export interface IndustryComparison {
   year: number;
   industry: IndustryInfo | null;
-  /** 이 응답에 값이 실린 지표 키. 선택 UI 는 이 목록만 보여준다. */
+  /** 이 응답에 값이 실린 지표 키(6종). 선택 UI 는 이 목록만 보여준다. */
   metrics: MetricKey[];
   companies: ComparisonCompany[];
 }
