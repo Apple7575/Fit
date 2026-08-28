@@ -16,13 +16,32 @@ describe('application routes', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the selected company identifier on the detail route', () => {
+  it('renders the company analysis layout on the detail route', () => {
     renderRoute('/companies/005930');
 
     expect(
-      screen.getByRole('heading', { name: '기업 상세' }),
+      screen.getByRole('heading', { level: 1, name: '삼성전자' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('기업 코드: 005930')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '2025년 핵심지표' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '최근 5개년 변화' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '같은 산업 비교' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps unknown company metadata route-neutral', () => {
+    renderRoute('/companies/000000');
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: '기업 분석' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('기업 정보 준비 중 · 기업코드 000000'),
+    ).toBeInTheDocument();
   });
 
   it('renders a not-found page for unknown paths', () => {
