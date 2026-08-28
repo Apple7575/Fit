@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { RouterProvider } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppRouter } from './router';
 
 const renderRoute = (path: string) => {
@@ -8,6 +8,18 @@ const renderRoute = (path: string) => {
 };
 
 describe('application routes', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: { metrics: [] } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+  });
+
   it('renders the company search home at the root path', () => {
     renderRoute('/');
 
