@@ -1,5 +1,5 @@
+import { METRIC_KEYS, type KeyMetric } from '../../types/metrics';
 import { KeyMetricCard } from './KeyMetricCard';
-import { METRIC_KEYS, METRIC_LABELS, type KeyMetric } from '../../types/metrics';
 
 interface KeyMetricsGridProps {
   metrics: KeyMetric[];
@@ -14,7 +14,7 @@ export function KeyMetricsGrid({ metrics }: KeyMetricsGridProps) {
       {METRIC_KEYS.map((key) => (
         <KeyMetricCard
           key={key}
-          label={METRIC_LABELS[key]}
+          metricKey={key}
           value={valueByKey.get(key) ?? null}
         />
       ))}

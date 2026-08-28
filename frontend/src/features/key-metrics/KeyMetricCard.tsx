@@ -1,11 +1,13 @@
-import { formatAmount } from '../../utils/formatAmount';
+import { METRIC_LABELS, type MetricKey } from '../../types/metrics';
+import { formatMetricValue, metricUnitLabel } from '../../utils/formatMetric';
 
 interface KeyMetricCardProps {
-  label: string;
+  metricKey: MetricKey;
   value: number | null;
 }
 
-export function KeyMetricCard({ label, value }: KeyMetricCardProps) {
+export function KeyMetricCard({ metricKey, value }: KeyMetricCardProps) {
+  const label = METRIC_LABELS[metricKey];
   const isMissing = value === null;
 
   return (
@@ -19,9 +21,11 @@ export function KeyMetricCard({ label, value }: KeyMetricCardProps) {
       ) : (
         <p className="mt-4 flex items-baseline gap-1">
           <span className="text-2xl font-extrabold tracking-tight text-slate-950">
-            {formatAmount(value)}
+            {formatMetricValue(metricKey, value)}
           </span>
-          <span className="text-sm font-semibold text-slate-500">원</span>
+          <span className="text-sm font-semibold text-slate-500">
+            {metricUnitLabel(metricKey)}
+          </span>
         </p>
       )}
     </article>

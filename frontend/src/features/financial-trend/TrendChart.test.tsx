@@ -16,7 +16,7 @@ const series: TrendSeries = {
 
 describe('TrendChart', () => {
   it('labels the x axis with every year from 2021 to 2025 in order', () => {
-    render(<TrendChart series={series} label="매출액" />);
+    render(<TrendChart series={series} />);
 
     const xAxis = screen.getByTestId('x-axis');
     expect(within(xAxis).getAllByText(/^\d{4}$/).map((n) => n.textContent)).toEqual([
@@ -29,13 +29,13 @@ describe('TrendChart', () => {
   });
 
   it('names the y axis with the metric and the currency unit', () => {
-    render(<TrendChart series={series} label="매출액" />);
+    render(<TrendChart series={series} />);
 
     expect(screen.getByTestId('y-axis-label')).toHaveTextContent('매출액 (원)');
   });
 
   it('renders a marker for every year that has a value and none for a missing year', () => {
-    render(<TrendChart series={series} label="매출액" />);
+    render(<TrendChart series={series} />);
 
     const markers = screen.getAllByRole('button', { name: /^\d{4}년/ });
     expect(markers.map((m) => m.getAttribute('aria-label'))).toEqual([
@@ -47,7 +47,7 @@ describe('TrendChart', () => {
   });
 
   it('shows the year and value in a tooltip when a marker is hovered or focused', () => {
-    render(<TrendChart series={series} label="매출액" />);
+    render(<TrendChart series={series} />);
 
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
@@ -59,7 +59,7 @@ describe('TrendChart', () => {
   });
 
   it('snaps the crosshair to the nearest year on pointer move', () => {
-    render(<TrendChart series={series} label="매출액" />);
+    render(<TrendChart series={series} />);
     const svg = screen.getByTestId('trend-svg');
 
     // jsdom 은 레이아웃이 없으므로 getBoundingClientRect 를 고정한다.
@@ -72,7 +72,7 @@ describe('TrendChart', () => {
   });
 
   it('explains a missing year instead of showing 0', () => {
-    render(<TrendChart series={series} label="매출액" />);
+    render(<TrendChart series={series} />);
     const svg = screen.getByTestId('trend-svg');
     svg.getBoundingClientRect = () =>
       ({ left: 0, top: 0, width: 640, height: 280 }) as DOMRect;
@@ -86,7 +86,7 @@ describe('TrendChart', () => {
   });
 
   it('scales to its container instead of a fixed pixel width', () => {
-    render(<TrendChart series={series} label="매출액" />);
+    render(<TrendChart series={series} />);
     const svg = screen.getByTestId('trend-svg');
 
     expect(svg).toHaveAttribute('viewBox');
@@ -95,7 +95,7 @@ describe('TrendChart', () => {
   });
 
   it('offers the same numbers as a table for screen readers', () => {
-    render(<TrendChart series={series} label="매출액" />);
+    render(<TrendChart series={series} />);
 
     const table = screen.getByRole('table', { name: '매출액 연도별 값' });
     expect(within(table).getAllByRole('row')).toHaveLength(6); // header + 5

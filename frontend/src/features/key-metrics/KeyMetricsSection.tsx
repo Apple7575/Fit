@@ -24,7 +24,7 @@ export function KeyMetricsSection({ corpCode, year }: KeyMetricsSectionProps) {
           {year}년 핵심지표
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          {year}년 연결재무제표 기준 · 단위: 원
+          {year}년 사업보고서 기준 · 단위는 지표별로 표기
         </p>
       </div>
 

@@ -41,8 +41,7 @@ export function FinancialTrendSection({
             최근 5개년 변화
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            {TREND_START_YEAR}~{TREND_END_YEAR}년 {label} 변화 · 연결재무제표
-            기준 · 단위: 원
+            {TREND_START_YEAR}~{TREND_END_YEAR}년 {label} 변화 · 사업보고서 기준
           </p>
         </div>
         <MetricSelector
@@ -78,7 +77,7 @@ export function FinancialTrendSection({
 
         {state.status === 'success' &&
           (selected ? (
-            <TrendChart label={label} series={selected} />
+            <TrendChart series={selected} />
           ) : (
             <p className="py-16 text-center text-sm font-semibold text-slate-400">
               {label} 추이 데이터가 없습니다
