@@ -13,16 +13,14 @@ pipeline {
             parallel {
                 stage('backend') {
                     agent {
-                        docker {
-                            image 'eclipse-temurin:21-jdk'
-                            // Gradle 캐시를 빌드 간 재사용해 매번 배포판을 내려받지 않게 한다.
-                            args '-v $HOME/.gradle-cache:/root/.gradle'
-                        }
+                        docker { image 'gradle:9.7.1-jdk21' }
+                    }
+                    environment {
+                        GRADLE_USER_HOME = "${WORKSPACE}/.gradle"
                     }
                     steps {
                         dir('backend') {
-                            sh 'chmod +x gradlew'
-                            sh './gradlew build --no-daemon'
+                            sh 'gradle build --no-daemon'
                         }
                     }
                     post {
@@ -35,10 +33,10 @@ pipeline {
 
                 stage('frontend') {
                     agent {
-                        docker {
-                            image 'node:24-alpine'
-                            args '-v $HOME/.npm-cache:/root/.npm'
-                        }
+                        docker { image 'node:24-alpine' }
+                    }
+                    environment {
+                        npm_config_cache = "${WORKSPACE}/.npm"
                     }
                     steps {
                         dir('frontend') {
@@ -58,12 +56,10 @@ pipeline {
                     }
                     steps {
                         dir('infra') {
-                            // POSTGRES_PASSWORD 는 필수값이므로 문법 검증용 더미를 채운다.
                             sh '''
-                                cp .env.example .env
-                                sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-dummy/' .env
-                                docker compose config --quiet
-                                rm -f .env
+                                sed 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-dummy/' .env.example > .env.ci
+                                docker compose --env-file .env.ci config --quiet
+                                rm -f .env.ci
                             '''
                         }
                     }
