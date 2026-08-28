@@ -1,23 +1,34 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { IndustryComparisonSection } from './IndustryComparisonSection';
 import type { IndustryComparison } from './types';
 
-const comparison: IndustryComparison = {
-  metricKey: 'revenue',
-  year: 2025,
-  industryName: '반도체 제조업',
-  peers: [
-    { corpCode: '00126380', corpName: '삼성전자', value: 300_870_903_000_000 },
-    { corpCode: '00164779', corpName: 'SK하이닉스', value: 66_193_000_000_000 },
-    { corpCode: '00113058', corpName: 'DB하이텍', value: null },
-  ],
-};
+const comparisons: IndustryComparison[] = [
+  {
+    metricKey: 'revenue',
+    year: 2025,
+    industryName: '반도체 제조업',
+    peers: [
+      { corpCode: '00126380', corpName: '삼성전자', value: 300_870_903_000_000 },
+      { corpCode: '00164779', corpName: 'SK하이닉스', value: 66_193_000_000_000 },
+      { corpCode: '00113058', corpName: 'DB하이텍', value: null },
+    ],
+  },
+  {
+    metricKey: 'operatingProfit',
+    year: 2025,
+    industryName: '반도체 제조업',
+    peers: [
+      { corpCode: '00126380', corpName: '삼성전자', value: 6_566_976_000_000 },
+      { corpCode: '00113058', corpName: 'DB하이텍', value: -97_000_000_000 },
+    ],
+  },
+];
 
-const renderSection = (props?: Partial<IndustryComparison>) =>
+const renderSection = () =>
   render(
     <IndustryComparisonSection
-      comparison={{ ...comparison, ...props }}
+      comparisons={comparisons}
       corpCode="00126380"
     />,
   );
@@ -32,6 +43,11 @@ const peerRow = (corpName: string) => {
   return within(row);
 };
 
+const peerNames = () =>
+  screen
+    .getAllByRole('listitem')
+    .map((row) => row.querySelector('span')?.textContent);
+
 describe('IndustryComparisonSection', () => {
   it('describes which industry, metric and year are compared', () => {
     renderSection();
@@ -43,12 +59,11 @@ describe('IndustryComparisonSection', () => {
     expect(screen.getByText(/2025년 매출액/)).toBeInTheDocument();
   });
 
-  it('lists every peer with its formatted value', () => {
+  it('lists peers of the default metric with formatted values', () => {
     renderSection();
 
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
     expect(peerRow('삼성전자').getByText('300조 8,709억')).toBeInTheDocument();
-    expect(peerRow('SK하이닉스').getByText('66조 1,930억')).toBeInTheDocument();
   });
 
   it('marks the company being viewed', () => {
@@ -62,21 +77,51 @@ describe('IndustryComparisonSection', () => {
     renderSection();
 
     expect(peerRow('DB하이텍').getByText('미제공')).toBeInTheDocument();
-    expect(peerRow('DB하이텍').queryByText('0')).not.toBeInTheDocument();
   });
 
-  it('explains when the industry has no comparable company', () => {
-    renderSection({ peers: [] });
+  it('switches the compared metric', () => {
+    renderSection();
 
-    expect(
-      screen.getByText(/비교할 동종 기업 정보가 없습니다/),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: '영업이익' }));
+
+    expect(screen.getByText(/2025년 영업이익/)).toBeInTheDocument();
+    expect(peerRow('삼성전자').getByText('6조 5,670억')).toBeInTheDocument();
+    expect(screen.queryByText('SK하이닉스')).not.toBeInTheDocument();
+  });
+
+  it('explains when the chosen metric has no comparison data', () => {
+    renderSection();
+
+    fireEvent.click(screen.getByRole('radio', { name: '자산총계' }));
+
+    expect(screen.getByText(/자산총계 비교 정보가 없습니다/)).toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
-  it('falls back when the industry is unknown', () => {
-    renderSection({ industryName: null });
+  it('keeps showing the industry and year when the metric has no data', () => {
+    renderSection();
 
-    expect(screen.getByText(/산업 정보 없음/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: '자산총계' }));
+
+    // 산업·연도는 지표와 무관한 값이라 사라지면 안 된다.
+    expect(screen.getByText(/반도체 제조업/)).toBeInTheDocument();
+    expect(screen.getByText(/2025년 자산총계/)).toBeInTheDocument();
+  });
+
+  it('reverses the order when a different sort is chosen', () => {
+    renderSection();
+
+    expect(peerNames()).toEqual(['삼성전자', 'SK하이닉스', 'DB하이텍']);
+
+    fireEvent.click(screen.getByRole('radio', { name: '값이 작은 순' }));
+
+    // 값이 없는 DB하이텍은 방향과 무관하게 항상 마지막이다.
+    expect(peerNames()).toEqual(['SK하이닉스', '삼성전자', 'DB하이텍']);
+  });
+
+  it('starts sorted from the largest value', () => {
+    renderSection();
+
+    expect(screen.getByRole('radio', { name: '값이 큰 순' })).toBeChecked();
   });
 });
