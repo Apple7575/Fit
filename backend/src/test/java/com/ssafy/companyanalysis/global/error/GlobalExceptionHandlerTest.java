@@ -1,6 +1,9 @@
 package com.ssafy.companyanalysis.global.error;
 
 import com.ssafy.companyanalysis.global.response.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -88,6 +91,23 @@ class GlobalExceptionHandlerTest {
 
         if (body.contains("jdbc:postgresql") || body.contains("com.ssafy")) {
             throw new AssertionError("응답에 내부 정보가 노출되었다: " + body);
+        }
+    }
+
+    @Test
+    @DisplayName("ConstraintViolationException 은 400 INVALID_PARAMETER 로 매핑된다")
+    void constraintViolationIsBadRequest() {
+        // @Validated 컨트롤러의 쿼리 파라미터 제약이 깨지면 이 예외가 나온다.
+        // 매핑에서 빠지면 사용자 입력 오류가 catch-all 로 떨어져 500 이 된다.
+        ResponseEntity<ApiResponse<Void>> response = new GlobalExceptionHandler()
+                .handleInvalidParameter(new ConstraintViolationException("keyword: 공백일 수 없습니다", null));
+
+        if (response.getStatusCode() != HttpStatus.BAD_REQUEST) {
+            throw new AssertionError("400 이어야 하는데 " + response.getStatusCode());
+        }
+        ApiResponse<Void> body = response.getBody();
+        if (body == null || body.error() == null || !"INVALID_PARAMETER".equals(body.error().code())) {
+            throw new AssertionError("INVALID_PARAMETER 여야 하는데 " + body);
         }
     }
 

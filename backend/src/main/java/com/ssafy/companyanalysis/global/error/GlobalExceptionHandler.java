@@ -1,6 +1,7 @@
 package com.ssafy.companyanalysis.global.error;
 
 import com.ssafy.companyanalysis.global.response.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -32,12 +33,19 @@ public class GlobalExceptionHandler {
         return toResponse(errorCode, e.getMessage());
     }
 
-    /** 파라미터 누락·타입 불일치·검증 실패. 어떤 값이 문제였는지는 로그로만 남긴다. */
+    /**
+     * 파라미터 누락·타입 불일치·검증 실패. 어떤 값이 문제였는지는 로그로만 남긴다.
+     *
+     * <p>ConstraintViolationException 은 {@code @Validated} 컨트롤러의 쿼리·경로 파라미터
+     * 제약(@NotBlank, @Min 등)이 깨질 때 나온다. 이걸 빠뜨리면 사용자 입력 오류가
+     * catch-all 로 떨어져 500 이 되므로 반드시 함께 잡는다.
+     */
     @ExceptionHandler({
             MissingServletRequestParameterException.class,
             MethodArgumentTypeMismatchException.class,
             HandlerMethodValidationException.class,
-            MethodArgumentNotValidException.class
+            MethodArgumentNotValidException.class,
+            ConstraintViolationException.class
     })
     public ResponseEntity<ApiResponse<Void>> handleInvalidParameter(Exception e) {
         log.warn("invalid parameter: {}", e.getMessage());
