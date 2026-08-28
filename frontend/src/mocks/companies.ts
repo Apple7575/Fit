@@ -1,47 +1,81 @@
 import type { Company } from '../types/company';
 
 /**
- * API 연동 전까지 사용하는 임시 기업 목록이다.
- * 업종 표기는 화면 확인용 단순 분류이며 S15P21A504-14 에서 실제 응답으로 대체된다.
+ * 백엔드 검색 API 없이 화면을 확인하기 위한 임시 데이터다.
+ * ⚠ corpCode 는 삼성전자(00126380) 를 제외하면 형식만 맞춘 예시값이며 실제 DART 고유번호가 아니다.
+ * S15P21A504-12 백엔드 검색 API 가 develop 에 들어오면 이 파일은 필요 없다.
  */
 export const mockCompanies: Company[] = [
-  { code: '005930', name: '삼성전자', industry: '반도체' },
-  { code: '000660', name: 'SK하이닉스', industry: '반도체' },
-  { code: '005380', name: '현대차', industry: '자동차' },
-  { code: '000270', name: '기아', industry: '자동차' },
-  { code: '035420', name: 'NAVER', industry: '인터넷 서비스' },
-  { code: '035720', name: '카카오', industry: '인터넷 서비스' },
-  { code: '373220', name: 'LG에너지솔루션', industry: '2차전지' },
-  { code: '207940', name: '삼성바이오로직스', industry: '바이오' },
+  {
+    corpCode: '00126380',
+    corpName: '삼성전자',
+    stockCode: '005930',
+    industryCode: '264',
+    industryName: '반도체 제조업',
+  },
+  {
+    corpCode: '90000001',
+    corpName: 'SK하이닉스',
+    stockCode: '000660',
+    industryCode: '264',
+    industryName: '반도체 제조업',
+  },
+  {
+    corpCode: '90000002',
+    corpName: '현대차',
+    stockCode: '005380',
+    industryCode: '301',
+    industryName: '자동차 제조업',
+  },
+  {
+    corpCode: '90000003',
+    corpName: '기아',
+    stockCode: '000270',
+    industryCode: '301',
+    industryName: '자동차 제조업',
+  },
+  {
+    corpCode: '90000004',
+    corpName: 'NAVER',
+    stockCode: '035420',
+    industryCode: '582',
+    industryName: '온라인 정보 서비스업',
+  },
+  {
+    corpCode: '90000005',
+    corpName: '카카오',
+    stockCode: '035720',
+    industryCode: '582',
+    industryName: '온라인 정보 서비스업',
+  },
+  {
+    corpCode: '90000006',
+    corpName: 'LG에너지솔루션',
+    stockCode: '373220',
+    industryCode: '272',
+    industryName: '전지 제조업',
+  },
+  {
+    corpCode: '90000007',
+    corpName: '삼성바이오로직스',
+    stockCode: '207940',
+    industryCode: '211',
+    industryName: '의약품 제조업',
+  },
 ];
 
-/** 목업에서 오류 화면을 확인하기 위한 키워드다. 실제 API 연동 시 함께 사라진다. */
+/** 목업에서 오류 화면을 확인하기 위한 키워드다. 실제 API 로 전환되면 함께 사라진다. */
 export const MOCK_ERROR_KEYWORD = '오류';
-
-const MOCK_DELAY_MS = 300;
 
 const normalize = (value: string) => value.replace(/\s/g, '').toLowerCase();
 
-const delay = (ms: number) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+/** 백엔드와 같은 기준으로 기업명 부분일치 또는 코드 앞자리 일치를 확인한다. */
+export const matchesMockCompany = (company: Company, keyword: string) => {
+  const normalized = normalize(keyword);
 
-/** 실제 검색 API 를 대신하는 임시 함수다. S15P21A504-14 에서 API 호출로 교체한다. */
-export const searchMockCompanies = async (
-  keyword: string,
-): Promise<Company[]> => {
-  await delay(MOCK_DELAY_MS);
-
-  if (normalize(keyword) === normalize(MOCK_ERROR_KEYWORD)) {
-    throw new Error('목업 검색에 실패했습니다');
-  }
-
-  const normalizedKeyword = normalize(keyword);
-
-  return mockCompanies.filter(
-    (company) =>
-      normalize(company.name).includes(normalizedKeyword) ||
-      company.code.startsWith(normalizedKeyword),
+  return (
+    normalize(company.corpName).includes(normalized) ||
+    company.corpCode.startsWith(normalized) ||
+    (company.stockCode?.startsWith(normalized) ?? false)
   );
 };

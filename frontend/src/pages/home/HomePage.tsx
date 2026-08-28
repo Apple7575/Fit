@@ -1,41 +1,50 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { searchCompanies } from '../../features/company-search/api';
 import { CompanySearchForm } from '../../features/company-search/CompanySearchForm';
 import {
   CompanySearchResults,
   type CompanySearchStatus,
 } from '../../features/company-search/CompanySearchResults';
-import { searchMockCompanies } from '../../mocks/companies';
 import type { Company } from '../../types/company';
 
 export function HomePage() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<CompanySearchStatus>('idle');
   const [keyword, setKeyword] = useState('');
   const [companies, setCompanies] = useState<Company[]>([]);
-  // 이전 검색이 늦게 끝나 최신 결과를 덮어쓰지 않도록 요청 순번을 기록한다.
-  const latestRequestId = useRef(0);
+  const [total, setTotal] = useState(0);
+  // 새 검색이 시작되면 이전 요청을 취소해 오래된 응답이 최신 결과를 덮어쓰지 않게 한다.
+  const inFlight = useRef<AbortController | null>(null);
+
+  useEffect(() => () => inFlight.current?.abort(), []);
 
   const runSearch = async (nextKeyword: string) => {
-    const requestId = latestRequestId.current + 1;
-    latestRequestId.current = requestId;
+    inFlight.current?.abort();
+
+    const controller = new AbortController();
+    inFlight.current = controller;
 
     setKeyword(nextKeyword);
     setStatus('loading');
 
     try {
-      const found = await searchMockCompanies(nextKeyword);
+      const result = await searchCompanies(nextKeyword, controller.signal);
 
-      if (latestRequestId.current !== requestId) {
+      if (controller.signal.aborted) {
         return;
       }
 
-      setCompanies(found);
+      setCompanies(result.items);
+      setTotal(result.total);
       setStatus('success');
     } catch {
-      if (latestRequestId.current !== requestId) {
+      if (controller.signal.aborted) {
         return;
       }
 
       setCompanies([]);
+      setTotal(0);
       setStatus('error');
     }
   };
@@ -69,7 +78,9 @@ export function HomePage() {
             companies={companies}
             keyword={keyword}
             onRetry={() => runSearch(keyword)}
+            onSelect={(company) => navigate(`/companies/${company.corpCode}`)}
             status={status}
+            total={total}
           />
         </div>
       </div>

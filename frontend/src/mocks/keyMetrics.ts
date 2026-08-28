@@ -1,11 +1,12 @@
-import type { KeyMetric } from '../features/key-metrics/types';
+import type { KeyMetric } from '../types/metrics';
 
 /**
  * F-11 API 연동 전 임시 데이터. 응답 구조 확인용 예시값이며 실제 공시와 다르다.
  * GET /api/companies/{corpCode}/metrics?year=2025 응답의 metrics[6]에 대응.
  */
 export const mockKeyMetricsByCompany: Record<string, KeyMetric[]> = {
-  '005930': [
+  // 키는 종목코드가 아니라 DART 고유번호(corpCode) 다. 지표 API 경로와 같은 값을 쓴다.
+  '00126380': [
     { key: 'revenue', value: 300_870_903_000_000 },
     { key: 'operatingProfit', value: 6_566_976_000_000 },
     { key: 'netIncome', value: 15_487_100_000_000 },
