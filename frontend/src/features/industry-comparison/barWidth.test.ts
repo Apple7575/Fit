@@ -15,13 +15,16 @@ describe('barWidthPercent', () => {
     expect(barWidthPercent(1, 1000)).toBe(1.5);
   });
 
+  it('draws a negative value by its magnitude', () => {
+    expect(barWidthPercent(-150, 300)).toBe(50);
+  });
+
   it('draws nothing for a missing value', () => {
     expect(barWidthPercent(null, 300)).toBe(0);
   });
 
-  it('draws nothing for zero or negative values', () => {
+  it('draws nothing for exactly zero', () => {
     expect(barWidthPercent(0, 300)).toBe(0);
-    expect(barWidthPercent(-50, 300)).toBe(0);
   });
 
   it('draws nothing when there is no positive maximum', () => {
@@ -32,6 +35,10 @@ describe('barWidthPercent', () => {
 describe('maxPeerValue', () => {
   it('returns the largest value, ignoring nulls', () => {
     expect(maxPeerValue([100, null, 300, 50])).toBe(300);
+  });
+
+  it('compares by magnitude so a large loss still sets the scale', () => {
+    expect(maxPeerValue([100, -900])).toBe(900);
   });
 
   it('returns 0 when every value is missing', () => {
