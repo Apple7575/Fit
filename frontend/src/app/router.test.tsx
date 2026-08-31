@@ -9,19 +9,48 @@ const renderRoute = (path: string) => {
 
 describe('application routes', () => {
   beforeEach(() => {
-    // 상세 페이지의 데이터 섹션들이 네트워크를 타지 않도록 URL 별 빈 응답을 돌려준다
+    // 상세 페이지의 데이터 섹션들이 네트워크를 타지 않도록 URL 별 응답을 돌려준다
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input);
-        const data = url.includes('/timeseries')
-          ? { series: [] }
-          : { metrics: [] };
+        const ok = (data: unknown, status = 200) =>
+          Promise.resolve(
+            new Response(JSON.stringify({ success: status === 200, data }), {
+              status,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          );
+        if (url.includes('/timeseries')) {
+          return ok({ series: [] });
+        }
+        if (url.includes('/metrics')) {
+          return ok({ metrics: [] });
+        }
+        if (url.includes('/industry-comparison')) {
+          return ok({ year: 2025, industry: null, metrics: [], companies: [] });
+        }
+        // 기업 기본정보: 아는 기업이면 이름을, 모르면 404 를 돌려준다
+        if (url.includes('/companies/00126380')) {
+          return ok({
+            corpCode: '00126380',
+            corpName: '삼성전자',
+            stockCode: '005930',
+            industryCode: '26',
+            industryName: '전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업',
+            market: 'KOSPI',
+            ceo: null,
+            establishedDate: null,
+          });
+        }
         return Promise.resolve(
-          new Response(JSON.stringify({ success: true, data }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
+          new Response(
+            JSON.stringify({
+              success: false,
+              error: { code: 'COMPANY_NOT_FOUND', message: '해당 기업을 찾을 수 없습니다.' },
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } },
+          ),
         );
       }),
     );
@@ -39,11 +68,11 @@ describe('application routes', () => {
     expect(screen.getByRole('button', { name: '검색' })).toBeInTheDocument();
   });
 
-  it('renders the company analysis layout on the detail route', () => {
-    renderRoute('/companies/005930');
+  it('renders the company analysis layout on the detail route', async () => {
+    renderRoute('/companies/00126380');
 
     expect(
-      screen.getByRole('heading', { level: 1, name: '삼성전자' }),
+      await screen.findByRole('heading', { level: 1, name: '삼성전자' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 2, name: '2025년 핵심지표' }),
@@ -56,14 +85,14 @@ describe('application routes', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps unknown company metadata route-neutral', () => {
+  it('keeps unknown company metadata route-neutral', async () => {
     renderRoute('/companies/000000');
 
     expect(
       screen.getByRole('heading', { level: 1, name: '기업 분석' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('기업 정보 준비 중 · 기업코드 000000'),
+      await screen.findByText('산업 정보 없음 · 기업코드 000000'),
     ).toBeInTheDocument();
   });
 
