@@ -57,9 +57,12 @@ pipeline {
                     steps {
                         dir('infra') {
                             sh '''
-                                sed 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-dummy/' .env.example > .env.ci
-                                docker compose --env-file .env.ci config --quiet
-                                rm -f .env.ci
+                                for e in prod dev; do
+                                    sed 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-dummy/' ".env.$e.example" > .env.ci
+                                    docker compose --env-file .env.ci config --quiet
+                                    rm -f .env.ci
+                                done
+                                docker compose -f proxy/docker-compose.yml config --quiet
                             '''
                         }
                     }

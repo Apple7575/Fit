@@ -1,0 +1,45 @@
+# Jenkins. 호스트 포트를 열지 않고 edge 네트워크에만 붙는다.
+# 외부 접근은 proxy 스택의 nginx 가 8080(HTTPS) 으로 중계한다.
+name: ca-jenkins
+
+networks:
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-edge}
+
+volumes:
+  jenkins_home:
+
+services:
+  jenkins:
+    build:
+      context: .
+    image: local/jenkins:lts-jdk21
+    restart: unless-stopped
+    mem_limit: 2g
+    # ports 를 쓰지 않는다. Docker 는 ufw 를 우회하므로 퍼블리시하는 순간 인터넷에 노출된다.
+    expose: ["8080"]
+    environment:
+      # slaveAgentPort=-1 : 별도 에이전트를 쓰지 않으므로 에이전트 포트를 닫는다.
+      - JAVA_OPTS=-Xmx1536m -Djenkins.model.Jenkins.slaveAgentPort=-1
+      - TZ=${TZ:-Asia/Seoul}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    # 호스트 docker 그룹 GID. `getent group docker | cut -d: -f3` 로 확인해 .env.jenkins 에 넣는다.
+    group_add:
+      - "${DOCKER_GID:?DOCKER_GID 설정 필요}"
+    networks:
+      edge:
+        aliases: ["jenkins"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/login >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
