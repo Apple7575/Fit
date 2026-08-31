@@ -114,6 +114,16 @@ docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.loc
 
 `http://localhost:3000` (프론트) / `http://localhost:8080` (백엔드)
 
+여기서는 proxy 를 거치지 않아 프론트와 백엔드의 **오리진이 다르다**. 브라우저에서 API 를 호출하려면
+`.env.local` 에 아래를 넣어 백엔드가 그 오리진을 허용하게 해야 한다.
+
+```
+APP_CORS_ALLOWED_ORIGINS=http://localhost:3000
+```
+
+prod/dev 는 nginx 가 `/api` 를 같은 오리진으로 묶으므로 이 값을 비워 두면 된다.
+비어 있으면 백엔드는 교차 출처 요청을 아예 받지 않는다 — 설정을 빠뜨렸을 때 열리는 게 아니라 닫히는 쪽으로 실패한다.
+
 ## 인증서 갱신
 
 certbot 컨테이너가 12시간마다 갱신을 시도하고, nginx 가 6시간마다 reload 해서 반영한다.
