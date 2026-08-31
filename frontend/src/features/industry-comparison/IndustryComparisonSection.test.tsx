@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { IndustryComparisonSection } from './IndustryComparisonSection';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  IndustryComparisonSection,
+  IndustryComparisonView,
+} from './IndustryComparisonSection';
 import type { IndustryComparison } from './types';
 
 /** 명세 5번 응답 형태 */
@@ -56,7 +59,7 @@ const comparison: IndustryComparison = {
 };
 
 const renderSection = (data: IndustryComparison = comparison) =>
-  render(<IndustryComparisonSection comparison={data} />);
+  render(<IndustryComparisonView comparison={data} />);
 
 const peerRow = (corpName: string) => {
   const row = screen.getByText(corpName).closest('li');
@@ -71,7 +74,7 @@ const peerNames = () =>
     .getAllByRole('listitem')
     .map((row) => row.querySelector('span')?.textContent);
 
-describe('IndustryComparisonSection', () => {
+describe('IndustryComparisonView', () => {
   it('describes the industry, how many peers are shown, the metric and the year', () => {
     renderSection();
 
@@ -182,5 +185,98 @@ describe('IndustryComparisonSection', () => {
     expect(screen.getByText(/산업 정보 없음/)).toBeInTheDocument();
     expect(screen.getByText(/2025년 매출액 기준/)).toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+});
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+describe('IndustryComparisonSection', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('fetches the comparison for the company and renders it', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(json({ success: true, data: comparison }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<IndustryComparisonSection corpCode="00126380" />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('불러오는 중');
+    expect(await screen.findByText(/동종 42개사 중 3개/)).toBeInTheDocument();
+
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('/api/companies/00126380/industry-comparison');
+    expect(url).toContain('year=2025');
+  });
+
+  it('shows a not-found message for COMPANY_NOT_FOUND', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        json(
+          { success: false, error: { code: 'COMPANY_NOT_FOUND', message: 'x' } },
+          404,
+        ),
+      ),
+    );
+
+    render(<IndustryComparisonSection corpCode="99999999" />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '기업 정보를 찾을 수 없습니다',
+    );
+    expect(
+      screen.queryByRole('button', { name: '다시 시도' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers a retry that refetches after a server error', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        json(
+          { success: false, error: { code: 'INTERNAL_ERROR', message: '서버 오류' } },
+          500,
+        ),
+      )
+      .mockResolvedValueOnce(json({ success: true, data: comparison }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<IndustryComparisonSection corpCode="00126380" />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '산업 비교를 불러오지 못했습니다',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(await screen.findByText(/동종 42개사 중 3개/)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops metric keys the frontend does not know', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        json({
+          success: true,
+          data: {
+            ...comparison,
+            metrics: [...comparison.metrics, 'unknown_metric'],
+          },
+        }),
+      ),
+    );
+
+    render(<IndustryComparisonSection corpCode="00126380" />);
+
+    expect(await screen.findByText(/동종 42개사 중 3개/)).toBeInTheDocument();
+    expect(screen.getAllByRole('radio')).toHaveLength(8);
   });
 });

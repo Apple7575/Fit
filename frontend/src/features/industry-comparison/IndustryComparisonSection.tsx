@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { InlineNotice } from '../../components/common/InlineNotice';
 import { METRIC_LABELS, type MetricKey } from '../../types/metrics';
 import { formatMetricValue, metricUnitLabel } from '../../utils/formatMetric';
 // 지표 pill 라디오 그룹. financial-trend 에서 만든 범용 컴포넌트를 그대로 쓴다.
@@ -6,6 +7,7 @@ import { MetricSelector } from '../financial-trend/MetricSelector';
 import { barWidthPercent, maxPeerValue } from './barWidth';
 import { SortOrderSelector } from './SortOrderSelector';
 import { sortPeers } from './sortPeers';
+import { useIndustryComparison } from './useIndustryComparison';
 import {
   COMPARISON_METRIC_KEYS,
   type IndustryComparison,
@@ -17,6 +19,10 @@ import {
 export const DEFAULT_COMPARISON_METRIC: MetricKey = 'revenue';
 
 interface IndustryComparisonSectionProps {
+  corpCode: string;
+}
+
+interface IndustryComparisonViewProps {
   /** 동일 산업 비교 응답 (명세 5번). companies 가 비어 있으면 안내를 보여준다. */
   comparison: IndustryComparison;
   initialMetricKey?: MetricKey;
@@ -34,10 +40,52 @@ const toPeers = (
     value: company.values[metricKey] ?? null,
   }));
 
+/** 동일 산업 비교(US-04). corpCode 로 직접 조회하고 로딩·오류 상태를 처리한다. */
 export function IndustryComparisonSection({
+  corpCode,
+}: IndustryComparisonSectionProps) {
+  const { state, retry } = useIndustryComparison(corpCode);
+
+  if (state.status !== 'success') {
+    return (
+      <section
+        aria-labelledby="comparison-title"
+        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+      >
+        <h2
+          className="mb-6 text-xl font-extrabold text-slate-950 sm:text-2xl"
+          id="comparison-title"
+        >
+          같은 산업 비교
+        </h2>
+        {state.status === 'loading' ? (
+          <div
+            aria-busy="true"
+            className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-50"
+            role="status"
+          >
+            <span className="sr-only">산업 비교를 불러오는 중입니다</span>
+          </div>
+        ) : state.error.code === 'COMPANY_NOT_FOUND' ? (
+          <InlineNotice>
+            기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
+          </InlineNotice>
+        ) : (
+          <InlineNotice onRetry={retry}>
+            산업 비교를 불러오지 못했습니다. {state.error.message}
+          </InlineNotice>
+        )}
+      </section>
+    );
+  }
+
+  return <IndustryComparisonView comparison={state.data} />;
+}
+
+export function IndustryComparisonView({
   comparison,
   initialMetricKey = DEFAULT_COMPARISON_METRIC,
-}: IndustryComparisonSectionProps) {
+}: IndustryComparisonViewProps) {
   const [metricKey, setMetricKey] = useState<MetricKey>(initialMetricKey);
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
