@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-08-30T06:39:05.404436+00:00",
+  "schema": "backend-flyway-v3",
+  "counts": {
+    "companies": 10,
+    "company_years": 47,
+    "company_metrics": 281
+  },
+  "years": [
+    "2021",
+    "2022",
+    "2023",
+    "2024",
+    "2025"
+  ],
+  "included_evidence_verdicts": [
+    "unverified",
+    "verified"
+  ],
+  "notes": [
+    "industry and metric catalogs are seeded by Backend Flyway migrations.",
+    "rejected, not_found, and missing-evidence values are omitted from company_metric.csv.",
+    "rnd_cost_krw is retained only in company_year_wide.csv for QA."
+  ]
+}
