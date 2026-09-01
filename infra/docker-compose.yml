@@ -39,7 +39,7 @@ services:
         max-file: "3"
 
   backend:
-    image: ${REGISTRY:-local}/backend:${TAG:-latest}
+    image: ${REGISTRY:-local}/backend:${TAG:?환경별로 달라야 한다 (prod/dev/local)}
     build:
       context: ../backend
     restart: unless-stopped
@@ -65,7 +65,7 @@ services:
         max-file: "3"
 
   frontend:
-    image: ${REGISTRY:-local}/frontend:${TAG:-latest}
+    image: ${REGISTRY:-local}/frontend:${TAG:?환경별로 달라야 한다 (prod/dev/local)}
     build:
       context: ../frontend
     restart: unless-stopped

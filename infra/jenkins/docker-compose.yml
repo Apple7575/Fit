@@ -26,6 +26,8 @@ services:
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # 호스트 docker 그룹 GID. `getent group docker | cut -d: -f3` 로 확인해 .env.jenkins 에 넣는다.
     group_add:
       - "${DOCKER_GID:?DOCKER_GID 설정 필요}"
