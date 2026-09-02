@@ -1,9 +1,12 @@
 import {
   createBrowserRouter,
   createMemoryRouter,
+  Navigate,
   type RouteObject,
 } from 'react-router-dom';
+import { CompanyComparisonTab } from '../pages/company-detail/CompanyComparisonTab';
 import { CompanyDetailPage } from '../pages/company-detail/CompanyDetailPage';
+import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
 import { HomePage } from '../pages/home/HomePage';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage';
 
@@ -15,6 +18,11 @@ const routes: RouteObject[] = [
   {
     path: '/companies/:companyId',
     element: <CompanyDetailPage />,
+    children: [
+      { index: true, element: <Navigate replace to="overview" /> },
+      { path: 'overview', element: <CompanyOverviewTab /> },
+      { path: 'comparison', element: <CompanyComparisonTab /> },
+    ],
   },
   {
     path: '*',

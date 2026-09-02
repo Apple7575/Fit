@@ -21,11 +21,14 @@ describe('application routes', () => {
               headers: { 'Content-Type': 'application/json' },
             }),
           );
-        if (url.includes('/timeseries')) {
-          return ok({ series: [] });
-        }
-        if (url.includes('/metrics')) {
-          return ok({ metrics: [] });
+        if (url.includes('/profile')) {
+          return ok({
+            year: 2025,
+            businesses: [],
+            segments: [],
+            totalRevenue: null,
+            products: [],
+          });
         }
         if (url.includes('/industry-comparison')) {
           return ok({ year: 2025, industry: null, metrics: [], companies: [] });
@@ -41,6 +44,7 @@ describe('application routes', () => {
             market: 'KOSPI',
             ceo: null,
             establishedDate: null,
+            dataYear: 2025,
           });
         }
         return Promise.resolve(
@@ -68,20 +72,17 @@ describe('application routes', () => {
     expect(screen.getByRole('button', { name: '검색' })).toBeInTheDocument();
   });
 
-  it('renders the company analysis layout on the detail route', async () => {
+  it('renders the company overview tab by default (index redirect)', async () => {
     renderRoute('/companies/00126380');
 
     expect(
       await screen.findByRole('heading', { level: 1, name: '삼성전자' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 2, name: '2025년 핵심지표' }),
-    ).toBeInTheDocument();
+      screen.getByRole('link', { name: '기업 개요' }),
+    ).toHaveAttribute('aria-current', 'page');
     expect(
-      screen.getByRole('heading', { level: 2, name: '최근 5개년 변화' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 2, name: '같은 산업 비교' }),
+      screen.getByRole('link', { name: '산업 비교' }),
     ).toBeInTheDocument();
   });
 
@@ -89,10 +90,10 @@ describe('application routes', () => {
     renderRoute('/companies/000000');
 
     expect(
-      screen.getByRole('heading', { level: 1, name: '기업 분석' }),
+      await screen.findByRole('heading', { level: 1, name: '기업 분석' }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('산업 정보 없음 · 기업코드 000000'),
+      await screen.findByText('기업코드 000000'),
     ).toBeInTheDocument();
   });
 
