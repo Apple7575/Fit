@@ -39,7 +39,7 @@ export function TopNewsCard({ corpCode }: TopNewsCardProps) {
   return (
     <section
       aria-labelledby="top-news-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <h3 className="text-base font-extrabold text-slate-950" id="top-news-title">
         중요 뉴스 TOP {state.data.length}

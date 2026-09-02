@@ -9,7 +9,7 @@ export function CompanyOverviewTab() {
     useOutletContext<CompanyDetailOutletContext>();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <CompanyBasicInfoCard corpCode={corpCode} state={detailState} />
       <CompanyProfileSections corpCode={corpCode} />
     </div>

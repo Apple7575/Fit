@@ -20,7 +20,7 @@ export function CompanyIssuesTab() {
   const [latestDate, setLatestDate] = useState<string | null>(null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
@@ -39,9 +39,9 @@ export function CompanyIssuesTab() {
 
       <IssueKpiRow state={statsState} />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(340px,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(340px,1fr)]">
         <NewsFeedCard corpCode={corpCode} key={corpCode} onLatestDate={setLatestDate} />
-        <div className="space-y-6">
+        <div className="space-y-4">
           <IssueDistributionCard onRetry={retryStats} state={statsState} />
           <TopNewsCard corpCode={corpCode} />
         </div>
