@@ -25,13 +25,17 @@ const RADIUS = 15.915494309189535;
 export function DonutChart({ segments, center, title, size = 176 }: DonutChartProps) {
   const drawn = segments.filter((s) => s.value > 0);
   const sum = drawn.reduce((acc, s) => acc + s.value, 0);
-  let cursor = 25; // 12시 방향에서 시작
-  const arcs = drawn.map((segment) => {
-    const ratio = sum > 0 ? (segment.value / sum) * 100 : 0;
-    const arc = { ...segment, ratio, offset: cursor };
-    cursor -= ratio;
-    return arc;
-  });
+  // 12시 방향(offset 25)에서 시작해 조각마다 자기 비율만큼 offset 을 줄여 이어 붙인다
+  const arcs = drawn.reduce<Array<DonutSegment & { ratio: number; offset: number }>>(
+    (acc, segment) => {
+      const ratio = sum > 0 ? (segment.value / sum) * 100 : 0;
+      const prev = acc[acc.length - 1];
+      const offset = prev ? prev.offset - prev.ratio : 25;
+      acc.push({ ...segment, ratio, offset });
+      return acc;
+    },
+    [],
+  );
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>

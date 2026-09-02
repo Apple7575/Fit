@@ -40,7 +40,7 @@ export function CompanyIssuesTab() {
       <IssueKpiRow state={statsState} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(340px,1fr)]">
-        <NewsFeedCard corpCode={corpCode} onLatestDate={setLatestDate} />
+        <NewsFeedCard corpCode={corpCode} key={corpCode} onLatestDate={setLatestDate} />
         <div className="space-y-6">
           <IssueDistributionCard onRetry={retryStats} state={statsState} />
           <TopNewsCard corpCode={corpCode} />

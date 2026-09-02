@@ -17,7 +17,7 @@ type FeedStatus = 'loading' | 'success' | 'error';
 /**
  * 최신 뉴스 목록 (기본 영역). 제목(원문 새 탭)·설명·관련 사업·게시일은 항상,
  * 카테고리 칩은 AI 분류가 있을 때만. "더 많은 뉴스 보기"는 같은 화면에 다음 페이지를 이어 붙인다
- * (상세 페이지 없음). corpCode 가 바뀌면 처음부터 다시 읽는다.
+ * (상세 페이지 없음). corpCode 가 바뀌면 호출부가 key 로 다시 마운트해 처음부터 읽는다.
  */
 export function NewsFeedCard({ corpCode, onLatestDate }: NewsFeedCardProps) {
   const [items, setItems] = useState<NewsItem[]>([]);
@@ -26,15 +26,15 @@ export function NewsFeedCard({ corpCode, onLatestDate }: NewsFeedCardProps) {
   const [status, setStatus] = useState<FeedStatus>('loading');
   const [error, setError] = useState<ApiError | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const inFlight = useRef<AbortController | null>(null);
   const latestRef = useRef(onLatestDate);
-  latestRef.current = onLatestDate;
 
   useEffect(() => {
-    inFlight.current?.abort();
+    latestRef.current = onLatestDate;
+  }, [onLatestDate]);
+
+  // page·attempt 를 바꾸는 쪽(더보기·다시 시도)이 status 를 loading 으로 돌려놓는다
+  useEffect(() => {
     const controller = new AbortController();
-    inFlight.current = controller;
-    setStatus('loading');
 
     fetchNews(corpCode, { category: null, sort: 'latest', page }, controller.signal)
       .then((result) => {
@@ -57,12 +57,14 @@ export function NewsFeedCard({ corpCode, onLatestDate }: NewsFeedCardProps) {
     return () => controller.abort();
   }, [corpCode, page, attempt]);
 
-  // 기업이 바뀌면 누적 목록을 비우고 1페이지부터
-  useEffect(() => {
-    setItems([]);
-    setTotal(0);
-    setPage(1);
-  }, [corpCode]);
+  const loadMore = () => {
+    setStatus('loading');
+    setPage((p) => p + 1);
+  };
+  const retry = () => {
+    setStatus('loading');
+    setAttempt((n) => n + 1);
+  };
 
   const hasMore = items.length < total;
 
@@ -82,7 +84,7 @@ export function NewsFeedCard({ corpCode, onLatestDate }: NewsFeedCardProps) {
               기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
             </InlineNotice>
           ) : (
-            <InlineNotice onRetry={() => setAttempt((n) => n + 1)}>
+            <InlineNotice onRetry={retry}>
               뉴스를 불러오지 못했습니다. {error.message}
             </InlineNotice>
           )
@@ -102,7 +104,7 @@ export function NewsFeedCard({ corpCode, onLatestDate }: NewsFeedCardProps) {
                 <button
                   className="text-sm font-bold text-blue-700 underline-offset-4 hover:underline disabled:opacity-50"
                   disabled={status === 'loading'}
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={loadMore}
                   type="button"
                 >
                   {status === 'loading' ? '불러오는 중…' : '더 많은 뉴스 보기 ›'}
