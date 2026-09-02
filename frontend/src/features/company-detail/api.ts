@@ -21,8 +21,11 @@ export interface CompanyDetail {
   dataYear: number | null;
 }
 
-/** VITE_API_MOCK 규칙은 key-metrics/api.ts 와 동일. 테스트에서 stubEnv 로 바꿀 수 있게 호출 시점에 평가한다. */
-const useMock = () =>
+/**
+ * VITE_API_MOCK 규칙은 key-metrics/api.ts 와 동일. 테스트에서 stubEnv 로 바꿀 수 있게 호출 시점에 평가한다.
+ * 이름이 use 로 시작하면 oxlint 가 React Hook 으로 오인하므로 isMockEnabled 로 명명한다.
+ */
+const isMockEnabled = () =>
   import.meta.env.VITE_API_MOCK === undefined
     ? import.meta.env.DEV
     : import.meta.env.VITE_API_MOCK === 'true';
@@ -31,7 +34,7 @@ export async function fetchCompanyDetail(
   corpCode: string,
   signal?: AbortSignal,
 ): Promise<CompanyDetail> {
-  if (useMock()) {
+  if (isMockEnabled()) {
     await new Promise((resolve) => setTimeout(resolve, 300));
     const company = mockCompanies.find((c) => c.corpCode === corpCode);
     if (!company) {

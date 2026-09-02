@@ -2,8 +2,11 @@ import { ApiError, apiGet } from '../../api/client';
 import { mockCompanyProfiles } from '../../mocks/companyProfile';
 import type { CompanyProfile } from './types';
 
-/** VITE_API_MOCK 규칙은 company-detail/api.ts 와 동일 */
-const useMock = () =>
+/**
+ * VITE_API_MOCK 규칙은 company-detail/api.ts 와 동일.
+ * 이름이 use 로 시작하면 oxlint 가 React Hook 으로 오인하므로 isMockEnabled 로 명명한다.
+ */
+const isMockEnabled = () =>
   import.meta.env.VITE_API_MOCK === undefined
     ? import.meta.env.DEV
     : import.meta.env.VITE_API_MOCK === 'true';
@@ -12,7 +15,7 @@ export async function fetchCompanyProfile(
   corpCode: string,
   signal?: AbortSignal,
 ): Promise<CompanyProfile> {
-  if (useMock()) {
+  if (isMockEnabled()) {
     await new Promise((resolve) => setTimeout(resolve, 300));
     const profile = mockCompanyProfiles[corpCode];
     if (!profile) {
