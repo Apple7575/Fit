@@ -6,6 +6,7 @@ import {
 } from 'react-router-dom';
 import { CompanyComparisonTab } from '../pages/company-detail/CompanyComparisonTab';
 import { CompanyDetailPage } from '../pages/company-detail/CompanyDetailPage';
+import { CompanyIssuesTab } from '../pages/company-detail/CompanyIssuesTab';
 import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
 import { HomePage } from '../pages/home/HomePage';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage';
@@ -22,6 +23,7 @@ const routes: RouteObject[] = [
       { index: true, element: <Navigate replace to="overview" /> },
       { path: 'overview', element: <CompanyOverviewTab /> },
       { path: 'comparison', element: <CompanyComparisonTab /> },
+      { path: 'issues', element: <CompanyIssuesTab /> },
     ],
   },
   {
