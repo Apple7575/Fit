@@ -7,6 +7,8 @@ import {
 } from 'react';
 import { METRIC_LABELS } from '../../types/metrics';
 import { formatMetricValue, metricUnitLabel } from '../../utils/formatMetric';
+import { formatChangeRate } from '../../utils/formatChangeRate';
+import { ChangeRateBadge } from '../key-metrics/ChangeRateBadge';
 import { TREND_END_YEAR, TREND_START_YEAR, type TrendSeries } from './types';
 
 interface TrendChartProps {
@@ -106,11 +108,14 @@ export function TrendChart({ series }: TrendChartProps) {
     setActiveYear(YEARS[clamped]);
   };
 
+  const changeRateByYear = new Map(series.points.map((p) => [p.year, p.changeRate]));
   const activeValue = activeYear === null ? undefined : valueByYear.get(activeYear);
   const activeText =
     activeValue === null || activeValue === undefined
       ? '미제공'
       : `${fmt(activeValue)} ${unit}`;
+  const activeChangeRate =
+    activeYear === null ? null : (changeRateByYear.get(activeYear) ?? null);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -235,9 +240,44 @@ export function TrendChart({ series }: TrendChartProps) {
           <>
             <span className="block font-bold text-slate-950">{activeText}</span>
             <span className="text-slate-500">{activeYear}년</span>
+            {activeChangeRate !== null && (
+              <span className="ml-2 text-slate-500">
+                전년 대비 {formatChangeRate(activeChangeRate)}
+              </span>
+            )}
           </>
         )}
       </div>
+
+      {/* 연도별 전년 대비 증감률 */}
+      <ol
+        aria-label={`${label} 연도별 전년 대비 증감률`}
+        className="mt-3 grid grid-cols-5 gap-2"
+        data-testid="change-rate-strip"
+      >
+        {YEARS.map((year) => {
+          const rate = changeRateByYear.get(year) ?? null;
+          return (
+            <li
+              className="rounded-xl bg-white px-2 py-2 text-center"
+              key={year}
+            >
+              <span className="block text-[11px] font-semibold text-slate-400">
+                {year}
+              </span>
+              {rate === null ? (
+                <span className="mt-1 block text-xs font-semibold text-slate-300">
+                  –
+                </span>
+              ) : (
+                <span className="mt-1 block">
+                  <ChangeRateBadge changeRate={rate} prefix={`${year}년 전년 대비`} />
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
 
       {/* 표 뷰: 스크린리더·복사용 */}
       <table className="sr-only" aria-label={`${label} 연도별 값`}>
@@ -245,15 +285,18 @@ export function TrendChart({ series }: TrendChartProps) {
           <tr>
             <th scope="col">연도</th>
             <th scope="col">{label} ({unit})</th>
+            <th scope="col">전년 대비</th>
           </tr>
         </thead>
         <tbody>
           {YEARS.map((year) => {
             const v = valueByYear.get(year);
+            const rate = changeRateByYear.get(year) ?? null;
             return (
               <tr key={year}>
                 <th scope="row">{year}</th>
                 <td>{typeof v === 'number' ? fmt(v) : '미제공'}</td>
+                <td>{rate === null ? '미제공' : formatChangeRate(rate)}</td>
               </tr>
             );
           })}

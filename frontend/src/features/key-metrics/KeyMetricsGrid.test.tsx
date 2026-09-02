@@ -4,12 +4,12 @@ import { KeyMetricsGrid } from './KeyMetricsGrid';
 import type { KeyMetric } from '../../types/metrics';
 
 const metrics: KeyMetric[] = [
-  { key: 'revenue', value: 300_870_903_000_000 },
-  { key: 'operating_profit', value: 6_566_976_000_000 },
-  { key: 'employee_count', value: 124_804 },
-  { key: 'average_salary', value: 130_000_000 },
-  { key: 'average_tenure', value: 12.4 },
-  { key: 'rd_ratio', value: null },
+  { key: 'revenue', value: 300_870_903_000_000, changeRate: 1.7 },
+  { key: 'operating_profit', value: 6_566_976_000_000, changeRate: -79.9 },
+  { key: 'net_income', value: null, changeRate: null },
+  { key: 'employee_count', value: 124_804, changeRate: null },
+  { key: 'average_salary', value: 130_000_000, changeRate: 0 },
+  { key: 'average_tenure', value: 12.4, changeRate: null },
 ];
 
 describe('KeyMetricsGrid', () => {
@@ -41,9 +41,22 @@ describe('KeyMetricsGrid', () => {
   it('marks a missing value as 미제공 instead of 0', () => {
     render(<KeyMetricsGrid metrics={metrics} />);
 
-    const ratio = screen.getByRole('article', { name: 'R&D / 매출' });
-    expect(within(ratio).getByText('미제공')).toBeInTheDocument();
-    expect(within(ratio).queryByText('0')).not.toBeInTheDocument();
+    const netIncome = screen.getByRole('article', { name: '당기순이익' });
+    expect(within(netIncome).getByText('미제공')).toBeInTheDocument();
+    expect(within(netIncome).queryByText('0')).not.toBeInTheDocument();
+  });
+
+  it('shows a signed year-over-year badge only when the rate is known', () => {
+    render(<KeyMetricsGrid metrics={metrics} />);
+
+    const revenue = screen.getByRole('article', { name: '매출액' });
+    expect(within(revenue).getByText('+1.7%')).toBeInTheDocument();
+
+    const profit = screen.getByRole('article', { name: '영업이익' });
+    expect(within(profit).getByText('-79.9%')).toBeInTheDocument();
+
+    const employees = screen.getByRole('article', { name: '직원 수' });
+    expect(within(employees).queryByText(/%$/)).not.toBeInTheDocument();
   });
 
   it('keeps the six cards in a fixed order even if the input order differs', () => {
@@ -55,10 +68,10 @@ describe('KeyMetricsGrid', () => {
     expect(labels).toEqual([
       '매출액',
       '영업이익',
+      '당기순이익',
       '직원 수',
       '1인 평균 급여',
       '평균 근속',
-      'R&D / 매출',
     ]);
   });
 });

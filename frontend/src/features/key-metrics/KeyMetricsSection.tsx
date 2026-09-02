@@ -1,15 +1,19 @@
 import { InlineNotice } from '../../components/common/InlineNotice';
-import { METRIC_KEYS, METRIC_LABELS } from '../../types/metrics';
+import { KEY_METRIC_KEYS, METRIC_LABELS } from '../../types/metrics';
 import { KeyMetricsGrid } from './KeyMetricsGrid';
+import { ProfitabilityRow } from './ProfitabilityRow';
 import { useKeyMetrics } from './useKeyMetrics';
 
 interface KeyMetricsSectionProps {
   corpCode: string;
-  year: number;
+  /** 기준연도. 없으면 서버가 최신 연도를 고르고 응답의 year 를 제목에 쓴다 */
+  year?: number | null;
 }
 
 export function KeyMetricsSection({ corpCode, year }: KeyMetricsSectionProps) {
   const { state, retry } = useKeyMetrics(corpCode, year);
+  const shownYear = state.status === 'success' ? (state.data.year ?? year) : year;
+  const title = shownYear != null ? `${shownYear}년 핵심지표` : '핵심지표';
 
   return (
     <section
@@ -21,10 +25,11 @@ export function KeyMetricsSection({ corpCode, year }: KeyMetricsSectionProps) {
           className="text-xl font-extrabold text-slate-950 sm:text-2xl"
           id="key-metrics-title"
         >
-          {year}년 핵심지표
+          {title}
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          {year}년 사업보고서 기준 · 단위는 지표별로 표기
+          {shownYear != null ? `${shownYear}년 ` : ''}사업보고서 기준 · 단위는 지표별로
+          표기 · 증감률은 전년 대비
         </p>
       </div>
 
@@ -41,7 +46,19 @@ export function KeyMetricsSection({ corpCode, year }: KeyMetricsSectionProps) {
           </InlineNotice>
         ))}
 
-      {state.status === 'success' && <KeyMetricsGrid metrics={state.data} />}
+      {state.status === 'success' && (
+        <>
+          <KeyMetricsGrid metrics={state.data.metrics} />
+          {state.data.profitability && (
+            <div className="mt-6 border-t border-slate-100 pt-6">
+              <h3 className="mb-4 text-base font-bold text-slate-900">
+                주요 비율
+              </h3>
+              <ProfitabilityRow profitability={state.data.profitability} />
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }
@@ -54,7 +71,7 @@ function LoadingGrid() {
       role="status"
     >
       <span className="sr-only">핵심지표를 불러오는 중입니다</span>
-      {METRIC_KEYS.map((key) => (
+      {KEY_METRIC_KEYS.map((key) => (
         <div
           className="min-h-32 animate-pulse rounded-2xl border border-slate-200 bg-slate-50 p-5"
           key={key}

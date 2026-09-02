@@ -6,15 +6,37 @@ import type { TrendSeries } from './types';
 const series: TrendSeries = {
   key: 'revenue',
   points: [
-    { year: 2021, value: 279_604_800_000_000 },
-    { year: 2022, value: 302_231_400_000_000 },
-    { year: 2023, value: null },
-    { year: 2024, value: 300_870_903_000_000 },
-    { year: 2025, value: 310_000_000_000_000 },
+    { year: 2021, value: 279_604_800_000_000, changeRate: null },
+    { year: 2022, value: 302_231_400_000_000, changeRate: 8.1 },
+    { year: 2023, value: null, changeRate: null },
+    { year: 2024, value: 300_870_903_000_000, changeRate: null },
+    { year: 2025, value: 310_000_000_000_000, changeRate: 3.0 },
   ],
 };
 
 describe('TrendChart', () => {
+  it('lists the year-over-year rate per year and leaves unknown years blank', () => {
+    render(<TrendChart series={series} />);
+
+    const strip = screen.getByTestId('change-rate-strip');
+    const cells = within(strip).getAllByRole('listitem');
+    expect(cells).toHaveLength(5);
+    expect(cells[1]).toHaveTextContent('+8.1%');
+    expect(cells[4]).toHaveTextContent('+3.0%');
+    expect(cells[0]).not.toHaveTextContent('%');
+    expect(cells[2]).not.toHaveTextContent('%');
+  });
+
+  it('adds the year-over-year rate to the tooltip when known', () => {
+    render(<TrendChart series={series} />);
+
+    fireEvent.focus(screen.getByRole('button', { name: '2022년 302조 2,314억 원' }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent('전년 대비 +8.1%');
+
+    fireEvent.focus(screen.getByRole('button', { name: '2024년 300조 8,709억 원' }));
+    expect(screen.getByRole('tooltip')).not.toHaveTextContent('전년 대비');
+  });
+
   it('labels the x axis with every year from 2021 to 2025 in order', () => {
     render(<TrendChart series={series} />);
 
@@ -99,6 +121,7 @@ describe('TrendChart', () => {
 
     const table = screen.getByRole('table', { name: '매출액 연도별 값' });
     expect(within(table).getAllByRole('row')).toHaveLength(6); // header + 5
-    expect(within(table).getByText('미제공')).toBeInTheDocument();
+    // 2023 은 값·증감률 모두 미제공
+    expect(within(table).getAllByText('미제공').length).toBeGreaterThanOrEqual(2);
   });
 });

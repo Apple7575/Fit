@@ -55,6 +55,29 @@ const stubFetchByUrl = (
     if (url.includes('/industry-comparison')) {
       return Promise.resolve(json(emptyComparison));
     }
+    if (url.includes('/metrics/timeseries')) {
+      return Promise.resolve(
+        json({
+          success: true,
+          data: { range: { from: 2021, to: 2025 }, series: [] },
+        }),
+      );
+    }
+    if (url.includes('/metrics')) {
+      return Promise.resolve(
+        json({
+          success: true,
+          data: {
+            corpCode: '00126380',
+            year: 2025,
+            metrics: [
+              { key: 'revenue', value: 1_0000_0000_0000, yoy: null },
+            ],
+            profitability: null,
+          },
+        }),
+      );
+    }
     return Promise.resolve(typeof detail === 'function' ? detail() : detail);
   });
 
@@ -95,15 +118,37 @@ describe('CompanyDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('성장 분석 탭은 기준연도 핵심지표와 5년 추이를 보여준다', async () => {
+    const fetchMock = stubFetchByUrl();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderAt('/companies/00126380/growth');
+
+    expect(
+      await screen.findByRole('heading', { name: '2025년 핵심지표' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '최근 5개년 변화' }),
+    ).toBeInTheDocument();
+    // 기준연도는 기본정보의 dataYear(2025) 를 그대로 넘기고, 연도 없는 선행 호출은 없다
+    const metricsCalls = fetchMock.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => /\/metrics(\?|$)/.test(url));
+    expect(metricsCalls).toEqual([
+      expect.stringContaining('year=2025'),
+    ]);
+  });
+
   it('미구현 탭은 비활성 버튼으로 표시된다', async () => {
     vi.stubGlobal('fetch', stubFetchByUrl());
 
     renderAt('/companies/00126380');
     await screen.findByRole('heading', { level: 1, name: '삼성전자' });
 
-    for (const label of ['성장 분석', '집중 분야', '최근 이슈']) {
+    for (const label of ['집중 분야', '최근 이슈']) {
       expect(screen.getByRole('button', { name: label })).toBeDisabled();
     }
+    expect(screen.getByRole('link', { name: '성장 분석' })).toBeInTheDocument();
   });
 
   it('기본정보 API 가 실패해도 페이지는 유지된다 (F-31)', async () => {

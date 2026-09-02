@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { InlineNotice } from '../../components/common/InlineNotice';
-import { METRIC_LABELS, type MetricKey } from '../../types/metrics';
+import {
+  KEY_METRIC_KEYS,
+  METRIC_LABELS,
+  type MetricKey,
+} from '../../types/metrics';
 import { MetricSelector } from './MetricSelector';
 import { TrendChart } from './TrendChart';
 import { TREND_END_YEAR, TREND_START_YEAR } from './types';
@@ -41,12 +45,14 @@ export function FinancialTrendSection({
             최근 5개년 변화
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            {TREND_START_YEAR}~{TREND_END_YEAR}년 {label} 변화 · 사업보고서 기준
+            {TREND_START_YEAR}~{TREND_END_YEAR}년 {label} 변화 · 사업보고서 기준 ·
+            누락 연도는 선을 끊어 표시
           </p>
         </div>
         <MetricSelector
           label="그래프 지표 선택"
           onChange={setMetricKey}
+          options={KEY_METRIC_KEYS}
           value={metricKey}
         />
       </div>
