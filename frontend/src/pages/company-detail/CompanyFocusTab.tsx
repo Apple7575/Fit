@@ -27,7 +27,7 @@ export function CompanyFocusTab() {
   const trend = useEmployeeTrend(corpCode);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
           기업 집중 분야 분석
@@ -39,13 +39,13 @@ export function CompanyFocusTab() {
 
       <FocusSummaryCard state={focus.state} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <DirectionCard state={focus.state} />
         <RndCard state={focus.state} />
         <InvestmentTimelineCard onRetry={activities.retry} state={activities.state} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,1fr)]">
         <WorkforceCard
           onRetryTrend={trend.retry}
           onRetryWorkforce={workforce.retry}

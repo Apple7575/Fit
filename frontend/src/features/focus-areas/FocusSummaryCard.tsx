@@ -31,7 +31,7 @@ export function FocusSummaryCard({ state }: FocusSummaryCardProps) {
   return (
     <section
       aria-labelledby="focus-summary-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
         <div className="shrink-0 lg:w-36">

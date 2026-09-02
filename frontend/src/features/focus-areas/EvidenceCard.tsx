@@ -34,7 +34,7 @@ export function EvidenceCard({ focus, activities, workforce }: EvidenceCardProps
   return (
     <section
       aria-labelledby="evidence-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-extrabold text-slate-950" id="evidence-title">
