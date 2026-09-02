@@ -55,7 +55,45 @@ describe('HomePage', () => {
     renderHome();
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
-    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.queryByText(/검색 결과/)).not.toBeInTheDocument();
+  });
+
+  it('tells the brand story and links every scene to the real analysis tab', () => {
+    vi.stubGlobal('fetch', vi.fn());
+    renderHome();
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: /기업은 숫자로 말합니다/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: '기분은 다섯 가지 질문만 남깁니다.' }),
+    ).toBeInTheDocument();
+
+    const sceneLinks = screen.getAllByRole('link', { name: /실제 화면에서 보기/ });
+    expect(sceneLinks.map((a) => a.getAttribute('href'))).toEqual([
+      '/companies/00126380/overview',
+      '/companies/00126380/growth',
+      '/companies/00126380/focus',
+      '/companies/00126380/comparison',
+      '/companies/00126380/issues',
+    ]);
+    expect(screen.getAllByRole('link', { name: /근거 보기/ })).toHaveLength(3);
+    expect(screen.getByRole('link', { name: 'NAVER' })).toHaveAttribute(
+      'href',
+      '/companies/90000004/overview',
+    );
+  });
+
+  it('sends the CTA buttons back to the hero search box', () => {
+    vi.stubGlobal('fetch', vi.fn());
+    vi.useFakeTimers();
+    renderHome();
+
+    fireEvent.click(screen.getByRole('button', { name: /기업명으로 검색하기/ }));
+    vi.runAllTimers();
+
+    expect(screen.getByLabelText('기업명')).toHaveFocus();
+    vi.useRealTimers();
   });
 
   it('shows a loading state and then the companies returned by the API', async () => {

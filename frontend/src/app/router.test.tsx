@@ -64,7 +64,7 @@ describe('application routes', () => {
     renderRoute('/');
 
     expect(
-      screen.getByRole('heading', { level: 1, name: '기업 변화 분석' }),
+      screen.getByRole('heading', { level: 1, name: /기업은 숫자로 말합니다/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('searchbox', { name: '기업명' }),
