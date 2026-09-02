@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAppRouter } from '../../app/router';
@@ -20,17 +21,21 @@ const detailBody = {
     market: 'KOSPI',
     ceo: '전영현',
     establishedDate: '1969-01-13',
+    address: '경기도 수원시 영통구 삼성로 129',
+    homepageUrl: 'https://www.samsung.com',
+    dataYear: 2025,
   },
 };
 
-const emptyMetrics = {
+const profileBody = {
   success: true,
-  data: { corpCode: '00126380', year: 2025, metrics: [] },
-};
-
-const emptyTimeseries = {
-  success: true,
-  data: { range: { from: 2021, to: 2025 }, series: [] },
+  data: {
+    year: 2025,
+    businesses: ['반도체'],
+    segments: [{ code: 'DS', revenue: 1000, revenueShare: 100 }],
+    totalRevenue: 1000,
+    products: ['HBM'],
+  },
 };
 
 const emptyComparison = {
@@ -38,17 +43,14 @@ const emptyComparison = {
   data: { year: 2025, industry: null, metrics: [], companies: [] },
 };
 
-/** 상세 페이지가 부르는 4개 API 를 URL 로 구분해 응답한다. */
+/** 상세 레이아웃·탭이 부르는 API 를 URL 로 구분해 응답한다. */
 const stubFetchByUrl = (
   detail: Response | (() => Response) = () => json(detailBody),
 ) =>
   vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
-    if (url.includes('/metrics/timeseries')) {
-      return Promise.resolve(json(emptyTimeseries));
-    }
-    if (url.includes('/metrics')) {
-      return Promise.resolve(json(emptyMetrics));
+    if (url.includes('/profile')) {
+      return Promise.resolve(json(profileBody));
     }
     if (url.includes('/industry-comparison')) {
       return Promise.resolve(json(emptyComparison));
@@ -56,35 +58,55 @@ const stubFetchByUrl = (
     return Promise.resolve(typeof detail === 'function' ? detail() : detail);
   });
 
-const renderPage = () =>
-  render(
-    <RouterProvider router={createAppRouter(['/companies/00126380'])} />,
-  );
+const renderAt = (path: string) =>
+  render(<RouterProvider router={createAppRouter([path])} />);
 
 describe('CompanyDetailPage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('shows the company name and industry from the detail API', async () => {
-    const fetchMock = stubFetchByUrl();
-    vi.stubGlobal('fetch', fetchMock);
+  it('/companies/:id 는 기업 개요 탭으로 리다이렉트한다', async () => {
+    vi.stubGlobal('fetch', stubFetchByUrl());
 
-    renderPage();
+    renderAt('/companies/00126380');
 
     expect(
       await screen.findByRole('heading', { level: 1, name: '삼성전자' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/전자 부품, 컴퓨터/)).toBeInTheDocument();
-    expect(screen.getByText(/기업코드 00126380/)).toBeInTheDocument();
-
-    const detailCall = fetchMock.mock.calls
-      .map((call) => String(call[0]))
-      .find((url) => /\/api\/companies\/00126380(\?|$)/.test(url));
-    expect(detailCall).toBeDefined();
+    expect(
+      await screen.findByRole('heading', { name: '주요 사업' }),
+    ).toBeInTheDocument();
+    // 데이터 기준 칩
+    expect(screen.getByText('데이터 기준: 2025')).toBeInTheDocument();
   });
 
-  it('keeps the page usable when the detail API fails', async () => {
+  it('탭 버튼으로 산업 비교 탭에 이동한다', async () => {
+    vi.stubGlobal('fetch', stubFetchByUrl());
+    const user = userEvent.setup();
+
+    renderAt('/companies/00126380');
+    await screen.findByRole('heading', { level: 1, name: '삼성전자' });
+
+    await user.click(screen.getByRole('link', { name: '산업 비교' }));
+
+    expect(
+      await screen.findByRole('heading', { name: /산업 비교/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('미구현 탭은 비활성 버튼으로 표시된다', async () => {
+    vi.stubGlobal('fetch', stubFetchByUrl());
+
+    renderAt('/companies/00126380');
+    await screen.findByRole('heading', { level: 1, name: '삼성전자' });
+
+    for (const label of ['성장 분석', '집중 분야', '최근 이슈']) {
+      expect(screen.getByRole('button', { name: label })).toBeDisabled();
+    }
+  });
+
+  it('기본정보 API 가 실패해도 페이지는 유지된다 (F-31)', async () => {
     vi.stubGlobal(
       'fetch',
       stubFetchByUrl(() =>
@@ -95,14 +117,14 @@ describe('CompanyDetailPage', () => {
       ),
     );
 
-    renderPage();
+    renderAt('/companies/00126380');
 
-    // 이름을 못 가져와도 제목 자리는 유지되고 다른 섹션은 정상 표시된다 (F-31)
     expect(
       await screen.findByRole('heading', { level: 1, name: '기업 분석' }),
     ).toBeInTheDocument();
+    // 조건부 섹션은 별개 요청이라 정상 표시된다
     expect(
-      await screen.findByRole('heading', { name: '2025년 핵심지표' }),
+      await screen.findByRole('heading', { name: '주요 사업' }),
     ).toBeInTheDocument();
   });
 });

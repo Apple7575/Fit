@@ -16,8 +16,9 @@ export interface CompanySearchResponse {
  * - VITE_API_MOCK=true  → 항상 mock
  * - VITE_API_MOCK=false → 항상 실제 API
  * - 미설정              → 개발 서버(npm run dev)에서만 mock, 빌드 결과물은 실제 API
+ * 이름이 use 로 시작하면 oxlint 가 React Hook 으로 오인하므로 isMockEnabled 로 명명한다.
  */
-const USE_MOCK =
+const isMockEnabled = () =>
   import.meta.env.VITE_API_MOCK === undefined
     ? import.meta.env.DEV
     : import.meta.env.VITE_API_MOCK === 'true';
@@ -47,7 +48,7 @@ export async function searchCompanies(
   keyword: string,
   signal?: AbortSignal,
 ): Promise<CompanySearchResponse> {
-  if (USE_MOCK) {
+  if (isMockEnabled()) {
     return searchMock(keyword);
   }
 
