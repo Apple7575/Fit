@@ -8,8 +8,6 @@ import com.ssafy.companyanalysis.metric.dto.MetricRangeResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricSeriesResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricTimeseriesResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricValueResponse;
-import com.ssafy.companyanalysis.metric.dto.SingleMetricResponse;
-import com.ssafy.companyanalysis.metric.dto.SingleMetricTimeseriesResponse;
 import com.ssafy.companyanalysis.metric.dto.YoyResponse;
 import com.ssafy.companyanalysis.metric.service.CompanyMetricService;
 import org.junit.jupiter.api.DisplayName;
@@ -108,37 +106,7 @@ class CompanyMetricControllerTest {
     }
 
     @Test
-    @DisplayName("개별 지표는 값 한 건을 명세 형태로 반환한다")
-    void returnsSingleMetric() throws Exception {
-        given(companyMetricService.getMetric(eq(CORP_CODE), eq("revenue"), any(), anyBoolean()))
-                .willReturn(new SingleMetricResponse(CORP_CODE, "revenue", "매출액", 2025,
-                        new BigDecimal("71000000000000"), "KRW",
-                        new YoyResponse(new BigDecimal("66193000000000"), new BigDecimal("7.3"))));
-
-        mockMvc.perform(get("/api/companies/{corpCode}/metrics/{metric}", CORP_CODE, "revenue"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.metric").value("revenue"))
-                .andExpect(jsonPath("$.data.label").value("매출액"))
-                .andExpect(jsonPath("$.data.year").value(2025))
-                .andExpect(jsonPath("$.data.value").value(71000000000000L))
-                .andExpect(jsonPath("$.data.unit").value("KRW"))
-                .andExpect(jsonPath("$.data.yoy.changeRate").value(7.3));
-    }
-
-    @Test
-    @DisplayName("지원하지 않는 지표는 400 METRIC_NOT_SUPPORTED")
-    void unsupportedMetricIsBadRequest() throws Exception {
-        given(companyMetricService.getMetric(eq(CORP_CODE), eq("market_cap"), any(), anyBoolean()))
-                .willThrow(new BusinessException(ErrorCode.METRIC_NOT_SUPPORTED));
-
-        mockMvc.perform(get("/api/companies/{corpCode}/metrics/{metric}", CORP_CODE, "market_cap"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("METRIC_NOT_SUPPORTED"));
-    }
-
-    @Test
-    @DisplayName("timeseries 는 경로변수 매핑에 가로채이지 않고 구간·시계열을 반환한다")
+    @DisplayName("timeseries 는 구간·시계열을 반환한다")
     void returnsTimeseries() throws Exception {
         given(companyMetricService.getTimeseries(eq(CORP_CODE), any(), any(), any()))
                 .willReturn(new MetricTimeseriesResponse(new MetricRangeResponse(2021, 2025), List.of(
@@ -191,20 +159,12 @@ class CompanyMetricControllerTest {
     }
 
     @Test
-    @DisplayName("단일 지표 시계열은 지표 정보와 points 만 반환한다")
-    void returnsSingleMetricTimeseries() throws Exception {
-        given(companyMetricService.getMetricTimeseries(eq(CORP_CODE), eq("revenue"), any(), any()))
-                .willReturn(new SingleMetricTimeseriesResponse(CORP_CODE, "revenue", "매출액", "KRW",
-                        new MetricRangeResponse(2021, 2021),
-                        List.of(new MetricPointResponse(2021, new BigDecimal("42998000000000")))));
+    @DisplayName("폐기한 개별 지표 경로는 더 이상 매핑되지 않는다")
+    void singleMetricPathIsGone() throws Exception {
+        mockMvc.perform(get("/api/companies/{corpCode}/metrics/{metric}", CORP_CODE, "revenue"))
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(get("/api/companies/{corpCode}/metrics/{metric}/timeseries", CORP_CODE, "revenue"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.corpCode").value(CORP_CODE))
-                .andExpect(jsonPath("$.data.metric").value("revenue"))
-                .andExpect(jsonPath("$.data.label").value("매출액"))
-                .andExpect(jsonPath("$.data.unit").value("KRW"))
-                .andExpect(jsonPath("$.data.range.from").value(2021))
-                .andExpect(jsonPath("$.data.points[0].value").value(42998000000000L));
+                .andExpect(status().isNotFound());
     }
 }

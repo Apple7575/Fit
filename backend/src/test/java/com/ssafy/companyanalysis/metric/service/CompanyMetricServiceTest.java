@@ -9,8 +9,6 @@ import com.ssafy.companyanalysis.metric.dto.MetricPointResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricRangeResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricTimeseriesResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricValueResponse;
-import com.ssafy.companyanalysis.metric.dto.SingleMetricResponse;
-import com.ssafy.companyanalysis.metric.dto.SingleMetricTimeseriesResponse;
 import com.ssafy.companyanalysis.metric.repository.MetricPointProjection;
 import com.ssafy.companyanalysis.metric.repository.MetricRepository;
 import com.ssafy.companyanalysis.metric.repository.MetricValueProjection;
@@ -20,11 +18,9 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -161,34 +157,6 @@ class CompanyMetricServiceTest {
     }
 
     @Test
-    @DisplayName("카탈로그에 없는 지표는 METRIC_NOT_SUPPORTED")
-    void unknownMetricIsNotSupported() {
-        given(metricRepository.findByMetricCodeAndActiveTrue(anyString())).willReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.getMetric(CORP_CODE, "market_cap", null, true))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.METRIC_NOT_SUPPORTED);
-    }
-
-    @Test
-    @DisplayName("kebab-case 슬러그도 같은 지표로 해석하고 응답은 DB 표기로 통일한다")
-    void acceptsKebabCaseSlug() {
-        Metric operatingProfit = catalog("operating_profit", "영업이익", "KRW");
-        given(metricRepository.findByMetricCodeAndActiveTrue("operating_profit"))
-                .willReturn(Optional.of(operatingProfit));
-        givenLatestYear(2025);
-        given(metricRepository.findMetricValue(CORP_CODE, "operating_profit", 2025, 2024))
-                .willReturn(Optional.of(projection("operating_profit", "영업이익", "KRW", 0, bd("100"), null)));
-
-        SingleMetricResponse response = service.getMetric(CORP_CODE, "operating-profit", null, true);
-
-        assertThat(response.metric()).isEqualTo("operating_profit");
-        assertThat(response.year()).isEqualTo(2025);
-        assertThat(response.value()).isEqualByComparingTo("100");
-    }
-
-    @Test
     @DisplayName("year 를 주면 최신연도를 조회하지 않고 그 연도를 기준으로 삼는다")
     void usesRequestedYear() {
         given(metricRepository.findMetricValues(CORP_CODE, 2021, 2020))
@@ -267,24 +235,6 @@ class CompanyMetricServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.INVALID_PARAMETER);
-    }
-
-    @Test
-    @DisplayName("단일 지표 시계열도 kebab-case 슬러그를 받고 구간을 그대로 되돌려준다")
-    void returnsSingleMetricTimeseries() {
-        Metric revenue = catalog("revenue", "매출액", "KRW");
-        given(metricRepository.findByMetricCodeAndActiveTrue("revenue")).willReturn(Optional.of(revenue));
-        given(metricRepository.findMetricPoints(CORP_CODE, List.of("revenue"), 2023, 2024))
-                .willReturn(List.of(point("revenue", "매출액", "KRW", 0, 2024, bd("66193000000000"))));
-
-        SingleMetricTimeseriesResponse response = service.getMetricTimeseries(CORP_CODE, "revenue", 2023, 2024);
-
-        assertThat(response.metric()).isEqualTo("revenue");
-        assertThat(response.unit()).isEqualTo("KRW");
-        assertThat(response.range()).isEqualTo(new MetricRangeResponse(2023, 2024));
-        assertThat(response.points()).extracting(MetricPointResponse::year).containsExactly(2023, 2024);
-        assertThat(response.points().getFirst().value()).isNull();
-        assertThat(response.points().getLast().value()).isEqualByComparingTo("66193000000000");
     }
 
     @Test

@@ -3,8 +3,6 @@ package com.ssafy.companyanalysis.metric.controller;
 import com.ssafy.companyanalysis.global.response.ApiResponse;
 import com.ssafy.companyanalysis.metric.dto.CompanyMetricsResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricTimeseriesResponse;
-import com.ssafy.companyanalysis.metric.dto.SingleMetricResponse;
-import com.ssafy.companyanalysis.metric.dto.SingleMetricTimeseriesResponse;
 import com.ssafy.companyanalysis.metric.service.CompanyMetricService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -20,9 +18,9 @@ import java.util.List;
 /**
  * 핵심지표 단년 조회(F-08)와 시계열 조회(F-14).
  *
- * <p>{@code /timeseries} 는 {@code /{metric}} 과 같은 자리를 두고 겨루지만,
- * Spring 이 경로변수보다 리터럴 경로를 먼저 매칭하므로 충돌하지 않는다.
- * 산업비교(F-20)도 같은 방식으로 이 아래에 붙는다.
+ * <p>지표 하나만 보는 개별 조회({@code /{metric}}, {@code /{metric}/timeseries})는
+ * v2 명세에서 폐기했다. 같은 결과를 {@code keys} 쿼리파라미터로 얻을 수 있어
+ * 경로변수 매핑을 유지할 이유가 없다.
  */
 @RestController
 @RequestMapping("/api/companies/{corpCode}/metrics")
@@ -54,17 +52,6 @@ public class CompanyMetricController {
         return ApiResponse.ok(companyMetricService.getMetrics(corpCode, year, yoy));
     }
 
-    /** 지표 하나만 반환한다. 통합 조회에서 한 건을 잘라낸 것과 값이 같다. */
-    @GetMapping("/{metric}")
-    public ApiResponse<SingleMetricResponse> getMetric(
-            @PathVariable String corpCode,
-            @PathVariable String metric,
-            @RequestParam(required = false) @Min(MIN_YEAR) @Max(MAX_YEAR) Integer year,
-            @RequestParam(defaultValue = "true") boolean yoy) {
-
-        return ApiResponse.ok(companyMetricService.getMetric(corpCode, metric, year, yoy));
-    }
-
     /**
      * 구간 내 지표별 시계열을 반환한다(F-14). 값이 없는 해도 연도는 빠지지 않는다.
      *
@@ -78,16 +65,5 @@ public class CompanyMetricController {
             @RequestParam(required = false) List<String> keys) {
 
         return ApiResponse.ok(companyMetricService.getTimeseries(corpCode, from, to, keys));
-    }
-
-    /** 지표 하나의 시계열. 통합 시계열에서 series 한 건을 잘라낸 것과 같다. */
-    @GetMapping("/{metric}/timeseries")
-    public ApiResponse<SingleMetricTimeseriesResponse> getMetricTimeseries(
-            @PathVariable String corpCode,
-            @PathVariable String metric,
-            @RequestParam(required = false) @Min(MIN_YEAR) @Max(MAX_YEAR) Integer from,
-            @RequestParam(required = false) @Min(MIN_YEAR) @Max(MAX_YEAR) Integer to) {
-
-        return ApiResponse.ok(companyMetricService.getMetricTimeseries(corpCode, metric, from, to));
     }
 }
