@@ -10,7 +10,7 @@ const COLORS = ['#2563eb', '#8b5cf6', '#38bdf8', '#f59e0b', '#10b981', '#f43f5e'
 /** 둘레가 정확히 100 이 되는 반지름 → stroke-dasharray 를 % 처럼 쓴다 */
 const RADIUS = 15.915494309189535;
 
-/** 사업부 매출 도넣. 매출 미공시 부문은 호에서 제외하고 범례에 "미공시" 로 남긴다. */
+/** 사업부 매출 도넛. 매출 미공시 부문은 호에서 제외하고 범례에 "미공시" 로 남긴다. */
 export function SegmentRevenueCard({
   segments,
   totalRevenue,

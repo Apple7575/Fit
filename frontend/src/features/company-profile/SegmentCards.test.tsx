@@ -22,7 +22,7 @@ describe('SegmentCard', () => {
 });
 
 describe('SegmentRevenueCard', () => {
-  it('공시 부문만 도넣에 그리고 전체 매출을 가운데에 보여준다', () => {
+  it('공시 부문만 도넛에 그리고 전체 매출을 가운데에 보여준다', () => {
     render(
       <SegmentRevenueCard
         segments={segments}
@@ -38,7 +38,7 @@ describe('SegmentRevenueCard', () => {
     expect(screen.getByText('42.0%')).toBeInTheDocument();
     // 미공시 부문은 범례에 "미공시" 로 남는다
     expect(screen.getByText('미공시')).toBeInTheDocument();
-    // 도넗 호는 공시 부문 2개만
+    // 도넛 호는 공시 부문 2개만
     expect(
       document.querySelectorAll('[data-testid="donut-arc"]'),
     ).toHaveLength(2);

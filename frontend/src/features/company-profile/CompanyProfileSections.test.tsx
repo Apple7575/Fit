@@ -83,6 +83,28 @@ describe('CompanyProfileSections', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('봉투 없는 404 응답도 조용히 전체 미노출한다', async () => {
+    // /profile 이 아직 배포되지 않은 환경: Spring 기본 404 바디나 Nginx 오류 페이지처럼
+    // ApiEnvelope 형태가 아닌 응답이 오면 apiGet 이 code='UNKNOWN_ERROR' 로 던진다.
+    // 이때도 status(404) 를 기준으로 미노출되어야 한다.
+    vi.stubEnv('VITE_API_MOCK', 'false');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response('Not Found', { status: 404 })),
+      ),
+    );
+
+    const { container } = render(
+      <CompanyProfileSections corpCode="99999999" />,
+    );
+
+    await vi.waitFor(() =>
+      expect(container.querySelector('[role="status"]')).toBeNull(),
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('5xx 는 오류 안내와 다시 시도를 보여준다', async () => {
     stubProfile(null, 500, 'INTERNAL_ERROR');
 

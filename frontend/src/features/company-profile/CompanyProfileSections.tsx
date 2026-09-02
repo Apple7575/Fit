@@ -11,7 +11,7 @@ interface CompanyProfileSectionsProps {
 
 /**
  * 기업 개요의 조건부 영역. 데이터가 있는 카드만 노출한다.
- * - 404 또는 전 배열 empty → 전체 미노출 (기본정보 카드만 남는다)
+ * - 404(HTTP status 또는 COMPANY_NOT_FOUND 코드) 또는 전 배열 empty → 전체 미노출 (기본정보 카드만 남는다)
  * - 그 외 오류 → InlineNotice + 다시 시도
  */
 export function CompanyProfileSections({
@@ -34,7 +34,7 @@ export function CompanyProfileSections({
   }
 
   if (state.status === 'error') {
-    if (state.error.code === 'COMPANY_NOT_FOUND') {
+    if (state.error.status === 404 || state.error.code === 'COMPANY_NOT_FOUND') {
       return null;
     }
     return (
