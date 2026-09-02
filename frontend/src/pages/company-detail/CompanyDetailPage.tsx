@@ -13,7 +13,10 @@ export interface CompanyDetailOutletContext {
   retryDetail: () => void;
 }
 
-/** 기업 상세 레이아웃. 헤더 + 탭 네비 + 탭 콘텐츠(Outlet). */
+/**
+ * 기업 상세 레이아웃. 헤더(브레드크럼·검색·탭·기준연도) + 탭 콘텐츠(Outlet).
+ * 본문은 폭 제한 없이 화면을 넓게 써서 카드가 옆으로 퍼지게 한다.
+ */
 export function CompanyDetailPage() {
   const { companyId } = useParams();
   const corpCode = companyId ?? '';
@@ -28,18 +31,19 @@ export function CompanyDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <AppHeader companyName={detail?.corpName} />
-
-      <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <CompanyTabNav />
-          {detail?.dataYear != null && (
-            <p className="rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+      <AppHeader
+        companyName={detail?.corpName}
+        meta={
+          detail?.dataYear != null ? (
+            <p className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
               데이터 기준: {detail.dataYear}
             </p>
-          )}
-        </div>
+          ) : undefined
+        }
+        tabs={<CompanyTabNav />}
+      />
 
+      <main className="mx-auto max-w-[1720px] px-5 py-5 lg:px-8">
         <Outlet context={context} />
       </main>
     </div>
