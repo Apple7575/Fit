@@ -55,6 +55,11 @@ const stubFetchByUrl = (
     if (url.includes('/industry-comparison')) {
       return Promise.resolve(json(emptyComparison));
     }
+    if (url.includes('/api/industries/')) {
+      return Promise.resolve(
+        json({ success: true, data: { industry: null, companies: [] } }),
+      );
+    }
     return Promise.resolve(typeof detail === 'function' ? detail() : detail);
   });
 
