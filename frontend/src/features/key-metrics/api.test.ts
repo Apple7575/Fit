@@ -19,8 +19,8 @@ describe('toKeyMetricsData', () => {
 
     expect(data.year).toBe(2025);
     expect(data.metrics).toEqual([
-      { key: 'revenue', value: 100, changeRate: 11.1 },
-      { key: 'net_income', value: null, changeRate: null },
+      { key: 'revenue', value: 100, prevValue: 90, changeRate: 11.1 },
+      { key: 'net_income', value: null, prevValue: null, changeRate: null },
     ]);
   });
 

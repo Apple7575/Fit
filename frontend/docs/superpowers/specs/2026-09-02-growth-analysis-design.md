@@ -56,3 +56,9 @@ mocks/                      keyMetrics(삼성전자 풀·현대차 결측) · fi
 - KeyMetricsSection.test: year 생략 시 파라미터 없음·응답 year 제목·profitability 블록 유무
 - TrendChart.test: 증감률 스트립·툴팁·표
 - CompanyDetailPage.test: growth 탭 라우팅·dataYear 전달·이중 호출 없음
+
+## 목업 반영 개정 (2026-09-02)
+
+- 화면 구성: 헤더(로고 자리·기업명·"최근 5년 성장 분석 (2021–2025)") → 기준연도 KPI 6장(짧은 단위 표기: 300.9조·1.2억·8.6년) → [지표 탭 + 막대(값)·꺾은선(증가율) 이중축 차트 | 전년 대비(4항목: 증가율+증감액) · 수익성/안정성(3항목)]
+- "성장 인사이트"·"전체 성장 지표 보기"·"분석 지표 상세 보기"는 만들지 않는다. "업계 상위" 같은 판정 배지도 근거 데이터가 없어 넣지 않는다.
+- KeyMetric 에 prevValue 추가(증감액 계산). 기존 KeyMetricsSection/Grid/Card·FinancialTrendSection/TrendChart 는 새 컴포넌트(features/growth-analysis, components/charts/BarLineChart)로 대체·삭제.

@@ -125,11 +125,12 @@ describe('CompanyDetailPage', () => {
     renderAt('/companies/00126380/growth');
 
     expect(
-      await screen.findByRole('heading', { name: '2025년 핵심지표' }),
+      await screen.findByRole('list', { name: '기준연도 핵심지표' }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('heading', { name: '최근 5개년 변화' }),
+      await screen.findByRole('heading', { name: '매출액 추이' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('최근 5년 성장 분석 (2021–2025)')).toBeInTheDocument();
     // 기준연도는 기본정보의 dataYear(2025) 를 그대로 넘기고, 연도 없는 선행 호출은 없다
     const metricsCalls = fetchMock.mock.calls
       .map((call) => String(call[0]))

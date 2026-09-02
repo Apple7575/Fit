@@ -34,7 +34,14 @@ const isKeyMetricKey = (key: string): key is MetricKey => KEY_METRIC_SET.has(key
 export const toKeyMetrics = (response: KeyMetricsResponse): KeyMetric[] =>
   (response.metrics ?? []).flatMap((m) =>
     isKeyMetricKey(m.key)
-      ? [{ key: m.key, value: m.value ?? null, changeRate: m.yoy?.changeRate ?? null }]
+      ? [
+          {
+            key: m.key,
+            value: m.value ?? null,
+            prevValue: m.yoy?.prevValue ?? null,
+            changeRate: m.yoy?.changeRate ?? null,
+          },
+        ]
       : [],
   );
 

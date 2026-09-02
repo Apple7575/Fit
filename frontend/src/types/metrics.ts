@@ -62,10 +62,12 @@ export const UNIT_LABELS: Record<MetricUnit, string> = {
 /**
  * 값의 의미: KRW 는 원, PERSON 은 명, YEAR 는 년(소수 허용), % 는 퍼센트 값 그대로 (8.3 → 8.3%).
  * 값이 없으면 null (0과 구분). changeRate 는 전년 대비 증감률(%), 전년 값이 없으면 null.
+ * prevValue 는 전년 값 (증감액 계산용).
  */
 export interface KeyMetric {
   key: MetricKey;
   value: number | null;
+  prevValue: number | null;
   changeRate: number | null;
 }
 
