@@ -3,14 +3,13 @@ import { IndustryComparisonSection } from '../../features/industry-comparison/In
 import type { CompanyDetailOutletContext } from './CompanyDetailPage';
 
 /**
- * 산업 비교 탭. 기본정보의 industryCode 로 같은 산업 후보를 불러 비교 기업을 고른다.
- * 기본정보가 아직 없거나 실패하면 후보 없이 대상 기업만 조회한다.
+ * 산업 비교 탭. 기본정보의 industryCode 로 같은 산업 후보를 불러 기본 비교 기업을 고르고,
+ * 사용자는 기업명 검색으로 비교 기업을 바꿀 수 있다. 기본정보가 실패하면 조회 기업만 조회한다.
  */
 export function CompanyComparisonTab() {
   const { corpCode, detailState } =
     useOutletContext<CompanyDetailOutletContext>();
-  const industryCode =
-    detailState.status === 'success' ? detailState.data.industryCode : null;
+  const detail = detailState.status === 'success' ? detailState.data : null;
 
   if (detailState.status === 'loading') {
     return (
@@ -25,6 +24,11 @@ export function CompanyComparisonTab() {
   }
 
   return (
-    <IndustryComparisonSection corpCode={corpCode} industryCode={industryCode} />
+    <IndustryComparisonSection
+      corpCode={corpCode}
+      corpName={detail?.corpName ?? null}
+      industryCode={detail?.industryCode ?? null}
+      industryName={detail?.industryName ?? null}
+    />
   );
 }

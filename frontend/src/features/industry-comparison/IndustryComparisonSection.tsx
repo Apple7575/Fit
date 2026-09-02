@@ -1,42 +1,49 @@
 import { useState } from 'react';
+import { BarChart } from '../../components/charts/BarChart';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { PillRadioGroup } from '../../components/common/PillRadioGroup';
 import { UNIT_LABELS } from '../../types/metrics';
-import { formatMetricNumber } from '../../utils/formatMetric';
-import { barWidthPercent, maxPeerValue } from './barWidth';
+import { formatMetricCompact } from '../../utils/formatMetric';
+import { ComparisonInsightsCard } from './ComparisonInsightsCard';
 import { ComparisonTable } from './ComparisonTable';
-import { PeerSelector } from './PeerSelector';
-import { SortOrderSelector } from './SortOrderSelector';
-import { sortPeers } from './sortPeers';
+import { PeerPicker } from './PeerPicker';
 import {
   COMPARISON_METRIC_KEYS,
   COMPARISON_METRIC_LABELS,
   COMPARISON_METRIC_UNITS,
   MAX_PEERS,
   type ComparisonMetricKey,
+  type IndustryCompany,
   type IndustryComparison,
-  type IndustryPeer,
-  type SortOrder,
 } from './types';
+import {
+  useComparisonInsights,
+  type ComparisonInsightsState,
+} from './useComparisonInsights';
 import { useIndustryCompanies } from './useIndustryCompanies';
 import { useIndustryComparison } from './useIndustryComparison';
 
-/** 기본 선택 지표. 규모를 가장 먼저 보게 되므로 매출액. */
+/** 기본 선택 지표. 규모를 가장 먼저 보게 되므로 매출. */
 export const DEFAULT_COMPARISON_METRIC: ComparisonMetricKey = 'revenue';
 
 interface IndustryComparisonSectionProps {
   corpCode: string;
+  /** 조회 기업 이름 (칩 표시용). 없으면 코드로 대체 */
+  corpName?: string | null;
   /**
    * 조회 기업의 KSIC 중분류 코드. 있으면 같은 산업 후보를 불러와 매출 상위 3곳을
-   * 기본 비교 기업으로 고른다. 없으면(기본정보 실패 등) 후보 없이 대상 기업만 조회한다.
+   * 기본 비교 기업으로 고른다. 없으면(기본정보 실패 등) 조회 기업만 조회한다.
    */
   industryCode?: string | null;
+  industryName?: string | null;
 }
 
-/** 동일 산업 비교(US-04). 비교 기업 선택 → 조회 → 지표별 막대·전체 표. */
+/** 동일 산업 기업 비교. 기업 선택 → 조회 → 지표별 막대 차트 · 인사이트 · 전체 표. */
 export function IndustryComparisonSection({
   corpCode,
+  corpName = null,
   industryCode = null,
+  industryName = null,
 }: IndustryComparisonSectionProps) {
   const { state: candidatesState } = useIndustryCompanies(industryCode);
   const candidates =
@@ -48,21 +55,21 @@ export function IndustryComparisonSection({
     industryCode !== null && candidatesState.status === 'loading';
 
   return (
-    <section
-      aria-labelledby="comparison-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
-    >
-      <h2
-        className="text-xl font-extrabold text-slate-950 sm:text-2xl"
-        id="comparison-title"
-      >
-        같은 산업 비교
-      </h2>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+          동일 산업 기업 비교
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {industryName ? `${industryName} 산업 내 ` : '같은 산업 '}주요 기업의 핵심 지표를
+          비교해보세요.
+        </p>
+      </div>
 
       {waitingForCandidates ? (
         <div
           aria-busy="true"
-          className="mt-6 h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-50"
+          className="h-56 animate-pulse rounded-3xl border border-slate-200 bg-white"
           role="status"
         >
           <span className="sr-only">산업 비교를 불러오는 중입니다</span>
@@ -70,43 +77,75 @@ export function IndustryComparisonSection({
       ) : (
         <ComparisonBody
           candidates={candidates}
-          corpCode={corpCode}
+          industryName={industryName}
           key={corpCode}
+          target={{ corpCode, corpName: corpName ?? corpCode }}
         />
       )}
-    </section>
+    </div>
   );
 }
 
 interface ComparisonBodyProps {
-  corpCode: string;
-  candidates: Array<{ corpCode: string; corpName: string }>;
+  target: IndustryCompany;
+  candidates: IndustryCompany[];
+  industryName: string | null;
 }
 
-/** peers 선택 상태를 들고 비교를 조회한다. corpCode 가 바뀌면 key 로 새로 만들어 선택을 초기화한다. */
-function ComparisonBody({ corpCode, candidates }: ComparisonBodyProps) {
+/** peers 선택 상태를 들고 비교·인사이트를 조회한다. corpCode 가 바뀌면 key 로 새로 만들어 초기화. */
+function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProps) {
   // null 이면 아직 사용자가 손대지 않은 상태 → 후보 상위 MAX_PEERS 를 자동 선택
-  const [chosen, setChosen] = useState<string[] | null>(null);
-  const peers =
-    chosen ?? candidates.slice(0, MAX_PEERS).map((c) => c.corpCode);
-  const { state, retry } = useIndustryComparison(corpCode, peers);
+  const [chosen, setChosen] = useState<IndustryCompany[] | null>(null);
+  const peers = chosen ?? candidates.slice(0, MAX_PEERS);
+  const peerCodes = peers.map((p) => p.corpCode);
+  const [metricKey, setMetricKey] = useState<ComparisonMetricKey>(DEFAULT_COMPARISON_METRIC);
+  const { state, retry } = useIndustryComparison(target.corpCode, peerCodes);
+  const { state: insightsState } = useComparisonInsights(target.corpCode, peerCodes);
+  const comparison = state.status === 'success' ? state.data : null;
+  const resolvedIndustry = comparison?.industry?.name ?? industryName;
 
   return (
     <>
-      {candidates.length > 0 && (
-        <div className="mt-5 border-b border-slate-100 pb-5">
-          <PeerSelector
-            candidates={candidates}
-            onChange={setChosen}
-            selected={peers}
+      <section
+        aria-label="비교 조건"
+        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      >
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+          <div className="shrink-0 lg:w-48 lg:border-r lg:border-slate-100 lg:pr-5">
+            <p className="text-sm font-bold text-slate-700">산업</p>
+            <p className="mt-2 inline-flex rounded-xl bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
+              {resolvedIndustry ?? '산업 정보 없음'}
+            </p>
+            {comparison?.industry && (
+              <p className="mt-2 text-xs text-slate-400">
+                동종 {comparison.industry.companyCount.toLocaleString('ko-KR')}개사
+              </p>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <PeerPicker onChange={setChosen} peers={peers} target={target} />
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 lg:flex-row lg:items-center">
+          <p className="shrink-0 text-sm font-bold text-slate-700">비교 지표</p>
+          <PillRadioGroup
+            label="비교 지표 선택"
+            onChange={setMetricKey}
+            options={COMPARISON_METRIC_KEYS.map((key) => ({
+              value: key,
+              label: COMPARISON_METRIC_LABELS[key],
+              hint: comparison && !comparison.metrics.includes(key) ? '미제공' : undefined,
+            }))}
+            value={metricKey}
           />
         </div>
-      )}
+      </section>
 
       {state.status === 'loading' && (
         <div
           aria-busy="true"
-          className="mt-6 h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-50"
+          className="h-72 animate-pulse rounded-3xl border border-slate-200 bg-white"
           role="status"
         >
           <span className="sr-only">산업 비교를 불러오는 중입니다</span>
@@ -115,174 +154,95 @@ function ComparisonBody({ corpCode, candidates }: ComparisonBodyProps) {
 
       {state.status === 'error' &&
         (state.error.code === 'COMPANY_NOT_FOUND' ? (
-          <div className="mt-6">
-            <InlineNotice>
-              기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
-            </InlineNotice>
-          </div>
+          <InlineNotice>
+            기업 정보를 찾을 수 없습니다. 기업코드({target.corpCode})를 확인해 주세요.
+          </InlineNotice>
         ) : (
-          <div className="mt-6">
-            <InlineNotice onRetry={retry}>
-              산업 비교를 불러오지 못했습니다. {state.error.message}
-            </InlineNotice>
-          </div>
+          <InlineNotice onRetry={retry}>
+            산업 비교를 불러오지 못했습니다. {state.error.message}
+          </InlineNotice>
         ))}
 
-      {state.status === 'success' && (
-        <IndustryComparisonView comparison={state.data} />
+      {comparison && (
+        <ComparisonResult
+          comparison={comparison}
+          insights={insightsState}
+          metricKey={metricKey}
+        />
       )}
     </>
   );
 }
 
-interface IndustryComparisonViewProps {
-  /** 동일 산업 비교 응답 (명세 5번). companies 가 비어 있으면 안내를 보여준다. */
+interface ComparisonResultProps {
   comparison: IndustryComparison;
-  initialMetricKey?: ComparisonMetricKey;
+  metricKey: ComparisonMetricKey;
+  insights: ComparisonInsightsState;
 }
 
-/** 응답의 companies 를 선택한 지표 하나의 행 목록으로 펼친다. */
-const toPeers = (
-  comparison: IndustryComparison,
-  metricKey: ComparisonMetricKey,
-): IndustryPeer[] =>
-  comparison.companies.map((company) => ({
-    corpCode: company.corpCode,
-    corpName: company.corpName,
-    isTarget: company.isTarget,
-    value: company.values[metricKey] ?? null,
-  }));
-
-/** 비교 결과 본문: 설명 · 지표/정렬 선택 · 막대 목록 · 전체 표. 데이터 조회는 하지 않는다. */
-export function IndustryComparisonView({
-  comparison,
-  initialMetricKey = DEFAULT_COMPARISON_METRIC,
-}: IndustryComparisonViewProps) {
-  const [metricKey, setMetricKey] = useState<ComparisonMetricKey>(initialMetricKey);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-
-  const { year, industry, companies } = comparison;
-  const provided = new Set(comparison.metrics);
-  // 10종 전부 고를 수 있고, 응답에 없는 지표는 "미제공" 힌트를 단다
-  const metricOptions = COMPARISON_METRIC_KEYS.map((key) => ({
-    value: key,
-    label: COMPARISON_METRIC_LABELS[key],
-    hint: provided.has(key) ? undefined : '미제공',
-  }));
+/** 비교 결과: [막대 차트 | 인사이트] + 전체 표. 데이터 조회는 하지 않는다. */
+export function ComparisonResult({ comparison, metricKey, insights }: ComparisonResultProps) {
+  const { year, companies } = comparison;
   const label = COMPARISON_METRIC_LABELS[metricKey];
-  const unit = UNIT_LABELS[COMPARISON_METRIC_UNITS[metricKey]];
-  const isProvided = provided.has(metricKey);
-  const peers = sortPeers(toPeers(comparison, metricKey), sortOrder);
-  const max = maxPeerValue(peers.map((peer) => peer.value));
+  const unit = COMPARISON_METRIC_UNITS[metricKey];
+  const unitLabel = UNIT_LABELS[unit];
+  const ordered = [...companies].sort((a, b) => Number(b.isTarget) - Number(a.isTarget));
+
+  if (companies.length === 0) {
+    return (
+      <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-sm font-semibold text-slate-400">
+        비교할 동종 기업 정보가 없습니다
+      </p>
+    );
+  }
 
   return (
     <>
-      <p className="mt-2 text-sm leading-6 text-slate-500">
-        {industry ? (
-          <>
-            {industry.name} · 동종 {industry.companyCount.toLocaleString('ko-KR')}
-            개사 중 {companies.length}개 ·{' '}
-          </>
-        ) : (
-          '산업 정보 없음 · '
-        )}
-        {year === null ? '' : `${year}년 `}
-        {label} 기준
-      </p>
-
-      <div className="mt-5 flex flex-col gap-3 border-y border-slate-100 py-4 lg:flex-row lg:items-start lg:justify-between">
-        <PillRadioGroup
-          label="비교 지표 선택"
-          onChange={setMetricKey}
-          options={metricOptions}
-          value={metricKey}
-        />
-        <SortOrderSelector onChange={setSortOrder} value={sortOrder} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
+        <section
+          aria-labelledby="comparison-chart-title"
+          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <h3 className="text-base font-extrabold text-slate-950" id="comparison-chart-title">
+            {label} 비교{' '}
+            <span className="text-xs font-semibold text-slate-400">(단위: {unitLabel})</span>
+          </h3>
+          {!comparison.metrics.includes(metricKey) && (
+            <p className="mt-2 text-xs font-medium text-slate-500" role="note">
+              {label}은(는) 아직 비교 API에서 제공되지 않아 미제공으로 표시됩니다.
+            </p>
+          )}
+          <div className="mt-4">
+            <BarChart
+              formatValue={(v) => formatMetricCompact(unit, v)}
+              items={ordered.map((c) => ({
+                label: c.corpName,
+                value: c.values[metricKey] ?? null,
+                highlight: c.isTarget,
+              }))}
+              title={`${label} 기업별 비교 차트`}
+              valueName={`${label} (${unitLabel})`}
+            />
+          </div>
+        </section>
+        <ComparisonInsightsCard state={insights} />
       </div>
 
-      {!isProvided && companies.length > 0 && (
-        <p className="mt-4 text-sm font-medium text-slate-500" role="note">
-          {label}은(는) 아직 비교 API에서 제공되지 않아 미제공으로 표시됩니다.
+      <section
+        aria-labelledby="comparison-table-title"
+        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      >
+        <h3 className="text-base font-extrabold text-slate-950" id="comparison-table-title">
+          기업 지표 비교{' '}
+          <span className="text-xs font-semibold text-slate-400">(단위: 원, %, 명)</span>
+        </h3>
+        <div className="mt-4">
+          <ComparisonTable companies={ordered} />
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          * 기준 {year ?? '연도 미상'}년 · 연결 기준 · 값이 없는 칸은 미제공
         </p>
-      )}
-
-      {peers.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center text-sm font-semibold text-slate-400">
-          비교할 동종 기업 정보가 없습니다
-        </p>
-      ) : (
-        <>
-          <ul className="mt-6 space-y-4">
-            {peers.map((peer) => {
-              const isLoss = peer.value !== null && peer.value < 0;
-
-              return (
-                <li key={peer.corpCode}>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="flex min-w-0 items-baseline gap-2">
-                      <span
-                        className={`truncate text-sm font-bold ${
-                          peer.isTarget ? 'text-blue-700' : 'text-slate-700'
-                        }`}
-                      >
-                        {peer.corpName}
-                      </span>
-                      {peer.isTarget && (
-                        <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                          조회 기업
-                        </span>
-                      )}
-                    </p>
-                    {peer.value === null ? (
-                      <span className="shrink-0 text-sm font-semibold text-slate-400">
-                        미제공
-                      </span>
-                    ) : (
-                      <span className="shrink-0 text-sm">
-                        <span
-                          className={`font-extrabold ${
-                            isLoss ? 'text-rose-600' : 'text-slate-950'
-                          }`}
-                        >
-                          {formatMetricNumber(
-                            COMPARISON_METRIC_UNITS[metricKey],
-                            peer.value,
-                          )}
-                        </span>
-                        <span className="ml-1 font-semibold text-slate-500">
-                          {unit}
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    aria-hidden="true"
-                    className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100"
-                  >
-                    <div
-                      className={`h-full rounded-full ${
-                        isLoss
-                          ? 'bg-rose-400'
-                          : peer.isTarget
-                            ? 'bg-blue-600'
-                            : 'bg-slate-300'
-                      }`}
-                      style={{ width: `${barWidthPercent(peer.value, max)}%` }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-
-          <div className="mt-8">
-            <h3 className="mb-3 text-base font-bold text-slate-900">
-              전체 지표 비교표
-            </h3>
-            <ComparisonTable companies={companies} />
-          </div>
-        </>
-      )}
+      </section>
     </>
   );
 }

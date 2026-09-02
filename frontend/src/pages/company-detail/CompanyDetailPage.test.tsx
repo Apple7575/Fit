@@ -96,7 +96,7 @@ describe('CompanyDetailPage', () => {
     await user.click(screen.getByRole('link', { name: '산업 비교' }));
 
     expect(
-      await screen.findByRole('heading', { name: /산업 비교/ }),
+      await screen.findByRole('heading', { name: '동일 산업 기업 비교' }),
     ).toBeInTheDocument();
   });
 

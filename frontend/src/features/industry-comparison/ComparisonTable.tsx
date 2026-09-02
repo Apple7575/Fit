@@ -1,5 +1,5 @@
 import { UNIT_LABELS } from '../../types/metrics';
-import { formatMetricNumber } from '../../utils/formatMetric';
+import { formatMetricCompact } from '../../utils/formatMetric';
 import {
   COMPARISON_METRIC_KEYS,
   COMPARISON_METRIC_LABELS,
@@ -8,18 +8,15 @@ import {
 } from './types';
 
 interface ComparisonTableProps {
+  /** 표시 순서대로 (조회 기업이 먼저 오도록 호출부가 정렬) */
   companies: ComparisonCompany[];
 }
 
 /**
- * 기업 × 비교 지표 10종 전체 표. 조회 기업 행은 맨 위·강조.
+ * 기업 × 비교 지표 7종 전체 표. 조회 기업 행은 강조.
  * 값 없음은 "미제공"(0 아님), 음수는 손실 색.
  */
 export function ComparisonTable({ companies }: ComparisonTableProps) {
-  const ordered = [...companies].sort(
-    (a, b) => Number(b.isTarget) - Number(a.isTarget),
-  );
-
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200">
       <table className="min-w-full text-sm">
@@ -27,10 +24,10 @@ export function ComparisonTable({ companies }: ComparisonTableProps) {
         <thead className="bg-slate-50 text-left text-xs font-bold text-slate-500">
           <tr>
             <th className="sticky left-0 bg-slate-50 px-4 py-3" scope="col">
-              기업
+              기업명
             </th>
             {COMPARISON_METRIC_KEYS.map((key) => (
-              <th className="px-4 py-3 whitespace-nowrap" key={key} scope="col">
+              <th className="px-4 py-3 text-right whitespace-nowrap" key={key} scope="col">
                 {COMPARISON_METRIC_LABELS[key]}
                 <span className="ml-1 font-medium text-slate-400">
                   ({UNIT_LABELS[COMPARISON_METRIC_UNITS[key]]})
@@ -40,7 +37,7 @@ export function ComparisonTable({ companies }: ComparisonTableProps) {
           </tr>
         </thead>
         <tbody>
-          {ordered.map((company) => (
+          {companies.map((company) => (
             <tr
               className={
                 company.isTarget
@@ -66,7 +63,7 @@ export function ComparisonTable({ companies }: ComparisonTableProps) {
                 const value = company.values[key] ?? null;
                 return (
                   <td
-                    className={`px-4 py-3 whitespace-nowrap tabular-nums ${
+                    className={`px-4 py-3 text-right whitespace-nowrap tabular-nums ${
                       value === null
                         ? 'text-slate-400'
                         : value < 0
@@ -77,7 +74,7 @@ export function ComparisonTable({ companies }: ComparisonTableProps) {
                   >
                     {value === null
                       ? '미제공'
-                      : formatMetricNumber(COMPARISON_METRIC_UNITS[key], value)}
+                      : formatMetricCompact(COMPARISON_METRIC_UNITS[key], value)}
                   </td>
                 );
               })}
