@@ -28,7 +28,7 @@ export function CompanyDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <AppHeader />
+      <AppHeader companyName={detail?.corpName} />
 
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">

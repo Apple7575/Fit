@@ -17,7 +17,7 @@ export interface CompanySearchResponse {
  * - VITE_API_MOCK=false → 항상 실제 API
  * - 미설정              → 개발 서버(npm run dev)에서만 mock, 빌드 결과물은 실제 API
  */
-const USE_MOCK =
+const useMock = () =>
   import.meta.env.VITE_API_MOCK === undefined
     ? import.meta.env.DEV
     : import.meta.env.VITE_API_MOCK === 'true';
@@ -47,7 +47,7 @@ export async function searchCompanies(
   keyword: string,
   signal?: AbortSignal,
 ): Promise<CompanySearchResponse> {
-  if (USE_MOCK) {
+  if (useMock()) {
     return searchMock(keyword);
   }
 
