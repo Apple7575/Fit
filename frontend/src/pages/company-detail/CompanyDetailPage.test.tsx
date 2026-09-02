@@ -126,13 +126,17 @@ describe('CompanyDetailPage', () => {
     renderAt('/companies/00126380/issues');
 
     expect(
+      await screen.findByRole('heading', { name: '최근 기업 이슈' }),
+    ).toBeInTheDocument();
+    expect(
       await screen.findByRole('heading', { name: '최신 뉴스' }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole('link', { name: /테스트 뉴스/ }),
     ).toHaveAttribute('href', 'https://news.example.com/1');
     expect(screen.queryByRole('heading', { name: /중요 뉴스 TOP/ })).not.toBeInTheDocument();
-    expect(screen.queryByText('최근 7일 뉴스')).not.toBeInTheDocument();
+    expect(screen.queryByText('최근 뉴스 수')).not.toBeInTheDocument();
+    expect(await screen.findByText('데이터 기준: 2025.05.13')).toBeInTheDocument();
   });
 
   it('미구현 탭은 비활성 버튼으로 표시된다', async () => {
