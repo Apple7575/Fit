@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class IndustryComparisonServiceTest {
 
@@ -55,7 +56,7 @@ class IndustryComparisonServiceTest {
         assertThat(response.industry().code()).isEqualTo("26");
         assertThat(response.industry().companyCount()).isEqualTo(2);
         assertThat(response.metrics())
-                .containsExactly("revenue", "operating_profit", "employee_count", "avg_salary");
+                .containsExactly("revenue", "operating_profit", "employee_count", "average_salary");
 
         IndustryComparisonResponse.Company first = response.companies().get(0);
         assertThat(first.corpCode()).isEqualTo(TARGET);
@@ -71,15 +72,29 @@ class IndustryComparisonServiceTest {
     }
 
     @Test
-    @DisplayName("year 를 안 주면 2025 로 조회한다")
-    void defaultsYearTo2025() {
-        CompanyDetailProjection target = target("26", "전자 부품 제조업");
+    @DisplayName("year 를 안 주면 그 기업의 최신 적재 연도로 조회한다")
+    void defaultsYearToCompanyDataYear() {
+        CompanyDetailProjection target = target("26", "전자 부품 제조업", 2024);
         given(companyRepository.findDetailByCorpCode(TARGET)).willReturn(Optional.of(target));
-        given(comparisonRepository.findComparison(eq("26"), eq(2025), any())).willReturn(List.of());
+        given(comparisonRepository.findComparison(eq("26"), eq(2024), any())).willReturn(List.of());
 
         IndustryComparisonResponse response = service.compare(TARGET, null);
 
-        assertThat(response.year()).isEqualTo(2025);
+        assertThat(response.year()).isEqualTo(2024);
+    }
+
+    @Test
+    @DisplayName("적재된 값이 없는 기업은 year 가 null 이고 비교 조회를 타지 않는다")
+    void nullYearWhenCompanyHasNoData() {
+        CompanyDetailProjection target = target("26", "전자 부품 제조업", null);
+        given(companyRepository.findDetailByCorpCode(TARGET)).willReturn(Optional.of(target));
+
+        IndustryComparisonResponse response = service.compare(TARGET, null);
+
+        assertThat(response.year()).isNull();
+        assertThat(response.companies()).hasSize(1);
+        assertThat(response.companies().getFirst().isTarget()).isTrue();
+        verifyNoInteractions(comparisonRepository);
     }
 
     @Test
@@ -110,11 +125,16 @@ class IndustryComparisonServiceTest {
     }
 
     private CompanyDetailProjection target(String industryCode, String industryName) {
+        return target(industryCode, industryName, 2025);
+    }
+
+    private CompanyDetailProjection target(String industryCode, String industryName, Integer dataYear) {
         CompanyDetailProjection p = mock(CompanyDetailProjection.class);
         given(p.getCorpCode()).willReturn(TARGET);
         given(p.getCorpName()).willReturn("SK하이닉스");
         given(p.getIndustryCode()).willReturn(industryCode);
         given(p.getIndustryName()).willReturn(industryName);
+        given(p.getDataYear()).willReturn(dataYear);
         return p;
     }
 

@@ -18,6 +18,7 @@ export interface CompanyDetail {
   establishedDate: string | null;
   address: string | null;
   homepageUrl: string | null;
+  /** 이 기업의 최신 적재 회계연도. 화면의 기준연도는 서버가 정한 이 값을 따른다. */
   dataYear: number | null;
 }
 

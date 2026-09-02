@@ -109,7 +109,7 @@ class CompanyControllerTest {
         given(companyDetailService.getCompany("00164779"))
                 .willReturn(new CompanyDetailResponse("00164779", "SK하이닉스", "000660",
                         "26", "전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",
-                        "KOSPI", "곽노정", LocalDate.of(1949, 10, 15)));
+                        "KOSPI", "곽노정", LocalDate.of(1949, 10, 15), 2025));
 
         mockMvc.perform(get("/api/companies/00164779"))
                 .andExpect(status().isOk())
@@ -119,6 +119,7 @@ class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.market").value("KOSPI"))
                 .andExpect(jsonPath("$.data.ceo").value("곽노정"))
                 .andExpect(jsonPath("$.data.establishedDate").value("1949-10-15"))
+                .andExpect(jsonPath("$.data.dataYear").value(2025))
                 .andExpect(jsonPath("$.error").doesNotExist());
     }
 

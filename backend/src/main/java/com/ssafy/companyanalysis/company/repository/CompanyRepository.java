@@ -17,6 +17,10 @@ public interface CompanyRepository extends JpaRepository<Company, String> {
      * <p>산업 정보가 없는 기업도 빠지면 안 되므로 LEFT JOIN 이다. market 은 corp_cls 에서
      * 파생하므로 원본을 그대로 실어 서비스에서 변환한다. 검색 쿼리와 마찬가지로 별칭을
      * 큰따옴표로 감싸 프로젝션 getter 와 대소문자를 맞춘다.
+     *
+     * <p>dataYear 는 기업 단위 최신 적재 연도다. 상세·지표·산업비교가 저마다 기준연도를
+     * 정하면 한 화면에 다른 해가 섞이므로, year 를 주지 않았을 때의 기준을 여기 하나로 모은다.
+     * company_metric_timeseries_idx 의 선두가 corp_code 라 max 는 인덱스로 끝난다.
      */
     @Query(value = """
             SELECT c.corp_code       AS "corpCode",
@@ -26,7 +30,10 @@ public interface CompanyRepository extends JpaRepository<Company, String> {
                    i.industry_name   AS "industryName",
                    c.corp_cls        AS "corpCls",
                    c.ceo_nm          AS "ceoNm",
-                   c.established_date AS "establishedDate"
+                   c.established_date AS "establishedDate",
+                   (SELECT max(cm.fiscal_year)
+                      FROM company_metric cm
+                     WHERE cm.corp_code = c.corp_code) AS "dataYear"
             FROM company c
             LEFT JOIN industry i ON i.industry_code = c.industry_code
             WHERE c.corp_code = :corpCode

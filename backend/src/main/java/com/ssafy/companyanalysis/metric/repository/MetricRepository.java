@@ -7,15 +7,11 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 public interface MetricRepository extends JpaRepository<Metric, String> {
 
-    /** 값이 하나도 없는 기업의 응답 골격을 만들 때 쓴다. */
+    /** 값이 하나도 없는 기업의 응답 골격을 만들 때와, keys 검증에 쓸 지원 목록을 만들 때 쓴다. */
     List<Metric> findByActiveTrueOrderByDisplayOrderAsc();
-
-    /** 미지원 지표(400) 판별과, 값이 없을 때의 label/unit 조달을 겸한다. */
-    Optional<Metric> findByMetricCodeAndActiveTrue(String metricCode);
 
     /**
      * 지정 연도의 지표 6종을 값·전년값과 함께 조회한다.
@@ -53,36 +49,11 @@ public interface MetricRepository extends JpaRepository<Metric, String> {
                                                  @Param("year") int year,
                                                  @Param("prevYear") int prevYear);
 
-    /** 위 쿼리에서 지표 하나만 잘라낸 것. 통합 조회와 같은 값이 나와야 한다. */
-    @Query(value = """
-            SELECT m.metric_code AS "metricCode",
-                   m.name_ko     AS "label",
-                   m.unit        AS "unit",
-                   m.value_scale AS "valueScale",
-                   cur.metric_value AS "value",
-                   prv.metric_value AS "prevValue"
-            FROM metric m
-            LEFT JOIN company_metric cur
-                   ON cur.metric_code = m.metric_code
-                  AND cur.corp_code   = :corpCode
-                  AND cur.fiscal_year = :year
-            LEFT JOIN company_metric prv
-                   ON prv.metric_code = m.metric_code
-                  AND prv.corp_code   = :corpCode
-                  AND prv.fiscal_year = :prevYear
-            WHERE m.is_active
-              AND m.metric_code = :metricCode
-            """, nativeQuery = true)
-    Optional<MetricValueProjection> findMetricValue(@Param("corpCode") String corpCode,
-                                                    @Param("metricCode") String metricCode,
-                                                    @Param("year") int year,
-                                                    @Param("prevYear") int prevYear);
-
     /**
      * year 를 주지 않았을 때 쓸 기준연도. 값이 하나도 없으면 비어 있다.
      *
-     * <p>지표별이 아니라 기업 단위 최신연도다. 통합 조회와 개별 조회가
-     * 같은 연도를 보게 하려면 기준이 하나여야 한다.
+     * <p>지표별이 아니라 기업 단위 최신연도다. 지표마다 기준연도가 달라지면
+     * 한 화면 안에서 서로 다른 해의 값이 섞인다.
      */
     @Query(value = "SELECT max(fiscal_year) FROM company_metric WHERE corp_code = :corpCode",
             nativeQuery = true)

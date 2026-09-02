@@ -19,8 +19,16 @@ ENV_FILE=".env.${ENV_NAME}"
 [ -f "$ENV_FILE" ] || { echo "$ENV_FILE 가 없습니다. .env.${ENV_NAME}.example 을 복사하세요."; exit 1; }
 
 DC="docker compose --env-file $ENV_FILE"
-PROJECT=$(grep -E '^COMPOSE_PROJECT_NAME=' "$ENV_FILE" | cut -d= -f2)
+PROJECT=$(grep -E '^COMPOSE_PROJECT_NAME=' "$ENV_FILE" | cut -d= -f2 || true)
 SERVICES="backend frontend"
+
+# compose 가 만드는 이미지 이름과 정확히 같아야 한다. 어긋나면 롤백용 보관이 조용히 실패한다.
+REGISTRY=$(grep -E '^REGISTRY=' "$ENV_FILE" | cut -d= -f2 || true)
+TAG=$(grep -E '^TAG=' "$ENV_FILE" | cut -d= -f2 || true)
+[ -n "$REGISTRY" ] && [ -n "$TAG" ] || {
+  echo "$ENV_FILE 에 REGISTRY 또는 TAG 가 없습니다. .env.${ENV_NAME}.example 을 참고하세요."
+  exit 1
+}
 
 echo "=================================================="
 echo " 배포 시작 : $ENV_NAME (project: $PROJECT)"
@@ -28,11 +36,12 @@ echo "=================================================="
 
 echo "[1/5] 롤백용으로 현재 이미지 보관"
 for s in $SERVICES; do
-  if docker image inspect "local/$s:latest" >/dev/null 2>&1; then
-    docker tag "local/$s:latest" "local/$s:previous"
-    echo "  local/$s:latest -> :previous"
+  IMG="$REGISTRY/$s:$TAG"
+  if docker image inspect "$IMG" >/dev/null 2>&1; then
+    docker tag "$IMG" "$IMG-previous"
+    echo "  $IMG -> $IMG-previous"
   else
-    echo "  local/$s:latest 없음 (최초 배포)"
+    echo "  $IMG 없음 (최초 배포)"
   fi
 done
 
@@ -44,20 +53,26 @@ $DC up -d
 
 echo "[4/5] 헬스체크 대기"
 HEALTHY=0
+GIVE_UP=0
 for i in $(seq 1 40); do
   ALL_OK=1
   for s in $SERVICES; do
     CID=$($DC ps -q "$s" 2>/dev/null || echo "")
     if [ -z "$CID" ]; then ALL_OK=0; break; fi
-    ST=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CID")
-    if [ "$ST" = "unhealthy" ]; then
-      echo "  $s 가 unhealthy 입니다."
-      ALL_OK=0
-      i=99
-      break
-    fi
-    [ "$ST" = "healthy" ] || ALL_OK=0
+    ST=$(docker inspect -f '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CID")
+    case "$ST" in
+      running/healthy) ;;
+      # 확정 실패. 더 기다려도 바뀌지 않으므로 즉시 롤백으로 넘어간다.
+      */unhealthy | exited/* | dead/*)
+        echo "  $s 상태가 $ST 입니다. 더 기다리지 않고 중단합니다."
+        GIVE_UP=1
+        ALL_OK=0
+        break
+        ;;
+      *) ALL_OK=0 ;;
+    esac
   done
+  if [ "$GIVE_UP" = "1" ]; then break; fi
   if [ "$ALL_OK" = "1" ]; then HEALTHY=1; break; fi
   echo "  대기중... ($i/40)"
   sleep 5
@@ -71,8 +86,9 @@ if [ "$HEALTHY" != "1" ]; then
   echo "[롤백] 직전 이미지로 되돌립니다."
   ROLLED=0
   for s in $SERVICES; do
-    if docker image inspect "local/$s:previous" >/dev/null 2>&1; then
-      docker tag "local/$s:previous" "local/$s:latest"
+    IMG="$REGISTRY/$s:$TAG"
+    if docker image inspect "$IMG-previous" >/dev/null 2>&1; then
+      docker tag "$IMG-previous" "$IMG"
       ROLLED=1
     fi
   done

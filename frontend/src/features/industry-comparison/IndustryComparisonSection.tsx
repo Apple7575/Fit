@@ -118,7 +118,8 @@ export function IndustryComparisonView({
         ) : (
           '산업 정보 없음 · '
         )}
-        {year}년 {label} 기준
+        {year === null ? '' : `${year}년 `}
+        {label} 기준
       </p>
 
       <div className="mt-5 flex flex-col gap-3 border-y border-slate-100 py-4 lg:flex-row lg:items-center lg:justify-between">

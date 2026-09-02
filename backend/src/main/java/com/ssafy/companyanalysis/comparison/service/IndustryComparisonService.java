@@ -22,10 +22,7 @@ public class IndustryComparisonService {
 
     /** 명세가 정한 비교 지표 4종. 응답의 metrics 순서이자 values 맵의 키 순서다. */
     private static final List<String> METRIC_CODES =
-            List.of("revenue", "operating_profit", "employee_count", "avg_salary");
-
-    /** 명세 기본 비교 연도. */
-    private static final int DEFAULT_YEAR = 2025;
+            List.of("revenue", "operating_profit", "employee_count", "average_salary");
 
     private final CompanyRepository companyRepository;
     private final IndustryComparisonRepository comparisonRepository;
@@ -41,16 +38,21 @@ public class IndustryComparisonService {
      *
      * <p>현재 기업은 값이 없어도 항상 리스트에 포함하고 {@code isTarget} 으로 표시한다(F-11·F-14).
      * 존재하지 않는 기업이면 404 COMPANY_NOT_FOUND 다.
+     *
+     * <p>{@code year} 를 주지 않으면 대상 기업의 최신 적재 연도({@code dataYear})로 맞춘다.
+     * 여기서 특정 연도를 상수로 박으면 적재가 한 해 밀릴 때마다 상세·지표와 다른 해를
+     * 비교하게 되므로, 기준은 데이터에서만 온다. 적재된 값이 하나도 없으면 응답의
+     * {@code year} 는 null 이고 비교군도 비어 있다 — 지표 조회가 같은 상황에서 하는 것과 같다.
      */
     @Transactional(readOnly = true)
     public IndustryComparisonResponse compare(String corpCode, Integer year) {
         CompanyDetailProjection target = companyRepository.findDetailByCorpCode(corpCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        int resolvedYear = year != null ? year : DEFAULT_YEAR;
+        Integer resolvedYear = year != null ? year : target.getDataYear();
         String division = target.getIndustryCode();
 
-        List<IndustryComparisonProjection> rows = division == null
+        List<IndustryComparisonProjection> rows = division == null || resolvedYear == null
                 ? List.of()
                 : comparisonRepository.findComparison(division, resolvedYear, METRIC_CODES);
 

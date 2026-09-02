@@ -6,10 +6,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * 조회 가능한 지표 카탈로그. V2 시드의 6행이 전부다.
+ * 조회 가능한 지표 카탈로그. V2 가 시드하고 이후 마이그레이션이 더한다.
  *
- * <p>{@code metricCode} 가 곧 {@code /metrics/{metric}} 경로변수 값이라
- * 컨트롤러에 별도 매핑 코드가 없다.
+ * <p>행 수를 적어 두지 않는 것은 지표가 늘 때마다 주석이 낡기 때문이다.
+ * {@code is_active = false} 인 행도 있으므로(적재 근거만 남기고 API 에는
+ * 내보내지 않는 지표) 목록을 뽑을 때는 반드시
+ * {@code findByActiveTrue...} 계열을 쓴다.
+ *
+ * <p>{@code metricCode} 는 {@code keys} 쿼리파라미터로 들어오고 응답의
+ * {@code metrics[].key} · {@code series[].key} 로 나간다. 값이 그대로
+ * 오가므로 컨트롤러에 별도 매핑 코드가 없다.
  */
 @Entity
 @Table(name = "metric")
