@@ -121,14 +121,20 @@ describe('CompanyDetailPage', () => {
     renderAt('/companies/00126380/focus');
 
     expect(
-      await screen.findByRole('heading', { name: '투자·M&A 이벤트' }),
+      await screen.findByRole('heading', { name: '기업 집중 분야 분석' }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('heading', { name: '직원 변화' }),
+      await screen.findByRole('heading', { name: '투자' }),
     ).toBeInTheDocument();
-    expect(await screen.findByText('파운드리')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '인력 변화' }),
+    ).toBeInTheDocument();
+    expect((await screen.findAllByText('증설')).length).toBeGreaterThan(0);
     expect(
       screen.queryByRole('heading', { name: '사업 방향' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: '집중 분야 요약' }),
     ).not.toBeInTheDocument();
   });
 

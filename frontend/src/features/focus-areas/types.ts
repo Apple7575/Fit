@@ -67,3 +67,9 @@ export interface CompanyFocus {
   direction: FocusDirection | null;
   rnd: FocusRnd | null;
 }
+
+/** 전체 직원 수 추이 한 해. 공시가 없으면 null. */
+export interface EmployeeTrendPoint {
+  year: number;
+  value: number | null;
+}

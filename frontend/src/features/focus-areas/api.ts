@@ -1,4 +1,7 @@
 import { ApiError, apiGet } from '../../api/client';
+import { mockFinancialTrendByCompany } from '../../mocks/financialTrend';
+import { toTrendSeries, type FinancialTrendResponse } from '../financial-trend/api';
+import { TREND_END_YEAR, TREND_START_YEAR } from '../financial-trend/types';
 import {
   mockActivitiesByCompany,
   mockFocusByCompany,
@@ -8,6 +11,7 @@ import {
   ACTIVITY_TYPES,
   type ActivityType,
   type CompanyFocus,
+  type EmployeeTrendPoint,
   type InvestmentActivity,
   type WorkforceChange,
 } from './types';
@@ -189,4 +193,48 @@ export async function fetchFocus(
     { signal },
   );
   return toFocus(data);
+}
+
+/** 4개 유형을 한 번에 — 집중 분야의 투자 타임라인은 유형을 섞어 최신순으로 보여준다. */
+export async function fetchAllActivities(
+  corpCode: string,
+  signal?: AbortSignal,
+): Promise<InvestmentActivity[]> {
+  const lists = await Promise.all(
+    ACTIVITY_TYPES.map((type) => fetchActivities(corpCode, type, signal)),
+  );
+  return lists.flat().sort((a, b) => b.year - a.year);
+}
+
+/**
+ * 전체 직원 수 5년 추이 — 명세대로 timeseries 를 keys=employee_count 로 부른다.
+ * 응답에 없는 연도는 null (0 으로 그리지 않는다).
+ */
+export async function fetchEmployeeTrend(
+  corpCode: string,
+  signal?: AbortSignal,
+): Promise<EmployeeTrendPoint[]> {
+  if (isMockEnabled()) {
+    await delay(300);
+    const series = mockFinancialTrendByCompany[corpCode]?.find((s) => s.key === 'employee_count');
+    if (!series) throw notFound();
+    return series.points.map((p) => ({ year: p.year, value: p.value }));
+  }
+
+  const params = new URLSearchParams({
+    from: String(TREND_START_YEAR),
+    to: String(TREND_END_YEAR),
+    keys: 'employee_count',
+  });
+  const data = await apiGet<FinancialTrendResponse>(
+    `/api/companies/${encodeURIComponent(corpCode)}/metrics/timeseries?${params}`,
+    { signal },
+  );
+  const series = toTrendSeries(data).find((s) => s.key === 'employee_count');
+  if (series) return series.points.map((p) => ({ year: p.year, value: p.value }));
+  const points: EmployeeTrendPoint[] = [];
+  for (let year = TREND_START_YEAR; year <= TREND_END_YEAR; year += 1) {
+    points.push({ year, value: null });
+  }
+  return points;
 }
