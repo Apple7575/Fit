@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart } from '../../components/charts/BarChart';
+import { MultiLineChart } from '../../components/charts/MultiLineChart';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { PillRadioGroup } from '../../components/common/PillRadioGroup';
 import { UNIT_LABELS } from '../../types/metrics';
@@ -16,10 +16,12 @@ import {
   type IndustryCompany,
   type IndustryComparison,
 } from './types';
+import { TREND_YEARS } from './trend';
 import {
   useComparisonInsights,
   type ComparisonInsightsState,
 } from './useComparisonInsights';
+import { useComparisonTrends, type ComparisonTrendsState } from './useComparisonTrends';
 import { useIndustryCompanies } from './useIndustryCompanies';
 import { useIndustryComparison } from './useIndustryComparison';
 
@@ -101,6 +103,7 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
   const [metricKey, setMetricKey] = useState<ComparisonMetricKey>(DEFAULT_COMPARISON_METRIC);
   const { state, retry } = useIndustryComparison(target.corpCode, peerCodes);
   const { state: insightsState } = useComparisonInsights(target.corpCode, peerCodes);
+  const trends = useComparisonTrends([target, ...peers]);
   const comparison = state.status === 'success' ? state.data : null;
   const resolvedIndustry = comparison?.industry?.name ?? industryName;
 
@@ -168,6 +171,8 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
           comparison={comparison}
           insights={insightsState}
           metricKey={metricKey}
+          onRetryTrends={trends.retry}
+          trends={trends.state}
         />
       )}
     </>
@@ -178,10 +183,23 @@ interface ComparisonResultProps {
   comparison: IndustryComparison;
   metricKey: ComparisonMetricKey;
   insights: ComparisonInsightsState;
+  /** 기업별 5개년 지표 (꺾은선). 로딩·오류는 차트 카드 안에서만 처리 */
+  trends: ComparisonTrendsState;
+  onRetryTrends?: () => void;
 }
 
-/** 비교 결과: [막대 차트 | 인사이트] + 전체 표. 데이터 조회는 하지 않는다. */
-export function ComparisonResult({ comparison, metricKey, insights }: ComparisonResultProps) {
+/** 기업별 선 색. 조회 기업은 파랑(강조), 비교 기업은 순서대로. */
+const LINE_COLORS = ['#f59e0b', '#10b981', '#8b5cf6', '#f43f5e'];
+const TARGET_COLOR = '#2563eb';
+
+/** 비교 결과: [5개년 꺾은선 차트 | 인사이트] + 전체 표. 데이터 조회는 하지 않는다. */
+export function ComparisonResult({
+  comparison,
+  metricKey,
+  insights,
+  trends,
+  onRetryTrends,
+}: ComparisonResultProps) {
   const { year, companies } = comparison;
   const label = COMPARISON_METRIC_LABELS[metricKey];
   const unit = COMPARISON_METRIC_UNITS[metricKey];
@@ -204,26 +222,45 @@ export function ComparisonResult({ comparison, metricKey, insights }: Comparison
           className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
         >
           <h3 className="text-base font-extrabold text-slate-950" id="comparison-chart-title">
-            {label} 비교{' '}
-            <span className="text-xs font-semibold text-slate-400">(단위: {unitLabel})</span>
+            {label} 5개년 비교{' '}
+            <span className="text-xs font-semibold text-slate-400">
+              ({TREND_YEARS[0]}–{TREND_YEARS[TREND_YEARS.length - 1]} · 단위: {unitLabel})
+            </span>
           </h3>
-          {!comparison.metrics.includes(metricKey) && (
-            <p className="mt-2 text-xs font-medium text-slate-500" role="note">
-              {label}은(는) 아직 비교 API에서 제공되지 않아 미제공으로 표시됩니다.
-            </p>
-          )}
           <div className="mt-4">
-            <BarChart
-              formatValue={(v) => formatMetricCompact(unit, v)}
-              items={ordered.map((c) => ({
-                label: c.corpName,
-                value: c.values[metricKey] ?? null,
-                highlight: c.isTarget,
-              }))}
-              title={`${label} 기업별 비교 차트`}
-              valueName={`${label} (${unitLabel})`}
-            />
+            {trends.status === 'loading' && (
+              <div aria-busy="true" className="h-64 animate-pulse rounded-2xl bg-slate-50" role="status">
+                <span className="sr-only">기업별 5개년 지표를 불러오는 중입니다</span>
+              </div>
+            )}
+            {trends.status === 'error' && (
+              <InlineNotice onRetry={onRetryTrends}>
+                기업별 5개년 지표를 불러오지 못했습니다. {trends.error.message}
+              </InlineNotice>
+            )}
+            {trends.status === 'success' && (
+              <MultiLineChart
+                formatValue={(v) => formatMetricCompact(unit, v)}
+                series={trends.data.map((t, i) => {
+                  const isTarget = t.corpCode === comparison.companies.find((c) => c.isTarget)?.corpCode;
+                  return {
+                    label: t.corpName,
+                    color: isTarget ? TARGET_COLOR : LINE_COLORS[(i - 1 + LINE_COLORS.length) % LINE_COLORS.length],
+                    emphasis: isTarget,
+                    points: TREND_YEARS.map((year) => ({
+                      x: String(year),
+                      y: t.values[year]?.[metricKey] ?? null,
+                    })),
+                  };
+                })}
+                title={`${label} 기업별 5개년 비교 차트`}
+                valueName={`${label} (${unitLabel})`}
+              />
+            )}
           </div>
+          <p className="mt-3 text-[11px] text-slate-400">
+            * 매출 성장률·영업이익률은 연도별 매출·영업이익에서 계산 · 공시가 없는 해는 선을 끊어 표시
+          </p>
         </section>
         <ComparisonInsightsCard state={insights} />
       </div>

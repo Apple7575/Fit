@@ -1,3 +1,4 @@
+import type { TrendSeriesLike } from '../features/industry-comparison/trend';
 import type {
   ComparisonInsight,
   IndustryCompany,
@@ -141,5 +142,52 @@ export const mockComparisonInsightsByCompany: Record<string, ComparisonInsight[]
     { title: '삼성전자는 규모가 가장 큽니다.', body: '매출 302.2조 원으로 비교 기업 중 1위입니다.' },
     { title: 'SK하이닉스는 수익성이 높습니다.', body: '영업이익률 32.8%로 비교 기업 중 가장 높습니다.' },
     { title: 'DB하이텍은 높은 성장률을 보입니다.', body: '매출 성장률 20.0%로 비교 기업 중 가장 높습니다.' },
+  ],
+};
+
+const series = (key: string, values: Array<number | null>): TrendSeriesLike => ({
+  key,
+  points: values.map((value, i) => ({ year: 2021 + i, value })),
+});
+
+/**
+ * GET /metrics/timeseries?keys=revenue,... 의 series[] 목업 (2021~2025, 기업별).
+ * 비교 화면의 5개년 꺾은선용. 리노공업·이오테크닉스는 일부 연도 결측.
+ */
+export const mockComparisonTrendSeriesByCompany: Record<string, TrendSeriesLike[]> = {
+  '00126380': [
+    series('revenue', [279_600e9, 302_200e9, 258_900e9, 300_900e9, 302_200e9]),
+    series('operating_profit', [51_600e9, 43_400e9, 6_600e9, 32_700e9, 32_700e9]),
+    series('employee_count', [113_485, 121_404, 124_070, 125_170, 129_300]),
+    series('average_salary', [144e6, 135e6, 120e6, 130e6, 124e6]),
+    series('rd_ratio', [8.1, 8.2, 10.9, 9.3, 8.1]),
+  ],
+  '00164779': [
+    series('revenue', [42_900e9, 44_600e9, 32_800e9, 66_200e9, 77_600e9]),
+    series('operating_profit', [12_400e9, 6_800e9, -7_700e9, 23_500e9, 25_500e9]),
+    series('employee_count', [30_000, 31_000, 31_500, 32_000, 32_947]),
+    series('average_salary', [116e6, 117e6, 112e6, 118e6, 121e6]),
+    series('rd_ratio', [9.5, 11.0, 12.6, 14.0, 13.2]),
+  ],
+  '00401731': [
+    series('revenue', [63_900e9, 65_000e9, 62_300e9, 62_300e9, 64_200e9]),
+    series('operating_profit', [3_800e9, 3_500e9, 3_100e9, 3_100e9, 3_400e9]),
+    series('employee_count', [34_000, 34_500, 35_000, 35_657, 36_000]),
+    series('average_salary', [90e6, 92e6, 94e6, 96e6, 99e6]),
+    series('rd_ratio', [5.8, 6.0, 6.2, 6.2, 6.5]),
+  ],
+  '90000008': [
+    series('revenue', [1_220e9, 1_670e9, 1_150e9, 1_147e9, 1_376e9]),
+    series('operating_profit', [400e9, 770e9, 260e9, -97e9, 210e9]),
+    series('employee_count', [2_000, 2_050, 2_100, 2_100, 2_120]),
+    series('average_salary', [80e6, 85e6, 78e6, 78e6, 89e6]),
+    series('rd_ratio', [7.0, 6.5, 8.0, 9.3, 9.3]),
+  ],
+  '90000009': [
+    series('revenue', [280e9, 320e9, null, 261e9, 271e9]),
+    series('operating_profit', [120e9, 140e9, null, 105e9, 110e9]),
+    series('employee_count', [null, null, null, null, null]),
+    series('average_salary', [null, null, null, null, null]),
+    series('rd_ratio', [11.0, 11.8, null, 12.7, 12.4]),
   ],
 };

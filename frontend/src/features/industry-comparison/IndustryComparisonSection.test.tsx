@@ -8,6 +8,7 @@ import {
 } from './IndustryComparisonSection';
 import type { IndustryComparison } from './types';
 import type { ComparisonInsightsState } from './useComparisonInsights';
+import type { ComparisonTrendsState } from './useComparisonTrends';
 
 /** 명세 5번(v2) 응답 형태 — 서버 기본 7종 */
 const comparison: IndustryComparison = {
@@ -68,26 +69,90 @@ const comparison: IndustryComparison = {
   ],
 };
 
+const yearRow = (revenue: number | null, op: number | null) => ({
+  revenue,
+  operating_profit: op,
+  operating_margin: revenue && op !== null ? Math.round((op / revenue) * 1000) / 10 : null,
+});
+const trendsOk: ComparisonTrendsState = {
+  status: 'success',
+  data: [
+    {
+      corpCode: '00126380',
+      corpName: '삼성전자',
+      values: {
+        2021: yearRow(279_600e9, 51_600e9),
+        2022: yearRow(302_200e9, 43_400e9),
+        2023: yearRow(258_900e9, 6_600e9),
+        2024: yearRow(300_900e9, 32_700e9),
+        2025: yearRow(302_200e9, 32_700e9),
+      },
+    },
+    {
+      corpCode: '00164779',
+      corpName: 'SK하이닉스',
+      values: {
+        2021: yearRow(42_900e9, 12_400e9),
+        2022: yearRow(44_600e9, 6_800e9),
+        2023: yearRow(null, null),
+        2024: yearRow(66_200e9, 23_500e9),
+        2025: yearRow(77_600e9, 25_500e9),
+      },
+    },
+  ],
+};
+
 const okInsights: ComparisonInsightsState = {
   status: 'success',
   data: [{ title: '삼성전자는 규모가 가장 큽니다.', body: '매출 1위' }],
 };
 
 describe('ComparisonResult', () => {
-  it('draws one bar per company with the target highlighted and first', () => {
-    render(<ComparisonResult comparison={comparison} insights={okInsights} metricKey="revenue" />);
+  it('draws one coloured line per company over five years and breaks at missing years', () => {
+    render(
+      <ComparisonResult comparison={comparison} insights={okInsights} metricKey="revenue" trends={trendsOk} />,
+    );
 
-    const chart = screen.getByRole('img', { name: '매출 기업별 비교 차트' });
-    const bars = within(chart).getAllByTestId('bar');
-    expect(bars).toHaveLength(2); // DB하이텍 매출은 미제공
-    expect(bars[0]).toHaveAttribute('data-highlight', 'true');
-    expect(within(chart).getByText('302.2조')).toBeInTheDocument();
-    expect(within(chart).getByText('미제공')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /매출 비교/ })).toHaveTextContent('(단위: 원)');
+    const chart = screen.getByRole('img', { name: '매출 기업별 5개년 비교 차트' });
+    const lines = within(chart).getAllByTestId('line-series');
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toHaveAttribute('data-series', '삼성전자');
+    // 삼성전자 5점, SK하이닉스 2023 결측 → 4점 (선은 두 조각)
+    expect(within(lines[0]).getAllByTestId('line-point')).toHaveLength(5);
+    expect(within(lines[1]).getAllByTestId('line-point')).toHaveLength(4);
+    expect(lines[1].querySelectorAll('polyline')).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: /매출 5개년 비교/ })).toHaveTextContent('단위: 원');
+    const legend = within(screen.getByRole('list', { name: '범례' }));
+    expect(legend.getByText('삼성전자')).toBeInTheDocument();
+    expect(legend.getByText('SK하이닉스')).toBeInTheDocument();
+  });
+
+  it('shows a loading placeholder and an error notice for the trend chart only', () => {
+    const { unmount } = render(
+      <ComparisonResult comparison={comparison} insights={okInsights} metricKey="revenue" trends={{ status: 'loading' }} />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('5개년 지표를 불러오는 중');
+    expect(screen.getByRole('table', { name: '기업별 비교 지표 전체 표' })).toBeInTheDocument();
+    unmount();
+
+    const onRetry = vi.fn();
+    render(
+      <ComparisonResult
+        comparison={comparison}
+        insights={okInsights}
+        metricKey="revenue"
+        onRetryTrends={onRetry}
+        trends={{ status: 'error', error: new ApiError(500, 'INTERNAL_ERROR', '서버') }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
   it('renders the insights and the full seven-metric table with the target row first', () => {
-    render(<ComparisonResult comparison={comparison} insights={okInsights} metricKey="operating_margin" />);
+    render(
+      <ComparisonResult comparison={comparison} insights={okInsights} metricKey="operating_margin" trends={trendsOk} />,
+    );
 
     expect(screen.getByRole('heading', { name: '핵심 인사이트' })).toBeInTheDocument();
     expect(screen.getByText('삼성전자는 규모가 가장 큽니다.')).toBeInTheDocument();
@@ -105,7 +170,12 @@ describe('ComparisonResult', () => {
 
   it('hides insights when empty and explains when there are no companies', () => {
     const { unmount } = render(
-      <ComparisonResult comparison={comparison} insights={{ status: 'success', data: [] }} metricKey="revenue" />,
+      <ComparisonResult
+        comparison={comparison}
+        insights={{ status: 'success', data: [] }}
+        metricKey="revenue"
+        trends={trendsOk}
+      />,
     );
     expect(screen.queryByRole('heading', { name: '핵심 인사이트' })).not.toBeInTheDocument();
     unmount();
@@ -115,6 +185,7 @@ describe('ComparisonResult', () => {
         comparison={{ year: 2025, industry: null, metrics: [], companies: [] }}
         insights={{ status: 'error', error: new ApiError(404, 'X', 'x') }}
         metricKey="revenue"
+        trends={trendsOk}
       />,
     );
     expect(screen.getByText('비교할 동종 기업 정보가 없습니다')).toBeInTheDocument();
@@ -175,6 +246,17 @@ const stubByUrl = (
     if (url.includes('/insights')) {
       return Promise.resolve(json({ success: true, data: { section: 'comparison', insights: [] } }));
     }
+    if (url.includes('/metrics/timeseries')) {
+      return Promise.resolve(
+        json({
+          success: true,
+          data: {
+            range: { from: 2021, to: 2025 },
+            series: [{ key: 'revenue', points: [{ year: 2025, value: 1_0000_0000_0000 }] }],
+          },
+        }),
+      );
+    }
     return Promise.resolve(comparisonImpl());
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -196,7 +278,7 @@ describe('IndustryComparisonSection', () => {
 
     render(<IndustryComparisonSection corpCode="00126380" corpName="삼성전자" />);
 
-    expect(await screen.findByRole('img', { name: '매출 기업별 비교 차트' })).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: '매출 기업별 5개년 비교 차트' })).toBeInTheDocument();
     expect(
       screen.getAllByRole('radio').map((r) => r.parentElement?.textContent),
     ).toEqual(['매출', '매출 성장률', '영업이익', '영업이익률', '직원 수', '평균 급여', 'R&D 비율']);
@@ -221,7 +303,7 @@ describe('IndustryComparisonSection', () => {
       />,
     );
 
-    await screen.findByRole('img', { name: '매출 기업별 비교 차트' });
+    await screen.findByRole('img', { name: '매출 기업별 5개년 비교 차트' });
     const chips = within(screen.getByRole('list', { name: '선택된 비교 기업' })).getAllByRole('listitem');
     expect(chips.map((c) => c.textContent)).toEqual([
       '삼성전자조회 기업',
@@ -244,7 +326,7 @@ describe('IndustryComparisonSection', () => {
     render(
       <IndustryComparisonSection corpCode="00126380" corpName="삼성전자" industryCode="26" />,
     );
-    await screen.findByRole('img', { name: '매출 기업별 비교 차트' });
+    await screen.findByRole('img', { name: '매출 기업별 5개년 비교 차트' });
 
     // 4개가 찼으므로 검색은 비활성
     expect(screen.getByLabelText('비교할 기업명')).toBeDisabled();
@@ -274,20 +356,20 @@ describe('IndustryComparisonSection', () => {
   });
 
   it('offers a retry that refetches after a server error', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        json({ success: false, error: { code: 'INTERNAL_ERROR', message: '서버 오류' } }, 500),
-      )
-      .mockResolvedValueOnce(json({ success: true, data: comparison }));
-    vi.stubGlobal('fetch', fetchMock);
+    let comparisonCalls = 0;
+    const fetchMock = stubByUrl(() => {
+      comparisonCalls += 1;
+      return comparisonCalls === 1
+        ? json({ success: false, error: { code: 'INTERNAL_ERROR', message: '서버 오류' } }, 500)
+        : json({ success: true, data: comparison });
+    });
 
     render(<IndustryComparisonSection corpCode="00126380" />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('산업 비교를 불러오지 못했습니다');
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
-    expect(await screen.findByRole('img', { name: '매출 기업별 비교 차트' })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole('img', { name: '매출 기업별 5개년 비교 차트' })).toBeInTheDocument();
+    expect(comparisonUrls(fetchMock)).toHaveLength(2);
   });
 
   it('drops metric keys the frontend does not know', async () => {
@@ -300,7 +382,7 @@ describe('IndustryComparisonSection', () => {
 
     render(<IndustryComparisonSection corpCode="00126380" />);
 
-    await screen.findByRole('img', { name: '매출 기업별 비교 차트' });
+    await screen.findByRole('img', { name: '매출 기업별 5개년 비교 차트' });
     expect(screen.getAllByRole('radio')).toHaveLength(7);
   });
 });

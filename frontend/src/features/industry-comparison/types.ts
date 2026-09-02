@@ -81,3 +81,11 @@ export interface ComparisonInsight {
   title: string;
   body: string | null;
 }
+
+/** 비교 기업 한 곳의 연도별 지표 값 (5개년 꺾은선용). 값이 없는 해는 null. */
+export interface CompanyTrend {
+  corpCode: string;
+  corpName: string;
+  /** year → 지표 키 → 값 */
+  values: Record<number, Partial<Record<ComparisonMetricKey, number | null>>>;
+}
