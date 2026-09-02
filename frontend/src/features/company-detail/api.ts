@@ -14,6 +14,8 @@ export interface CompanyDetail {
   market: string | null;
   ceo: string | null;
   establishedDate: string | null;
+  /** 이 기업의 최신 적재 회계연도. 화면의 기준연도는 서버가 정한 이 값을 따른다. */
+  dataYear: number | null;
 }
 
 /** VITE_API_MOCK 규칙은 key-metrics/api.ts 와 동일 */
@@ -32,7 +34,13 @@ export async function fetchCompanyDetail(
     if (!company) {
       throw new ApiError(404, 'COMPANY_NOT_FOUND', '해당 기업을 찾을 수 없습니다.');
     }
-    return { ...company, market: null, ceo: null, establishedDate: null };
+    return {
+      ...company,
+      market: null,
+      ceo: null,
+      establishedDate: null,
+      dataYear: null,
+    };
   }
 
   return apiGet<CompanyDetail>(

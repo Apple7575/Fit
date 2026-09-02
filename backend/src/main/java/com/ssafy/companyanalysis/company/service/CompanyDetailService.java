@@ -34,7 +34,8 @@ public class CompanyDetailService {
                 p.getIndustryName(),
                 toMarket(p.getCorpCls()),
                 p.getCeoNm(),
-                p.getEstablishedDate());
+                p.getEstablishedDate(),
+                p.getDataYear());
     }
 
     /** corp_cls 를 명세의 market 값으로 바꾼다. 기타(E)·미분류는 세 시장에 없어 null 이다. */

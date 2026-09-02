@@ -66,7 +66,7 @@ class CompanyMetricServiceTest {
         given(metricRepository.findMetricValues(CORP_CODE, 2025, 2024))
                 .willReturn(List.of(
                         projection("revenue", "매출액", "KRW", 0, bd("71000000000000.0000"), null),
-                        projection("avg_tenure", "평균 근속", "YEAR", 1, bd("11.5000"), null)));
+                        projection("average_tenure", "평균 근속", "YEAR", 1, bd("11.5000"), null)));
 
         List<MetricValueResponse> metrics = service.getMetrics(CORP_CODE, null, true).metrics();
 
@@ -205,14 +205,14 @@ class CompanyMetricServiceTest {
     @Test
     @DisplayName("keys 를 주면 그 지표만 조회한다")
     void queriesOnlyRequestedKeys() {
-        givenActiveCatalog(catalog("revenue", "매출액", "KRW"), catalog("avg_tenure", "평균 근속", "YEAR"));
-        given(metricRepository.findMetricPoints(CORP_CODE, List.of("avg_tenure"), 2021, 2025))
-                .willReturn(List.of(point("avg_tenure", "평균 근속", "YEAR", 1, 2025, bd("11.5000"))));
+        givenActiveCatalog(catalog("revenue", "매출액", "KRW"), catalog("average_tenure", "평균 근속", "YEAR"));
+        given(metricRepository.findMetricPoints(CORP_CODE, List.of("average_tenure"), 2021, 2025))
+                .willReturn(List.of(point("average_tenure", "평균 근속", "YEAR", 1, 2025, bd("11.5000"))));
 
-        MetricTimeseriesResponse response = service.getTimeseries(CORP_CODE, null, null, List.of("avg-tenure"));
+        MetricTimeseriesResponse response = service.getTimeseries(CORP_CODE, null, null, List.of("average-tenure"));
 
         assertThat(response.series()).hasSize(1);
-        assertThat(response.series().getFirst().key()).isEqualTo("avg_tenure");
+        assertThat(response.series().getFirst().key()).isEqualTo("average_tenure");
         assertThat(response.series().getFirst().points().getLast().value().toPlainString()).isEqualTo("11.5");
     }
 

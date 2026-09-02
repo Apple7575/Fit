@@ -33,7 +33,7 @@ public class IndustryComparisonController {
     /**
      * 같은 산업군 기업들의 지정 연도 비교값을 반환한다.
      *
-     * @param year 생략하면 2025
+     * @param year 생략하면 그 기업의 최신 적재 연도(dataYear)
      */
     @GetMapping
     public ApiResponse<IndustryComparisonResponse> compare(

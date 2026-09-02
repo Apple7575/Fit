@@ -39,7 +39,7 @@ export const mockFinancialTrendByCompany: Record<string, TrendSeries[]> = {
       ],
     },
     {
-      key: 'avg_salary',
+      key: 'average_salary',
       points: [
         { year: 2021, value: 144_000_000 },
         { year: 2022, value: 135_000_000 },
@@ -49,7 +49,7 @@ export const mockFinancialTrendByCompany: Record<string, TrendSeries[]> = {
       ],
     },
     {
-      key: 'avg_tenure',
+      key: 'average_tenure',
       points: [
         { year: 2021, value: 12.4 },
         { year: 2022, value: null },

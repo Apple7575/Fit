@@ -28,7 +28,7 @@ export const metricUnit = (key: MetricKey): MetricUnit => METRIC_UNITS[key];
 export const metricUnitLabel = (key: MetricKey): string =>
   UNIT_LABELS[METRIC_UNITS[key]];
 
-/** 지표 키 기준으로 숫자만 포맷 (예: revenue → "300조 8,709억", avg_tenure → "12.4") */
+/** 지표 키 기준으로 숫자만 포맷 (예: revenue → "300조 8,709억", average_tenure → "12.4") */
 export const formatMetricValue = (key: MetricKey, value: number): string =>
   formatMetricNumber(METRIC_UNITS[key], value);
 
