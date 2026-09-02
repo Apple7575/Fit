@@ -3,11 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../api/client';
 import { fetchAllActivities, fetchEmployeeTrend } from './api';
 import { DirectionCard } from './DirectionCard';
-import { buildEvidenceRows, EvidenceCard } from './EvidenceCard';
-import { FocusSummaryCard, pickSummaryChips } from './FocusSummaryCard';
+import { buildEvidenceRows } from './evidence';
+import { EvidenceCard } from './EvidenceCard';
+import { FocusSummaryCard } from './FocusSummaryCard';
 import type { ActivitiesState, FocusState, WorkforceState } from './hooks';
 import { InvestmentTimelineCard } from './InvestmentTimelineCard';
 import { RndCard } from './RndCard';
+import { pickSummaryChips } from './summaryChips';
 import type { CompanyFocus, InvestmentActivity, WorkforceChange } from './types';
 import { WorkforceCard } from './WorkforceCard';
 
