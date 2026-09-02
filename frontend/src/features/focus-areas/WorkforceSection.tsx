@@ -1,16 +1,13 @@
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { SourceBadge } from '../../components/common/SourceBadge';
 import { formatAmount } from '../../utils/formatAmount';
+import { formatHeadcountChange } from '../../utils/formatHeadcount';
 import { useWorkforce } from './hooks';
 import type { SegmentChange } from './types';
 
 interface WorkforceSectionProps {
   corpCode: string;
 }
-
-/** +4,015명 / -1,213명 / 0명 */
-export const formatHeadcountChange = (n: number): string =>
-  `${n > 0 ? '+' : ''}${n.toLocaleString('ko-KR')}명`;
 
 /** 직원 변화 (확정 영역): 전사 순증감 + 부문별 증감. 사람이 향한 곳. */
 export function WorkforceSection({ corpCode }: WorkforceSectionProps) {
