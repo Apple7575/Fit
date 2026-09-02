@@ -22,7 +22,7 @@ export function YoyCard({ year, metrics }: YoyCardProps) {
   return (
     <section
       aria-labelledby="yoy-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <h3 className="text-lg font-extrabold text-slate-950" id="yoy-title">
         전년 대비{' '}

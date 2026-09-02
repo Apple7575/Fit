@@ -31,7 +31,7 @@ export function CompanyGrowthTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <GrowthHeader corpName={detail?.corpName ?? null} />
       <GrowthBody corpCode={corpCode} year={detail?.dataYear ?? null} />
     </div>
@@ -69,10 +69,10 @@ function GrowthBody({ corpCode, year }: { corpCode: string; year: number | null 
 
       {state.status === 'success' && <GrowthKpiRow data={state.data} />}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
         <GrowthTrendCard corpCode={corpCode} />
         {state.status === 'success' && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <YoyCard metrics={state.data.metrics} year={state.data.year ?? year} />
             {state.data.profitability && (
               <ProfitabilityCard

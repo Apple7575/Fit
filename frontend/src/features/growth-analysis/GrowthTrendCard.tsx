@@ -40,7 +40,7 @@ export function GrowthTrendCard({ corpCode }: GrowthTrendCardProps) {
   return (
     <section
       aria-labelledby="growth-trend-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <PillRadioGroup
         label="추이 지표 선택"
