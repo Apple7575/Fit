@@ -78,6 +78,12 @@ describe('HomePage', () => {
       '/companies/00126380/issues',
     ]);
     expect(screen.getAllByRole('link', { name: /근거 보기/ })).toHaveLength(3);
+
+    const video = screen.getByLabelText('기분 서비스 소개 영상') as HTMLVideoElement;
+    expect(video.getAttribute('src')).toBe('/landing.mp4');
+    expect(video).toHaveAttribute('loop');
+    expect(video).toHaveAttribute('playsinline');
+    expect(video.muted).toBe(true);
     expect(screen.getByRole('link', { name: 'NAVER' })).toHaveAttribute(
       'href',
       '/companies/90000004/overview',

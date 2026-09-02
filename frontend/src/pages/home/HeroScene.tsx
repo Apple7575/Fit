@@ -1,18 +1,24 @@
 import { forwardRef, type ReactNode } from 'react';
+import { prefersReducedMotion } from './useInView';
 
 interface HeroSceneProps {
   /** 검색 폼 + 결과 (HomePage 가 상태를 들고 넘긴다) */
   search: ReactNode;
 }
 
+/** 히어로 영상. public/ 에 두고 절대 경로로 참조한다 (Vite base 그대로). */
+const HERO_VIDEO_SRC = '/landing.mp4';
+
 /**
- * Scene 01 — 브랜드 메시지. 문구·검색창·데이터 점 정도로 요소를 제한한다.
- * 캐릭터(Company Creature)·영상은 에셋이 준비되면 DataDots 자리에 넣는다.
+ * Scene 01 — 브랜드 메시지. 왼쪽 문구·검색창, 오른쪽 브랜드 영상 프레임.
+ * 영상은 음소거 자동재생·반복이며, 모션 축소 설정에서는 자동재생하지 않고 컨트롤을 보여준다.
  */
 export const HeroScene = forwardRef<HTMLElement, HeroSceneProps>(function HeroScene(
   { search },
   ref,
 ) {
+  const reduced = prefersReducedMotion();
+
   return (
     <section
       aria-labelledby="hero-title"
@@ -20,48 +26,67 @@ export const HeroScene = forwardRef<HTMLElement, HeroSceneProps>(function HeroSc
       ref={ref}
     >
       <DataDots />
-      <div className="landing-container relative py-20 text-center sm:py-28">
-        <p className="landing-reveal is-visible text-sm font-bold text-blue-600">
-          취업 준비생을 위한 기업 분석
-        </p>
-        <h1
-          className="hero-title mt-4 font-extrabold tracking-tight text-slate-950"
-          id="hero-title"
-        >
-          <span className="landing-rise block" style={{ animationDelay: '80ms' }}>
-            기업은 숫자로 말합니다.
-          </span>
-          <span
-            className="landing-rise block text-blue-600"
-            style={{ animationDelay: '320ms' }}
+      <div className="landing-container relative grid items-center gap-12 py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:py-24">
+        <div className="text-center lg:text-left">
+          <p className="landing-reveal is-visible text-sm font-bold text-blue-600">
+            취업 준비생을 위한 기업 분석
+          </p>
+          <h1
+            className="hero-title mt-4 font-extrabold tracking-tight text-slate-950"
+            id="hero-title"
           >
-            기분은 그 변화를 읽습니다.
-          </span>
-        </h1>
-        <p
-          className="landing-rise body-large mx-auto mt-6 max-w-xl text-slate-500"
-          style={{ animationDelay: '520ms' }}
-        >
-          사업보고서와 뉴스에 흩어진 기업의 신호를 한눈에 확인하세요.
-        </p>
+            <span className="landing-rise block" style={{ animationDelay: '80ms' }}>
+              기업은 숫자로 말합니다.
+            </span>
+            <span
+              className="landing-rise block text-blue-600"
+              style={{ animationDelay: '320ms' }}
+            >
+              기분은 그 변화를 읽습니다.
+            </span>
+          </h1>
+          <p
+            className="landing-rise body-large mx-auto mt-6 max-w-xl text-slate-500 lg:mx-0"
+            style={{ animationDelay: '520ms' }}
+          >
+            사업보고서와 뉴스에 흩어진 기업의 신호를 한눈에 확인하세요.
+          </p>
 
-        <div
-          className="landing-rise mx-auto mt-10 w-full max-w-2xl text-left"
-          style={{ animationDelay: '720ms' }}
-        >
-          {search}
+          <div
+            className="landing-rise mx-auto mt-10 w-full max-w-2xl text-left lg:mx-0"
+            style={{ animationDelay: '720ms' }}
+          >
+            {search}
+          </div>
+
+          <a
+            aria-label="아래로 스크롤"
+            className="mt-12 inline-flex flex-col items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-slate-600 lg:items-start"
+            href="#problem-story"
+          >
+            스크롤해서 더 보기
+            <span aria-hidden="true" className="landing-bounce text-base">
+              ↓
+            </span>
+          </a>
         </div>
 
-        <a
-          aria-label="아래로 스크롤"
-          className="mt-14 inline-flex flex-col items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-slate-600"
-          href="#problem-story"
+        <div
+          className="landing-rise analysis-browser overflow-hidden"
+          style={{ animationDelay: '400ms' }}
         >
-          스크롤해서 더 보기
-          <span aria-hidden="true" className="landing-bounce text-base">
-            ↓
-          </span>
-        </a>
+          <video
+            aria-label="기분 서비스 소개 영상"
+            autoPlay={!reduced}
+            className="block aspect-video w-full bg-slate-100 object-cover"
+            controls={reduced}
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            src={HERO_VIDEO_SRC}
+          />
+        </div>
       </div>
     </section>
   );
