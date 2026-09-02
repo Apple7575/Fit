@@ -14,7 +14,7 @@ const comparison: IndustryComparison = {
     name: '전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업',
     companyCount: 42,
   },
-  metrics: ['revenue', 'operating_profit', 'employee_count', 'avg_salary', 'avg_tenure', 'rd_ratio'],
+  metrics: ['revenue', 'operating_profit', 'employee_count', 'average_salary', 'average_tenure', 'rd_ratio'],
   companies: [
     {
       corpCode: '00126380',
@@ -24,8 +24,8 @@ const comparison: IndustryComparison = {
         revenue: 300_870_903_000_000,
         operating_profit: 6_566_976_000_000,
         employee_count: 124_804,
-        avg_salary: 130_000_000,
-        avg_tenure: 12.4,
+        average_salary: 130_000_000,
+        average_tenure: 12.4,
         rd_ratio: 8.3,
       },
     },
@@ -37,8 +37,8 @@ const comparison: IndustryComparison = {
         revenue: 66_193_000_000_000,
         operating_profit: 23_467_000_000_000,
         employee_count: 31_000,
-        avg_salary: 120_000_000,
-        avg_tenure: 11.2,
+        average_salary: 120_000_000,
+        average_tenure: 11.2,
         rd_ratio: 6.1,
       },
     },
@@ -50,8 +50,8 @@ const comparison: IndustryComparison = {
         revenue: null,
         operating_profit: -97_000_000_000,
         employee_count: 2_100,
-        avg_salary: null,
-        avg_tenure: null,
+        average_salary: null,
+        average_tenure: null,
         rd_ratio: 3.4,
       },
     },
@@ -212,7 +212,8 @@ describe('IndustryComparisonSection', () => {
 
     const url = String(fetchMock.mock.calls[0][0]);
     expect(url).toContain('/api/companies/00126380/industry-comparison');
-    expect(url).toContain('year=2025');
+    // 기준연도는 서버가 정한다 — 프론트는 year 를 보내지 않는다
+    expect(url).not.toContain('year=');
   });
 
   it('shows a not-found message for COMPANY_NOT_FOUND', async () => {

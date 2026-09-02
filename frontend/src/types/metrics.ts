@@ -1,14 +1,15 @@
 /**
  * 핵심지표 6개 — 기업분석 API 명세서 기준.
- * 키는 백엔드 metric.metric_code (V2__seed_metric.sql) 와 같고, /metrics/{metric} 경로변수·
+ * 키는 백엔드 metric.metric_code (V2__seed_metric.sql · V4__rename_average_metric_codes.sql) 와 같고,
+ * /metrics/{metric} 경로변수·
  * keys 파라미터·응답 metrics[].key / series[].key 에 그대로 쓰인다.
  */
 export const METRIC_KEYS = [
   'revenue',
   'operating_profit',
   'employee_count',
-  'avg_salary',
-  'avg_tenure',
+  'average_salary',
+  'average_tenure',
   'rd_ratio',
 ] as const;
 
@@ -18,8 +19,8 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
   revenue: '매출액',
   operating_profit: '영업이익',
   employee_count: '직원 수',
-  avg_salary: '1인 평균 급여',
-  avg_tenure: '평균 근속',
+  average_salary: '1인 평균 급여',
+  average_tenure: '평균 근속',
   rd_ratio: 'R&D / 매출',
 };
 
@@ -30,8 +31,8 @@ export const METRIC_UNITS: Record<MetricKey, MetricUnit> = {
   revenue: 'KRW',
   operating_profit: 'KRW',
   employee_count: 'PERSON',
-  avg_salary: 'KRW',
-  avg_tenure: 'YEAR',
+  average_salary: 'KRW',
+  average_tenure: 'YEAR',
   rd_ratio: '%',
 };
 

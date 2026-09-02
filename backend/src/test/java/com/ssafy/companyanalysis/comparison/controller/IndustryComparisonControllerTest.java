@@ -41,7 +41,7 @@ class IndustryComparisonControllerTest {
                         2025,
                         new IndustryComparisonResponse.Industry("26",
                                 "전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업", 2),
-                        List.of("revenue", "operating_profit", "employee_count", "avg_salary"),
+                        List.of("revenue", "operating_profit", "employee_count", "average_salary"),
                         List.of(
                                 new IndustryComparisonResponse.Company("00164779", "SK하이닉스", true,
                                         values(new BigDecimal("71000000000000"), null)),
@@ -70,7 +70,7 @@ class IndustryComparisonControllerTest {
                 .willReturn(new IndustryComparisonResponse(
                         2025,
                         new IndustryComparisonResponse.Industry("26", "전자 부품 제조업", 1),
-                        List.of("revenue", "operating_profit", "employee_count", "avg_salary"),
+                        List.of("revenue", "operating_profit", "employee_count", "average_salary"),
                         List.of(new IndustryComparisonResponse.Company("00164779", "SK하이닉스", true,
                                 values(null, null)))));
 
@@ -105,7 +105,7 @@ class IndustryComparisonControllerTest {
         values.put("revenue", revenue);
         values.put("operating_profit", null);
         values.put("employee_count", employeeCount);
-        values.put("avg_salary", null);
+        values.put("average_salary", null);
         return values;
     }
 }

@@ -47,6 +47,17 @@ class CompanyDetailServiceTest {
         assertThat(response.market()).isEqualTo("KOSPI");
         assertThat(response.ceo()).isEqualTo("곽노정");
         assertThat(response.establishedDate()).isEqualTo(LocalDate.of(1949, 10, 15));
+        assertThat(response.dataYear()).isEqualTo(2025);
+    }
+
+    @Test
+    @DisplayName("적재된 지표가 하나도 없으면 dataYear 는 null 이다")
+    void nullDataYearWhenNothingLoaded() {
+        CompanyDetailProjection p = projection("Y");
+        given(p.getDataYear()).willReturn(null);
+        given(companyRepository.findDetailByCorpCode(CORP_CODE)).willReturn(Optional.of(p));
+
+        assertThat(service.getCompany(CORP_CODE).dataYear()).isNull();
     }
 
     @Test
@@ -86,6 +97,7 @@ class CompanyDetailServiceTest {
         given(p.getCorpCls()).willReturn(corpCls);
         given(p.getCeoNm()).willReturn("곽노정");
         given(p.getEstablishedDate()).willReturn(LocalDate.of(1949, 10, 15));
+        given(p.getDataYear()).willReturn(2025);
         return p;
     }
 }

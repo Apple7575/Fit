@@ -25,11 +25,12 @@ export interface ComparisonCompany {
 
 /**
  * 동일 산업 비교 응답.
- * GET /api/companies/{corpCode}/industry-comparison?year=2025 의 data 부분과 같다.
+ * GET /api/companies/{corpCode}/industry-comparison 의 data 부분과 같다.
  * 비교 대상이 없으면 companies 는 빈 배열(200)이다.
  */
 export interface IndustryComparison {
-  year: number;
+  /** 서버가 정한 기준연도. 적재된 값이 없는 기업이면 null */
+  year: number | null;
   industry: IndustryInfo | null;
   /** 이 응답에 값이 실린 지표 키(6종). 선택 UI 는 이 목록만 보여준다. */
   metrics: MetricKey[];

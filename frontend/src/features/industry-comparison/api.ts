@@ -12,7 +12,8 @@ import type { IndustryComparison } from './types';
  * 프론트가 모르는 키가 섞여 올 수 있다.
  */
 export interface IndustryComparisonResponse {
-  year: number;
+  /** 적재된 값이 없는 기업이면 null */
+  year: number | null;
   industry: { code: string; name: string; companyCount: number } | null;
   metrics: string[];
   companies: Array<{
@@ -51,21 +52,23 @@ const USE_MOCK =
     ? import.meta.env.DEV
     : import.meta.env.VITE_API_MOCK === 'true';
 
-const COMPARISON_YEAR = 2025;
-
+/**
+ * year 를 생략하면 서버가 그 기업의 최신 적재 연도로 맞춘다.
+ * 프론트가 연도를 박아 보내면 적재가 밀릴 때 기본정보·핵심지표와 다른 해를 비교하게 된다.
+ */
 export async function fetchIndustryComparison(
   corpCode: string,
   signal?: AbortSignal,
-  year = COMPARISON_YEAR,
+  year?: number,
 ): Promise<IndustryComparison> {
   if (USE_MOCK) {
     await new Promise((resolve) => setTimeout(resolve, 400));
     return mockIndustryComparisonByCompany[corpCode] ?? emptyIndustryComparison;
   }
 
-  const params = new URLSearchParams({ year: String(year) });
+  const query = year === undefined ? '' : `?year=${year}`;
   const data = await apiGet<IndustryComparisonResponse>(
-    `/api/companies/${encodeURIComponent(corpCode)}/industry-comparison?${params}`,
+    `/api/companies/${encodeURIComponent(corpCode)}/industry-comparison${query}`,
     { signal },
   );
   return toIndustryComparison(data);
