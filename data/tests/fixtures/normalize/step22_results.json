@@ -1,0 +1,2785 @@
+[
+  {
+    "corp_name": "삼성전자",
+    "corp_code": "00126380",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 279604799000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 279604799000000.0,
+      "B_full_id": 279604799000000.0,
+      "C_full_name": 279604799000000.0,
+      "D_rnd_backcalc": 278968975308641.97
+    },
+    "operating_profit": 51633856000000.0,
+    "rcept_no": "20220308000798",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 97,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 22596487.0,
+    "ratio_reported": 8.1,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 총계",
+        "raw": "22,596,487"
+      },
+      "ratio": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율 [연구개발비용 총계÷당기매출액×100]",
+        "raw": "8.1%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 22596487000000.0,
+    "ratio_external": 8.08,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.23,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제53기 제52기 제51기 연구개발비용 총계 연구개발비용 총계 22,596,487 21,229,200 20,207,612",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "삼성전자",
+    "corp_code": "00126380",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 302231360000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 302231360000000.0,
+      "B_full_id": 302231360000000.0,
+      "C_full_name": 302231360000000.0,
+      "D_rnd_backcalc": 304014280487804.94
+    },
+    "operating_profit": 43376630000000.0,
+    "rcept_no": "20230307000542",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 95,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 24929171.0,
+    "ratio_reported": 8.2,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 총계",
+        "raw": "24,929,171"
+      },
+      "ratio": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율 [연구개발비용 총계÷당기매출액×100]",
+        "raw": "8.2%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 24929171000000.0,
+    "ratio_external": 8.25,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.59,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제54기 제53기 제52기 연구개발비용 총계 연구개발비용 총계 24,929,171 22,596,487 21,229,200",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "삼성전자",
+    "corp_code": "00126380",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 258935494000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 258935494000000.0,
+      "B_full_id": 258935494000000.0,
+      "C_full_name": 258935494000000.0,
+      "D_rnd_backcalc": 260117146788990.8
+    },
+    "operating_profit": 6566976000000.0,
+    "rcept_no": "20240312000736",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 101,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 28352769.0,
+    "ratio_reported": 10.9,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 총계",
+        "raw": "28,352,769"
+      },
+      "ratio": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율 [연구개발비용 총계÷당기매출액×100]",
+        "raw": "10.9%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 28352769000000.0,
+    "ratio_external": 10.95,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.46,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제55기 제54기 제53기 연구개발비용 총계 연구개발비용 총계 28,352,769 24,929,171 22,596,487",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "삼성전자",
+    "corp_code": "00126380",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 300870903000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 300870903000000.0,
+      "B_full_id": 300870903000000.0,
+      "C_full_name": 300870903000000.0,
+      "D_rnd_backcalc": 301909750000000.0
+    },
+    "operating_profit": 32725961000000.0,
+    "rcept_no": "20250311001085",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 99,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 35021531.0,
+    "ratio_reported": 11.6,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 총계",
+        "raw": "35,021,531"
+      },
+      "ratio": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율 [연구개발비용 총계÷당기매출액×100]",
+        "raw": "11.6%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 35021531000000.0,
+    "ratio_external": 11.64,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.35,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제56기 제55기 제54기 연구개발비용 총계 연구개발비용 총계 35,021,531 28,352,769 24,929,171",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "삼성전자",
+    "corp_code": "00126380",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 333605938000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 333605938000000.0,
+      "B_full_id": 333605938000000.0,
+      "C_full_name": 333605938000000.0,
+      "D_rnd_backcalc": 334113407079646.0
+    },
+    "operating_profit": 43601051000000.0,
+    "rcept_no": "20260310002820",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 110,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 37754815.0,
+    "ratio_reported": 11.3,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 총계",
+        "raw": "37,754,815"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율 [연구개발비용 총계÷당기매출액×100]",
+        "raw": "11.3%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 37754815000000.0,
+    "ratio_external": 11.32,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.15,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제57기 제56기 제55기 연구개발비용 총계 연구개발비용 총계 37,754,815 35,021,531 28,352,769",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "SK하이닉스",
+    "corp_code": "00164779",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 42997792000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 42997792000000.0,
+      "B_full_id": 42997792000000.0,
+      "C_full_name": 42997792000000.0,
+      "D_rnd_backcalc": 43029744680851.06
+    },
+    "operating_profit": 12410340000000.0,
+    "rcept_no": "20220322000590",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 68,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 4044796.0,
+    "ratio_reported": 9.4,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 합계",
+        "raw": "4,044,796"
+      },
+      "ratio": {
+        "row": 9,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "9.4%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 4044796000000.0,
+    "ratio_external": 9.41,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.07,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제74기 제73기 제72기 비 고 연구개발비용 원 재 료 비 117,411 152,149 156,745 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "SK하이닉스",
+    "corp_code": "00164779",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 44621568000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 44621568000000.0,
+      "B_full_id": 44621568000000.0,
+      "C_full_name": 44621568000000.0,
+      "D_rnd_backcalc": 44593945454545.45
+    },
+    "operating_profit": 6809417000000.0,
+    "rcept_no": "20230321001209",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 64,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 4905334.0,
+    "ratio_reported": 11.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 합계",
+        "raw": "4,905,334"
+      },
+      "ratio": {
+        "row": 9,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "11.0%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 4905334000000.0,
+    "ratio_external": 10.99,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.06,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제75기 제74기 제73기 비 고 연구개발비용 원 재 료 비 123,839 117,411 152,149 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "SK하이닉스",
+    "corp_code": "00164779",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 32765719000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 32765719000000.0,
+      "B_full_id": 32765719000000.0,
+      "C_full_name": 32765719000000.0,
+      "D_rnd_backcalc": 32721906250000.0
+    },
+    "operating_profit": -7730313000000.0,
+    "rcept_no": "20240319000684",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 71,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 4188404.0,
+    "ratio_reported": 12.8,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 합계",
+        "raw": "4,188,404"
+      },
+      "ratio": {
+        "row": 9,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "12.8%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 4188404000000.0,
+    "ratio_external": 12.78,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.13,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제76기 제75기 제74기 비 고 연구개발비용 원 재 료 비 100,174 123,839 117,411 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "SK하이닉스",
+    "corp_code": "00164779",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 66192960000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 66192960000000.0,
+      "B_full_id": 66192960000000.0,
+      "C_full_name": 66192960000000.0,
+      "D_rnd_backcalc": 66059293333333.336
+    },
+    "operating_profit": 23467319000000.0,
+    "rcept_no": "20250319000665",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 74,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 4954447.0,
+    "ratio_reported": 7.5,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 합계",
+        "raw": "4,954,447"
+      },
+      "ratio": {
+        "row": 9,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "7.5%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 4954447000000.0,
+    "ratio_external": 7.48,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.2,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과목 과목 제77기 제76기 제75기 비고 연구개발비용 원 재 료 비 104,687 100,174 123,839 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "SK하이닉스",
+    "corp_code": "00164779",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 97146675000000.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 97146675000000.0,
+      "B_full_id": 97146675000000.0,
+      "C_full_name": 97146675000000.0,
+      "D_rnd_backcalc": 97572855072463.77
+    },
+    "operating_profit": 47206319000000.0,
+    "rcept_no": "20260317000635",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 80,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 6732527.0,
+    "ratio_reported": 6.9,
+    "revenue_in_table": 97146675.0,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 합계",
+        "raw": "6,732,527"
+      },
+      "ratio": {
+        "row": 9,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "6.9%"
+      },
+      "revenue": {
+        "row": 10,
+        "col": 2,
+        "raw": "97,146,675"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "ratio_self": 6.93,
+    "rnd_krw": 6732527000000.0,
+    "ratio_external": 6.93,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.44,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과목 과목 제78기 제77기 제76기 비고 연구개발비용 원재료비 114,739 104,687 100,174 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "DB하이텍",
+    "corp_code": "00160843",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 1214682040178.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1214682040178.0,
+      "B_full_id": 1214682040178.0,
+      "C_full_name": 1214682040178.0,
+      "D_rnd_backcalc": 1215696068222.621
+    },
+    "operating_profit": 399106778303.0,
+    "rcept_no": "20220321001280",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 93,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 67714271.0,
+    "ratio_reported": 5.57,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "67,714,271"
+      },
+      "ratio": {
+        "row": 11,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "5.57%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 67714271000.0,
+    "ratio_external": 5.57,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.08,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제69기 제68기 제67기 비 고 원 재 료 비 원 재 료 비 7,085,029 7,205,118 7,904,192 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "DB하이텍",
+    "corp_code": "00160843",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 1675287533666.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1675287533666.0,
+      "B_full_id": 1675287533666.0,
+      "C_full_name": 1675287533666.0,
+      "D_rnd_backcalc": 1676429790356.3943
+    },
+    "operating_profit": 768746685740.0,
+    "rcept_no": "20230321001125",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 89,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 79965701.0,
+    "ratio_reported": 4.77,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "79,965,701"
+      },
+      "ratio": {
+        "row": 11,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "4.77%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 79965701000.0,
+    "ratio_external": 4.77,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.07,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제70기 제69기 제68기 비 고 원 재 료 비 원 재 료 비 8,604,070 7,085,029 7,205,118 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "DB하이텍",
+    "corp_code": "00160843",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 1154223638940.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1154223638940.0,
+      "B_full_id": 1154223638940.0,
+      "C_full_name": 1154223638940.0,
+      "D_rnd_backcalc": 1153790718015.6658
+    },
+    "operating_profit": 265437456373.0,
+    "rcept_no": "20240327001130",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 145,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 88380369.0,
+    "ratio_reported": 7.66,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "88,380,369"
+      },
+      "ratio": {
+        "row": 11,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "7.66%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 88380369000.0,
+    "ratio_external": 7.66,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.04,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제71기 제70기 제69기 비 고 원 재 료 비 원 재 료 비 8,689,980 8,604,070 7,085,029 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "DB하이텍",
+    "corp_code": "00160843",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 1131167709804.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1131167709804.0,
+      "B_full_id": 1131167709804.0,
+      "C_full_name": 1131167709804.0,
+      "D_rnd_backcalc": 1131192096385.542
+    },
+    "operating_profit": 190838683363.0,
+    "rcept_no": "20250312001130",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 106,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 93888944.0,
+    "ratio_reported": 8.3,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "93,888,944"
+      },
+      "ratio": {
+        "row": 11,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "8.30%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 93888944000.0,
+    "ratio_external": 8.3,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.0,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제72기 제71기 제70기 비 고 원 재 료 비 원 재 료 비 10,226,226 8,689,980 8,604,070 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "DB하이텍",
+    "corp_code": "00160843",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 1397233307039.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1397233307039.0,
+      "B_full_id": 1397233307039.0,
+      "C_full_name": 1397233307039.0,
+      "D_rnd_backcalc": 1397725490196.0784
+    },
+    "operating_profit": 277294561174.0,
+    "rcept_no": "20260601001661",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 164,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 106926.0,
+    "ratio_reported": 7.65,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "106,926"
+      },
+      "ratio": {
+        "row": 11,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "7.65%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 106926000000.0,
+    "ratio_external": 7.65,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.04,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제73기 제72기 제71기 비 고 원 재 료 비 원 재 료 비 11,156 10,226 8,690 -",
+      "n_cols": 6
+    }
+  },
+  {
+    "corp_name": "한미반도체",
+    "corp_code": "00161383",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 373169401913.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 373169401913.0,
+      "B_full_id": 373169401913.0,
+      "C_full_name": 373169401913.0,
+      "D_rnd_backcalc": 385053571428.5715
+    },
+    "operating_profit": 122419465500.0,
+    "rcept_no": "20220415000576",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 37,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 21563.0,
+    "ratio_reported": 5.6,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "21,563"
+      },
+      "ratio": {
+        "row": 10,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "5.6%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 21563000000.0,
+    "ratio_external": 5.78,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 3.18,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제42기 제41기 제40기 원 재 료 비 원 재 료 비 2,850 441 482",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "한미반도체",
+    "corp_code": "00161383",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 327592058714.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 327592058714.0,
+      "B_full_id": 327592058714.0,
+      "C_full_name": 327592058714.0,
+      "D_rnd_backcalc": 323714285714.2857
+    },
+    "operating_profit": 111859422080.0,
+    "rcept_no": "20230316001554",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 33,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 20394.0,
+    "ratio_reported": 6.3,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "20,394"
+      },
+      "ratio": {
+        "row": 10,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "6.3%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 20394000000.0,
+    "ratio_external": 6.23,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 1.18,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제43기 제42기 제41기 원 재 료 비 원 재 료 비 1,205 2,850 441",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "한미반도체",
+    "corp_code": "00161383",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 159008528366.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 159008528366.0,
+      "B_full_id": 159008528366.0,
+      "C_full_name": 159008528366.0,
+      "D_rnd_backcalc": 156973913043.47824
+    },
+    "operating_profit": 34571410992.0,
+    "rcept_no": "20240314001257",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 35,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 18052.0,
+    "ratio_reported": 11.5,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "18,052"
+      },
+      "ratio": {
+        "row": 10,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "11.5%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 18052000000.0,
+    "ratio_external": 11.35,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 1.28,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제44기 제43기 제42기 원 재 료 비 원 재 료 비 448 1,205 2,850",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "한미반도체",
+    "corp_code": "00161383",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 558917191547.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 558917191547.0,
+      "B_full_id": 558917191547.0,
+      "C_full_name": 558917191547.0,
+      "D_rnd_backcalc": 553375000000.0
+    },
+    "operating_profit": 255391604854.0,
+    "rcept_no": "20250313001171",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 32,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 22135.0,
+    "ratio_reported": 4.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "22,135"
+      },
+      "ratio": {
+        "row": 10,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "4.0%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 22135000000.0,
+    "ratio_external": 3.96,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.99,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제45기 제44기 제43기 원 재 료 비 원 재 료 비 542 448 1,205",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "한미반도체",
+    "corp_code": "00161383",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 576684619527.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 576684619527.0,
+      "B_full_id": 576684619527.0,
+      "C_full_name": 576684619527.0,
+      "D_rnd_backcalc": 556697674418.6047
+    },
+    "operating_profit": 251390142142.0,
+    "rcept_no": "20260312001230",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 39,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 23938.0,
+    "ratio_reported": 4.3,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "23,938"
+      },
+      "ratio": {
+        "row": 10,
+        "col": 2,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "4.3%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 23938000000.0,
+    "ratio_external": 4.15,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 3.47,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 과 목 제46기 제45기 제44기 원 재 료 비 원 재 료 비 515 542 448",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "리노공업",
+    "corp_code": "00369657",
+    "bsns_year": 2021,
+    "fs_div": "OFS",
+    "revenue": 280166833067.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 280166833067.0,
+      "B_full_id": 280166833067.0,
+      "C_full_name": 280166833067.0,
+      "D_rnd_backcalc": 280483693141.02563
+    },
+    "operating_profit": 117104353242.0,
+    "rcept_no": "20220321000094",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 45,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "원",
+    "unit_src": "자기표",
+    "amount_raw": 8751091226.0,
+    "ratio_reported": 3.12,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "8,751,091,226"
+      },
+      "ratio": {
+        "row": 8,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "3.12%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 8751091226.0,
+    "ratio_external": 3.12,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.11,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제 26 기 제 25 기 제 24 기 비 고 원 재 료 비 583,913,794 570,426,840 636,921,957 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "리노공업",
+    "corp_code": "00369657",
+    "bsns_year": 2022,
+    "fs_div": "OFS",
+    "revenue": 322422803089.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 322422803089.0,
+      "B_full_id": 322422803089.0,
+      "C_full_name": 322422803089.0,
+      "D_rnd_backcalc": 322606293416.14905
+    },
+    "operating_profit": 136634729982.0,
+    "rcept_no": "20230814000718",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 83,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "원",
+    "unit_src": "자기표",
+    "amount_raw": 10387922648.0,
+    "ratio_reported": 3.22,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "10,387,922,648"
+      },
+      "ratio": {
+        "row": 8,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "3.22%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 10387922648.0,
+    "ratio_external": 3.22,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.06,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제 27 기 제 26 기 제 25 기 비 고 원 재 료 비 336,512,891 583,913,794 570,426,840 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "리노공업",
+    "corp_code": "00369657",
+    "bsns_year": 2023,
+    "fs_div": "OFS",
+    "revenue": 255573034656.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 255573034656.0,
+      "B_full_id": 255573034656.0,
+      "C_full_name": 255573034656.0,
+      "D_rnd_backcalc": 255699079201.10193
+    },
+    "operating_profit": 114378400291.0,
+    "rcept_no": "20240318000177",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 47,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "원",
+    "unit_src": "자기표",
+    "amount_raw": 9281876575.0,
+    "ratio_reported": 3.63,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "9,281,876,575"
+      },
+      "ratio": {
+        "row": 8,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "3.63"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 9281876575.0,
+    "ratio_external": 3.63,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.05,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제 28 기 제 27 기 제 26 기 비 고 원 재 료 비 531,358,628 336,512,891 583,913,794 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "리노공업",
+    "corp_code": "00369657",
+    "bsns_year": 2024,
+    "fs_div": "OFS",
+    "revenue": 278186189427.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 278186189427.0,
+      "B_full_id": 278186189427.0,
+      "C_full_name": 278186189427.0,
+      "D_rnd_backcalc": 278435573739.6122
+    },
+    "operating_profit": 124201343872.0,
+    "rcept_no": "20250318000229",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 50,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "원",
+    "unit_src": "자기표",
+    "amount_raw": 10051524212.0,
+    "ratio_reported": 3.61,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "10,051,524,212"
+      },
+      "ratio": {
+        "row": 8,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "3.61"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 10051524212.0,
+    "ratio_external": 3.61,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.09,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제 29 기 제 28 기 제 27 기 비 고 원 재 료 비 486,666,966 531,358,628 336,512,891 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "리노공업",
+    "corp_code": "00369657",
+    "bsns_year": 2025,
+    "fs_div": "OFS",
+    "revenue": 372534084608.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 372534084608.0,
+      "B_full_id": 372534084608.0,
+      "C_full_name": 372534084608.0,
+      "D_rnd_backcalc": 372072817244.3182
+    },
+    "operating_profit": 176997188289.0,
+    "rcept_no": "20260318000182",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 49,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "원",
+    "unit_src": "자기표",
+    "amount_raw": 13096963167.0,
+    "ratio_reported": 3.52,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "13,096,963,167"
+      },
+      "ratio": {
+        "row": 8,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "3.52"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 13096963167.0,
+    "ratio_external": 3.52,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.12,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제 30 기 제 29 기 제 28 기 비 고 원 재 료 비 552,789,141 486,666,966 531,358,628 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "NAVER",
+    "corp_code": "00266961",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 6817599707250.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 6817599707250.0,
+      "B_full_id": 6817599707250.0,
+      "C_full_name": 6817599707250.0,
+      "D_rnd_backcalc": 6816519769357.495
+    },
+    "operating_profit": 1325478171117.0,
+    "rcept_no": "20220304000687",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 75,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 1655051.0,
+    "ratio_reported": 24.28,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "1,655,051"
+      },
+      "ratio": {
+        "row": 4,
+        "col": 1,
+        "label": "연구개발비/영업수익 비율* 연구개발비용계÷당기영업수익×100]",
+        "raw": "24.28%"
+      }
+    },
+    "consolidated_cols": [
+      1,
+      2
+    ],
+    "ratio_decimals": 2,
+    "rnd_krw": 1655051000000.0,
+    "ratio_external": 24.28,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.02,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과 목 연결 연결 별도 별도 제 23기 제 22기 제 23기 제 22기",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "NAVER",
+    "corp_code": "00266961",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 8220078708810.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 8220078708810.0,
+      "B_full_id": 8220078708810.0,
+      "C_full_name": 8220078708810.0,
+      "D_rnd_backcalc": 8219323034984.098
+    },
+    "operating_profit": 1304664410543.0,
+    "rcept_no": "20230314001049",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 78,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 1809073.0,
+    "ratio_reported": 22.01,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "1,809,073"
+      },
+      "ratio": {
+        "row": 4,
+        "col": 1,
+        "label": "연구개발비/영업수익 비율* 연구개발비용계÷당기영업수익×100]",
+        "raw": "22.01%"
+      }
+    },
+    "consolidated_cols": [
+      1,
+      2
+    ],
+    "ratio_decimals": 2,
+    "rnd_krw": 1809073000000.0,
+    "ratio_external": 22.01,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.01,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과 목 연결 연결 별도 별도 제 24기 제 23기 제 24기 제 23기",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "NAVER",
+    "corp_code": "00266961",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 9670643576585.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 9670643576585.0,
+      "B_full_id": 9670643576585.0,
+      "C_full_name": 9670643576585.0,
+      "D_rnd_backcalc": 9672990291262.135
+    },
+    "operating_profit": 1488820269608.0,
+    "rcept_no": "20240318000844",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 76,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 1992636.0,
+    "ratio_reported": 20.6,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "1,992,636"
+      },
+      "ratio": {
+        "row": 4,
+        "col": 1,
+        "label": "연구개발비/영업수익 비율* 연구개발비용계÷당기영업수익×100]",
+        "raw": "20.6%"
+      }
+    },
+    "consolidated_cols": [
+      1,
+      2
+    ],
+    "ratio_decimals": 1,
+    "rnd_krw": 1992636000000.0,
+    "ratio_external": 20.6,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.02,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과 목 연결 연결 별도 별도 제25기 제24기 제25기 제24기",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "NAVER",
+    "corp_code": "00266961",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 10737719264647.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 10737719264647.0,
+      "B_full_id": 10737719264647.0,
+      "C_full_name": 10737719264647.0,
+      "D_rnd_backcalc": 10739514450867.05
+    },
+    "operating_profit": 1979263438827.0,
+    "rcept_no": "20250318000645",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 72,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 1857936.0,
+    "ratio_reported": 17.3,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "1,857,936"
+      },
+      "ratio": {
+        "row": 4,
+        "col": 1,
+        "label": "연구개발비/영업수익 비율* 연구개발비용계÷당기영업수익×100]",
+        "raw": "17.3%"
+      }
+    },
+    "consolidated_cols": [
+      1,
+      2
+    ],
+    "ratio_decimals": 1,
+    "rnd_krw": 1857936000000.0,
+    "ratio_external": 17.3,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.02,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과 목 연결 연결 별도 별도 제 26기 제 25기 제 26기 제 25기",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "NAVER",
+    "corp_code": "00266961",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 12035007218975.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 12035007218975.0,
+      "B_full_id": 12035007218975.0,
+      "C_full_name": 12035007218975.0,
+      "D_rnd_backcalc": 12009459459459.459
+    },
+    "operating_profit": 2208138388720.0,
+    "rcept_no": "20260313001021",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 89,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 2221750.0,
+    "ratio_reported": 18.5,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "2,221,750"
+      },
+      "ratio": {
+        "row": 4,
+        "col": 1,
+        "label": "연구개발비/영업수익 비율* 연구개발비용계÷당기영업수익×100]",
+        "raw": "18.5%"
+      }
+    },
+    "consolidated_cols": [
+      1,
+      2
+    ],
+    "ratio_decimals": 1,
+    "rnd_krw": 2221750000000.0,
+    "ratio_external": 18.46,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.21,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과 목 연결 연결 별도 별도 제27기 제 26기 제27기 제 26기",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "카카오",
+    "corp_code": "00258801",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 5910512880994.0,
+    "revenue_account_nm": "영업수익",
+    "revenue_source": "C_full_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "C_full_name": 5910512880994.0,
+      "D_rnd_backcalc": 5926310077519.38
+    },
+    "operating_profit": 587884339202.0,
+    "rcept_no": "20240320000386",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 122,
+    "section": "6. (제조서비스업)주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 764494.0,
+    "ratio_reported": 12.9,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 2,
+        "label": "연구개발비용계",
+        "raw": "764,494"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "12.9%"
+      }
+    },
+    "consolidated_cols": [
+      2,
+      3,
+      4
+    ],
+    "ratio_decimals": 1,
+    "rnd_krw": 764494000000.0,
+    "ratio_external": 12.93,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.27,
+    "backcalc_gap_pct": 0.27,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과목 과목 연결 연결 연결 별도 별도 별도 27기 26기 25기 27기 26기 25기",
+      "n_cols": 8
+    }
+  },
+  {
+    "corp_name": "카카오",
+    "corp_code": "00258801",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 6799047881222.0,
+    "revenue_account_nm": "영업수익",
+    "revenue_source": "C_full_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "C_full_name": 6799047881222.0,
+      "D_rnd_backcalc": 6808900000000.0
+    },
+    "operating_profit": 569355650551.0,
+    "rcept_no": "20240320000393",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 128,
+    "section": "6. (제조서비스업)주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 1021335.0,
+    "ratio_reported": 15.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 2,
+        "label": "연구개발비용계",
+        "raw": "1,021,335"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "15.0%"
+      }
+    },
+    "consolidated_cols": [
+      2,
+      3,
+      4
+    ],
+    "ratio_decimals": 1,
+    "rnd_krw": 1021335000000.0,
+    "ratio_external": 15.02,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.14,
+    "backcalc_gap_pct": 0.14,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과목 과목 연결 연결 연결 별도 별도 별도 제28기 제27기 제26기 제28기 제27기 제26기",
+      "n_cols": 8
+    }
+  },
+  {
+    "corp_name": "카카오",
+    "corp_code": "00258801",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 7557001757272.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 7557001757272.0,
+      "B_full_id": 7557001757272.0,
+      "C_full_name": 7557001757272.0,
+      "D_rnd_backcalc": 7553018518518.519
+    },
+    "operating_profit": 460857845673.0,
+    "rcept_no": "20240418000375",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 96,
+    "section": "6. (제조서비스업)주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 1223589.0,
+    "ratio_reported": 16.2,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 2,
+        "label": "연구개발비용계",
+        "raw": "1,223,589"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "16.2%"
+      }
+    },
+    "consolidated_cols": [
+      2,
+      3,
+      4
+    ],
+    "ratio_decimals": 1,
+    "rnd_krw": 1223589000000.0,
+    "ratio_external": 16.19,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.05,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과목 과목 연결 연결 연결 별도 별도 별도 제29(당)기 제28(전)기 제27(전전)기 제29(당)기 제28(전)기 제27(전전)기",
+      "n_cols": 8
+    }
+  },
+  {
+    "corp_name": "카카오",
+    "corp_code": "00258801",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 7871692199887.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 7871692199887.0,
+      "B_full_id": 7871692199887.0,
+      "C_full_name": 7871692199887.0,
+      "D_rnd_backcalc": 7885795031055.9
+    },
+    "operating_profit": 460212161525.0,
+    "rcept_no": "20250324000901",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 95,
+    "section": "6. (제조서비스업)주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 1269613.0,
+    "ratio_reported": 16.1,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 2,
+        "label": "연구개발비용계",
+        "raw": "1,269,613"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "16.1%"
+      }
+    },
+    "consolidated_cols": [
+      2,
+      3,
+      4
+    ],
+    "ratio_decimals": 1,
+    "rnd_krw": 1269613000000.0,
+    "ratio_external": 16.13,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.18,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과목 과목 연결 연결 연결 별도 별도 별도 제30(당)기 제29(전)기 제28(전전)기 제30(당)기 제29(전)기 제28(전전)기",
+      "n_cols": 8
+    }
+  },
+  {
+    "corp_name": "카카오",
+    "corp_code": "00258801",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 8099147815086.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 8099147815086.0,
+      "B_full_id": 8099147815086.0,
+      "C_full_name": 8099147815086.0,
+      "D_rnd_backcalc": 8119787500000.0
+    },
+    "operating_profit": 732036535379.0,
+    "rcept_no": "20260318001423",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 89,
+    "section": "6. (제조서비스업)주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 1299166.0,
+    "ratio_reported": 16.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 2,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "1,299,166"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율[연구개발비용 계/당기매출액X100]",
+        "raw": "16.0%"
+      }
+    },
+    "consolidated_cols": [
+      2,
+      3,
+      4
+    ],
+    "ratio_decimals": 1,
+    "rnd_krw": 1299166000000.0,
+    "ratio_external": 16.04,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.25,
+    "col_structure": {
+      "both": true,
+      "연결": true,
+      "별도": true,
+      "header": "과목 과목 연결 연결 연결 별도 별도 별도 제31기(당기) 제30기(전기) 제29기(전전기) 제31기(당기) 제30기(전기) 제29기(전전기)",
+      "n_cols": 8
+    }
+  },
+  {
+    "corp_name": "크래프톤",
+    "corp_code": "00760971",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 1886316491444.0,
+    "revenue_account_nm": "영업수익",
+    "revenue_source": "C_full_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "C_full_name": 1886316491444.0,
+      "D_rnd_backcalc": 1882623711340.2063
+    },
+    "operating_profit": 639639249890.0,
+    "rcept_no": "20220314000894",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 63,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 365229.0,
+    "ratio_reported": 19.4,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "365,229"
+      },
+      "ratio": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "19.4%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 365229000000.0,
+    "ratio_external": 19.36,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.2,
+    "backcalc_gap_pct": 0.2,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제15기(2021년) 제14기(2020년) 제13기(2019년) 비고 연구개발비용 계 365,229 208,838 15,037 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "크래프톤",
+    "corp_code": "00760971",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 1854016090527.0,
+    "revenue_account_nm": "영업수익",
+    "revenue_source": "C_full_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "C_full_name": 1854016090527.0,
+      "D_rnd_backcalc": 1853573394495.4128
+    },
+    "operating_profit": 751606569542.0,
+    "rcept_no": "20230320000728",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 64,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 404079.0,
+    "ratio_reported": 21.8,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "404,079"
+      },
+      "ratio": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "21.8%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 404079000000.0,
+    "ratio_external": 21.79,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.02,
+    "backcalc_gap_pct": 0.02,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제16기(2022년) 제15기(2021년) 제14기(2020년) 비고 연구개발비용 계 404,079 365,229 208,838 (주1)",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "크래프톤",
+    "corp_code": "00760971",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 1910576180288.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1910576180288.0,
+      "B_full_id": 1910576180288.0,
+      "C_full_name": 1910576180288.0,
+      "D_rnd_backcalc": 1915373737373.7373
+    },
+    "operating_profit": 768045608970.0,
+    "rcept_no": "20240318000420",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 65,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 379244.0,
+    "ratio_reported": 19.8,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "379,244"
+      },
+      "ratio": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "19.8%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 379244000000.0,
+    "ratio_external": 19.85,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.25,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제17기(2023년) 제16기(2022년) 제15기(2021년) 비고 연구개발비용 계 379,244 404,079 365,229 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "크래프톤",
+    "corp_code": "00760971",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 2709774106588.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 2709774106588.0,
+      "B_full_id": 2709774106588.0,
+      "C_full_name": 2709774106588.0,
+      "D_rnd_backcalc": 2705719745222.9297
+    },
+    "operating_profit": 1182487684188.0,
+    "rcept_no": "20250318001121",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 66,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 424798.0,
+    "ratio_reported": 15.7,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "424,798"
+      },
+      "ratio": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "15.7%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 424798000000.0,
+    "ratio_external": 15.68,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.15,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제18기(2024년) 제17기(2023년) 제16기(2022년) 비고 연구개발비용 계 424,798 379,244 404,079 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "크래프톤",
+    "corp_code": "00760971",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 3326553694966.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 3326553694966.0,
+      "B_full_id": 3326553694966.0,
+      "C_full_name": 3326553694966.0,
+      "D_rnd_backcalc": 3327608695652.174
+    },
+    "operating_profit": 1054380980188.0,
+    "rcept_no": "20260515002689",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 139,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "백만원",
+    "unit_src": "직전표-1",
+    "amount_raw": 612280.0,
+    "ratio_reported": 18.4,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "612,280"
+      },
+      "ratio": {
+        "row": 2,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "18.4%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 1,
+    "rnd_krw": 612280000000.0,
+    "ratio_external": 18.41,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.03,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제19기 (2025년) 제18기(2024년) 제17기(2023년) 비고 연구개발비용 계 612,280 424,798 379,244 -",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "엔씨소프트",
+    "corp_code": "00261443",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 2308817408865.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 2308817408865.0,
+      "B_full_id": 2308817408865.0,
+      "C_full_name": 2308817408865.0,
+      "D_rnd_backcalc": 2256922294736.8423
+    },
+    "operating_profit": 375213171049.0,
+    "rcept_no": "20220322000959",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 39,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "자기표",
+    "amount_raw": 428815236.0,
+    "ratio_reported": 19.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "428,815,236"
+      },
+      "ratio": {
+        "row": 7,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "19%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 0,
+    "rnd_krw": 428815236000.0,
+    "ratio_external": 18.57,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 2.25,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제25기 제24기 제23기 원 재 료 비 - - -",
+      "n_cols": 4
+    }
+  },
+  {
+    "corp_name": "엔씨소프트",
+    "corp_code": "00261443",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 2571792281800.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 2571792281800.0,
+      "B_full_id": 2571792281800.0,
+      "C_full_name": 2571792281800.0,
+      "D_rnd_backcalc": 2627946988888.889
+    },
+    "operating_profit": 559006120606.0,
+    "rcept_no": "20230321001334",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 45,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 473030458.0,
+    "ratio_reported": 18.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "473,030,458"
+      },
+      "ratio": {
+        "row": 7,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "18%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 0,
+    "rnd_krw": 473030458000.0,
+    "ratio_external": 18.39,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 2.18,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제26기 제25기 제24기 원 재 료 비 - - -",
+      "n_cols": 4
+    }
+  },
+  {
+    "corp_name": "엔씨소프트",
+    "corp_code": "00261443",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 1779832977766.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1779832977766.0,
+      "B_full_id": 1779832977766.0,
+      "C_full_name": 1779832977766.0,
+      "D_rnd_backcalc": 1796536550000.0
+    },
+    "operating_profit": 137283512800.0,
+    "rcept_no": "20240322000989",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 303,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 467099503.0,
+    "ratio_reported": 26.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "467,099,503"
+      },
+      "ratio": {
+        "row": 7,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "26%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 0,
+    "rnd_krw": 467099503000.0,
+    "ratio_external": 26.24,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.94,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제27기 제26기 제25기 원 재 료 비 - - -",
+      "n_cols": 4
+    }
+  },
+  {
+    "corp_name": "엔씨소프트",
+    "corp_code": "00261443",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 1578123132867.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1578123132867.0,
+      "B_full_id": 1578123132867.0,
+      "C_full_name": 1578123132867.0,
+      "D_rnd_backcalc": 1562224737037.0369
+    },
+    "operating_profit": -109215374026.0,
+    "rcept_no": "20250328002285",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 116,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 421800679.0,
+    "ratio_reported": 27.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "421,800,679"
+      },
+      "ratio": {
+        "row": 7,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "27%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 0,
+    "rnd_krw": 421800679000.0,
+    "ratio_external": 26.73,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 1.01,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제28기 제27기 제26기 원 재 료 비 - - -",
+      "n_cols": 4
+    }
+  },
+  {
+    "corp_name": "엔씨소프트",
+    "corp_code": "00261443",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 1506925065850.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 1506925065850.0,
+      "B_full_id": 1506925065850.0,
+      "C_full_name": 1506925065850.0,
+      "D_rnd_backcalc": 1478065459090.9092
+    },
+    "operating_profit": 16078426029.0,
+    "rcept_no": "20260318001448",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 55,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 325174401.0,
+    "ratio_reported": 22.0,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 6,
+        "col": 1,
+        "label": "연구개발비용 계",
+        "raw": "325,174,401"
+      },
+      "ratio": {
+        "row": 7,
+        "col": 1,
+        "label": "연구개발비 / 매출액 비율[연구개발비용계÷당기매출액×100]",
+        "raw": "22%"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 0,
+    "rnd_krw": 325174401000.0,
+    "ratio_external": 21.58,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 1.92,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과 목 제29기 제28기 제27기 원 재 료 비 - - -",
+      "n_cols": 4
+    }
+  },
+  {
+    "corp_name": "넷마블",
+    "corp_code": "00904672",
+    "bsns_year": 2021,
+    "fs_div": "CFS",
+    "revenue": 2506906374110.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 2506906374110.0,
+      "B_full_id": 2506906374110.0,
+      "C_full_name": 2506906374110.0,
+      "D_rnd_backcalc": 2506901227130.745
+    },
+    "operating_profit": 151024628649.0,
+    "rcept_no": "20220321001426",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 136,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 561796565.0,
+    "ratio_reported": 22.41,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "561,796,565"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "22.41"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 561796565000.0,
+    "ratio_external": 22.41,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.0,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과목 과목 제11기(2021년) 제10기(2020년) 제9기(2019년) 연구개발비용 계 연구개발비용 계 561,796,565 519,268,918 458,910",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "넷마블",
+    "corp_code": "00904672",
+    "bsns_year": 2022,
+    "fs_div": "CFS",
+    "revenue": 2673408275832.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 2673408275832.0,
+      "B_full_id": 2673408275832.0,
+      "C_full_name": 2673408275832.0,
+      "D_rnd_backcalc": 2673161454828.66
+    },
+    "operating_profit": -108688598689.0,
+    "rcept_no": "20230321001358",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 96,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 858084827.0,
+    "ratio_reported": 32.1,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "858,084,827"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "32.10"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 858084827000.0,
+    "ratio_external": 32.1,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.01,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과목 과목 제12기(2022년) 제11기(2021년) 제10기(2020년) 연구개발비용 계 연구개발비용 계 858,084,827 561,796,565 519,26",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "넷마블",
+    "corp_code": "00904672",
+    "bsns_year": 2023,
+    "fs_div": "CFS",
+    "revenue": 2502055599771.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 2502055599771.0,
+      "B_full_id": 2502055599771.0,
+      "C_full_name": 2502055599771.0,
+      "D_rnd_backcalc": 2502233259977.62
+    },
+    "operating_profit": -68468184309.0,
+    "rcept_no": "20240320001885",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 100,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 670848737.0,
+    "ratio_reported": 26.81,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "670,848,737"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "26.81"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 670848737000.0,
+    "ratio_external": 26.81,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.01,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과목 과목 제13기(2023년) 제12기(2022년) 제11기(2021년) 연구개발비용 계 연구개발비용 계 670,848,737 858,084,827 561,79",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "넷마블",
+    "corp_code": "00904672",
+    "bsns_year": 2024,
+    "fs_div": "CFS",
+    "revenue": 2663783169910.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 2663783169910.0,
+      "B_full_id": 2663783169910.0,
+      "C_full_name": 2663783169910.0,
+      "D_rnd_backcalc": 2663645270667.2266
+    },
+    "operating_profit": 215627215188.0,
+    "rcept_no": "20250321001686",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 87,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 634746668.0,
+    "ratio_reported": 23.83,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "634,746,668"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "23.83"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 634746668000.0,
+    "ratio_external": 23.83,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.01,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과목 과목 제14기(2024년) 제13기(2023년) 제12기(2022년) 연구개발비용 계 연구개발비용 계 634,746,668 670,848,737 858,08",
+      "n_cols": 5
+    }
+  },
+  {
+    "corp_name": "넷마블",
+    "corp_code": "00904672",
+    "bsns_year": 2025,
+    "fs_div": "CFS",
+    "revenue": 2835074411896.0,
+    "revenue_account_nm": "매출액",
+    "revenue_source": "A_major_name",
+    "revenue_verdict": "verified",
+    "revenue_paths": {
+      "A_major_name": 2835074411896.0,
+      "B_full_id": 2835074411896.0,
+      "C_full_name": 2835074411896.0,
+      "D_rnd_backcalc": 2835530091996.3203
+    },
+    "operating_profit": 352478352483.0,
+    "rcept_no": "20260318001170",
+    "revenue_warning": null,
+    "status": "ok",
+    "table_idx": 94,
+    "section": "6. 주요계약 및 연구개발활동",
+    "unit": "천원",
+    "unit_src": "직전표-1",
+    "amount_raw": 616444242.0,
+    "ratio_reported": 21.74,
+    "revenue_in_table": null,
+    "evidence": {
+      "amount": {
+        "row": 1,
+        "col": 2,
+        "label": "연구개발비용 계",
+        "raw": "616,444,242"
+      },
+      "ratio": {
+        "row": 5,
+        "col": 2,
+        "label": "연구개발비/매출액 비율",
+        "raw": "21.74"
+      }
+    },
+    "consolidated_cols": null,
+    "ratio_decimals": 2,
+    "rnd_krw": 616444242000.0,
+    "ratio_external": 21.74,
+    "verdict": "high",
+    "revenue_worst_gap_pct": 0.0,
+    "backcalc_gap_pct": 0.02,
+    "col_structure": {
+      "both": false,
+      "연결": false,
+      "별도": false,
+      "header": "과목 과목 제15기(2025년) 제14기(2024년) 제13기(2023년) 연구개발비용 계 연구개발비용 계 616,444,242 634,746,668 670,84",
+      "n_cols": 5
+    }
+  }
+]
