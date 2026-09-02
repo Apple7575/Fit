@@ -27,7 +27,7 @@ export function ComparisonInsightsCard({ state }: ComparisonInsightsCardProps) {
   return (
     <section
       aria-labelledby="comparison-insights-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <h3
         className="flex items-center gap-2 text-base font-extrabold text-slate-950"

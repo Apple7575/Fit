@@ -55,7 +55,7 @@ export function IndustryComparisonSection({
     industryCode !== null && candidatesState.status === 'loading';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
           동일 산업 기업 비교
@@ -108,7 +108,7 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
     <>
       <section
         aria-label="비교 조건"
-        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
       >
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
           <div className="shrink-0 lg:w-48 lg:border-r lg:border-slate-100 lg:pr-5">
@@ -198,10 +198,10 @@ export function ComparisonResult({ comparison, metricKey, insights }: Comparison
 
   return (
     <>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
         <section
           aria-labelledby="comparison-chart-title"
-          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
         >
           <h3 className="text-base font-extrabold text-slate-950" id="comparison-chart-title">
             {label} 비교{' '}
@@ -230,7 +230,7 @@ export function ComparisonResult({ comparison, metricKey, insights }: Comparison
 
       <section
         aria-labelledby="comparison-table-title"
-        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
       >
         <h3 className="text-base font-extrabold text-slate-950" id="comparison-table-title">
           기업 지표 비교{' '}
