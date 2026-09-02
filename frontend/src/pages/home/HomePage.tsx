@@ -62,10 +62,10 @@ export function HomePage() {
   };
 
   const focusSearch = useCallback(() => {
-    // jsdom 에는 scrollIntoView 가 없다
+    // 히어로 스크롤 구간의 끝(검색창이 완전히 올라온 지점)으로 맞춘다. jsdom 에는 scrollIntoView 가 없다
     heroRef.current?.scrollIntoView?.({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'start',
+      block: 'end',
     });
     const input = heroRef.current?.querySelector<HTMLInputElement>('input[type="search"]');
     // 스크롤이 끝난 뒤 포커스해야 브라우저가 스크롤을 건너뛰지 않는다

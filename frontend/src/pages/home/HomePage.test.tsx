@@ -79,10 +79,13 @@ describe('HomePage', () => {
     ]);
     expect(screen.getAllByRole('link', { name: /근거 보기/ })).toHaveLength(3);
 
+    // 배경 영상은 자동재생하지 않고 스크롤에 따라 프레임을 넘긴다
     const video = screen.getByLabelText('기분 서비스 소개 영상') as HTMLVideoElement;
-    expect(video.getAttribute('src')).toBe('/landing.mp4');
-    expect(video).toHaveAttribute('loop');
+    expect(video.getAttribute('src')).toBe('/landing-scrub.mp4');
+    expect(video).not.toHaveAttribute('autoplay');
+    expect(video).not.toHaveAttribute('loop');
     expect(video).toHaveAttribute('playsinline');
+    expect(video).toHaveAttribute('preload', 'auto');
     expect(video.muted).toBe(true);
     expect(screen.getByRole('link', { name: 'NAVER' })).toHaveAttribute(
       'href',
