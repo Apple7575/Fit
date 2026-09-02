@@ -11,8 +11,9 @@ interface PeerPickerProps {
 type SearchStatus = 'idle' | 'loading' | 'success' | 'error';
 
 /**
- * 비교 기업 선택: 조회 기업(고정) + 고른 기업 칩(×로 제거) + 기업명 검색으로 추가.
- * 조회 기업 포함 최대 MAX_PEERS + 1 개. 한도에 닿으면 검색 결과의 추가 버튼을 비활성화한다.
+ * 비교 기업 선택 — 한 줄: [조회 기업(고정)] [선택 기업 ×]… [＋ 기업 추가 입력].
+ * 검색 결과는 입력창 아래 드롭다운으로 띄워 레이아웃을 밀지 않는다.
+ * 조회 기업 포함 최대 MAX_PEERS + 1 개. 한도에 닿으면 입력을 비활성화한다.
  */
 export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
   const [keyword, setKeyword] = useState('');
@@ -43,11 +44,15 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
     }
   };
 
+  const close = () => {
+    setStatus('idle');
+    setResults([]);
+  };
+
   const add = (company: IndustryCompany) => {
     if (full) return;
     onChange([...peers, company]);
-    setStatus('idle');
-    setResults([]);
+    close();
     setKeyword('');
   };
 
@@ -57,28 +62,28 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
   const chosen = new Set([target.corpCode, ...peers.map((p) => p.corpCode)]);
 
   return (
-    <div>
-      <p className="text-sm font-bold text-slate-700">
-        비교 기업 선택
-        <span className="ml-2 text-xs font-medium text-slate-400">
-          (최대 {MAX_PEERS + 1}개)
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="mr-1 text-sm font-bold text-slate-700">
+        비교 기업
+        <span className="ml-1 text-xs font-medium text-slate-400">
+          {peers.length + 1}/{MAX_PEERS + 1}
         </span>
-      </p>
+      </span>
 
-      <ul aria-label="선택된 비교 기업" className="mt-2 flex flex-wrap gap-2">
-        <li className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
+      <ul aria-label="선택된 비교 기업" className="flex flex-wrap items-center gap-2">
+        <li className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-sm font-bold text-blue-700">
           {target.corpName}
-          <span className="text-[11px] font-semibold text-blue-500">조회 기업</span>
+          <span className="text-[10px] font-semibold text-blue-500">조회 기업</span>
         </li>
         {peers.map((peer) => (
           <li
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white pr-1 pl-2.5 text-sm font-semibold text-slate-700"
             key={peer.corpCode}
           >
             {peer.corpName}
             <button
               aria-label={`${peer.corpName} 제거`}
-              className="rounded-full px-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-md px-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               onClick={() => remove(peer.corpCode)}
               type="button"
             >
@@ -88,62 +93,84 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
         ))}
       </ul>
 
-      <form className="mt-3 flex max-w-md gap-2" onSubmit={submit} role="search">
-        <label className="sr-only" htmlFor="peer-search-keyword">
-          비교할 기업명
-        </label>
-        <input
-          autoComplete="off"
-          className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-          disabled={full}
-          id="peer-search-keyword"
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder={full ? '최대 개수를 선택했습니다' : '비교할 기업명 검색'}
-          type="search"
-          value={keyword}
-        />
-        <button
-          className="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-          disabled={full || keyword.trim() === ''}
-          type="submit"
-        >
-          검색
-        </button>
-      </form>
+      <div className="relative">
+        <form className="flex items-center" onSubmit={submit} role="search">
+          <label className="sr-only" htmlFor="peer-search-keyword">
+            비교할 기업명
+          </label>
+          <div className="flex h-8 items-center rounded-lg border border-dashed border-slate-300 bg-white pr-1 pl-2.5 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 has-[:disabled]:bg-slate-50">
+            <span aria-hidden="true" className="mr-1 text-slate-400">
+              ＋
+            </span>
+            <input
+              autoComplete="off"
+              className="w-28 min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+              disabled={full}
+              id="peer-search-keyword"
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder={full ? '최대 선택' : '기업 추가'}
+              type="search"
+              value={keyword}
+            />
+            <button
+              aria-label="검색"
+              className="flex size-6 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={full || keyword.trim() === ''}
+              type="submit"
+            >
+              <svg aria-hidden="true" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        </form>
 
-      {status === 'loading' && (
-        <p className="mt-2 text-xs font-semibold text-slate-400" role="status">
-          검색 중…
-        </p>
-      )}
-      {status === 'error' && (
-        <p className="mt-2 text-xs font-semibold text-amber-800" role="alert">
-          검색에 실패했습니다. 잠시 후 다시 시도해 주세요.
-        </p>
-      )}
-      {status === 'success' &&
-        (results.length === 0 ? (
-          <p className="mt-2 text-xs font-semibold text-slate-400">검색 결과가 없습니다</p>
-        ) : (
-          <ul aria-label="검색 결과" className="mt-2 flex flex-wrap gap-2">
-            {results.map((company) => {
-              const already = chosen.has(company.corpCode);
-              return (
-                <li key={company.corpCode}>
-                  <button
-                    className="rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-                    disabled={already || full}
-                    onClick={() => add(company)}
-                    type="button"
-                  >
-                    + {company.corpName}
-                    {already && <span className="ml-1 text-xs text-slate-400">(선택됨)</span>}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ))}
+        {status !== 'idle' && (
+          <div className="absolute top-full left-0 z-20 mt-1 min-w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+            {status === 'loading' && (
+              <p className="px-2 py-1.5 text-xs font-semibold text-slate-400" role="status">
+                검색 중…
+              </p>
+            )}
+            {status === 'error' && (
+              <p className="px-2 py-1.5 text-xs font-semibold text-amber-800" role="alert">
+                검색에 실패했습니다. 잠시 후 다시 시도해 주세요.
+              </p>
+            )}
+            {status === 'success' &&
+              (results.length === 0 ? (
+                <p className="px-2 py-1.5 text-xs font-semibold text-slate-400">검색 결과가 없습니다</p>
+              ) : (
+                <ul aria-label="검색 결과" className="max-h-56 overflow-y-auto">
+                  {results.map((company) => {
+                    const already = chosen.has(company.corpCode);
+                    return (
+                      <li key={company.corpCode}>
+                        <button
+                          className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-1.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          disabled={already || full}
+                          onClick={() => add(company)}
+                          type="button"
+                        >
+                          <span>+ {company.corpName}</span>
+                          {already && <span className="text-xs text-slate-400">선택됨</span>}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ))}
+            <button
+              className="mt-1 w-full rounded-lg px-2 py-1 text-right text-[11px] font-semibold text-slate-400 hover:text-slate-600"
+              onClick={close}
+              type="button"
+            >
+              닫기
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -108,18 +108,18 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
     <>
       <section
         aria-label="비교 조건"
-        className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+        className="rounded-3xl border border-slate-200 bg-white px-5 py-3 shadow-sm"
       >
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-          <div className="shrink-0 lg:w-48 lg:border-r lg:border-slate-100 lg:pr-5">
-            <p className="text-sm font-bold text-slate-700">산업</p>
-            <p className="mt-2 inline-flex rounded-xl bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <div className="flex items-center gap-2 lg:border-r lg:border-slate-100 lg:pr-5">
+            <span className="text-sm font-bold text-slate-700">산업</span>
+            <span className="inline-flex h-8 items-center rounded-lg bg-blue-50 px-2.5 text-sm font-bold text-blue-700">
               {resolvedIndustry ?? '산업 정보 없음'}
-            </p>
+            </span>
             {comparison?.industry && (
-              <p className="mt-2 text-xs text-slate-400">
-                동종 {comparison.industry.companyCount.toLocaleString('ko-KR')}개사
-              </p>
+              <span className="text-xs text-slate-400">
+                {comparison.industry.companyCount.toLocaleString('ko-KR')}개사
+              </span>
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -127,7 +127,7 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
           </div>
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 lg:flex-row lg:items-center">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 pt-3">
           <p className="shrink-0 text-sm font-bold text-slate-700">비교 지표</p>
           <PillRadioGroup
             label="비교 지표 선택"
