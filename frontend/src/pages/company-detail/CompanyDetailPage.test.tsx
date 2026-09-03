@@ -55,6 +55,11 @@ const stubFetchByUrl = (
     if (url.includes('/industry-comparison')) {
       return Promise.resolve(json(emptyComparison));
     }
+    if (url.includes('/api/industries/')) {
+      return Promise.resolve(
+        json({ success: true, data: { industry: null, companies: [] } }),
+      );
+    }
     if (url.includes('/metrics/timeseries')) {
       return Promise.resolve(
         json({
@@ -114,7 +119,7 @@ describe('CompanyDetailPage', () => {
     await user.click(screen.getByRole('link', { name: '산업 비교' }));
 
     expect(
-      await screen.findByRole('heading', { name: /산업 비교/ }),
+      await screen.findByRole('heading', { name: '동일 산업 기업 비교' }),
     ).toBeInTheDocument();
   });
 
