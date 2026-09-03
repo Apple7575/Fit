@@ -5,7 +5,7 @@ const TABS = [
   { label: '성장 분석', to: 'growth' },
   { label: '집중 분야', to: 'focus' },
   { label: '산업 비교', to: 'comparison' },
-  { label: '최근 이슈', to: null },
+  { label: '최근 이슈', to: 'issues' },
 ] as const;
 
 /** 상세 페이지 탭. to 가 없는 탭은 화면 미구현이라 비활성 버튼으로만 보여준다. */

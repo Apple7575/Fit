@@ -8,6 +8,7 @@ import { CompanyComparisonTab } from '../pages/company-detail/CompanyComparisonT
 import { CompanyGrowthTab } from '../pages/company-detail/CompanyGrowthTab';
 import { CompanyDetailPage } from '../pages/company-detail/CompanyDetailPage';
 import { CompanyFocusTab } from '../pages/company-detail/CompanyFocusTab';
+import { CompanyIssuesTab } from '../pages/company-detail/CompanyIssuesTab';
 import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
 import { HomePage } from '../pages/home/HomePage';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage';
@@ -26,6 +27,7 @@ const routes: RouteObject[] = [
       { path: 'growth', element: <CompanyGrowthTab /> },
       { path: 'focus', element: <CompanyFocusTab /> },
       { path: 'comparison', element: <CompanyComparisonTab /> },
+      { path: 'issues', element: <CompanyIssuesTab /> },
     ],
   },
   {

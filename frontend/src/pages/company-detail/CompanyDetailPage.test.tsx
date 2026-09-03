@@ -55,6 +55,31 @@ const stubFetchByUrl = (
     if (url.includes('/industry-comparison')) {
       return Promise.resolve(json(emptyComparison));
     }
+    if (url.includes('/news/stats')) {
+      return Promise.resolve(new Response('Not Found', { status: 404 }));
+    }
+    if (url.includes('/news/top')) {
+      return Promise.resolve(json({ success: true, data: { items: [] } }));
+    }
+    if (url.includes('/news')) {
+      return Promise.resolve(
+        json({
+          success: true,
+          data: {
+            items: [
+              {
+                id: 1,
+                title: '테스트 뉴스',
+                description: null,
+                publishedAt: '2025-05-13',
+                originalUrl: 'https://news.example.com/1',
+              },
+            ],
+            total: 1,
+          },
+        }),
+      );
+    }
     if (url.includes('/api/industries/')) {
       return Promise.resolve(
         json({ success: true, data: { industry: null, companies: [] } }),
@@ -188,16 +213,32 @@ describe('CompanyDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('미구현 탭은 비활성 버튼으로 표시된다', async () => {
+  it('최근 이슈 탭은 통계·TOP 이 없어도 기본 뉴스 목록을 보여준다', async () => {
+    vi.stubGlobal('fetch', stubFetchByUrl());
+
+    renderAt('/companies/00126380/issues');
+
+    expect(
+      await screen.findByRole('heading', { name: '최근 기업 이슈' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '최신 뉴스' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: /테스트 뉴스/ }),
+    ).toHaveAttribute('href', 'https://news.example.com/1');
+    expect(screen.queryByRole('heading', { name: /중요 뉴스 TOP/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('최근 뉴스 수')).not.toBeInTheDocument();
+    expect(await screen.findByText('데이터 기준: 2025.05.13')).toBeInTheDocument();
+  });
+
+  it('상세 탭 다섯 개가 모두 링크로 표시된다', async () => {
     vi.stubGlobal('fetch', stubFetchByUrl());
 
     renderAt('/companies/00126380');
     await screen.findByRole('heading', { level: 1, name: '삼성전자' });
 
-    for (const label of ['최근 이슈']) {
-      expect(screen.getByRole('button', { name: label })).toBeDisabled();
-    }
-    for (const label of ['성장 분석', '집중 분야']) {
+    for (const label of ['기업 개요', '성장 분석', '집중 분야', '산업 비교', '최근 이슈']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
   });
