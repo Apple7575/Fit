@@ -1,0 +1,52 @@
+{
+  "_request": {
+    "path": "/api/companies/01384787/metrics/timeseries",
+    "params": {
+      "from": 2021,
+      "to": 2025,
+      "keys": "revenue"
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 31,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "range": {
+        "from": 2021,
+        "to": 2025
+      },
+      "series": [
+        {
+          "key": "revenue",
+          "label": "매출액",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": null
+            },
+            {
+              "year": 2022,
+              "value": null
+            },
+            {
+              "year": 2023,
+              "value": null
+            },
+            {
+              "year": 2024,
+              "value": 224084645616
+            },
+            {
+              "year": 2025,
+              "value": 294545937439
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "text": null
+}
