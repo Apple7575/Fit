@@ -2,8 +2,8 @@ import { NavLink } from 'react-router-dom';
 
 const TABS = [
   { label: '기업 개요', to: 'overview' },
-  { label: '성장 분석', to: null },
-  { label: '집중 분야', to: null },
+  { label: '성장 분석', to: 'growth' },
+  { label: '집중 분야', to: 'focus' },
   { label: '산업 비교', to: 'comparison' },
   { label: '최근 이슈', to: 'issues' },
 ] as const;

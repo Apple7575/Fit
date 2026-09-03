@@ -80,6 +80,54 @@ const stubFetchByUrl = (
         }),
       );
     }
+    if (url.includes('/api/industries/')) {
+      return Promise.resolve(
+        json({ success: true, data: { industry: null, companies: [] } }),
+      );
+    }
+    if (url.includes('/metrics/timeseries')) {
+      return Promise.resolve(
+        json({
+          success: true,
+          data: { range: { from: 2021, to: 2025 }, series: [] },
+        }),
+      );
+    }
+    if (url.includes('/metrics')) {
+      return Promise.resolve(
+        json({
+          success: true,
+          data: {
+            corpCode: '00126380',
+            year: 2025,
+            metrics: [
+              { key: 'revenue', value: 1_0000_0000_0000, yoy: null },
+            ],
+            profitability: null,
+          },
+        }),
+      );
+    }
+    if (url.includes('/activities')) {
+      return Promise.resolve(
+        json({
+          success: true,
+          data: {
+            items: [
+              { year: 2025, type: 'facility', field: '파운드리', purpose: '증설', amount: 1 },
+            ],
+          },
+        }),
+      );
+    }
+    if (url.includes('/segments')) {
+      return Promise.resolve(
+        json({ success: true, data: { year: 2025, employeeTotalChange: 10, segments: [] } }),
+      );
+    }
+    if (url.includes('/focus')) {
+      return Promise.resolve(new Response('Not Found', { status: 404 }));
+    }
     return Promise.resolve(typeof detail === 'function' ? detail() : detail);
   });
 
@@ -116,8 +164,53 @@ describe('CompanyDetailPage', () => {
     await user.click(screen.getByRole('link', { name: '산업 비교' }));
 
     expect(
-      await screen.findByRole('heading', { name: /산업 비교/ }),
+      await screen.findByRole('heading', { name: '동일 산업 기업 비교' }),
     ).toBeInTheDocument();
+  });
+
+  it('성장 분석 탭은 기준연도 핵심지표와 5년 추이를 보여준다', async () => {
+    const fetchMock = stubFetchByUrl();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderAt('/companies/00126380/growth');
+
+    expect(
+      await screen.findByRole('list', { name: '기준연도 핵심지표' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '매출액 추이' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('최근 5년 성장 분석 (2021–2025)')).toBeInTheDocument();
+    // 기준연도는 기본정보의 dataYear(2025) 를 그대로 넘기고, 연도 없는 선행 호출은 없다
+    const metricsCalls = fetchMock.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => /\/metrics(\?|$)/.test(url));
+    expect(metricsCalls).toEqual([
+      expect.stringContaining('year=2025'),
+    ]);
+  });
+
+  it('집중 분야 탭은 확정 영역을 보여주고 조건부 영역은 404 면 숨긴다', async () => {
+    vi.stubGlobal('fetch', stubFetchByUrl());
+
+    renderAt('/companies/00126380/focus');
+
+    expect(
+      await screen.findByRole('heading', { name: '기업 집중 분야 분석' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '투자' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '인력 변화' }),
+    ).toBeInTheDocument();
+    expect((await screen.findAllByText('증설')).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('heading', { name: '사업 방향' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: '집중 분야 요약' }),
+    ).not.toBeInTheDocument();
   });
 
   it('최근 이슈 탭은 통계·TOP 이 없어도 기본 뉴스 목록을 보여준다', async () => {
@@ -139,16 +232,15 @@ describe('CompanyDetailPage', () => {
     expect(await screen.findByText('데이터 기준: 2025.05.13')).toBeInTheDocument();
   });
 
-  it('미구현 탭은 비활성 버튼으로 표시된다', async () => {
+  it('상세 탭 다섯 개가 모두 링크로 표시된다', async () => {
     vi.stubGlobal('fetch', stubFetchByUrl());
 
     renderAt('/companies/00126380');
     await screen.findByRole('heading', { level: 1, name: '삼성전자' });
 
-    for (const label of ['성장 분석', '집중 분야']) {
-      expect(screen.getByRole('button', { name: label })).toBeDisabled();
+    for (const label of ['기업 개요', '성장 분석', '집중 분야', '산업 비교', '최근 이슈']) {
+      expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
-    expect(screen.getByRole('link', { name: '최근 이슈' })).toBeInTheDocument();
   });
 
   it('기본정보 API 가 실패해도 페이지는 유지된다 (F-31)', async () => {
