@@ -10,15 +10,19 @@ import java.util.List;
 
 public interface MetricRepository extends JpaRepository<Metric, String> {
 
-    /** 값이 하나도 없는 기업의 응답 골격을 만들 때와, keys 검증에 쓸 지원 목록을 만들 때 쓴다. */
+    /** {@code keys} 검증에 쓸 지원 목록. 기본 6종은 이 안에서 {@code isCore} 로 다시 거른다. */
     List<Metric> findByActiveTrueOrderByDisplayOrderAsc();
 
     /**
-     * 지정 연도의 지표 6종을 값·전년값과 함께 조회한다.
+     * 지정 연도의 지표 값을 전년값과 함께 조회한다.
      *
      * <p>기준이 {@code metric} 카탈로그이고 값 테이블을 LEFT JOIN 하므로,
-     * 적재된 값이 하나도 없어도 결과는 항상 활성 지표 수만큼 나온다.
+     * 적재된 값이 하나도 없어도 결과는 항상 요청한 지표 수만큼 나온다.
      * (AC: 일부 값 누락 시 응답 구조는 유지된다)
+     *
+     * <p>{@code is_active} 로 거르지 않고 {@code metricCodes} 로만 좁힌다. 이 목록은
+     * 서비스가 카탈로그에서 만들어 넘기므로(기본이면 core, 아니면 검증을 통과한 keys)
+     * 여기서 한 번 더 거를 필요가 없다.
      *
      * <p>전년 값은 저장하지 않고 같은 테이블의 {@code fiscal_year - 1} 행을
      * 한 번 더 조인해 조회 시점에 만든다. 값을 저장하면 재적재 때 원본과 어긋난다.
@@ -42,12 +46,34 @@ public interface MetricRepository extends JpaRepository<Metric, String> {
                    ON prv.metric_code = m.metric_code
                   AND prv.corp_code   = :corpCode
                   AND prv.fiscal_year = :prevYear
-            WHERE m.is_active
+            WHERE m.metric_code IN (:metricCodes)
             ORDER BY m.display_order
             """, nativeQuery = true)
     List<MetricValueProjection> findMetricValues(@Param("corpCode") String corpCode,
+                                                 @Param("metricCodes") Collection<String> metricCodes,
                                                  @Param("year") int year,
                                                  @Param("prevYear") int prevYear);
+
+    /**
+     * 수익성·안정성 비율의 원본 값을 읽는다.
+     *
+     * <p>카탈로그를 거치지 않고 {@code company_metric} 을 직접 읽는 이유는, 부채총계·자본총계가
+     * {@code is_active = false} 인 내부 지표라서다(V7). 화면에 내보낼 지표가 아니라 비율 계산의
+     * 입력이므로 다른 조회에는 걸리지 않아야 하고, 여기서만 이름을 대고 꺼내 온다.
+     *
+     * <p>값이 없는 계정은 행 자체가 나오지 않는다. 없는 것과 0 인 것을 가르는 일은 서비스가 한다.
+     */
+    @Query(value = """
+            SELECT cm.metric_code   AS "metricCode",
+                   cm.metric_value  AS "value"
+            FROM company_metric cm
+            WHERE cm.corp_code   = :corpCode
+              AND cm.fiscal_year = :year
+              AND cm.metric_code IN (:metricCodes)
+            """, nativeQuery = true)
+    List<MetricAmountProjection> findRawValues(@Param("corpCode") String corpCode,
+                                               @Param("metricCodes") Collection<String> metricCodes,
+                                               @Param("year") int year);
 
     /**
      * year 를 주지 않았을 때 쓸 기준연도. 값이 하나도 없으면 비어 있다.
@@ -66,6 +92,12 @@ public interface MetricRepository extends JpaRepository<Metric, String> {
      * 빠진 연도를 SQL 로 채우려면 generate_series 가 필요한데, 그러면 자릿수 처리와
      * 격자 채우기가 SQL 과 자바로 흩어져 검증이 어려워진다.
      *
+     * <p>호출자는 응답 구간보다 한 해 앞선 {@code fromYear} 를 넘긴다. 구간 첫 해의
+     * {@code changeRate} 를 내려면 그 전년 값이 있어야 하기 때문이다. 여분의 해는
+     * 서비스가 격자를 만들 때 버린다.
+     *
+     * <p>{@code is_active} 로 거르지 않는 것은 {@code findMetricValues} 와 같은 이유다.
+     *
      * <p>정렬은 {@code company_metric_timeseries_idx}(corp_code, metric_code, fiscal_year)
      * 가 그대로 받아준다.
      */
@@ -81,8 +113,7 @@ public interface MetricRepository extends JpaRepository<Metric, String> {
                    ON cm.metric_code = m.metric_code
                   AND cm.corp_code   = :corpCode
                   AND cm.fiscal_year BETWEEN :fromYear AND :toYear
-            WHERE m.is_active
-              AND m.metric_code IN (:metricCodes)
+            WHERE m.metric_code IN (:metricCodes)
             ORDER BY m.display_order, cm.fiscal_year
             """, nativeQuery = true)
     List<MetricPointProjection> findMetricPoints(@Param("corpCode") String corpCode,

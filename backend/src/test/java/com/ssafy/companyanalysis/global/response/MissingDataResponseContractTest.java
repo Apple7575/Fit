@@ -17,6 +17,7 @@ import com.ssafy.companyanalysis.metric.dto.MetricRangeResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricSeriesResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricTimeseriesResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricValueResponse;
+import com.ssafy.companyanalysis.metric.dto.ProfitabilityResponse;
 import com.ssafy.companyanalysis.metric.service.CompanyMetricService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,6 @@ import java.util.Map;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -122,23 +122,29 @@ class MissingDataResponseContractTest {
     @Test
     @DisplayName("규칙3 - 없는 값을 0 으로 바꾸지 않는다 (0 원과 미공시는 다른 사실이다)")
     void missingValueIsNotZero() throws Exception {
-        given(companyMetricService.getMetrics(eq(CORP_CODE), any(), anyBoolean()))
+        given(companyMetricService.getMetrics(eq(CORP_CODE), any(), any()))
                 .willReturn(new CompanyMetricsResponse(CORP_CODE, 2025, List.of(
                         new MetricValueResponse("operating_profit", "영업이익", BigDecimal.ZERO, "KRW", null),
-                        new MetricValueResponse("rd_ratio", "R&D/매출", null, "%", null))));
+                        new MetricValueResponse("net_income", "당기순이익", null, "KRW", null)),
+                        new ProfitabilityResponse(BigDecimal.ZERO, null, null)));
 
         mockMvc.perform(get("/api/companies/{corpCode}/metrics", CORP_CODE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.metrics[0].value").value(0))
                 .andExpect(jsonPath("$.data.metrics[1].value").hasJsonPath())
-                .andExpect(jsonPath("$.data.metrics[1].value").value(nullValue()));
+                .andExpect(jsonPath("$.data.metrics[1].value").value(nullValue()))
+                // 비율도 같은 규칙이다. 0 은 그대로 0 이고, 못 내는 값은 null 이다.
+                .andExpect(jsonPath("$.data.profitability.operatingMargin").value(0))
+                .andExpect(jsonPath("$.data.profitability.netMargin").hasJsonPath())
+                .andExpect(jsonPath("$.data.profitability.netMargin").value(nullValue()));
     }
 
     @Test
     @DisplayName("규칙4 - 적재값이 하나도 없어도 200 이고, 기준연도만 null 이며 골격은 유지된다")
     void emptyCompanyStillReturnsFullSkeleton() throws Exception {
-        given(companyMetricService.getMetrics(eq(CORP_CODE), any(), anyBoolean()))
-                .willReturn(new CompanyMetricsResponse(CORP_CODE, null, emptyMetrics()));
+        given(companyMetricService.getMetrics(eq(CORP_CODE), any(), any()))
+                .willReturn(new CompanyMetricsResponse(CORP_CODE, null, emptyMetrics(),
+                        new ProfitabilityResponse(null, null, null)));
 
         mockMvc.perform(get("/api/companies/{corpCode}/metrics", CORP_CODE))
                 .andExpect(status().isOk())
@@ -149,8 +155,12 @@ class MissingDataResponseContractTest {
                 .andExpect(jsonPath("$.data.metrics[0].key").value("revenue"))
                 .andExpect(jsonPath("$.data.metrics[0].unit").value("KRW"))
                 .andExpect(jsonPath("$.data.metrics[0].value").value(nullValue()))
-                .andExpect(jsonPath("$.data.metrics[5].key").value("rd_ratio"))
-                .andExpect(jsonPath("$.data.metrics[5].value").value(nullValue()));
+                .andExpect(jsonPath("$.data.metrics[5].key").value("average_tenure"))
+                .andExpect(jsonPath("$.data.metrics[5].value").value(nullValue()))
+                // 계산할 원본이 하나도 없어도 블록을 생략하지 않는다.
+                .andExpect(jsonPath("$.data.profitability").hasJsonPath())
+                .andExpect(jsonPath("$.data.profitability.debtRatio").hasJsonPath())
+                .andExpect(jsonPath("$.data.profitability.debtRatio").value(nullValue()));
     }
 
     @Test
@@ -160,11 +170,11 @@ class MissingDataResponseContractTest {
                 .willReturn(new MetricTimeseriesResponse(
                         new MetricRangeResponse(2021, 2025),
                         List.of(new MetricSeriesResponse("revenue", "매출액", "KRW", List.of(
-                                new MetricPointResponse(2021, null),
-                                new MetricPointResponse(2022, null),
-                                new MetricPointResponse(2023, new BigDecimal("258900000000000")),
-                                new MetricPointResponse(2024, null),
-                                new MetricPointResponse(2025, null))))));
+                                new MetricPointResponse(2021, null, null),
+                                new MetricPointResponse(2022, null, null),
+                                new MetricPointResponse(2023, new BigDecimal("258900000000000"), null),
+                                new MetricPointResponse(2024, null, null),
+                                new MetricPointResponse(2025, null, null))))));
 
         mockMvc.perform(get("/api/companies/{corpCode}/metrics/timeseries", CORP_CODE))
                 .andExpect(status().isOk())
@@ -207,7 +217,7 @@ class MissingDataResponseContractTest {
     @Test
     @DisplayName("규칙6 - 기업 자체가 없는 것은 결측이 아니라 404 COMPANY_NOT_FOUND 다")
     void unknownCompanyIsNotTreatedAsMissingData() throws Exception {
-        given(companyMetricService.getMetrics(anyString(), any(), anyBoolean()))
+        given(companyMetricService.getMetrics(anyString(), any(), any()))
                 .willThrow(new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         mockMvc.perform(get("/api/companies/{corpCode}/metrics", "00000000"))
@@ -235,10 +245,10 @@ class MissingDataResponseContractTest {
         return List.of(
                 new MetricValueResponse("revenue", "매출액", null, "KRW", null),
                 new MetricValueResponse("operating_profit", "영업이익", null, "KRW", null),
+                new MetricValueResponse("net_income", "당기순이익", null, "KRW", null),
                 new MetricValueResponse("employee_count", "직원 수", null, "PERSON", null),
                 new MetricValueResponse("average_salary", "1인 평균 급여", null, "KRW", null),
-                new MetricValueResponse("average_tenure", "평균 근속", null, "YEAR", null),
-                new MetricValueResponse("rd_ratio", "R&D/매출", null, "%", null));
+                new MetricValueResponse("average_tenure", "평균 근속", null, "YEAR", null));
     }
 
     /** 비교 지표 4종을 순서대로 null 로 채운 맵. */

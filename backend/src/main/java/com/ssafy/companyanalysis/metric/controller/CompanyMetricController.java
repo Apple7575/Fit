@@ -38,24 +38,24 @@ public class CompanyMetricController {
     }
 
     /**
-     * 지정 연도의 지표 6종을 한 번에 반환한다. 값이 없는 지표도 자리는 유지된다.
+     * 지정 연도의 지표와 수익성·안정성 비율을 한 번에 반환한다. 값이 없는 지표도 자리는 유지된다.
      *
      * @param year 생략하면 그 기업의 최신 적재 연도
-     * @param yoy  false 면 전년 대비를 계산하지 않는다
+     * @param keys 쉼표로 구분한 지표 슬러그. 생략하면 기본 6종
      */
     @GetMapping
     public ApiResponse<CompanyMetricsResponse> getMetrics(
             @PathVariable String corpCode,
             @RequestParam(required = false) @Min(MIN_YEAR) @Max(MAX_YEAR) Integer year,
-            @RequestParam(defaultValue = "true") boolean yoy) {
+            @RequestParam(required = false) List<String> keys) {
 
-        return ApiResponse.ok(companyMetricService.getMetrics(corpCode, year, yoy));
+        return ApiResponse.ok(companyMetricService.getMetrics(corpCode, year, keys));
     }
 
     /**
      * 구간 내 지표별 시계열을 반환한다(F-14). 값이 없는 해도 연도는 빠지지 않는다.
      *
-     * @param keys 쉼표로 구분한 지표 슬러그. 생략하면 활성 지표 전체
+     * @param keys 쉼표로 구분한 지표 슬러그. 생략하면 기본 6종
      */
     @GetMapping("/timeseries")
     public ApiResponse<MetricTimeseriesResponse> getTimeseries(
