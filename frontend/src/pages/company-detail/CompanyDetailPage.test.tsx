@@ -83,6 +83,26 @@ const stubFetchByUrl = (
         }),
       );
     }
+    if (url.includes('/activities')) {
+      return Promise.resolve(
+        json({
+          success: true,
+          data: {
+            items: [
+              { year: 2025, type: 'facility', field: '파운드리', purpose: '증설', amount: 1 },
+            ],
+          },
+        }),
+      );
+    }
+    if (url.includes('/segments')) {
+      return Promise.resolve(
+        json({ success: true, data: { year: 2025, employeeTotalChange: 10, segments: [] } }),
+      );
+    }
+    if (url.includes('/focus')) {
+      return Promise.resolve(new Response('Not Found', { status: 404 }));
+    }
     return Promise.resolve(typeof detail === 'function' ? detail() : detail);
   });
 
@@ -145,16 +165,41 @@ describe('CompanyDetailPage', () => {
     ]);
   });
 
+  it('집중 분야 탭은 확정 영역을 보여주고 조건부 영역은 404 면 숨긴다', async () => {
+    vi.stubGlobal('fetch', stubFetchByUrl());
+
+    renderAt('/companies/00126380/focus');
+
+    expect(
+      await screen.findByRole('heading', { name: '기업 집중 분야 분석' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '투자' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '인력 변화' }),
+    ).toBeInTheDocument();
+    expect((await screen.findAllByText('증설')).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('heading', { name: '사업 방향' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: '집중 분야 요약' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('미구현 탭은 비활성 버튼으로 표시된다', async () => {
     vi.stubGlobal('fetch', stubFetchByUrl());
 
     renderAt('/companies/00126380');
     await screen.findByRole('heading', { level: 1, name: '삼성전자' });
 
-    for (const label of ['집중 분야', '최근 이슈']) {
+    for (const label of ['최근 이슈']) {
       expect(screen.getByRole('button', { name: label })).toBeDisabled();
     }
-    expect(screen.getByRole('link', { name: '성장 분석' })).toBeInTheDocument();
+    for (const label of ['성장 분석', '집중 분야']) {
+      expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
+    }
   });
 
   it('기본정보 API 가 실패해도 페이지는 유지된다 (F-31)', async () => {
