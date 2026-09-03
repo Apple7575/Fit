@@ -9,9 +9,12 @@ import jakarta.persistence.Table;
  * 조회 가능한 지표 카탈로그. V2 가 시드하고 이후 마이그레이션이 더한다.
  *
  * <p>행 수를 적어 두지 않는 것은 지표가 늘 때마다 주석이 낡기 때문이다.
- * {@code is_active = false} 인 행도 있으므로(적재 근거만 남기고 API 에는
- * 내보내지 않는 지표) 목록을 뽑을 때는 반드시
- * {@code findByActiveTrue...} 계열을 쓴다.
+ *
+ * <p>{@code active} 와 {@code core} 는 다른 것을 뜻한다. {@code active} 는
+ * {@code keys} 로 요청할 수 있는가이고, {@code core} 는 {@code keys} 를 주지
+ * 않았을 때 기본으로 나가는가다. rd_ratio 처럼 기본에서는 빠졌지만 산업 비교가
+ * 직접 요청하는 지표가 있어 둘이 갈렸다(V7). 값 계산에만 쓰는 내부 지표
+ * (total_liabilities 등)는 {@code active} 가 false 라 어느 쪽에도 나오지 않는다.
  *
  * <p>{@code metricCode} 는 {@code keys} 쿼리파라미터로 들어오고 응답의
  * {@code metrics[].key} · {@code series[].key} 로 나간다. 값이 그대로
@@ -44,7 +47,14 @@ public class Metric {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
+    @Column(name = "is_core", nullable = false)
+    private boolean core;
+
     protected Metric() {
+    }
+
+    public boolean isCore() {
+        return core;
     }
 
     public String getMetricCode() {
