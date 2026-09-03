@@ -1,0 +1,79 @@
+{
+  "_request": {
+    "path": "/api/companies/01384787/metrics",
+    "params": {}
+  },
+  "_status": 200,
+  "_elapsed_ms": 31,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "corpCode": "01384787",
+      "year": 2025,
+      "metrics": [
+        {
+          "key": "revenue",
+          "label": "매출액",
+          "value": 294545937439,
+          "unit": "KRW",
+          "yoy": {
+            "prevValue": 224084645616,
+            "changeRate": 31.4
+          }
+        },
+        {
+          "key": "operating_profit",
+          "label": "영업이익",
+          "value": 181417657557,
+          "unit": "KRW",
+          "yoy": {
+            "prevValue": 152676273166,
+            "changeRate": 18.8
+          }
+        },
+        {
+          "key": "employee_count",
+          "label": "직원 수",
+          "value": 332,
+          "unit": "PERSON",
+          "yoy": {
+            "prevValue": 319,
+            "changeRate": 4.1
+          }
+        },
+        {
+          "key": "average_salary",
+          "label": "1인 평균 급여",
+          "value": 93923422,
+          "unit": "KRW",
+          "yoy": {
+            "prevValue": 131498893,
+            "changeRate": -28.6
+          }
+        },
+        {
+          "key": "average_tenure",
+          "label": "평균 근속",
+          "value": 3.5,
+          "unit": "YEAR",
+          "yoy": {
+            "prevValue": 3.1,
+            "changeRate": 12.9
+          }
+        },
+        {
+          "key": "rd_ratio",
+          "label": "R&D/매출",
+          "value": null,
+          "unit": "%",
+          "yoy": {
+            "prevValue": 12.8,
+            "changeRate": null
+          }
+        }
+      ]
+    }
+  },
+  "text": null
+}
