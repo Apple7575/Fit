@@ -23,7 +23,7 @@ export function CompanyProfileSections({
     return (
       <div
         aria-busy="true"
-        className="grid gap-6 lg:grid-cols-2"
+        className="grid gap-4 lg:grid-cols-2"
         role="status"
       >
         <span className="sr-only">사업 정보를 불러오는 중입니다</span>
@@ -54,7 +54,7 @@ export function CompanyProfileSections({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-2">
       {businesses.length > 0 && <BusinessCard items={businesses} />}
       {segments.length > 0 && <SegmentCard segments={segments} />}
       {products.length > 0 && <ProductCard items={products} />}

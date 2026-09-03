@@ -7,7 +7,7 @@ export function ProductCard({ items }: ProductCardProps) {
   return (
     <section
       aria-labelledby="product-card-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <h2
         className="text-xl font-extrabold text-slate-950"

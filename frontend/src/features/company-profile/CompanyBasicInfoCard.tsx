@@ -26,7 +26,7 @@ export function CompanyBasicInfoCard({
     return (
       <section
         aria-busy="true"
-        className="animate-pulse rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+        className="animate-pulse rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
         role="status"
       >
         <span className="sr-only">기업 기본정보를 불러오는 중입니다</span>
@@ -49,9 +49,9 @@ export function CompanyBasicInfoCard({
   return (
     <section
       aria-labelledby="company-basic-info-title"
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
+      <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
         <div
           aria-hidden="true"
           className="hidden size-28 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-4xl font-extrabold text-blue-600 sm:flex"

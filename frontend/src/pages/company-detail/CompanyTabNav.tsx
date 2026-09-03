@@ -12,13 +12,13 @@ const TABS = [
 export function CompanyTabNav() {
   return (
     <nav aria-label="기업 분석 탭">
-      <ul className="flex flex-wrap gap-2">
+      <ul className="flex flex-wrap gap-1.5">
         {TABS.map(({ label, to }) => (
           <li key={label}>
             {to ? (
               <NavLink
                 className={({ isActive }) =>
-                  `inline-block rounded-full px-4 py-2 text-sm font-bold transition ${
+                  `inline-block rounded-full px-3 py-1.5 text-[13px] font-bold transition ${
                     isActive
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100'
@@ -30,7 +30,7 @@ export function CompanyTabNav() {
               </NavLink>
             ) : (
               <button
-                className="inline-block cursor-not-allowed rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-300 ring-1 ring-slate-200"
+                className="inline-block cursor-not-allowed rounded-full bg-white px-3 py-1.5 text-[13px] font-bold text-slate-300 ring-1 ring-slate-200"
                 disabled
                 title="준비 중"
                 type="button"
