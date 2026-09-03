@@ -3,6 +3,7 @@
 - 대상 이슈: `S15P21A504-34`
 - DBMS: PostgreSQL 18
 - 기준 문서: Notion [기업분석 API 명세서](https://app.notion.com/p/3c97eaa01a88802ab705fdae578e3b54) (F-33, 완료)
+- **ERD 기준 문서: Notion [기업 정보 ERD](https://rigorous-rook-646.notion.site/ERD-3ce305563fdc80d29b72f46e55897595) (확정)** — 테이블·컬럼은 이 문서가 원본이다. 어긋나면 명세를 따르고, 명세를 바꿔야 하면 Notion을 먼저 고친다.
 - 마이그레이션: Flyway (`backend/src/main/resources/db/migration/`)
 
 ---
@@ -18,6 +19,8 @@
 **원본과 가공본을 분리한다.** `dart_financial_account`에 DART 응답을 계정명 그대로 적재하고,
 `company_metric`에는 매핑·정규화된 값만 넣는다. 계정 매핑 규칙(F-27)이 바뀌어도 DART를 다시
 호출하지 않고 재처리할 수 있다. 조회 API는 `company_metric`만 읽는다.
+
+> 이 판단으로 만든 착지 테이블은 확정 ERD 명세서에 없다. 2-1 참고.
 
 ---
 
@@ -88,6 +91,19 @@ erDiagram
         integer fail_count
     }
 ```
+
+### 2-1. 명세 외 테이블 (정리 대상, S15P21A504-120)
+
+위 다이어그램의 `dart_financial_account`, `dart_employee_status`, `collection_run` **세 테이블은 확정 ERD 명세서에 없다.**
+V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 함께 만들었으나, 그 판단이 명세에 반영된 적이 없다.
+
+조회 API는 세 테이블을 읽지 않는다. 백엔드에는 정의만 있고 쿼리가 하나도 없다.
+실제 사용처는 파이썬 파이프라인이다 — 원본 적재는 `data/scripts/load_raw.py`, 수집 로그는 `data/scripts/load_metrics.py`.
+
+**새 코드에서 이 세 테이블에 의존하지 않는다.** 존치 여부는 S15P21A504-120에서 파이프라인 담당과 합의해 정한다.
+그 전까지는 지우지도 확장하지도 않는다.
+
+`metric_evidence`(V5)도 명세에 없으나 정규화 검증(S15P21A504-84)이 쓰고 있어 이 정리 범위에 넣지 않았다.
 
 ---
 
