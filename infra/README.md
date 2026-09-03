@@ -1,80 +1,100 @@
 # infra
 
+## 로컬 실행
+
+```bash
+./infra/local.sh
+```
+
+`http://localhost:3000` 만 보면 된다. 환경 파일·네트워크·포트 점검은 스크립트가 처리한다.
+첫 실행은 이미지 빌드로 3~5분 걸린다.
+
+| 명령 | |
+|---|---|
+| `./infra/local.sh` | 빌드 + 전체 기동 |
+| `./infra/local.sh stop` | 정지 |
+| `./infra/local.sh reset` | 볼륨까지 삭제 (스키마 꼬임 복구) |
+| `./infra/local.sh logs [서비스]` | 로그 |
+
+같은 파일을 반복해서 고칠 때는 아래로 갈아탄다. 매번 이미지를 다시 만들지 않는다.
+
+| 명령 | 이어서 |
+|---|---|
+| `./infra/local.sh front` | `cd frontend && npm run dev:api` → `:5173` |
+| `./infra/local.sh back` | IDE 에서 `local` 프로파일 실행 → `:8080` |
+
+`npm run dev` 는 백엔드 없이 **mock** 으로 뜬다. 실제 API 를 부르려면 `npm run dev:api`.
+
+**로컬 DB 에는 기업 데이터가 없다.** 검색 결과가 비어 있는 것은 정상이다.
+
 ## 구조
 
 ```
 infra/
 ├── docker-compose.yml        앱 스택 (postgres / backend / frontend)
-├── docker-compose.local.yml  로컬 전용 오버라이드 (포트 노출)
-├── .env.prod.example         운영 환경변수
-├── .env.dev.example          개발 환경변수
-├── .env.local.example        로컬 환경변수
-├── deploy.sh                 배포 스크립트
+├── docker-compose.local.yml  로컬 오버라이드 (포트 노출)
+├── .env.{prod,dev,local}.example
+├── local.sh                  로컬 실행 진입점
+├── deploy.sh                 배포
 ├── setup-ec2.sh              서버 초기 세팅 (최초 1회)
-├── proxy/                    리버스 프록시 + TLS (상시 기동)
-│   ├── docker-compose.yml
+├── proxy/                    nginx + certbot (상시 기동)
 │   ├── init-cert.sh          인증서 최초 발급 (최초 1회)
-│   └── conf.d/
-│       ├── 00-acme.conf      80   ACME + 리다이렉트
-│       ├── 10-prod.conf      443  운영
-│       ├── 20-dev.conf       8000 개발
-│       └── 30-jenkins.conf   8080 Jenkins
+│   └── conf.d/               00-acme / 10-prod / 20-dev / 30-jenkins
 └── jenkins/                  CI/CD (상시 기동)
-    ├── Dockerfile            공식 이미지 + docker CLI
-    ├── docker-compose.yml
-    └── .env.example
 ```
 
-## 포트 구성
+## 포트
 
-| 포트 | 용도 | 접속 주소 |
+| 포트 | 용도 | 주소 |
 |---|---|---|
-| 22 | SSH | — |
-| 80 | ACME 인증 + HTTPS 리다이렉트 | — |
 | 443 | 운영 (`main`) | `https://j15a504.p.ssafy.io` |
 | 8000 | 개발 (`develop`) | `https://j15a504.p.ssafy.io:8000` |
 | 8080 | Jenkins | `https://j15a504.p.ssafy.io:8080` |
+| 80 | ACME + 리다이렉트 | — |
 
-**모두 HTTPS다.** 인증서는 도메인 단위로 발급되므로 포트가 달라도 같은 인증서가 적용된다.
+모두 HTTPS. 인증서는 도메인 단위라 포트가 달라도 같은 것이 적용된다.
 
 ## 네트워크
 
 ```
-                nginx (proxy)              ← 80 / 443 / 8000 / 8080
-                      │
-        ┌──────── edge (공용) ────────┐
-        │             │              │
-   backend-prod   backend-dev     jenkins
-   frontend-prod  frontend-dev
-        │             │
-   appnet(prod)  appnet(dev)      ← postgres 는 여기에만. 외부 노출 없음
+        nginx (proxy)  ← 80 / 443 / 8000 / 8080
+              │
+     ┌──── edge ────┐
+     │       │      │
+  *-prod  *-dev  jenkins
+     │       │
+ appnet   appnet    ← postgres 는 여기에만. 외부 노출 없음
 ```
 
 앱은 `edge` 에 `backend-<환경>` 별칭으로 붙는다. Compose 가 자동으로 다는 `backend` 별칭은
-두 환경이 겹치므로 쓰지 않는다.
-
-**backend / frontend / jenkins 는 호스트 포트를 열지 않는다.**
-Docker 는 ufw 를 우회하므로, 포트를 퍼블리시하면 방화벽 설정과 무관하게 인터넷에 노출된다.
-외부 접근은 전부 nginx 를 거친다.
+두 환경이 겹치므로 쓰지 않는다. nginx 는 `resolver` + 변수로 요청 시점에 DNS 를 다시 조회하므로
+배포로 컨테이너 IP 가 바뀌어도 따라간다.
 
 ## 환경 분리
 
-| 환경 | 브랜치 | compose 프로젝트 | DB 포트(로컬 바인딩) |
-|---|---|---|---|
-| 운영 | `main` | `ca-prod` | 5432 |
-| 개발 | `develop` | `ca-dev` | 5433 |
+| 환경 | 브랜치 | 프로젝트 | DB 포트 | TAG |
+|---|---|---|---|---|
+| 운영 | `main` | `ca-prod` | 5432 | `prod` |
+| 개발 | `develop` | `ca-dev` | 5433 | `dev` |
+| 로컬 | — | `ca-local` | 5432 | `local` |
 
-프로젝트명이 다르므로 컨테이너·네트워크·**볼륨이 자동 분리**된다.
-개발 DB 를 지워도 운영 데이터는 영향받지 않는다.
+프로젝트명이 다르므로 컨테이너·네트워크·**볼륨이 분리**된다.
+**`TAG` 는 환경마다 달라야 한다.** 같으면 한쪽 배포가 다른 쪽 이미지를 덮어쓴다.
+
+## 배포
+
+```bash
+./deploy.sh prod
+./deploy.sh dev
+```
+
+`develop`·`main` 에 머지되면 Jenkins 가 자동으로 실행한다. 헬스체크 실패 시 직전 이미지로 되돌린다.
+**단, Flyway 가 실행한 스키마 변경은 되돌아가지 않는다.** 배포 전 DB 백업이 필요하다.
 
 ## 서버 최초 세팅
 
 ```bash
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw allow 8000/tcp
-sudo ufw allow 8080/tcp
-
+sudo ufw allow 80,443,8000,8080/tcp
 sudo bash setup-ec2.sh        # Docker, 스왑, 타임존, edge 네트워크
 # 재로그인
 
@@ -85,8 +105,7 @@ bash proxy/init-cert.sh <이메일> --staging   # 검증
 bash proxy/init-cert.sh <이메일>             # 실제 발급
 docker compose -f proxy/docker-compose.yml up -d
 
-./deploy.sh prod
-./deploy.sh dev
+./deploy.sh prod && ./deploy.sh dev
 
 cd jenkins
 cp .env.example .env
@@ -94,37 +113,13 @@ echo "DOCKER_GID=$(getent group docker | cut -d: -f3)" >> .env
 docker compose --env-file .env up -d --build
 ```
 
-## 배포
+## 알아둘 것
 
-```bash
-./deploy.sh prod
-./deploy.sh dev
-```
+**Docker 는 ufw 를 우회한다.** 퍼블리시한 포트는 `FORWARD` 체인을 지나 방화벽 규칙이 적용되지 않는다.
+노출을 막는 수단은 ufw 가 아니라 **바인딩 주소**다. postgres 는 `127.0.0.1`, 앱·Jenkins 는 포트를 열지 않는다.
 
-헬스체크 실패 시 직전 이미지로 되돌린다.
-**단, Flyway 가 실행한 스키마 변경은 되돌아가지 않는다.** 배포 전 DB 백업이 필요하다.
+**CORS 는 신경 쓸 것이 없다.** prod/dev 는 프록시가, 로컬은 프론트 컨테이너 nginx(또는 Vite 프록시)가
+`/api` 를 같은 오리진으로 묶는다. `APP_CORS_ALLOWED_ORIGINS` 는 비워 두는 것이 기본이고,
+비어 있으면 교차 출처 요청을 아예 받지 않는다 — 빠뜨렸을 때 닫히는 쪽으로 실패한다.
 
-## 로컬 실행
-
-```bash
-docker network create edge
-cp .env.local.example .env.local          # POSTGRES_PASSWORD 입력
-docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local.yml up -d
-```
-
-`http://localhost:3000` (프론트) / `http://localhost:8080` (백엔드)
-
-여기서는 proxy 를 거치지 않아 프론트와 백엔드의 **오리진이 다르다**. 브라우저에서 API 를 호출하려면
-`.env.local` 에 아래를 넣어 백엔드가 그 오리진을 허용하게 해야 한다.
-
-```
-APP_CORS_ALLOWED_ORIGINS=http://localhost:3000
-```
-
-prod/dev 는 nginx 가 `/api` 를 같은 오리진으로 묶으므로 이 값을 비워 두면 된다.
-비어 있으면 백엔드는 교차 출처 요청을 아예 받지 않는다 — 설정을 빠뜨렸을 때 열리는 게 아니라 닫히는 쪽으로 실패한다.
-
-## 인증서 갱신
-
-certbot 컨테이너가 12시간마다 갱신을 시도하고, nginx 가 6시간마다 reload 해서 반영한다.
-별도 조작이 필요 없다.
+**인증서는 자동이다.** certbot 이 12시간마다 갱신하고 nginx 가 6시간마다 reload 한다.

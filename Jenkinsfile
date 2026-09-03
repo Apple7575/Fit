@@ -63,6 +63,10 @@ pipeline {
                                     rm -f .env.ci
                                 done
                                 docker compose -f proxy/docker-compose.yml config --quiet
+
+                                # 로컬 조합. 예제에 비밀번호가 들어 있어 sed 가 필요 없다.
+                                docker compose --env-file .env.local.example \
+                                    -f docker-compose.yml -f docker-compose.local.yml config --quiet
                             '''
                         }
                     }
