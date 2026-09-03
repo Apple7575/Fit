@@ -1,0 +1,19 @@
+{
+  "_request": {
+    "path": "/api/companies",
+    "params": {
+      "keyword": "존재하지않는회사명"
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 31,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "items": [],
+      "total": 0
+    }
+  },
+  "text": null
+}

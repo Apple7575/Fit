@@ -1,0 +1,24 @@
+{
+  "_request": {
+    "path": "/api/companies/00126380",
+    "params": {}
+  },
+  "_status": 200,
+  "_elapsed_ms": 46,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "corpCode": "00126380",
+      "corpName": "삼성전자",
+      "stockCode": "005930",
+      "industryCode": "26",
+      "industryName": "전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",
+      "market": "KOSPI",
+      "ceo": "전영현, 노태문",
+      "establishedDate": "1969-01-13",
+      "dataYear": 2025
+    }
+  },
+  "text": null
+}

@@ -1,0 +1,186 @@
+{
+  "_request": {
+    "path": "/api/companies/00126380/metrics/timeseries",
+    "params": {
+      "from": 2021,
+      "to": 2025
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 172,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "range": {
+        "from": 2021,
+        "to": 2025
+      },
+      "series": [
+        {
+          "key": "revenue",
+          "label": "매출액",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": 279604799000000
+            },
+            {
+              "year": 2022,
+              "value": 302231360000000
+            },
+            {
+              "year": 2023,
+              "value": 258935494000000
+            },
+            {
+              "year": 2024,
+              "value": 300870903000000
+            },
+            {
+              "year": 2025,
+              "value": 333605938000000
+            }
+          ]
+        },
+        {
+          "key": "operating_profit",
+          "label": "영업이익",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": 51633856000000
+            },
+            {
+              "year": 2022,
+              "value": 43376630000000
+            },
+            {
+              "year": 2023,
+              "value": 6566976000000
+            },
+            {
+              "year": 2024,
+              "value": 32725961000000
+            },
+            {
+              "year": 2025,
+              "value": 43601051000000
+            }
+          ]
+        },
+        {
+          "key": "employee_count",
+          "label": "직원 수",
+          "unit": "PERSON",
+          "points": [
+            {
+              "year": 2021,
+              "value": 113485
+            },
+            {
+              "year": 2022,
+              "value": 121404
+            },
+            {
+              "year": 2023,
+              "value": 124804
+            },
+            {
+              "year": 2024,
+              "value": 129480
+            },
+            {
+              "year": 2025,
+              "value": 128881
+            }
+          ]
+        },
+        {
+          "key": "average_salary",
+          "label": "1인 평균 급여",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": 143955571
+            },
+            {
+              "year": 2022,
+              "value": 134344445
+            },
+            {
+              "year": 2023,
+              "value": 119803644
+            },
+            {
+              "year": 2024,
+              "value": 130190060
+            },
+            {
+              "year": 2025,
+              "value": 157064509
+            }
+          ]
+        },
+        {
+          "key": "average_tenure",
+          "label": "평균 근속",
+          "unit": "YEAR",
+          "points": [
+            {
+              "year": 2021,
+              "value": 12.1
+            },
+            {
+              "year": 2022,
+              "value": 12.5
+            },
+            {
+              "year": 2023,
+              "value": 12.8
+            },
+            {
+              "year": 2024,
+              "value": 13.0
+            },
+            {
+              "year": 2025,
+              "value": 13.7
+            }
+          ]
+        },
+        {
+          "key": "rd_ratio",
+          "label": "R&D/매출",
+          "unit": "%",
+          "points": [
+            {
+              "year": 2021,
+              "value": 8.1
+            },
+            {
+              "year": 2022,
+              "value": 8.2
+            },
+            {
+              "year": 2023,
+              "value": 10.9
+            },
+            {
+              "year": 2024,
+              "value": 11.6
+            },
+            {
+              "year": 2025,
+              "value": 11.3
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "text": null
+}

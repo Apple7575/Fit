@@ -1,0 +1,186 @@
+{
+  "_request": {
+    "path": "/api/companies/01384787/metrics/timeseries",
+    "params": {
+      "from": 2021,
+      "to": 2025
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 46,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "range": {
+        "from": 2021,
+        "to": 2025
+      },
+      "series": [
+        {
+          "key": "revenue",
+          "label": "매출액",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": null
+            },
+            {
+              "year": 2022,
+              "value": null
+            },
+            {
+              "year": 2023,
+              "value": null
+            },
+            {
+              "year": 2024,
+              "value": 224084645616
+            },
+            {
+              "year": 2025,
+              "value": 294545937439
+            }
+          ]
+        },
+        {
+          "key": "operating_profit",
+          "label": "영업이익",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": null
+            },
+            {
+              "year": 2022,
+              "value": null
+            },
+            {
+              "year": 2023,
+              "value": null
+            },
+            {
+              "year": 2024,
+              "value": 152676273166
+            },
+            {
+              "year": 2025,
+              "value": 181417657557
+            }
+          ]
+        },
+        {
+          "key": "employee_count",
+          "label": "직원 수",
+          "unit": "PERSON",
+          "points": [
+            {
+              "year": 2021,
+              "value": null
+            },
+            {
+              "year": 2022,
+              "value": null
+            },
+            {
+              "year": 2023,
+              "value": null
+            },
+            {
+              "year": 2024,
+              "value": 319
+            },
+            {
+              "year": 2025,
+              "value": 332
+            }
+          ]
+        },
+        {
+          "key": "average_salary",
+          "label": "1인 평균 급여",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": null
+            },
+            {
+              "year": 2022,
+              "value": null
+            },
+            {
+              "year": 2023,
+              "value": null
+            },
+            {
+              "year": 2024,
+              "value": 131498893
+            },
+            {
+              "year": 2025,
+              "value": 93923422
+            }
+          ]
+        },
+        {
+          "key": "average_tenure",
+          "label": "평균 근속",
+          "unit": "YEAR",
+          "points": [
+            {
+              "year": 2021,
+              "value": null
+            },
+            {
+              "year": 2022,
+              "value": null
+            },
+            {
+              "year": 2023,
+              "value": null
+            },
+            {
+              "year": 2024,
+              "value": 3.1
+            },
+            {
+              "year": 2025,
+              "value": 3.5
+            }
+          ]
+        },
+        {
+          "key": "rd_ratio",
+          "label": "R&D/매출",
+          "unit": "%",
+          "points": [
+            {
+              "year": 2021,
+              "value": null
+            },
+            {
+              "year": 2022,
+              "value": null
+            },
+            {
+              "year": 2023,
+              "value": null
+            },
+            {
+              "year": 2024,
+              "value": 12.8
+            },
+            {
+              "year": 2025,
+              "value": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "text": null
+}
