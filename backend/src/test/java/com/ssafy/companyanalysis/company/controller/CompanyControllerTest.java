@@ -107,19 +107,24 @@ class CompanyControllerTest {
     @DisplayName("기업 상세는 표준 응답 형식으로 기본정보를 반환한다")
     void companyDetailReturnsStandardEnvelope() throws Exception {
         given(companyDetailService.getCompany("00164779"))
-                .willReturn(new CompanyDetailResponse("00164779", "SK하이닉스", "000660",
+                .willReturn(new CompanyDetailResponse("00164779", "SK하이닉스",
                         "26", "전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",
-                        "KOSPI", "곽노정", LocalDate.of(1949, 10, 15), 2025));
+                        "곽노정", LocalDate.of(1949, 10, 15),
+                        "경기도 이천시 부발읍 경충대로 2091", "https://www.skhynix.com", 2025));
 
         mockMvc.perform(get("/api/companies/00164779"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.corpCode").value("00164779"))
                 .andExpect(jsonPath("$.data.industryCode").value("26"))
-                .andExpect(jsonPath("$.data.market").value("KOSPI"))
                 .andExpect(jsonPath("$.data.ceo").value("곽노정"))
                 .andExpect(jsonPath("$.data.establishedDate").value("1949-10-15"))
+                .andExpect(jsonPath("$.data.address").value("경기도 이천시 부발읍 경충대로 2091"))
+                .andExpect(jsonPath("$.data.homepageUrl").value("https://www.skhynix.com"))
                 .andExpect(jsonPath("$.data.dataYear").value(2025))
+                // v2 에서 응답에서 빠진 필드들. 남아 있으면 명세와 어긋난다.
+                .andExpect(jsonPath("$.data.stockCode").doesNotExist())
+                .andExpect(jsonPath("$.data.market").doesNotExist())
                 .andExpect(jsonPath("$.error").doesNotExist());
     }
 

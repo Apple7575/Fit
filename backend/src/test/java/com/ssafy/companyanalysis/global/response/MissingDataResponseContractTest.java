@@ -95,7 +95,7 @@ class MissingDataResponseContractTest {
     @Test
     @DisplayName("규칙2 - 값이 없는 필드도 키는 남고 null 로 나간다 (필드 생략 금지)")
     void missingFieldsKeepTheirKeys() throws Exception {
-        // 이름만 아는 기업. 종목코드·산업·시장·대표자·설립일·기준연도가 전부 비어 있다.
+        // 이름만 아는 기업. 산업·대표자·설립일·주소·홈페이지·기준연도가 전부 비어 있다.
         given(companyDetailService.getCompany(CORP_CODE))
                 .willReturn(new CompanyDetailResponse(CORP_CODE, "이름만있는기업",
                         null, null, null, null, null, null, null));
@@ -103,18 +103,18 @@ class MissingDataResponseContractTest {
         mockMvc.perform(get("/api/companies/{corpCode}", CORP_CODE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.stockCode").hasJsonPath())
-                .andExpect(jsonPath("$.data.stockCode").value(nullValue()))
                 .andExpect(jsonPath("$.data.industryCode").hasJsonPath())
                 .andExpect(jsonPath("$.data.industryCode").value(nullValue()))
                 .andExpect(jsonPath("$.data.industryName").hasJsonPath())
                 .andExpect(jsonPath("$.data.industryName").value(nullValue()))
-                .andExpect(jsonPath("$.data.market").hasJsonPath())
-                .andExpect(jsonPath("$.data.market").value(nullValue()))
                 .andExpect(jsonPath("$.data.ceo").hasJsonPath())
                 .andExpect(jsonPath("$.data.ceo").value(nullValue()))
                 .andExpect(jsonPath("$.data.establishedDate").hasJsonPath())
                 .andExpect(jsonPath("$.data.establishedDate").value(nullValue()))
+                .andExpect(jsonPath("$.data.address").hasJsonPath())
+                .andExpect(jsonPath("$.data.address").value(nullValue()))
+                .andExpect(jsonPath("$.data.homepageUrl").hasJsonPath())
+                .andExpect(jsonPath("$.data.homepageUrl").value(nullValue()))
                 .andExpect(jsonPath("$.data.dataYear").hasJsonPath())
                 .andExpect(jsonPath("$.data.dataYear").value(nullValue()));
     }

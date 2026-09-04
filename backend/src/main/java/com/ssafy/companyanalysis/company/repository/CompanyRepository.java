@@ -14,9 +14,11 @@ public interface CompanyRepository extends JpaRepository<Company, String> {
     /**
      * corpCode 로 기업 상세를 조회한다(분석 페이지 헤더용).
      *
-     * <p>산업 정보가 없는 기업도 빠지면 안 되므로 LEFT JOIN 이다. market 은 corp_cls 에서
-     * 파생하므로 원본을 그대로 실어 서비스에서 변환한다. 검색 쿼리와 마찬가지로 별칭을
-     * 큰따옴표로 감싸 프로젝션 getter 와 대소문자를 맞춘다.
+     * <p>산업 정보가 없는 기업도 빠지면 안 되므로 LEFT JOIN 이다. 검색 쿼리와 마찬가지로
+     * 별칭을 큰따옴표로 감싸 프로젝션 getter 와 대소문자를 맞춘다.
+     *
+     * <p>v2 에서 stock_code 와 corp_cls 를 더 이상 읽지 않는다. 헤더 응답에서 stockCode 와
+     * market 이 빠졌기 때문이다. 두 컬럼은 테이블에 그대로 남아 있고 종목코드는 검색 응답이 쓴다.
      *
      * <p>dataYear 는 기업 단위 최신 적재 연도다. 상세·지표·산업비교가 저마다 기준연도를
      * 정하면 한 화면에 다른 해가 섞이므로, year 를 주지 않았을 때의 기준을 여기 하나로 모은다.
@@ -25,12 +27,12 @@ public interface CompanyRepository extends JpaRepository<Company, String> {
     @Query(value = """
             SELECT c.corp_code       AS "corpCode",
                    c.corp_name       AS "corpName",
-                   c.stock_code      AS "stockCode",
                    i.industry_code   AS "industryCode",
                    i.industry_name   AS "industryName",
-                   c.corp_cls        AS "corpCls",
                    c.ceo_nm          AS "ceoNm",
                    c.established_date AS "establishedDate",
+                   c.address         AS "address",
+                   c.homepage_url    AS "homepageUrl",
                    (SELECT max(cm.fiscal_year)
                       FROM company_metric cm
                      WHERE cm.corp_code = c.corp_code) AS "dataYear"
