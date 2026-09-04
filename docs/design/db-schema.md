@@ -121,6 +121,12 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 | `GET .../metrics/{metric}/timeseries` | `company_metric` | `corp_code=? AND metric_code=?` | `company_metric_timeseries_idx` |
 | `GET .../industry-comparison` | `company_metric` ⋈ `company` | 대상 기업의 `industry_code` 동일 + `fiscal_year=?` | `company_industry_code_idx` |
 | `GET .../metrics/{metric}/industry-comparison` | `company_metric` ⋈ `company` | 위 + `metric_code=?` | `company_metric_comparison_idx` |
+| `GET /api/industries/{industryCode}/companies` | `industry` + `company` ⟕ `company_metric` | `industry_code=?` + 정렬 지표의 산업 내 최신 연도 | `company_industry_code_idx`, `company_metric_timeseries_idx` |
+
+비교 후보 목록은 지표값을 응답에 싣지 않고 정렬에만 쓴다. 기준연도가 응답에 나가지 않으므로
+연도를 파라미터로 받지 않고 "그 산업 안에서 정렬 지표의 값이 있는 가장 최근 해"를 서브쿼리로 정한다.
+기업마다 제 최신연도를 쓰면 서로 다른 해의 값으로 순위가 매겨진다. 값이 없는 기업도
+`LEFT JOIN` 으로 목록에 남고 `NULLS LAST` 로 뒤에 붙는다 — 후보 목록에서 빠지면 고를 방법이 없다.
 
 산업 비교는 2단계다. 먼저 `company`에서 대상 기업의 `industry_code`를 얻고,
 같은 산업의 `corp_code` 집합에 대해 `company_metric`을 조회한다.
