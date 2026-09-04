@@ -86,6 +86,15 @@ public interface MetricRepository extends JpaRepository<Metric, String> {
     Integer findLatestFiscalYear(@Param("corpCode") String corpCode);
 
     /**
+     * 적재된 전체 기준 최신연도. 아무 값도 없으면 비어 있다.
+     *
+     * <p>기업 단위 최신연도와 달리 여러 기업을 한 해로 묶어야 하는 화면이 쓴다.
+     * 비교와 시계열이 그렇다. 기업마다 최신연도가 다르면 기준을 하나로 정할 수 없다.
+     */
+    @Query(value = "SELECT max(fiscal_year) FROM company_metric", nativeQuery = true)
+    Integer findLatestFiscalYear();
+
+    /**
      * 지정 구간의 지표별 연도값을 조회한다(F-14).
      *
      * <p>값이 있는 연도만 행으로 나온다. 구간 전체를 채운 격자는 서비스가 만든다 —

@@ -119,7 +119,7 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 | `GET .../metrics/{metric}` | `company_metric` | `corp_code=? AND fiscal_year=? AND metric_code=?` | PK |
 | `GET .../metrics/timeseries` | `company_metric` | `corp_code=? AND fiscal_year BETWEEN ? AND ?` | PK 선두 |
 | `GET .../metrics/{metric}/timeseries` | `company_metric` | `corp_code=? AND metric_code=?` | `company_metric_timeseries_idx` |
-| `GET .../industry-comparison` | `company_metric` ⋈ `company` | 대상 기업의 `industry_code` 동일 + `fiscal_year=?` | `company_industry_code_idx` |
+| `GET .../industry-comparison` | `company` ⟕ `company_metric` + `metric` | `corp_code IN (대상+peers)` + `fiscal_year IN (?, ?-1)` | PK 선두 |
 | `GET .../metrics/{metric}/industry-comparison` | `company_metric` ⋈ `company` | 위 + `metric_code=?` | `company_metric_comparison_idx` |
 | `GET /api/industries/{industryCode}/companies` | `industry` + `company` ⟕ `company_metric` | `industry_code=?` + 정렬 지표의 산업 내 최신 연도 | `company_industry_code_idx`, `company_metric_timeseries_idx` |
 
@@ -128,18 +128,28 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 기업마다 제 최신연도를 쓰면 서로 다른 해의 값으로 순위가 매겨진다. 값이 없는 기업도
 `LEFT JOIN` 으로 목록에 남고 `NULLS LAST` 로 뒤에 붙는다 — 후보 목록에서 빠지면 고를 방법이 없다.
 
-산업 비교는 2단계다. 먼저 `company`에서 대상 기업의 `industry_code`를 얻고,
-같은 산업의 `corp_code` 집합에 대해 `company_metric`을 조회한다.
+산업 비교는 v2에서 "산업 전체 자동 비교"가 "사용자가 고른 peers(최대 3) 비교"로 바뀌었다.
+그래서 산업으로 범위를 넓히지 않고 대상 기업과 peers의 `corp_code`만 읽는다.
+산업 전체를 읽고 자바에서 걸러내면 기업이 많은 산업에서 쓰지 않을 행을 전부 끌고 오게 된다.
 
 ```sql
-SELECT c.corp_code, c.corp_name, cm.metric_value
-FROM company_metric cm
-JOIN company c ON c.corp_code = cm.corp_code
-WHERE c.industry_code = (SELECT industry_code FROM company WHERE corp_code = :corpCode)
-  AND cm.fiscal_year = :year
-  AND cm.metric_code = :metric
-ORDER BY cm.metric_value DESC;
+SELECT c.corp_code, c.corp_name, cm.metric_code, cm.fiscal_year, cm.metric_value, m.value_scale
+FROM company c
+LEFT JOIN company_metric cm
+       ON cm.corp_code   = c.corp_code
+      AND cm.fiscal_year IN (:year, :prevYear)
+      AND cm.metric_code IN (:metricCodes)
+LEFT JOIN metric m ON m.metric_code = cm.metric_code
+WHERE c.corp_code IN (:corpCodes);
 ```
+
+연도를 둘 읽는 것은 매출 성장률 때문이다. 비교 지표 7종 중 `revenue_growth`와
+`operating_margin`은 `company_metric`에 적재되지 않는 파생 지표이고, 각각 두 해치 매출과
+같은 해의 영업이익·매출로 조회 시점에 계산한다. 그래서 요청한 지표를 그대로 조회에 넘기지 않고
+원본 지표(`revenue`, `operating_profit`)로 바꿔서 넘긴다.
+
+응답의 `industry.companyCount`는 이 쿼리와 별개로 `company`를 `industry_code`로 세어 만든다.
+v1에서는 비교군에 실린 기업 수와 같았지만, v2는 고른 peers만 실으므로 둘이 갈린다.
 
 ---
 
@@ -210,9 +220,13 @@ ORDER BY cm.metric_value DESC;
 | `metrics[].value` | `company_metric.metric_value`, 행이 없으면 `null` |
 | `metrics[].yoy.prevValue` | 같은 테이블의 `fiscal_year - 1` 행 |
 | `metrics[].yoy.changeRate` | 조회 시 계산. 전년 값이 없거나 0이면 `null` |
+| 비교 `values.revenue_growth` | 조회 시 계산. `revenue`의 요청 연도와 전년 값. 전년이 없거나 0 이하면 `null` |
+| 비교 `values.operating_margin` | 조회 시 계산. 같은 해의 `operating_profit ÷ revenue`. 매출이 0 이하면 `null` |
+| 비교 `industry.companyCount` | `company`를 `industry_code`로 센 값. 응답에 실린 기업 수와 다르다 |
 
 `yoy`는 저장하지 않는다. 전년 행이 같은 테이블에 있어 조회 시점에 계산하면 되고,
-값을 저장하면 재적재 때 원본과 어긋날 여지가 생긴다.
+값을 저장하면 재적재 때 원본과 어긋날 여지가 생긴다. 비교 지표 7종 중 `revenue_growth`와
+`operating_margin`도 같은 이유로 `metric` 카탈로그에 행을 두지 않고 계산해서 내보낸다.
 
 ---
 

@@ -3,6 +3,7 @@ package com.ssafy.companyanalysis.metric.service;
 import com.ssafy.companyanalysis.company.repository.CompanyRepository;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
+import com.ssafy.companyanalysis.global.year.BaseYearResolver;
 import com.ssafy.companyanalysis.metric.domain.Metric;
 import com.ssafy.companyanalysis.metric.dto.CompanyMetricsResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricPointResponse;
@@ -37,9 +38,13 @@ public class CompanyMetricService {
     /** 증감률·비율 소수 자릿수. 명세 예시가 7.3 이라 1자리로 고정한다. */
     private static final int RATE_SCALE = 1;
 
-    /** 명세가 정한 시계열 기본 구간. MVP 의 관심 구간이 2021~2025 다. */
-    private static final int DEFAULT_FROM_YEAR = 2021;
-    private static final int DEFAULT_TO_YEAR = 2025;
+    /**
+     * 명세가 정한 시계열 기본 구간 길이. 기준연도를 포함해 5년이다.
+     *
+     * <p>양 끝을 상수로 박지 않는 이유는 적재다. 2021~2025 로 두면 2026 이 들어와도
+     * 화면은 계속 2025 에서 끊기고, 오류가 나지 않으니 아무도 알아채지 못한다.
+     */
+    private static final int DEFAULT_WINDOW_YEARS = 5;
 
     /** 수익성·안정성 비율의 원본 지표. 앞의 셋은 기본 6종이고 뒤의 둘은 내부 지표다(V7). */
     private static final String REVENUE = "revenue";
@@ -57,10 +62,13 @@ public class CompanyMetricService {
 
     private final CompanyRepository companyRepository;
     private final MetricRepository metricRepository;
+    private final BaseYearResolver baseYearResolver;
 
-    public CompanyMetricService(CompanyRepository companyRepository, MetricRepository metricRepository) {
+    public CompanyMetricService(CompanyRepository companyRepository, MetricRepository metricRepository,
+                                BaseYearResolver baseYearResolver) {
         this.companyRepository = companyRepository;
         this.metricRepository = metricRepository;
+        this.baseYearResolver = baseYearResolver;
     }
 
     /**
@@ -96,6 +104,10 @@ public class CompanyMetricService {
 
     /**
      * 지정 구간의 지표별 시계열을 조회한다(F-14).
+     *
+     * <p>단년 조회는 그 기업의 최신 적재 연도를 쓰지만 여기는 {@link BaseYearResolver} 다.
+     * 한 화면에 여러 기업의 선을 겹쳐 그리는 데 쓰이는 API 라, 기업마다 구간이 달라지면
+     * 가로축이 어긋난다.
      *
      * @param keys 조회할 지표 슬러그 목록. 비어 있으면 기본 6종
      */
@@ -177,8 +189,8 @@ public class CompanyMetricService {
     }
 
     private MetricRangeResponse resolveRange(Integer from, Integer to) {
-        int fromYear = from != null ? from : DEFAULT_FROM_YEAR;
-        int toYear = to != null ? to : DEFAULT_TO_YEAR;
+        int toYear = to != null ? to : baseYearResolver.resolve();
+        int fromYear = from != null ? from : toYear - (DEFAULT_WINDOW_YEARS - 1);
 
         if (fromYear > toYear) {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, "from 은 to 보다 클 수 없습니다.");
