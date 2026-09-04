@@ -3,6 +3,7 @@ package com.ssafy.companyanalysis.metric.service;
 import com.ssafy.companyanalysis.company.repository.CompanyRepository;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
+import com.ssafy.companyanalysis.global.year.BaseYearResolver;
 import com.ssafy.companyanalysis.metric.domain.Metric;
 import com.ssafy.companyanalysis.metric.dto.CompanyMetricsResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricPointResponse;
@@ -36,15 +37,21 @@ class CompanyMetricServiceTest {
 
     private static final String CORP_CODE = "00164779";
 
+    /** 기준연도 계산은 BaseYearResolverTest 가 맡는다. 여기서는 고정값을 준다. */
+    private static final int BASE_YEAR = 2025;
+
     private CompanyRepository companyRepository;
     private MetricRepository metricRepository;
+    private BaseYearResolver baseYearResolver;
     private CompanyMetricService service;
 
     @BeforeEach
     void setUp() {
         companyRepository = mock(CompanyRepository.class);
         metricRepository = mock(MetricRepository.class);
-        service = new CompanyMetricService(companyRepository, metricRepository);
+        baseYearResolver = mock(BaseYearResolver.class);
+        given(baseYearResolver.resolve()).willReturn(BASE_YEAR);
+        service = new CompanyMetricService(companyRepository, metricRepository, baseYearResolver);
 
         given(companyRepository.existsById(CORP_CODE)).willReturn(true);
     }
@@ -374,7 +381,7 @@ class CompanyMetricServiceTest {
         given(metricRepository.findByActiveTrueOrderByDisplayOrderAsc()).willReturn(List.of(metrics));
     }
 
-    /** 기본 구간(2021~2025)의 시계열. 서비스가 첫 해 증감률 때문에 한 해 앞에서 읽는 것까지 함께 고정한다. */
+    /** 기본 구간(기준연도 포함 5년)의 시계열. 서비스가 첫 해 증감률 때문에 한 해 앞에서 읽는 것까지 함께 고정한다. */
     private void givenPoints(List<String> metricCodes, MetricPointProjection... rows) {
         given(metricRepository.findMetricPoints(CORP_CODE, metricCodes, 2020, 2025)).willReturn(List.of(rows));
     }

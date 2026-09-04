@@ -63,9 +63,10 @@ class MissingDataResponseContractTest {
 
     private static final String CORP_CODE = "00164779";
 
-    /** 비교 지표 4종. IndustryComparisonService 가 정한 순서와 같다. */
-    private static final List<String> COMPARISON_METRICS =
-            List.of("revenue", "operating_profit", "employee_count", "average_salary");
+    /** 비교 지표 7종(v2). IndustryComparisonService 가 정한 순서와 같다. */
+    private static final List<String> COMPARISON_METRICS = List.of(
+            "revenue", "revenue_growth", "operating_profit", "operating_margin",
+            "employee_count", "average_salary", "rd_ratio");
 
     @Autowired
     private MockMvc mockMvc;
@@ -197,7 +198,7 @@ class MissingDataResponseContractTest {
     @Test
     @DisplayName("규칙5 - 비교군이 없어도 대상 기업과 지표 4종의 자리는 유지된다")
     void comparisonKeepsTargetAndMetricSlots() throws Exception {
-        given(industryComparisonService.compare(eq(CORP_CODE), any()))
+        given(industryComparisonService.compare(eq(CORP_CODE), any(), any(), any()))
                 .willReturn(new IndustryComparisonResponse(
                         null,
                         new IndustryComparisonResponse.Industry(null, null, 1),
@@ -212,7 +213,7 @@ class MissingDataResponseContractTest {
                 .andExpect(jsonPath("$.data.year").value(nullValue()))
                 .andExpect(jsonPath("$.data.industry.code").hasJsonPath())
                 .andExpect(jsonPath("$.data.industry.code").value(nullValue()))
-                .andExpect(jsonPath("$.data.metrics", hasSize(4)))
+                .andExpect(jsonPath("$.data.metrics", hasSize(7)))
                 .andExpect(jsonPath("$.data.companies", hasSize(1)))
                 .andExpect(jsonPath("$.data.companies[0].isTarget").value(true))
                 .andExpect(jsonPath("$.data.companies[0].values.revenue").hasJsonPath())
@@ -254,7 +255,7 @@ class MissingDataResponseContractTest {
     @DisplayName("규칙6 - 서버 오류는 빈 데이터로 위장하지 않고 500 INTERNAL_ERROR 로 나간다")
     void serverFailureIsNotDisguisedAsEmptyData() throws Exception {
         willThrow(new IllegalStateException("connection reset"))
-                .given(industryComparisonService).compare(anyString(), any());
+                .given(industryComparisonService).compare(anyString(), any(), any(), any());
 
         mockMvc.perform(get("/api/companies/{corpCode}/industry-comparison", CORP_CODE))
                 .andExpect(status().isInternalServerError())
