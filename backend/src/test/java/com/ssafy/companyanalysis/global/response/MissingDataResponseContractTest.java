@@ -5,8 +5,11 @@ import com.ssafy.companyanalysis.company.dto.CompanyDetailResponse;
 import com.ssafy.companyanalysis.company.dto.CompanySearchResponse;
 import com.ssafy.companyanalysis.company.service.CompanyDetailService;
 import com.ssafy.companyanalysis.company.service.CompanySearchService;
+import com.ssafy.companyanalysis.comparison.controller.IndustryCompaniesController;
 import com.ssafy.companyanalysis.comparison.controller.IndustryComparisonController;
+import com.ssafy.companyanalysis.comparison.dto.IndustryCompaniesResponse;
 import com.ssafy.companyanalysis.comparison.dto.IndustryComparisonResponse;
+import com.ssafy.companyanalysis.comparison.service.IndustryCompaniesService;
 import com.ssafy.companyanalysis.comparison.service.IndustryComparisonService;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
@@ -54,7 +57,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>기업소개·집중 분야·최근 이슈 API(S15P21A504-97·98·99)가 붙을 때도
  * 같은 형태의 케이스를 여기에 추가한다.
  */
-@WebMvcTest({CompanyController.class, CompanyMetricController.class, IndustryComparisonController.class})
+@WebMvcTest({CompanyController.class, CompanyMetricController.class,
+        IndustryComparisonController.class, IndustryCompaniesController.class})
 class MissingDataResponseContractTest {
 
     private static final String CORP_CODE = "00164779";
@@ -77,6 +81,9 @@ class MissingDataResponseContractTest {
 
     @MockitoBean
     private IndustryComparisonService industryComparisonService;
+
+    @MockitoBean
+    private IndustryCompaniesService industryCompaniesService;
 
     @Test
     @DisplayName("규칙1 - 검색 결과가 없는 것은 오류가 아니라 빈 배열이다")
@@ -212,6 +219,22 @@ class MissingDataResponseContractTest {
                 .andExpect(jsonPath("$.data.companies[0].values.revenue").value(nullValue()))
                 .andExpect(jsonPath("$.data.companies[0].values.average_salary").hasJsonPath())
                 .andExpect(jsonPath("$.data.companies[0].values.average_salary").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("규칙1·2 - 없는 산업의 후보 목록은 오류가 아니라 industry null 과 빈 배열이다")
+    void unknownIndustryReturnsEmptyCandidateList() throws Exception {
+        given(industryCompaniesService.listCandidates(eq("99"), any(), anyInt()))
+                .willReturn(new IndustryCompaniesResponse(null, List.of()));
+
+        mockMvc.perform(get("/api/industries/{industryCode}/companies", "99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                // 산업을 못 찾아도 키는 남는다. 프론트가 null 과 "필드 없음"을 구분하지 않아도 되게.
+                .andExpect(jsonPath("$.data.industry").hasJsonPath())
+                .andExpect(jsonPath("$.data.industry").value(nullValue()))
+                .andExpect(jsonPath("$.data.companies", hasSize(0)))
+                .andExpect(jsonPath("$.error").doesNotExist());
     }
 
     @Test
