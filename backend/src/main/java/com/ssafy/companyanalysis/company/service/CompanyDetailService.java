@@ -18,8 +18,11 @@ public class CompanyDetailService {
     }
 
     /**
-     * corpCode 로 기업 상세를 조회한다. 없으면 404 COMPANY_NOT_FOUND 다.
+     * corpCode 로 기업 헤더 정보를 조회한다. 없으면 404 COMPANY_NOT_FOUND 다.
      * corpCode 형식이 어긋나도 조회에 실패할 뿐이므로 같은 404 로 통일한다(명세에 400 없음).
+     *
+     * <p>v2 에서 corp_cls 를 market 으로 바꾸던 변환이 사라졌다. 응답이 그 필드를 더 이상
+     * 싣지 않으므로 프로젝션을 그대로 옮기기만 한다.
      */
     @Transactional(readOnly = true)
     public CompanyDetailResponse getCompany(String corpCode) {
@@ -29,25 +32,12 @@ public class CompanyDetailService {
         return new CompanyDetailResponse(
                 p.getCorpCode(),
                 p.getCorpName(),
-                p.getStockCode(),
                 p.getIndustryCode(),
                 p.getIndustryName(),
-                toMarket(p.getCorpCls()),
                 p.getCeoNm(),
                 p.getEstablishedDate(),
+                p.getAddress(),
+                p.getHomepageUrl(),
                 p.getDataYear());
-    }
-
-    /** corp_cls 를 명세의 market 값으로 바꾼다. 기타(E)·미분류는 세 시장에 없어 null 이다. */
-    private static String toMarket(String corpCls) {
-        if (corpCls == null) {
-            return null;
-        }
-        return switch (corpCls) {
-            case "Y" -> "KOSPI";
-            case "K" -> "KOSDAQ";
-            case "N" -> "KONEX";
-            default -> null;
-        };
     }
 }
