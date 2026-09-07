@@ -35,6 +35,16 @@
           }
         },
         {
+          "key": "net_income",
+          "label": "당기순이익",
+          "value": 45206805000000,
+          "unit": "KRW",
+          "yoy": {
+            "prevValue": 34451351000000,
+            "changeRate": 31.2
+          }
+        },
+        {
           "key": "employee_count",
           "label": "직원 수",
           "value": 128881,
@@ -63,18 +73,13 @@
             "prevValue": 13.0,
             "changeRate": 5.4
           }
-        },
-        {
-          "key": "rd_ratio",
-          "label": "R&D/매출",
-          "value": 11.3,
-          "unit": "%",
-          "yoy": {
-            "prevValue": 11.6,
-            "changeRate": -2.6
-          }
         }
-      ]
+      ],
+      "profitability": {
+        "operatingMargin": 13.1,
+        "netMargin": 13.6,
+        "debtRatio": 29.9
+      }
     }
   },
   "text": null

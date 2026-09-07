@@ -40,6 +40,13 @@ OUT = ROOT / "tests" / "fixtures" / "api"
 SAMSUNG = "00126380"       # 5년 전부 · 모든 지표 정상
 SHIFTUP = "01384787"       # 2024 상장 · 2년만 · rejected 지표 포함
 
+# 비교로 고를 기업 — v2 의 peers 경로는 회사가 둘 이상 실려야 검증이 성립한다.
+# 같은 산업이고 2025·2024 지표가 다 적재된 것으로 골랐다 (전년이 있어야 증감률이 나온다).
+PEERS = {
+    SAMSUNG: ["00401731", "00164779"],   # LG전자 · SK하이닉스 (KSIC 26)
+    SHIFTUP: ["00261443", "00760971"],   # 엔씨소프트 · 크래프톤 (KSIC 58)
+}
+
 
 def cases(corp_codes: list[str]) -> list[tuple[str, str, dict]]:
     """(저장 이름, 경로, 쿼리) 목록. 이름이 곧 파일명이 된다."""
@@ -59,14 +66,21 @@ def cases(corp_codes: list[str]) -> list[tuple[str, str, dict]]:
             (f"metrics_{cc}_최신", f"/api/companies/{cc}/metrics", {}),
             (f"metrics_{cc}_2025", f"/api/companies/{cc}/metrics", {"year": 2025}),
             (f"metrics_{cc}_2021", f"/api/companies/{cc}/metrics", {"year": 2021}),
-            (f"metrics_{cc}_yoy없이", f"/api/companies/{cc}/metrics",
-             {"year": 2025, "yoy": "false"}),
+            # v2 는 yoy 파라미터가 없다(컨트롤러가 year·keys 만 받는다). 그 자리에
+            # keys 를 넣어 '기본 6종이 아니라 요청한 지표만 나오는가'를 받아 둔다
+            (f"metrics_{cc}_keys지정", f"/api/companies/{cc}/metrics",
+             {"year": 2025, "keys": "revenue,rd_ratio"}),
             (f"timeseries_{cc}", f"/api/companies/{cc}/metrics/timeseries",
              {"from": 2021, "to": 2025}),
             (f"timeseries_{cc}_단일지표", f"/api/companies/{cc}/metrics/timeseries",
              {"from": 2021, "to": 2025, "keys": "revenue"}),
+            # peers 생략 = 대상 기업만. v2 는 산업 전체를 싣지 않는다
             (f"comparison_{cc}", f"/api/companies/{cc}/industry-comparison", {"year": 2025}),
         ]
+        if cc in PEERS:
+            out.append(
+                (f"comparison_{cc}_peers", f"/api/companies/{cc}/industry-comparison",
+                 {"year": 2025, "peers": ",".join(PEERS[cc])}))
     out += [
         # 없는 기업 · 상장 이전 연도 — 404 인지 빈 응답인지가 규격이다
         ("detail_없는기업", "/api/companies/99999999", {}),

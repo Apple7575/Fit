@@ -8,7 +8,7 @@
         "keyword": "삼성"
       },
       "status": 200,
-      "elapsed_ms": 390
+      "elapsed_ms": 16
     },
     {
       "name": "search_없는이름",
@@ -26,7 +26,7 @@
         "keyword": "005930"
       },
       "status": 200,
-      "elapsed_ms": 47
+      "elapsed_ms": 0
     },
     {
       "name": "search_빈키워드",
@@ -35,7 +35,7 @@
         "keyword": " "
       },
       "status": 400,
-      "elapsed_ms": 61
+      "elapsed_ms": 0
     },
     {
       "name": "search_페이지크기초과",
@@ -45,21 +45,21 @@
         "size": 101
       },
       "status": 400,
-      "elapsed_ms": 32
+      "elapsed_ms": 31
     },
     {
       "name": "detail_00126380",
       "path": "/api/companies/00126380",
       "params": {},
       "status": 200,
-      "elapsed_ms": 46
+      "elapsed_ms": 16
     },
     {
       "name": "metrics_00126380_최신",
       "path": "/api/companies/00126380/metrics",
       "params": {},
       "status": 200,
-      "elapsed_ms": 578
+      "elapsed_ms": 30
     },
     {
       "name": "metrics_00126380_2025",
@@ -77,17 +77,17 @@
         "year": 2021
       },
       "status": 200,
-      "elapsed_ms": 31
+      "elapsed_ms": 16
     },
     {
-      "name": "metrics_00126380_yoy없이",
+      "name": "metrics_00126380_keys지정",
       "path": "/api/companies/00126380/metrics",
       "params": {
         "year": 2025,
-        "yoy": "false"
+        "keys": "revenue,rd_ratio"
       },
       "status": 200,
-      "elapsed_ms": 30
+      "elapsed_ms": 31
     },
     {
       "name": "timeseries_00126380",
@@ -97,7 +97,7 @@
         "to": 2025
       },
       "status": 200,
-      "elapsed_ms": 172
+      "elapsed_ms": 30
     },
     {
       "name": "timeseries_00126380_단일지표",
@@ -108,7 +108,7 @@
         "keys": "revenue"
       },
       "status": 200,
-      "elapsed_ms": 31
+      "elapsed_ms": 32
     },
     {
       "name": "comparison_00126380",
@@ -117,21 +117,31 @@
         "year": 2025
       },
       "status": 200,
-      "elapsed_ms": 77
+      "elapsed_ms": 0
+    },
+    {
+      "name": "comparison_00126380_peers",
+      "path": "/api/companies/00126380/industry-comparison",
+      "params": {
+        "year": 2025,
+        "peers": "00401731,00164779"
+      },
+      "status": 200,
+      "elapsed_ms": 15
     },
     {
       "name": "detail_01384787",
       "path": "/api/companies/01384787",
       "params": {},
       "status": 200,
-      "elapsed_ms": 14
+      "elapsed_ms": 16
     },
     {
       "name": "metrics_01384787_최신",
       "path": "/api/companies/01384787/metrics",
       "params": {},
       "status": 200,
-      "elapsed_ms": 31
+      "elapsed_ms": 16
     },
     {
       "name": "metrics_01384787_2025",
@@ -140,7 +150,7 @@
         "year": 2025
       },
       "status": 200,
-      "elapsed_ms": 31
+      "elapsed_ms": 15
     },
     {
       "name": "metrics_01384787_2021",
@@ -152,14 +162,14 @@
       "elapsed_ms": 16
     },
     {
-      "name": "metrics_01384787_yoy없이",
+      "name": "metrics_01384787_keys지정",
       "path": "/api/companies/01384787/metrics",
       "params": {
         "year": 2025,
-        "yoy": "false"
+        "keys": "revenue,rd_ratio"
       },
       "status": 200,
-      "elapsed_ms": 16
+      "elapsed_ms": 14
     },
     {
       "name": "timeseries_01384787",
@@ -169,7 +179,7 @@
         "to": 2025
       },
       "status": 200,
-      "elapsed_ms": 46
+      "elapsed_ms": 16
     },
     {
       "name": "timeseries_01384787_단일지표",
@@ -189,14 +199,24 @@
         "year": 2025
       },
       "status": 200,
-      "elapsed_ms": 47
+      "elapsed_ms": 0
+    },
+    {
+      "name": "comparison_01384787_peers",
+      "path": "/api/companies/01384787/industry-comparison",
+      "params": {
+        "year": 2025,
+        "peers": "00261443,00760971"
+      },
+      "status": 200,
+      "elapsed_ms": 16
     },
     {
       "name": "detail_없는기업",
       "path": "/api/companies/99999999",
       "params": {},
       "status": 404,
-      "elapsed_ms": 14
+      "elapsed_ms": 31
     },
     {
       "name": "metrics_시프트업_2022_상장이전",
@@ -205,7 +225,7 @@
         "year": 2022
       },
       "status": 200,
-      "elapsed_ms": 16
+      "elapsed_ms": 0
     }
   ]
 }

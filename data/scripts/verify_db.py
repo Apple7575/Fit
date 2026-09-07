@@ -53,11 +53,21 @@ REPORT = "--report" in sys.argv
 # CompanyYear 필드 → metric_code. load_metrics.py 의 VALUE_MAP 과 같은 대응이다
 VALUE_MAP = [
     ("revenue", "revenue"), ("operating_profit", "operating_profit"),
+    ("net_income", "net_income"),
     ("employee_count", "employee_count"), ("avg_salary_krw", "average_salary"),
     ("avg_tenure_years", "average_tenure"), ("rnd_ratio_pct", "rd_ratio"),
     ("rnd_cost_krw", "rd_cost"),
+    ("total_liabilities", "total_liabilities"), ("total_equity", "total_equity"),
 ]
 METRIC_ORDER = [m for _, m in VALUE_MAP]
+
+# fs_div 를 기록하는 지표. 재무제표에서 연결/별도를 골라 온 금액만 해당한다.
+# rd_cost 는 단위가 KRW 이고 카탈로그의 source_type 도 FINANCIAL_STATEMENT 지만
+# **사업보고서 문서를 파싱해서 얻는다.** 연결/별도 구분 자체가 없어 NULL 이다.
+# 그래서 카탈로그(unit·source_type)에서 유도하지 않고 여기 적어 둔다 — [1] 은
+# 적재 코드와 독립적으로 규칙을 다시 말하는 자리다
+FS_DIV_METRICS = {"revenue", "operating_profit", "net_income",
+                  "total_liabilities", "total_equity"}
 
 TOTAL_ROW = ("합계", "총계", "계", "성별합계", "전체")
 
@@ -92,13 +102,17 @@ def check_constraints(conn) -> int:
         print(f"    verdict 값 이상 {n}건")
 
         # 금액 지표만 fs_div 를 기록한다 (V1 주석)
-        cur.execute("""SELECT count(*) FROM company_metric
-                        WHERE (metric_code IN ('revenue','operating_profit')
-                               AND fs_div IS NULL)
-                           OR (metric_code NOT IN ('revenue','operating_profit')
-                               AND fs_div IS NOT NULL)""")
-        n = cur.fetchone()[0]; bad += n
-        print(f"    fs_div 기록 규칙 위반 {n}건")
+        codes = sorted(FS_DIV_METRICS)
+        cur.execute("""SELECT metric_code, count(*) FROM company_metric
+                        WHERE (metric_code = ANY(%s) AND fs_div IS NULL)
+                           OR (NOT metric_code = ANY(%s) AND fs_div IS NOT NULL)
+                        GROUP BY 1 ORDER BY 1""", (codes, codes))
+        viol = cur.fetchall()
+        n = sum(c for _, c in viol); bad += n
+        # 지표 이름을 같이 찍는다. 카탈로그에 지표가 늘었는데 이 목록을 안 고치면
+        # 건수만 보고는 원인을 못 찾는다 (실제로 V7 지표 3종에서 141건이 났다)
+        detail = ("  " + ", ".join(f"{m} {c}건" for m, c in viol)) if viol else ""
+        print(f"    fs_div 기록 규칙 위반 {n}건{detail}")
     return bad
 
 
@@ -156,7 +170,9 @@ def check_independent(conn) -> int:
     with conn.cursor() as cur:
         cur.execute("""SELECT corp_code, fiscal_year, metric_code, metric_value
                          FROM company_metric
-                        WHERE metric_code IN ('revenue','operating_profit','employee_count')""")
+                        WHERE metric_code IN ('revenue','operating_profit','net_income',
+                                              'total_liabilities','total_equity',
+                                              'employee_count')""")
         db = {(r[0], r[1], r[2]): r[3] for r in cur.fetchall()}
 
     checked = mismatch = skipped = 0
@@ -169,11 +185,17 @@ def check_independent(conn) -> int:
             p = cache / f"fnlttSinglAcnt_{t.corp_code}_{year}.json"
             if p.exists():
                 rows = json.loads(p.read_text(encoding="utf-8")).get("list") or []
-                for acc, code in (("매출액", "revenue"), ("영업이익", "operating_profit")):
+                # 계정명과 재무제표 구분을 여기 직접 적는다. patterns.yaml 을 읽으면
+                # 정규화와 같은 규칙을 두 번 쓰는 셈이라 독립 대조가 아니게 된다
+                for acc, sj, code in (("매출액", "IS", "revenue"),
+                                      ("영업이익", "IS", "operating_profit"),
+                                      ("당기순이익(손실)", "IS", "net_income"),
+                                      ("부채총계", "BS", "total_liabilities"),
+                                      ("자본총계", "BS", "total_equity")):
                     picked = None
                     for fs in ("CFS", "OFS"):        # 연결 우선, 없으면 별도
                         for r in rows:
-                            if r.get("fs_div") == fs and r.get("sj_div") == "IS" \
+                            if r.get("fs_div") == fs and r.get("sj_div") == sj \
                                     and r.get("account_nm") == acc:
                                 picked = _num(r.get("thstrm_amount"))
                                 break
