@@ -26,7 +26,7 @@ public interface CompanySegmentChangeRepository extends Repository<Company, Stri
      */
     @Query(value = """
             SELECT max(fiscal_year)
-            FROM (SELECT fiscal_year FROM company_segment WHERE corp_code = :corpCode
+            FROM (SELECT fiscal_year FROM segment_metric WHERE corp_code = :corpCode
                   UNION ALL
                   SELECT fiscal_year FROM company_metric
                    WHERE corp_code = :corpCode AND metric_code IN (:metricCodes)) y
@@ -48,17 +48,27 @@ public interface CompanySegmentChangeRepository extends Repository<Company, Stri
      * 프로젝션의 getter 와 어긋나기 때문이다.
      */
     @Query(value = """
-            SELECT cur.segment_code   AS "segmentCode",
+            WITH wide AS (
+                SELECT fiscal_year,
+                       segment_name,
+                       max(metric_value) FILTER (WHERE metric_code = 'segment_revenue')
+                           AS revenue,
+                       max(metric_value) FILTER (WHERE metric_code = 'segment_employee_count')::integer
+                           AS employee_count
+                FROM segment_metric
+                WHERE corp_code = :corpCode AND fiscal_year IN (:fiscalYear, :prevYear)
+                GROUP BY fiscal_year, segment_name
+            )
+            SELECT cur.segment_name   AS "segmentCode",
                    cur.revenue        AS "revenue",
                    cur.employee_count AS "employeeCount",
                    prv.employee_count AS "prevEmployeeCount"
-            FROM company_segment cur
-            LEFT JOIN company_segment prv
-                   ON prv.corp_code    = cur.corp_code
-                  AND prv.segment_code = cur.segment_code
+            FROM wide cur
+            LEFT JOIN wide prv
+                   ON prv.segment_name = cur.segment_name
                   AND prv.fiscal_year  = :prevYear
-            WHERE cur.corp_code = :corpCode AND cur.fiscal_year = :fiscalYear
-            ORDER BY cur.revenue DESC NULLS LAST, cur.segment_code
+            WHERE cur.fiscal_year = :fiscalYear
+            ORDER BY cur.revenue DESC NULLS LAST, cur.segment_name
             """, nativeQuery = true)
     List<SegmentChangeProjection> findSegmentChanges(@Param("corpCode") String corpCode,
                                                      @Param("fiscalYear") int fiscalYear,

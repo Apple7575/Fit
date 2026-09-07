@@ -32,9 +32,10 @@ public interface CompanyFocusRepository extends Repository<Company, String> {
      */
     @Query(value = """
             SELECT max(fiscal_year)
-            FROM (SELECT fiscal_year FROM company_focus_direction WHERE corp_code = :corpCode
-                  UNION ALL
-                  SELECT fiscal_year FROM company_rnd_field       WHERE corp_code = :corpCode
+            FROM (SELECT fiscal_year FROM company_text
+                   WHERE corp_code = :corpCode
+                     AND attr_key IN ('new_business', 'business_keyword',
+                                      'strategy_change', 'rd_field')
                   UNION ALL
                   SELECT fiscal_year FROM company_metric
                    WHERE corp_code = :corpCode AND metric_code IN (:metricCodes)) y
@@ -49,9 +50,10 @@ public interface CompanyFocusRepository extends Repository<Company, String> {
      * 프로젝션의 getter 와 어긋나기 때문이다.
      */
     @Query(value = """
-            SELECT strategy_change AS "strategyChange"
-            FROM company_focus_direction
+            SELECT value_text AS "strategyChange"
+            FROM company_text
             WHERE corp_code = :corpCode AND fiscal_year = :fiscalYear
+              AND attr_key  = 'strategy_change'
             """, nativeQuery = true)
     Optional<FocusDirectionProjection> findDirection(@Param("corpCode") String corpCode,
                                                      @Param("fiscalYear") int fiscalYear);
@@ -63,21 +65,24 @@ public interface CompanyFocusRepository extends Repository<Company, String> {
      * 이름을 마지막 정렬 키로 둔다.
      */
     @Query(value = """
-            SELECT item_type AS "itemType",
-                   item_name AS "itemName"
-            FROM company_focus_direction_item
+            SELECT CASE attr_key WHEN 'new_business' THEN 'NEW_BUSINESS'
+                                 ELSE 'KEYWORD' END AS "itemType",
+                   value_text                       AS "itemName"
+            FROM company_text
             WHERE corp_code = :corpCode AND fiscal_year = :fiscalYear
-            ORDER BY item_type, display_order, item_name
+              AND attr_key IN ('new_business', 'business_keyword')
+            ORDER BY attr_key, seq, value_text
             """, nativeQuery = true)
     List<FocusDirectionItemProjection> findDirectionItems(@Param("corpCode") String corpCode,
                                                           @Param("fiscalYear") int fiscalYear);
 
     /** R&D 중점 분야. 사업보고서 기재 순서로 정렬한다. */
     @Query(value = """
-            SELECT field_name
-            FROM company_rnd_field
+            SELECT value_text
+            FROM company_text
             WHERE corp_code = :corpCode AND fiscal_year = :fiscalYear
-            ORDER BY display_order, field_name
+              AND attr_key  = 'rd_field'
+            ORDER BY seq, value_text
             """, nativeQuery = true)
     List<String> findRndFields(@Param("corpCode") String corpCode,
                                @Param("fiscalYear") int fiscalYear);

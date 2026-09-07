@@ -35,11 +35,11 @@ public interface CompanyProfileRepository extends Repository<Company, String> {
      */
     @Query(value = """
             SELECT max(fiscal_year)
-            FROM (SELECT fiscal_year FROM company_business WHERE corp_code = :corpCode
+            FROM (SELECT fiscal_year FROM company_text
+                   WHERE corp_code = :corpCode
+                     AND attr_key IN ('main_business', 'main_product')
                   UNION ALL
-                  SELECT fiscal_year FROM company_segment  WHERE corp_code = :corpCode
-                  UNION ALL
-                  SELECT fiscal_year FROM company_product  WHERE corp_code = :corpCode) y
+                  SELECT fiscal_year FROM segment_metric WHERE corp_code = :corpCode) y
             """, nativeQuery = true)
     Integer findLatestFiscalYear(@Param("corpCode") String corpCode);
 
@@ -50,20 +50,22 @@ public interface CompanyProfileRepository extends Repository<Company, String> {
      * 추출 결과라 중복이 들어올 수 있고, 그때 순서가 실행마다 달라지면 화면이 흔들린다.
      */
     @Query(value = """
-            SELECT business_name
-            FROM company_business
+            SELECT value_text
+            FROM company_text
             WHERE corp_code = :corpCode AND fiscal_year = :fiscalYear
-            ORDER BY display_order, business_name
+              AND attr_key  = 'main_business'
+            ORDER BY seq, value_text
             """, nativeQuery = true)
     List<String> findBusinessNames(@Param("corpCode") String corpCode,
                                    @Param("fiscalYear") int fiscalYear);
 
     /** 주요 제품 목록. 정렬 규칙은 주요 사업과 같다. */
     @Query(value = """
-            SELECT product_name
-            FROM company_product
+            SELECT value_text
+            FROM company_text
             WHERE corp_code = :corpCode AND fiscal_year = :fiscalYear
-            ORDER BY display_order, product_name
+              AND attr_key  = 'main_product'
+            ORDER BY seq, value_text
             """, nativeQuery = true)
     List<String> findProductNames(@Param("corpCode") String corpCode,
                                   @Param("fiscalYear") int fiscalYear);
@@ -80,11 +82,13 @@ public interface CompanyProfileRepository extends Repository<Company, String> {
      * 프로젝션의 getter 와 어긋나기 때문이다.
      */
     @Query(value = """
-            SELECT segment_code AS "segmentCode",
-                   revenue      AS "revenue"
-            FROM company_segment
+            SELECT segment_name AS "segmentCode",
+                   max(metric_value) FILTER (WHERE metric_code = 'segment_revenue') AS "revenue"
+            FROM segment_metric
             WHERE corp_code = :corpCode AND fiscal_year = :fiscalYear
-            ORDER BY revenue DESC NULLS LAST, segment_code
+            GROUP BY segment_name
+            ORDER BY max(metric_value) FILTER (WHERE metric_code = 'segment_revenue')
+                     DESC NULLS LAST, segment_name
             """, nativeQuery = true)
     List<ProfileSegmentProjection> findSegments(@Param("corpCode") String corpCode,
                                                 @Param("fiscalYear") int fiscalYear);

@@ -48,25 +48,25 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
                    n.description                                     AS "description",
                    (n.published_at AT TIME ZONE 'Asia/Seoul')::date  AS "publishedAt",
                    n.original_url                                    AS "originalUrl",
-                   n.category                                        AS "category",
+                   n.news_category                                        AS "category",
                    n.related_business                                AS "relatedBusiness",
                    n.importance_score                                AS "importanceScore"
-            FROM company_news n
+            FROM news_article n
             WHERE n.corp_code    = :corpCode
               AND n.published_at IS NOT NULL
               AND n.published_at >= :since
-              AND (cast(:category AS varchar) IS NULL OR n.category = :category)
+              AND (cast(:category AS varchar) IS NULL OR n.news_category = :category)
             ORDER BY CASE WHEN cast(:importanceFirst AS boolean) THEN n.importance_score END DESC NULLS LAST,
                      n.published_at DESC,
                      n.id DESC
             """,
             countQuery = """
             SELECT count(*)
-            FROM company_news n
+            FROM news_article n
             WHERE n.corp_code    = :corpCode
               AND n.published_at IS NOT NULL
               AND n.published_at >= :since
-              AND (cast(:category AS varchar) IS NULL OR n.category = :category)
+              AND (cast(:category AS varchar) IS NULL OR n.news_category = :category)
             """,
             nativeQuery = true)
     Page<NewsItemProjection> findNews(@Param("corpCode") String corpCode,
@@ -88,9 +88,9 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
     @Query(value = """
             SELECT n.id               AS "id",
                    n.title            AS "title",
-                   n.category         AS "category",
+                   n.news_category         AS "category",
                    n.importance_score AS "importanceScore"
-            FROM company_news n
+            FROM news_article n
             WHERE n.corp_code        = :corpCode
               AND n.published_at    IS NOT NULL
               AND n.published_at    >= :since
@@ -105,7 +105,7 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
     /** 기간 내 뉴스 수. 분류·중요도와 무관하게 전부 센다. */
     @Query(value = """
             SELECT count(*)
-            FROM company_news
+            FROM news_article
             WHERE corp_code    = :corpCode
               AND published_at IS NOT NULL
               AND published_at >= :since
@@ -125,11 +125,11 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
     @Query(value = """
             SELECT count(*) FILTER (WHERE importance_score >= :threshold)                        AS "importantCount",
                    count(*) FILTER (WHERE importance_score >= :threshold
-                                      AND category = :investmentCategory)                        AS "investmentCount",
+                                      AND news_category = :investmentCategory)                        AS "investmentCount",
                    count(*) FILTER (WHERE importance_score >= :threshold
-                                      AND category = :techCategory)                              AS "techCount",
+                                      AND news_category = :techCategory)                              AS "techCount",
                    bool_or(importance_score IS NOT NULL)                                         AS "scored"
-            FROM company_news
+            FROM news_article
             WHERE corp_code    = :corpCode
               AND published_at IS NOT NULL
               AND published_at >= :since
@@ -150,15 +150,15 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
      * 순서가 바뀌면 안 된다. 같은 건수는 이름순으로 갈라 순서를 고정한다.
      */
     @Query(value = """
-            SELECT category   AS "category",
+            SELECT news_category   AS "category",
                    count(*)   AS "count"
-            FROM company_news
+            FROM news_article
             WHERE corp_code    = :corpCode
               AND published_at IS NOT NULL
               AND published_at >= :since
-              AND category    IS NOT NULL
-            GROUP BY category
-            ORDER BY count(*) DESC, category
+              AND news_category    IS NOT NULL
+            GROUP BY news_category
+            ORDER BY count(*) DESC, news_category
             """, nativeQuery = true)
     List<CategoryCountProjection> countByCategory(@Param("corpCode") String corpCode,
                                                   @Param("since") OffsetDateTime since);
