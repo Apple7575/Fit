@@ -1,0 +1,149 @@
+table_name,column_name,ordinal_position,data_type,nullable,key_type,referenced_table,referenced_column,description,provider,source_field,transform_rule,example,contains_personal_data,remarks
+collection_run,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다,database,,identity,1,no,
+collection_run,run_type,2,VARCHAR(30),NO,,,,수집 배치 종류,derived,,constant,FINANCIAL,no,CORP_CODE/COMPANY_PROFILE/FINANCIAL/EMPLOYEE/INVESTMENT. 뉴스 유형은 없다 — 합의 필요
+collection_run,target_year,3,SMALLINT,YES,,,,대상 사업연도. 연도 개념이 없는 실행은 NULL,derived,,raw,2025,no,
+collection_run,status,4,VARCHAR(20),NO,,,,RUNNING/SUCCESS/FAILED,derived,,constant,SUCCESS,no,
+collection_run,started_at,5,TIMESTAMPTZ,NO,,,,실행 시작 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+collection_run,finished_at,6,TIMESTAMPTZ,YES,,,,실행 종료 시각. 진행 중이면 NULL,derived,,raw,2026-09-07T12:03:00+09:00,no,
+collection_run,success_count,7,INTEGER,NO,,,,성공 건수,derived,,derived:실행 집계,50,no,
+collection_run,fail_count,8,INTEGER,NO,,,,실패 건수,derived,,derived:실행 집계,0,no,
+collection_run,message,9,TEXT,YES,,,,실패 원인·비고,derived,,raw,,no,
+company,corp_code,1,VARCHAR(8),NO,PK,,,DART 고유번호 8자리. API 경로변수 {corpCode}와 동일한 값,opendart,corpCode.xml:corp_code,raw,00126380,no,
+company,corp_name,2,VARCHAR(200),NO,,,,DART 등록명이 아니라 종목명(약칭). 검색이 이 컬럼의 trgm 인덱스를 타므로 사용자가 실제로 입력하는 이름을 담는다. 등록명 병기는 S15P21A504-94 에서 결정한다,opendart,company_universe.csv:corp_name,derived:종목명 우선,삼성전자,no,DART 등록명이 아니라 종목명. targets.csv 의 display_name 으로 덮어쓴다 (V6)
+company,corp_name_eng,3,VARCHAR(200),YES,,,,영문 회사명,opendart,company.json:corp_name_eng,raw,"SAMSUNG ELECTRONICS CO,.LTD",no,
+company,stock_code,4,VARCHAR(6),YES,UK,,,종목코드 6자리. 비상장사는 NULL,opendart,corpCode.xml:stock_code,raw,005930,no,비상장사는 NULL
+company,corp_cls,5,VARCHAR(1),YES,,,,"Y=유가, K=코스닥, N=코넥스, E=기타. v2 기업 헤더 응답에는 나가지 않는다",opendart,company.json:corp_cls,raw,Y,no,
+company,industry_code,6,VARCHAR(10),YES,FK,industry,industry_code,KSIC 중분류 2자리. API 응답의 industryCode,opendart,company.json:induty_code,derived:KSIC 중분류 2자리로 축약,26,no,
+company,ceo_nm,7,VARCHAR(100),YES,,,,DART 기업개황 ceo_nm. 기업 기본정보 응답의 ceo,opendart,company.json:ceo_nm,raw,한종희,yes,공시된 대표자 성명. 개인 식별 정보이므로 화면·로그 노출 범위를 따로 본다
+company,established_date,8,DATE,YES,,,,DART 기업개황 est_dt. 기업 기본정보 응답의 establishedDate,opendart,company.json:est_dt,derived:YYYYMMDD → DATE,1969-01-13,no,
+company,listed_date,9,DATE,YES,,,,상장일,미정,,미적재,,no,기업개황 응답에 상장일 필드가 없다. KRX 등 별도 소스 필요
+company,dart_modify_date,10,VARCHAR(8),YES,,,,DART modify_date(YYYYMMDD). 증분 수집 판단용,opendart,corpCode.xml:modify_date,raw,20260301,no,
+company,created_at,11,TIMESTAMPTZ,NO,,,,이 행을 처음 넣은 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company,updated_at,12,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 고친 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company,induty_code,13,VARCHAR(10),YES,,,,DART 기업개황 induty_code(5자리 세분류). 원본 보존용,opendart,company.json:induty_code,raw,26410,no,DART 5자리 세분류 원본 보존용
+company,address,14,VARCHAR(300),YES,,,,DART 기업개황 adres. 기업 헤더 응답의 address,opendart,company.json:adres,raw,경기도 수원시 영통구 …,no,
+company,homepage_url,15,VARCHAR(300),YES,,,,DART 기업개황 hm_url. 기업 헤더 응답의 homepageUrl. 스킴이 없는 형태로 오는 경우가 있어 화면에서 그대로 링크를 걸기 전에 확인이 필요하다,opendart,company.json:hm_url,raw,www.samsung.com/sec,no,스킴이 없는 형태로 오는 경우가 있다
+company_activity,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다,database,,identity,1,no,
+company_activity,corp_code,2,VARCHAR(8),NO,FK,company,corp_code,DART 고유번호 8자리,opendart,company.corp_code,raw,00126380,no,
+company_activity,fiscal_year,3,SMALLINT,NO,,,,회계연도,opendart,,derived:사업연도,2025,no,
+company_activity,activity_type,4,VARCHAR(20),NO,,,,API 의 type 파라미터 값과 같다. facility/corporate_invest/ma/transfer,opendart,,constant,facility,no,facility/corporate_invest/ma/transfer. API 의 type 파라미터 값과 같다
+company_activity,field_name,5,VARCHAR(200),YES,,,,투자 분야. 예: 파운드리. 미기재는 NULL,opendart,주요사항보고서,derived:추출 결과,파운드리,no,
+company_activity,purpose,6,VARCHAR(500),YES,,,,투자 목적. 예: 미국 테일러 공장 생산능력 확대. 미기재는 NULL,opendart,주요사항보고서,derived:추출 결과,미국 테일러 공장 생산능력 확대,no,
+company_activity,amount,7,"NUMERIC(24,4)",YES,,,,금액(원). 미공시는 NULL 이며 0 과 다른 사실이다,opendart,주요사항보고서,derived:원 단위,44000000000000,no,
+company_activity,rcept_no,8,VARCHAR(14),YES,,,,근거 공시 접수번호 14자리,opendart,주요사항보고서:rcept_no,raw,20260310002820,no,
+company_activity,updated_at,9,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company_business,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,opendart_filing,company.corp_code,raw,00126380,no,
+company_business,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,opendart_filing,,derived:사업연도,2025,no,
+company_business,business_name,3,VARCHAR(200),NO,PK,,,기업 개요 응답 businesses[] 의 원소,opendart_filing,document.xml:사업의 내용,derived:추출 PoC 결과,DX부문,no,S15P21A504-73 추출 방식 확정 전. 현재 미적재
+company_business,display_order,4,SMALLINT,NO,,,,사업보고서 기재 순서. 화면 표시 순서가 이 값이다,opendart_filing,,derived:기재 순서 보존,1,no,
+company_business,updated_at,5,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company_focus_direction,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,ai_analysis,company.corp_code,raw,00126380,no,
+company_focus_direction,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,ai_analysis,,derived:사업연도,2025,no,
+company_focus_direction,strategy_change,3,TEXT,YES,,,,전략 변화 요약 한 문단. 길이가 정해지지 않아 TEXT 다,ai_analysis,,derived:모델 생성물,,no,공시 수치가 아니다. 화면에서 AI 분석으로 구분 표시한다. 현재 미적재
+company_focus_direction,generated_at,4,TIMESTAMPTZ,NO,,,,이 분석을 만든 시각. 모델·프롬프트가 바뀌면 갱신된다,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company_focus_direction_item,corp_code,1,VARCHAR(8),NO,"PK,FK",company_focus_direction,corp_code,DART 고유번호 8자리. company 를 참조한다,ai_analysis,company.corp_code,raw,00126380,no,
+company_focus_direction_item,fiscal_year,2,SMALLINT,NO,"PK,FK",company_focus_direction,fiscal_year,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,ai_analysis,,derived:사업연도,2025,no,
+company_focus_direction_item,item_type,3,VARCHAR(20),NO,PK,,,"NEW_BUSINESS 는 응답의 newBusiness[], KEYWORD 는 keywords[]",ai_analysis,,constant,NEW_BUSINESS,no,
+company_focus_direction_item,item_name,4,VARCHAR(200),NO,PK,,,신규사업명 또는 전략 키워드,ai_analysis,,derived:모델 생성물,로봇,no,현재 미적재
+company_focus_direction_item,display_order,5,SMALLINT,NO,,,,AI 가 낸 순서. 중요도 순으로 오므로 이름순으로 바꾸지 않는다,ai_analysis,,derived:기재 순서 보존,1,no,
+company_metric,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,derived,dart_financial_account.corp_code,raw,00126380,no,
+company_metric,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,derived,dart_financial_account.bsns_year,raw,2025,no,
+company_metric,metric_code,3,VARCHAR(40),NO,"FK,PK",metric,metric_code,지표 코드. metric 카탈로그를 참조한다,derived,,derived:지표 카탈로그 매핑,revenue,no,
+company_metric,metric_value,4,"NUMERIC(24,4)",NO,,,,"금액은 원 단위 정수, 비율·연수는 소수를 담는다",derived,dart_financial_account.thstrm_amount,derived:pipeline/normalize 규칙,300870903000000,no,
+company_metric,fs_div,5,VARCHAR(3),YES,,,,금액 지표가 어느 재무제표 기준인지. 파생·비재무 지표는 NULL,derived,dart_financial_account.fs_div,raw,CFS,no,파생·비재무 지표는 NULL
+company_metric,updated_at,6,TIMESTAMPTZ,NO,,,,이 값을 마지막으로 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company_news,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다,database,,identity,1,no,GENERATED ALWAYS AS IDENTITY. 시드 CSV 에 넣지 않는다
+company_news,corp_code,2,VARCHAR(8),NO,"FK,UK",company,corp_code,이 뉴스를 붙인 기업. DART 고유번호 8자리,derived,requests.json:query → staged.corp_code,derived:검색어를 company_universe.csv 의 corp_name·dart_corp_name 과 정확·정규화 일치로 매핑,00126380,no,RSS 에 기업 식별자가 없다. 매핑 실패 행은 시드에 넣지 않고 사유를 남긴다
+company_news,title,3,VARCHAR(500),NO,,,,기사 제목. 응답의 title,google_news_rss,rss:item/title → staged.title,derived:끝의 ' - <언론사>' 접미사만 제거,"삼성전자, 테일러 공장 가동",possible,기사 제목에 인물명이 들어올 수 있다. 제3자 저작물이므로 저장·표시 조건 확인 필요
+company_news,description,4,TEXT,YES,,,,요약. 길이가 정해지지 않아 TEXT 다. 미제공은 NULL,google_news_rss,rss:item/description → staged.description,derived:검토를 통과한 요약만. 제목 반복은 넣지 않는다,,no,현재 전부 NULL. RSS 설명이 제목 반복인 사례가 있어 요약으로 쓰지 않는다 (90번 문서)
+company_news,published_at,5,TIMESTAMPTZ,YES,,,,기사 발행 시각. 응답에는 서울 기준 날짜(YYYY-MM-DD)로 나간다. NULL 이면 기간 조회에 걸리지 않아 세 API 어디에도 나가지 않는다,google_news_rss,rss:item/pubDate → staged.published_at,derived:RFC 2822 → UTC ISO 8601. 시간대 누락은 NULL,2026-09-05T23:30:00+00:00,no,"저장은 UTC, 기간 구분은 KST(staged.published_date_kst), 응답은 서울 기준 날짜"
+company_news,original_url,6,VARCHAR(1000),YES,UK,,,언론사 직접 원문 URL. 확보하지 못하면 NULL,google_news_rss,rss:item/link → staged.original_url,derived:Google 경유 주소가 아닌 외부 링크만 후보로 남긴다,https://n.example/article/1,no,Google 경유 rss_link 를 여기 넣지 않는다. 외부 링크도 접근 검증 전 후보다
+company_news,source,7,VARCHAR(50),YES,,,,어느 뉴스 소스에서 왔나. 사용 소스는 S15P21A504-93 에서 확정한다,google_news_rss,rss:item/source → staged.publisher,derived:기본 publisher,테스트일보,no,합의 필요 — 컬럼이 하나뿐이라 provider(google_news_rss)와 publisher(언론사)를 함께 담을 수 없다. provider 컬럼 추가를 제안한다
+company_news,category,8,VARCHAR(50),YES,,,,AI 분류 결과. 프론트가 아는 어휘는 투자·기술·실적·인사·리스크·제품·규제 7종이며 모르는 값은 회색 칩으로 표시된다. 분류 실패는 NULL,ai_analysis,,미적재,,no,AI 분류 미실행. 팀이 카테고리 분류를 하지 않기로 했고 프론트 어휘는 7종이다 — 합의 필요
+company_news,related_business,9,VARCHAR(200),YES,,,,AI 가 뽑은 관련 사업. 분석 실패나 해당 없음은 NULL,ai_analysis,,미적재,,no,AI 분석 PoC 단계(S15P21A504-74). 반복 안정성 미달로 적재하지 않는다
+company_news,importance_score,10,"NUMERIC(3,1)",YES,,,,AI 중요도 0.0~10.0. 프론트 목업 기준 소수 한 자리다. 분석 실패는 NULL 이고 0 과 다른 사실이다,ai_analysis,,미적재,,no,0~10. NULL 은 분석 실패이고 0 과 다른 사실이다
+company_news,analyzed_at,11,TIMESTAMPTZ,YES,,,,AI 분석을 돌린 시각. 모델·프롬프트가 바뀌면 갱신된다. 기본 필드만 적재된 뉴스는 NULL,ai_analysis,,미적재,,no,분석을 돌린 시각. 기본 필드만 적재된 뉴스는 NULL
+company_news,collected_at,12,TIMESTAMPTZ,NO,,,,원본을 받은 시각,google_news_rss,requests.json:checked_at → staged.collected_at,raw,2026-09-06T00:10:00+00:00,no,원본을 받은 시각. DB 기본값 now() 에 맡기지 않고 수집 시각을 넣는다
+company_product,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,opendart_filing,company.corp_code,raw,00126380,no,
+company_product,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,opendart_filing,,derived:사업연도,2025,no,
+company_product,product_name,3,VARCHAR(200),NO,PK,,,기업 개요 응답 products[] 의 원소,opendart_filing,document.xml:사업의 내용,derived:추출 PoC 결과,메모리,no,S15P21A504-73 추출 방식 확정 전. 현재 미적재
+company_product,display_order,4,SMALLINT,NO,,,,사업보고서 기재 순서. 화면 표시 순서가 이 값이다,opendart_filing,,derived:기재 순서 보존,1,no,
+company_product,updated_at,5,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company_rnd_field,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,opendart_filing,company.corp_code,raw,00126380,no,
+company_rnd_field,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,opendart_filing,,derived:사업연도,2025,no,
+company_rnd_field,field_name,3,VARCHAR(200),NO,PK,,,R&D 중점 분야명,opendart_filing,document.xml:사업의 내용,derived:추출 PoC 결과,차세대 메모리,no,S15P21A504-73 추출 방식 확정 전. 현재 미적재
+company_rnd_field,display_order,4,SMALLINT,NO,,,,사업보고서 기재 순서,opendart_filing,,derived:기재 순서 보존,1,no,
+company_rnd_field,updated_at,5,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company_segment,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,opendart_filing,company.corp_code,raw,00126380,no,
+company_segment,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,opendart_filing,,derived:사업연도,2025,no,
+company_segment,segment_code,3,VARCHAR(50),NO,PK,,,사업보고서의 부문 표기 그대로. 기업마다 다르고 표준 코드체계가 없다,opendart_filing,document.xml:부문 표기,raw,DX,no,기업별 표기 그대로. 표준 코드체계가 없다
+company_segment,revenue,4,"NUMERIC(24,4)",YES,,,,부문 매출(원). 미공시는 NULL 이며 0 과 다른 사실이다,opendart_filing,document.xml:부문 매출,derived:원 단위,1000000000000,no,미공시는 NULL 이며 0 과 다른 사실이다
+company_segment,updated_at,5,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+company_segment,employee_count,6,INTEGER,YES,,,,부문 직원 수(명). 미공시는 NULL 이며 0 과 다른 사실이다. /segments 의 employeeChange 는 전년 행과의 차이로 계산한다,opendart_filing,document.xml:부문 인력,raw,75200,no,미공시는 NULL
+dart_employee_status,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다,database,,identity,1,no,
+dart_employee_status,corp_code,2,VARCHAR(8),NO,"FK,UK",company,corp_code,DART 고유번호 8자리,opendart,요청 파라미터 corp_code,raw,00126380,no,
+dart_employee_status,bsns_year,3,SMALLINT,NO,UK,,,사업연도,opendart,요청 파라미터 bsns_year,raw,2025,no,
+dart_employee_status,reprt_code,4,VARCHAR(5),NO,UK,,,보고서 코드. 11011=사업보고서,opendart,empSttus:reprt_code,raw,11011,no,
+dart_employee_status,fo_bbm,5,VARCHAR(200),NO,UK,,,사업부문. 응답에 없으면 빈 문자열(UNIQUE 키에 쓰이므로 NULL 금지),opendart,empSttus:fo_bbm,derived:없으면 빈 문자열,DX부문,no,
+dart_employee_status,sexdstn,6,VARCHAR(10),NO,UK,,,성별(남/여). 위와 동일,opendart,empSttus:sexdstn,derived:없으면 빈 문자열,남,no,
+dart_employee_status,rgllbr_co,7,INTEGER,YES,,,,정규직 인원,opendart,empSttus:rgllbr_co,derived:콤마 제거,74000,no,
+dart_employee_status,cnttk_co,8,INTEGER,YES,,,,계약직 인원,opendart,empSttus:cnttk_co,derived:콤마 제거,1200,no,
+dart_employee_status,sm,9,INTEGER,YES,,,,합계 인원. employee_count 는 이 값의 합,opendart,empSttus:sm,derived:콤마 제거,75200,no,
+dart_employee_status,avrg_cnwk_sdytrn,10,TEXT,YES,,,,평균 근속연수. 회사별 표기가 제각각이라 원문 그대로 TEXT 로 받고 F-27 에서 파싱한다,opendart,empSttus:avrg_cnwk_sdytrn,raw,13년 2개월,no,회사별 표기가 제각각이라 원문 TEXT 로 보존하고 파싱은 정규화 단계에서 한다
+dart_employee_status,fyer_salary_totamt,11,"NUMERIC(24,0)",YES,,,,연간급여 총액. avg_salary = SUM(fyer_salary_totamt) / SUM(sm),opendart,empSttus:fyer_salary_totamt,derived:콤마 제거,9200000000000,no,
+dart_employee_status,jan_salary_am,12,"NUMERIC(24,0)",YES,,,,행 단위 1인평균 급여액. 사업부문별 값이라 단순평균하면 안 된다,opendart,empSttus:jan_salary_am,derived:콤마 제거,122000000,no,사업부문별 1인평균이라 단순평균하면 안 된다
+dart_employee_status,collected_at,13,TIMESTAMPTZ,NO,,,,이 행을 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+dart_financial_account,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다,database,,identity,1,no,
+dart_financial_account,corp_code,2,VARCHAR(8),NO,"FK,UK",company,corp_code,DART 고유번호 8자리,opendart,요청 파라미터 corp_code,raw,00126380,no,
+dart_financial_account,bsns_year,3,SMALLINT,NO,UK,,,사업연도,opendart,요청 파라미터 bsns_year,raw,2025,no,
+dart_financial_account,reprt_code,4,VARCHAR(5),NO,UK,,,"11011=사업보고서, 11012=반기, 11013=1분기, 11014=3분기",opendart,fnlttSinglAcntAll:reprt_code,raw,11011,no,
+dart_financial_account,fs_div,5,VARCHAR(3),NO,UK,,,"OFS=개별, CFS=연결",opendart,fnlttSinglAcntAll:fs_div,raw,CFS,no,
+dart_financial_account,sj_div,6,VARCHAR(3),NO,UK,,,"BS=재무상태표, IS=손익계산서, CIS=포괄손익계산서",opendart,fnlttSinglAcntAll:sj_div,raw,IS,no,
+dart_financial_account,account_nm,7,VARCHAR(200),NO,UK,,,DART 응답의 계정명 원문,opendart,fnlttSinglAcntAll:account_nm,raw,매출액,no,
+dart_financial_account,thstrm_amount,8,"NUMERIC(24,4)",YES,,,,당기 금액(원),opendart,fnlttSinglAcntAll:thstrm_amount,derived:콤마 제거 후 수치화,300870903000000,no,
+dart_financial_account,collected_at,9,TIMESTAMPTZ,NO,,,,이 행을 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+industry,industry_code,1,VARCHAR(10),NO,PK,,,KSIC 중분류 2자리 코드,flyway_seed,ksic_division.csv:ksic_division,raw,26,no,V3 이 config/ksic_division.csv 77건을 시드한다. KSIC 중분류 2자리
+industry,industry_name,2,VARCHAR(200),NO,,,,KSIC 중분류 명칭,flyway_seed,ksic_division.csv:division_name,raw,"전자부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",no,
+metric,metric_code,1,VARCHAR(40),NO,PK,,,keys 쿼리파라미터로 들어오고 응답의 metrics[].key · series[].key 로 나가는 값. v2 규약에 따라 축약하지 않은 snake_case 를 쓴다,flyway_seed,,constant,revenue,no,V2·V4·V5·V7 이 시드한다. API 경로변수 {metric} 값
+metric,name_ko,2,VARCHAR(50),NO,,,,지표 한글명. 응답의 name,flyway_seed,,constant,매출액,no,
+metric,unit,3,VARCHAR(10),NO,,,,API 응답의 unit 필드에 그대로 실린다,flyway_seed,,constant,KRW,no,KRW/PERSON/YEAR/% 4종
+metric,value_scale,4,SMALLINT,NO,,,,"표시 소수 자릿수. 금액·인원은 0, 근속연수·비율은 1",flyway_seed,,constant,0,no,
+metric,source_type,5,VARCHAR(20),NO,,,,DERIVED 는 원본 계정에서 계산해 적재하는 지표,flyway_seed,,constant,FINANCIAL_STATEMENT,no,
+metric,display_order,6,SMALLINT,NO,,,,화면 표시 순서,flyway_seed,,constant,1,no,
+metric,is_active,7,BOOLEAN,NO,,,,keys 로 요청할 수 있는 지표. FALSE 는 파생값 계산에만 쓰는 내부 지표이며 응답에 노출되지 않는다,flyway_seed,,constant,true,no,
+metric,is_core,8,BOOLEAN,NO,,,,keys 없이 조회했을 때 기본으로 나가는 지표. v2 기준 6종이다,flyway_seed,,constant,true,no,V7 에서 추가
+metric_evidence,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,derived,,raw,00126380,no,
+metric_evidence,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,derived,,raw,2025,no,
+metric_evidence,metric_code,3,VARCHAR(40),NO,"FK,PK",metric,metric_code,지표 코드,derived,,raw,rd_cost,no,
+metric_evidence,verdict,4,VARCHAR(20),NO,,,,verified/unverified/rejected/not_found 4종. 파서 원본 등급은 evidence->>'raw_verdict',derived,,derived:교차검증 판정,verified,no,
+metric_evidence,source,5,VARCHAR(40),YES,,,,어느 경로로 얻었나. A_major_name(주요계정+계정명) / B_full_id(전체재무제표+계정코드) / C_full_name(전체재무제표+계정명) / detail(직원 상세행) / total_rows(직원 합계행) / doc_table(사업보고서 표),derived,,derived:획득 경로,doc_table,no,
+metric_evidence,rcept_no,6,VARCHAR(14),YES,,,,근거 공시 접수번호 14자리. evidence JSONB 에도 있으나 조인·집계가 잦아 컬럼으로 승격했다,opendart_filing,document.xml:rcept_no,raw,20260310002820,no,
+metric_evidence,evidence,7,JSONB,NO,,,,"표 순번·행 라벨·원문 셀. 예: {""rcept_no"":""20260310002820"",""table_idx"":110,""row_label"":""연구개발비용 총계"",""raw"":""37,754,815"",""unit"":""백만원"",""unit_src"":""직전표-1""}",derived,,derived:표 순번·행 라벨·원문 셀,"{""table_idx"":110,""row_label"":""연구개발비용 총계"",""raw"":""37,754,815""}",no,
+metric_evidence,gap_pct,8,"NUMERIC(8,4)",YES,,,,"회사가 다른 방식으로 계산한 값과 우리 계산의 차이. 파싱 오류가 아니라 기재 방식 차이이므로 버리지 않고 남긴다 (한미반도체 R&D 분모, LG전자 근속 집계, 크래프톤 급여 기준)",derived,,derived:회사 기재값과의 차이,0.0312,no,
+metric_evidence,warnings,9,TEXT[],NO,,,,정규화 중 발생한 경고. 값을 버릴 정도는 아니지만 검수자가 봐야 하는 것,derived,,derived:정규화 경고,{},no,
+metric_evidence,collected_at,10,TIMESTAMPTZ,NO,,,,이 근거를 만든 시각. 재적재하면 갱신된다,database,,default:now(),2026-09-07T12:00:00+09:00,no,
+staging.dart_otr_cpr_invstmnt,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다,database,,identity,1,no,identity
+staging.dart_otr_cpr_invstmnt,corp_code,2,VARCHAR(8),NO,"FK,UK",company,corp_code,DART 고유번호 8자리,opendart,요청 파라미터 corp_code,raw,00164779,no,
+staging.dart_otr_cpr_invstmnt,bsns_year,3,SMALLINT,NO,UK,,,사업연도,opendart,요청 파라미터 bsns_year,raw,2025,no,
+staging.dart_otr_cpr_invstmnt,reprt_code,4,VARCHAR(5),NO,UK,,,보고서 코드. 11011=사업보고서,opendart,otrCprInvstmntSttus:reprt_code,raw,11011,no,
+staging.dart_otr_cpr_invstmnt,row_no,5,SMALLINT,NO,UK,,,응답 안 행 번호(0부터). UNIQUE 키 구성요소이며 원문 순서를 보존한다. 재수집 때 번호가 달라져도 무방하다 — 기업-연도 단위로 전부 교체하기 때문,opendart,응답 배열 순번,raw,0,no,원문 순서 보존
+staging.dart_otr_cpr_invstmnt,rcept_no,6,VARCHAR(14),YES,,,,근거 공시 접수번호 14자리,opendart,otrCprInvstmntSttus:rcept_no,raw,20260310002820,no,
+staging.dart_otr_cpr_invstmnt,is_total,7,BOOLEAN,NO,,,,"합계 행 여부. 판정 정규식은 config/patterns.yaml 의 investment.total_row_re = '^(합계|총계|계|소계)$' 로, 합계뿐 아니라 총계·계·소계도 잡는다. 집계할 때 반드시 제외하라 — 섞으면 장부가액이 2배가 된다",database,,derived,false,no,합계 행 판정. config/patterns.yaml investment.total_row_re
+staging.dart_otr_cpr_invstmnt,inv_prm,8,VARCHAR(300),YES,,,,피출자회사. 같은 회사가 보통주/전환우선주로 2행 오는 경우가 있다(넷마블). 원천이 결측(-)이면 NULL,opendart,otrCprInvstmntSttus:inv_prm,raw,SK스퀘어,no,
+staging.dart_otr_cpr_invstmnt,invstmnt_purps,9,VARCHAR(300),YES,,,,출자목적. '단순투자(보통주)'처럼 주식 종류가 여기 들어와 같은 피출자회사를 구분한다,opendart,otrCprInvstmntSttus:invstmnt_purps,raw,단순투자(보통주),no,
+staging.dart_otr_cpr_invstmnt,frst_acqs_de,10,VARCHAR(20),YES,,,,최초취득일자 원문. 표기가 '1977.01.01'처럼 점 구분이라 원문을 보존한다(84 의 평균근속 TEXT 보존과 같은 이유). 파싱값은 frst_acqs_de_iso,opendart,otrCprInvstmntSttus:frst_acqs_de,raw,1977.01.01,no,원문 표기 보존
+staging.dart_otr_cpr_invstmnt,frst_acqs_de_iso,11,DATE,YES,,,,frst_acqs_de 를 파싱한 날짜. 못 읽으면 NULL — 추정하지 않는다,database,,derived,1977-01-01,no,frst_acqs_de 파싱값. 못 읽으면 NULL
+staging.dart_otr_cpr_invstmnt,frst_acqs_amount,12,"NUMERIC(24,0)",YES,,,,최초 취득 금액(원),opendart,otrCprInvstmntSttus:frst_acqs_amount,raw,1000000000,no,
+staging.dart_otr_cpr_invstmnt,bsis_blce_qy,13,"NUMERIC(24,0)",YES,,,,기초 잔액 수량,opendart,otrCprInvstmntSttus:bsis_blce_qy,raw,1000,no,
+staging.dart_otr_cpr_invstmnt,bsis_blce_qota_rt,14,"NUMERIC(7,2)",YES,,,,기초 지분율(%),opendart,otrCprInvstmntSttus:bsis_blce_qota_rt,raw,20.15,no,
+staging.dart_otr_cpr_invstmnt,bsis_blce_acntbk_amount,15,"NUMERIC(24,0)",YES,,,,기초 장부가액(원),opendart,otrCprInvstmntSttus:bsis_blce_acntbk_amount,raw,5000000000,no,
+staging.dart_otr_cpr_invstmnt,incrs_dcrs_acqs_dsps_qy,16,"NUMERIC(24,0)",YES,,,,증감 중 취득·처분 수량,opendart,otrCprInvstmntSttus:incrs_dcrs_acqs_dsps_qy,raw,0,no,
+staging.dart_otr_cpr_invstmnt,incrs_dcrs_acqs_dsps_amount,17,"NUMERIC(24,0)",YES,,,,증감 중 취득·처분 금액(원),opendart,otrCprInvstmntSttus:incrs_dcrs_acqs_dsps_amount,raw,0,no,
+staging.dart_otr_cpr_invstmnt,incrs_dcrs_evl_lstmn,18,"NUMERIC(24,0)",YES,,,,"증감 중 평가손익. 회사가 이 값을 적고도 그 행의 기말 장부가액에 반영하지 않는 경우가 있다(SK하이닉스 2025 BCPE Pangea Cayman2, 5.34조) — config/known_findings.yaml 참고",opendart,otrCprInvstmntSttus:incrs_dcrs_evl_lstmn,raw,0,no,
+staging.dart_otr_cpr_invstmnt,trmend_blce_qy,19,"NUMERIC(24,0)",YES,,,,기말 잔액 수량,opendart,otrCprInvstmntSttus:trmend_blce_qy,raw,1000,no,
+staging.dart_otr_cpr_invstmnt,trmend_blce_qota_rt,20,"NUMERIC(7,2)",YES,,,,기말 지분율(%),opendart,otrCprInvstmntSttus:trmend_blce_qota_rt,raw,20.15,no,
+staging.dart_otr_cpr_invstmnt,trmend_blce_acntbk_amount,21,"NUMERIC(24,0)",YES,,,,기말 장부가액. 합계 행의 이 값은 상세 기말 합이 아니라 상세(기초+증감) 합과 일치하는 경우가 있다. 검산은 두 경로를 모두 본다(verify_investment.py A-1a/A-1b),opendart,otrCprInvstmntSttus:trmend_blce_acntbk_amount,raw,5000000000,no,
+staging.dart_otr_cpr_invstmnt,recent_tot_assets,22,"NUMERIC(24,0)",YES,,,,★ 우리 회사가 아니라 피출자회사의 최근사업연도 총자산. company_metric 의 자산총계와 다른 회사의 숫자다,opendart,otrCprInvstmntSttus:recent_tot_assets,raw,10000000000,no,피출자회사의 총자산. 우리 회사 값이 아니다
+staging.dart_otr_cpr_invstmnt,recent_thstrm_ntpf,23,"NUMERIC(24,0)",YES,,,,★ 우리 회사가 아니라 피출자회사의 최근사업연도 당기순이익. 위와 같다,opendart,otrCprInvstmntSttus:recent_thstrm_ntpf,raw,500000000,no,피출자회사의 당기순이익
+staging.dart_otr_cpr_invstmnt,stlm_dt,24,DATE,YES,,,,피출자회사 결산기준일. 원문이 '2024-12-31' 형식으로 와서 원문 컬럼을 따로 두지 않았다,opendart,otrCprInvstmntSttus:stlm_dt,raw,2024-12-31,no,
+staging.dart_otr_cpr_invstmnt,collected_at,25,TIMESTAMPTZ,NO,,,,이 행을 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,default:now()
