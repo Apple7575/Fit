@@ -33,6 +33,7 @@ erDiagram
     metric   ||--o{ company_metric : "정의"
     company  ||--o{ dart_financial_account : "원본"
     company  ||--o{ dart_employee_status : "원본"
+    company  ||--o{ staging_dart_otr_cpr_invstmnt : "원본"
 
     industry {
         varchar industry_code PK
@@ -90,7 +91,20 @@ erDiagram
         integer success_count
         integer fail_count
     }
+    staging_dart_otr_cpr_invstmnt {
+        bigint id PK
+        varchar corp_code FK "public.company 참조"
+        smallint bsns_year
+        varchar reprt_code
+        smallint row_no "응답 안 행 번호"
+        boolean is_total "합계 행. 집계에서 제외"
+        varchar inv_prm "피출자회사"
+        numeric trmend_blce_acntbk_amount "기말 장부가액"
+    }
 ```
+
+> `staging_dart_otr_cpr_invstmnt` 는 실제로는 `staging` 스키마의 `dart_otr_cpr_invstmnt` 다.
+> mermaid 가 이름에 점을 못 써서 밑줄로 적었다.
 
 ### 2-1. 명세 외 테이블 (정리 대상, S15P21A504-120)
 
@@ -104,6 +118,16 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 그 전까지는 지우지도 확장하지도 않는다.
 
 `metric_evidence`(V5)도 명세에 없으나 정규화 검증(S15P21A504-84)이 쓰고 있어 이 정리 범위에 넣지 않았다.
+
+**새 착지 테이블은 `staging` 스키마에 만든다.** V9 의 `staging.dart_otr_cpr_invstmnt` 가 첫 사례다.
+
+`public` 을 확정 ERD 명세서와 일치시키는 것이 이 정리의 목적이므로, 착지 테이블을 `public` 에 두면
+새로 만드는 족족 정리 대상이 된다 — 만들자마자 옮기는 왕복이 생긴다. 그래서 처음부터 `staging` 에 만들기로
+파이프라인 담당과 합의했다(S15P21A504-120 회신 5장). 위 세 테이블도 같은 이유로 `staging` 이동이 예정돼 있고,
+`dart_financial_account` 는 읽는 곳이 없어 삭제하기로 했다.
+
+파이프라인은 테이블 이름을 스키마 없이 쓰고 `connect()` 의 `search_path` 로 푼다(`data/pipeline/db.py`).
+백엔드의 `search_path` 는 `public` 그대로 두므로 조회 API 와 엔티티 검증은 이 스키마를 보지 않는다.
 
 ---
 
