@@ -23,8 +23,8 @@ wide → long (D-2)
     CompanyYear.total_liabilities→ metric_code='total_liabilities' fs_div 기록 (비활성)
     CompanyYear.total_equity     → metric_code='total_equity'      fs_div 기록 (비활성)
     CompanyYear.employee_count   → metric_code='employee_count'    fs_div NULL
-    CompanyYear.avg_salary_krw   → metric_code='avg_salary'        fs_div NULL
-    CompanyYear.avg_tenure_years → metric_code='avg_tenure'        fs_div NULL
+    CompanyYear.avg_salary_krw   → metric_code='average_salary'    fs_div NULL
+    CompanyYear.avg_tenure_years → metric_code='average_tenure'    fs_div NULL
     CompanyYear.rnd_ratio_pct    → metric_code='rd_ratio'          fs_div NULL
     CompanyYear.rnd_cost_krw     → metric_code='rd_cost'           fs_div NULL (비활성 지표)
 

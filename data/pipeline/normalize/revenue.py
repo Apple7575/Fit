@@ -202,7 +202,8 @@ def resolve(store: RawStore, corp_code: str, year: int,
             out.revenue_verdict = "single_source"
 
         # 당기순이익·부채총계·자본총계는 매출과 같은 3경로를 쓰되 역산이 없다.
-        # 실측(13개사 x 5년 47건): 셋 다 A·B 가 전부 존재하고 오차 0.00% 로 일치했다.
+        # 실측(적재 대상 10개사 x 5년 − 상장 이전 3건 = 47건): 셋 다 A·B 가 전부
+        # 존재하고 오차 0.00% 로 일치했다.
         # 부채총계·자본총계는 손익계산서가 아니라 재무상태표에서 찾는다.
         #
         # **이 자리여야 한다.** 위 continue 로 버려지는 재무제표 구분에서 부르면
@@ -257,8 +258,21 @@ def _pick(major_rows: list[dict], full_rows: list[dict], spec, p: Patterns,
             break
 
     # 매출과 같은 규칙. 같은 값을 다른 방법으로 찾은 것이므로 엄격하게 본다.
-    # 손실이면 값이 음수라 분모에 절대값을 쓴다
-    if len(out.paths) >= 2 and out.value:
+    if len(out.paths) < 2:
+        out.verdict = "single_source"
+    elif out.value == 0:
+        # 값이 0 이면 상대오차의 분모가 0 이라 계산이 성립하지 않는다. 경로가 둘
+        # 이상인 사실은 그대로이므로 single_source 로 적지 않고 값으로 가른다 —
+        # 여기서 판정을 잘못 남기면 나중에 이 숫자를 믿을지 판단하는 근거가 틀어진다.
+        if all(v == 0 for v in out.paths.values()):
+            out.worst_gap_pct = 0.0
+            out.verdict = "verified"
+        else:
+            out.verdict = "conflict"
+            warnings.append(f"{label} 경로 불일치(채택값 0): "
+                            + ", ".join(f"{k}={v:,.0f}" for k, v in out.paths.items()))
+    else:
+        # 손실이면 값이 음수라 분모에 절대값을 쓴다
         worst = max(abs(v - out.value) / abs(out.value) for v in out.paths.values())
         out.worst_gap_pct = round(worst * 100, 2)
         if worst <= p.thresholds.revenue_path_tolerance:
@@ -267,8 +281,6 @@ def _pick(major_rows: list[dict], full_rows: list[dict], spec, p: Patterns,
             out.verdict = "conflict"
             warnings.append(f"{label} 경로 불일치: "
                             + ", ".join(f"{k}={v:,.0f}" for k, v in out.paths.items()))
-    else:
-        out.verdict = "single_source"
     return out
 
 
