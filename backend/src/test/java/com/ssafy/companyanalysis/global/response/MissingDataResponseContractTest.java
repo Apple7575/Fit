@@ -13,6 +13,15 @@ import com.ssafy.companyanalysis.comparison.dto.IndustryCompaniesResponse;
 import com.ssafy.companyanalysis.comparison.dto.IndustryComparisonResponse;
 import com.ssafy.companyanalysis.comparison.service.IndustryCompaniesService;
 import com.ssafy.companyanalysis.comparison.service.IndustryComparisonService;
+import com.ssafy.companyanalysis.focus.controller.CompanyActivitiesController;
+import com.ssafy.companyanalysis.focus.controller.CompanyFocusController;
+import com.ssafy.companyanalysis.focus.controller.CompanySegmentsController;
+import com.ssafy.companyanalysis.focus.dto.CompanyActivitiesResponse;
+import com.ssafy.companyanalysis.focus.dto.CompanyFocusResponse;
+import com.ssafy.companyanalysis.focus.dto.CompanySegmentsResponse;
+import com.ssafy.companyanalysis.focus.service.CompanyActivityService;
+import com.ssafy.companyanalysis.focus.service.CompanyFocusService;
+import com.ssafy.companyanalysis.focus.service.CompanySegmentsService;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
 import com.ssafy.companyanalysis.metric.controller.CompanyMetricController;
@@ -56,11 +65,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <b>같은 규칙</b>으로 움직이는지를 본다. 응답 봉투·Jackson 설정처럼 한 번 바뀌면
  * 전부 한꺼번에 깨지는 지점을 한 자리에서 잡기 위해서다.
  *
- * <p>기업 개요(S15P21A504-97)까지 들어왔다. 집중 분야·최근 이슈 API(S15P21A504-98·99)가
- * 붙을 때도 같은 형태의 케이스를 여기에 추가한다.
+ * <p>기업 개요(S15P21A504-97)와 집중 분야 세 건(S15P21A504-98)까지 들어왔다. 최근 이슈
+ * API(S15P21A504-99)가 붙을 때도 같은 형태의 케이스를 여기에 추가한다.
  */
 @WebMvcTest({CompanyController.class, CompanyMetricController.class,
-        IndustryComparisonController.class, IndustryCompaniesController.class})
+        IndustryComparisonController.class, IndustryCompaniesController.class,
+        CompanyFocusController.class, CompanySegmentsController.class,
+        CompanyActivitiesController.class})
 class MissingDataResponseContractTest {
 
     private static final String CORP_CODE = "00164779";
@@ -90,6 +101,15 @@ class MissingDataResponseContractTest {
 
     @MockitoBean
     private IndustryCompaniesService industryCompaniesService;
+
+    @MockitoBean
+    private CompanyFocusService companyFocusService;
+
+    @MockitoBean
+    private CompanySegmentsService companySegmentsService;
+
+    @MockitoBean
+    private CompanyActivityService companyActivityService;
 
     @Test
     @DisplayName("규칙1 - 검색 결과가 없는 것은 오류가 아니라 빈 배열이다")
@@ -284,6 +304,62 @@ class MissingDataResponseContractTest {
                 .andExpect(jsonPath("$.data.segments[0].revenueShare").value(nullValue()))
                 // 공시된 부문 매출이 없으면 합계도 0 이 아니라 null 이다.
                 .andExpect(jsonPath("$.data.totalRevenue").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("규칙4 - 집중 분야는 한쪽 출처만 비어도 두 블록의 골격을 모두 유지한다")
+    void focusKeepsBothBlocksWhenOneSourceIsEmpty() throws Exception {
+        // 사업 방향 분석은 아직 안 돌았고 R&D 비용만 적재된 기업.
+        given(companyFocusService.getFocus(eq(CORP_CODE), any()))
+                .willReturn(new CompanyFocusResponse(2025,
+                        new CompanyFocusResponse.Direction(List.of(), List.of(), null),
+                        new CompanyFocusResponse.Rnd(
+                                new BigDecimal("37000000000000"), null, null, List.of())));
+
+        mockMvc.perform(get("/api/companies/{corpCode}/focus", CORP_CODE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                // 비어 있는 블록을 null 로 접지 않는다. 조건부 표시는 화면이 판단한다.
+                .andExpect(jsonPath("$.data.direction").hasJsonPath())
+                .andExpect(jsonPath("$.data.direction.newBusiness", hasSize(0)))
+                .andExpect(jsonPath("$.data.direction.keywords", hasSize(0)))
+                .andExpect(jsonPath("$.data.direction.strategyChange").hasJsonPath())
+                .andExpect(jsonPath("$.data.direction.strategyChange").value(nullValue()))
+                .andExpect(jsonPath("$.data.rnd.expense").value(37000000000000L))
+                .andExpect(jsonPath("$.data.rnd.growthRate").hasJsonPath())
+                .andExpect(jsonPath("$.data.rnd.growthRate").value(nullValue()))
+                .andExpect(jsonPath("$.data.rnd.fields", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("규칙3 - 부문 인력 증감은 감소도 사실이라 음수를 0 으로 바꾸지 않는다")
+    void segmentDecreaseStaysNegative() throws Exception {
+        given(companySegmentsService.getSegments(eq(CORP_CODE), any()))
+                .willReturn(new CompanySegmentsResponse(2025, -500, List.of(
+                        new CompanySegmentsResponse.Segment("DX", null, null, -1000),
+                        new CompanySegmentsResponse.Segment("SDC", null, null, null))));
+
+        mockMvc.perform(get("/api/companies/{corpCode}/segments", CORP_CODE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.employeeTotalChange").value(-500))
+                .andExpect(jsonPath("$.data.segments[0].employeeChange").value(-1000))
+                // 줄어든 것과 공시하지 않은 것은 다른 사실이다.
+                .andExpect(jsonPath("$.data.segments[1].employeeChange").hasJsonPath())
+                .andExpect(jsonPath("$.data.segments[1].employeeChange").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("규칙1 - 투자 공시가 없는 기업은 오류가 아니라 빈 배열이다")
+    void emptyActivitiesIsNotAnError() throws Exception {
+        given(companyActivityService.getActivities(eq(CORP_CODE), anyString(), any(), any()))
+                .willReturn(new CompanyActivitiesResponse(List.of()));
+
+        mockMvc.perform(get("/api/companies/{corpCode}/activities", CORP_CODE)
+                        .param("type", "facility"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items", hasSize(0)))
+                .andExpect(jsonPath("$.error").doesNotExist());
     }
 
     @Test
