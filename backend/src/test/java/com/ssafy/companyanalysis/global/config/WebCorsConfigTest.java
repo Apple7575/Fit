@@ -3,6 +3,7 @@ package com.ssafy.companyanalysis.global.config;
 import com.ssafy.companyanalysis.company.controller.CompanyController;
 import com.ssafy.companyanalysis.company.dto.CompanySearchResponse;
 import com.ssafy.companyanalysis.company.service.CompanyDetailService;
+import com.ssafy.companyanalysis.company.service.CompanyProfileService;
 import com.ssafy.companyanalysis.company.service.CompanySearchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class WebCorsConfigTest {
 
     @MockitoBean
     private CompanyDetailService companyDetailService;
+
+    @MockitoBean
+    private CompanyProfileService companyProfileService;
 
     @Test
     @DisplayName("허용 목록에 있는 Origin 의 preflight 는 통과하고 허용 메서드·캐시 시간을 알려준다")

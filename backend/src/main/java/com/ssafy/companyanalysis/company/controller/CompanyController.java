@@ -1,8 +1,10 @@
 package com.ssafy.companyanalysis.company.controller;
 
 import com.ssafy.companyanalysis.company.dto.CompanyDetailResponse;
+import com.ssafy.companyanalysis.company.dto.CompanyProfileResponse;
 import com.ssafy.companyanalysis.company.dto.CompanySearchResponse;
 import com.ssafy.companyanalysis.company.service.CompanyDetailService;
+import com.ssafy.companyanalysis.company.service.CompanyProfileService;
 import com.ssafy.companyanalysis.company.service.CompanySearchService;
 import com.ssafy.companyanalysis.global.response.ApiResponse;
 import jakarta.validation.constraints.Max;
@@ -23,13 +25,20 @@ public class CompanyController {
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_SIZE = 20;
 
+    /** 개요 테이블의 fiscal_year CHECK 제약과 같은 범위. 벗어나면 조회 전에 400 이다. */
+    private static final int MIN_YEAR = 1900;
+    private static final int MAX_YEAR = 2100;
+
     private final CompanySearchService companySearchService;
     private final CompanyDetailService companyDetailService;
+    private final CompanyProfileService companyProfileService;
 
     public CompanyController(CompanySearchService companySearchService,
-                            CompanyDetailService companyDetailService) {
+                            CompanyDetailService companyDetailService,
+                            CompanyProfileService companyProfileService) {
         this.companySearchService = companySearchService;
         this.companyDetailService = companyDetailService;
+        this.companyProfileService = companyProfileService;
     }
 
     /**
@@ -51,5 +60,21 @@ public class CompanyController {
     @GetMapping("/{corpCode}")
     public ApiResponse<CompanyDetailResponse> getCompany(@PathVariable String corpCode) {
         return ApiResponse.ok(companyDetailService.getCompany(corpCode));
+    }
+
+    /**
+     * 기업 개요(주요 사업·사업부문 매출·주요 제품)를 조회한다. 없는 기업은 404 COMPANY_NOT_FOUND 다.
+     *
+     * <p>개요가 아직 적재되지 않은 기업도 200 이다. 목록은 빈 배열, year 와 totalRevenue 는
+     * null 로 나간다.
+     *
+     * @param year 생략하면 이 기업의 개요가 적재된 최신 연도
+     */
+    @GetMapping("/{corpCode}/profile")
+    public ApiResponse<CompanyProfileResponse> getProfile(
+            @PathVariable String corpCode,
+            @RequestParam(required = false) @Min(MIN_YEAR) @Max(MAX_YEAR) Integer year) {
+
+        return ApiResponse.ok(companyProfileService.getProfile(corpCode, year));
     }
 }

@@ -31,6 +31,9 @@ erDiagram
     industry ||--o{ company : "분류"
     company  ||--o{ company_metric : "보유"
     metric   ||--o{ company_metric : "정의"
+    company  ||--o{ company_business : "개요"
+    company  ||--o{ company_segment : "개요"
+    company  ||--o{ company_product : "개요"
     company  ||--o{ dart_financial_account : "원본"
     company  ||--o{ dart_employee_status : "원본"
     company  ||--o{ staging_dart_otr_cpr_invstmnt : "원본"
@@ -62,6 +65,24 @@ erDiagram
         varchar metric_code PK,FK
         numeric metric_value
         varchar fs_div "OFS/CFS"
+    }
+    company_business {
+        varchar corp_code PK,FK
+        smallint fiscal_year PK
+        varchar business_name PK
+        smallint display_order "사업보고서 기재 순서"
+    }
+    company_segment {
+        varchar corp_code PK,FK
+        smallint fiscal_year PK
+        varchar segment_code PK "사업보고서 표기 그대로"
+        numeric revenue "미공시는 NULL"
+    }
+    company_product {
+        varchar corp_code PK,FK
+        smallint fiscal_year PK
+        varchar product_name PK
+        smallint display_order "사업보고서 기재 순서"
     }
     dart_financial_account {
         bigint id PK
@@ -133,12 +154,14 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 
 ## 3. API ↔ 쿼리 매핑
 
-8개 엔드포인트가 모두 커버되는지 확인한 표다.
+명세의 엔드포인트가 모두 커버되는지 확인한 표다. 폐기된 개별 지표 조회 2종은 v2에서 응답 코드를
+지웠으나 쿼리 형태 기록으로 남겨 둔다.
 
 | 엔드포인트 | 읽는 테이블 | 핵심 조건 | 사용 인덱스 |
 | --- | --- | --- | --- |
 | `GET /api/companies` | `company` | `corp_name LIKE '%?%'` | `company_corp_name_trgm_idx` |
 | `GET /api/companies/{corpCode}` | `company` + `industry` | PK 조회 | PK |
+| `GET .../profile` | `company_business` + `company_segment` + `company_product` | `corp_code=? AND fiscal_year=?` | PK 선두 |
 | `GET .../metrics` | `company_metric` + `metric` | `corp_code=? AND fiscal_year=?` | PK 선두 |
 | `GET .../metrics/{metric}` | `company_metric` | `corp_code=? AND fiscal_year=? AND metric_code=?` | PK |
 | `GET .../metrics/timeseries` | `company_metric` | `corp_code=? AND fiscal_year BETWEEN ? AND ?` | PK 선두 |
@@ -146,6 +169,20 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 | `GET .../industry-comparison` | `company` ⟕ `company_metric` + `metric` | `corp_code IN (대상+peers)` + `fiscal_year IN (?, ?-1)` | PK 선두 |
 | `GET .../metrics/{metric}/industry-comparison` | `company_metric` ⋈ `company` | 위 + `metric_code=?` | `company_metric_comparison_idx` |
 | `GET /api/industries/{industryCode}/companies` | `industry` + `company` ⟕ `company_metric` | `industry_code=?` + 정렬 지표의 산업 내 최신 연도 | `company_industry_code_idx`, `company_metric_timeseries_idx` |
+
+기업 개요는 테이블 셋을 각각 읽는다. 하나로 합치는 조인을 쓰지 않는 이유는 세 목록이 서로
+독립이어서, 조인하면 사업 3개 × 부문 2개 × 제품 6개가 36행으로 불어나고 자바에서 다시 중복을
+걷어내야 하기 때문이다. 세 쿼리 모두 PK 선두 두 컬럼만 읽어 값이 없으면 즉시 빈 결과가 된다.
+
+연도를 주지 않았을 때의 기준연도는 세 테이블의 `max(fiscal_year)`다. `company_metric`의 최신
+연도(기업 헤더의 `dataYear`)를 쓰지 않는다. 재무 지표가 2025년까지 들어와 있어도 사업보고서
+추출이 2024년까지면, 그 해로 조회한 개요는 전부 빈 값이 되어 실제로 있는 데이터를 없는 것처럼
+보여준다. 개요가 어느 해 것인지는 응답의 `year`로 알려 준다.
+
+`totalRevenue`와 `segments[].revenueShare`는 컬럼이 없다. 명세가 `totalRevenue`를
+"부문 단순합"으로 정의했으므로 `company_segment.revenue`에서 조회 시점에 계산한다. 저장하면
+부문이 하나 늘거나 재적재될 때 합계가 원본과 어긋나고, 어긋난 쪽이 응답에 나간다. `yoy`를
+저장하지 않는 것과 같은 판단이다.
 
 비교 후보 목록은 지표값을 응답에 싣지 않고 정렬에만 쓴다. 기준연도가 응답에 나가지 않으므로
 연도를 파라미터로 받지 않고 "그 산업 안에서 정렬 지표의 값이 있는 가장 최근 해"를 서브쿼리로 정한다.

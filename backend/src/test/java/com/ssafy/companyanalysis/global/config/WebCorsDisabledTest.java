@@ -3,6 +3,7 @@ package com.ssafy.companyanalysis.global.config;
 import com.ssafy.companyanalysis.company.controller.CompanyController;
 import com.ssafy.companyanalysis.company.dto.CompanySearchResponse;
 import com.ssafy.companyanalysis.company.service.CompanyDetailService;
+import com.ssafy.companyanalysis.company.service.CompanyProfileService;
 import com.ssafy.companyanalysis.company.service.CompanySearchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,9 @@ class WebCorsDisabledTest {
 
     @MockitoBean
     private CompanyDetailService companyDetailService;
+
+    @MockitoBean
+    private CompanyProfileService companyProfileService;
 
     /**
      * CORS 매핑이 없으면 preflight 는 Spring MVC 의 기본 OPTIONS 처리로 넘어가 200 이 된다.
