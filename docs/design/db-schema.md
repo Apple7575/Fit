@@ -38,6 +38,7 @@ erDiagram
     company_focus_direction ||--o{ company_focus_direction_item : "목록"
     company  ||--o{ company_rnd_field : "집중"
     company  ||--o{ company_activity : "집중"
+    company  ||--o{ company_news : "이슈"
     company  ||--o{ dart_financial_account : "원본"
     company  ||--o{ dart_employee_status : "원본"
     company  ||--o{ staging_dart_otr_cpr_invstmnt : "원본"
@@ -118,6 +119,17 @@ erDiagram
         numeric amount "미공시는 NULL"
         varchar rcept_no "근거 공시"
     }
+    company_news {
+        bigint id PK
+        varchar corp_code FK
+        varchar title
+        text description
+        timestamptz published_at "NULL 이면 조회에 안 걸림"
+        varchar original_url "중복 방지 키"
+        varchar category "AI 분류, 실패는 NULL"
+        varchar related_business "AI"
+        numeric importance_score "AI 0.0~10.0"
+    }
     dart_financial_account {
         bigint id PK
         varchar corp_code FK
@@ -174,6 +186,16 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 
 `metric_evidence`(V5)도 명세에 없으나 정규화 검증(S15P21A504-84)이 쓰고 있어 이 정리 범위에 넣지 않았다.
 
+**새 착지 테이블은 `staging` 스키마에 만든다.** V9 의 `staging.dart_otr_cpr_invstmnt` 가 첫 사례다.
+
+`public` 을 확정 ERD 명세서와 일치시키는 것이 이 정리의 목적이므로, 착지 테이블을 `public` 에 두면
+새로 만드는 족족 정리 대상이 된다 — 만들자마자 옮기는 왕복이 생긴다. 그래서 처음부터 `staging` 에 만들기로
+파이프라인 담당과 합의했다(S15P21A504-120 회신 5장). 위 세 테이블도 같은 이유로 `staging` 이동이 예정돼 있고,
+`dart_financial_account` 는 읽는 곳이 없어 삭제하기로 했다.
+
+파이프라인은 테이블 이름을 스키마 없이 쓰고 `connect()` 의 `search_path` 로 푼다(`data/pipeline/db.py`).
+백엔드의 `search_path` 는 `public` 그대로 두므로 조회 API 와 엔티티 검증은 이 스키마를 보지 않는다.
+
 ---
 
 ## 3. API ↔ 쿼리 매핑
@@ -189,6 +211,9 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 | `GET .../focus` | `company_focus_direction` (+`_item`) + `company_rnd_field` + `metric` ⟕ `company_metric` | `corp_code=? AND fiscal_year=?`, 지표는 `rd_cost`·`rd_ratio` | PK 선두 |
 | `GET .../segments` | `company_segment` 자기조인 + `metric` ⟕ `company_metric` | `corp_code=?` + `fiscal_year IN (?, ?-1)` | PK 선두 |
 | `GET .../activities` | `company_activity` | `corp_code=? AND activity_type=?` + 연도 범위 | `company_activity_lookup_idx` |
+| `GET .../news` | `company_news` | `corp_code=?` + `published_at >= 기준시각` (+ `category=?`) | `company_news_latest_idx`, `company_news_category_idx` |
+| `GET .../news/stats` | `company_news` | 위 + 조건부 집계와 카테고리 묶음 | 같음 |
+| `GET .../news/top` | `company_news` | 위 + `importance_score IS NOT NULL` | `company_news_importance_idx` |
 | `GET .../metrics` | `company_metric` + `metric` | `corp_code=? AND fiscal_year=?` | PK 선두 |
 | `GET .../metrics/{metric}` | `company_metric` | `corp_code=? AND fiscal_year=? AND metric_code=?` | PK |
 | `GET .../metrics/timeseries` | `company_metric` | `corp_code=? AND fiscal_year BETWEEN ? AND ?` | PK 선두 |
@@ -229,9 +254,25 @@ R&D 비용은 들어와 있는 기업이 실제로 그런 경우다.
 `company_focus_direction_item`은 방향 본 행을 복합 FK 로 참조한다. 목록만 있고 본 행이 없는
 상태를 막고, 기준연도를 정할 때 이 테이블을 따로 볼 필요가 없어진다.
 
-`company_activity`만 대리 키를 쓴다. 한 기업이 같은 해에 같은 유형의 이벤트를 여러 건 낼 수
+최근 이슈 세 API 는 `company_news` 하나를 다르게 자른 결과다. 명세가 "`/news/top` 의 id 는
+`/news` 의 id 와 동일해야 함"이라고 못박아 두었으므로 테이블을 나누면 그 약속을 지킬 수 없다.
+AI 분석 결과(`category`·`related_business`·`importance_score`)도 별도 테이블로 빼지 않고 같은
+행에 두었다. 분석이 실패한 뉴스도 목록에 나가야 해서 어차피 `LEFT JOIN` 이 되고, 그러면 조인을
+지고 갈 이득이 없다.
+
+기간은 SQL 의 `now()` 가 아니라 서비스가 `Clock` 빈으로 만든 기준 시각을 파라미터로 넘긴다.
+`BaseYearResolver` 가 쓰는 그 시계다. SQL 안에서 현재 시각을 읽으면 "7일 전 기사가 걸리는지"를
+테스트할 방법이 없고, 서버 표준시가 UTC 면 하루 경계가 서울과 어긋난다. 발행 시각을 모르는
+뉴스는 기간에 속하는지 판단할 수 없어 세 API 어디에도 나가지 않는다.
+
+`published_at` 은 시각까지 저장하고 응답에는 서울 기준 날짜로 잘라 내보낸다. 화면은 날짜만
+보여주지만, 저장을 날짜로 하면 같은 날 기사들의 최신순 정렬이 무의미해진다.
+
+`company_activity`와 `company_news`는 대리 키를 쓴다. 한 기업이 같은 해에 같은 유형의 이벤트를 여러 건 낼 수
 있어 자연키가 서지 않는다. 그래서 재적재는 upsert 가 아니라 기업 × 연도 × 유형 단위로 지우고
-다시 넣는 방식이 된다.
+다시 넣는 방식이 된다. 뉴스도 같은 기사를 여러 소스가 실으면 제목과 URL 이 조금씩 달라 자연키가
+서지 않고, 무엇보다 명세가 응답의 `id` 를 정수로 정해 두었다. 중복은 원문 URL 에 부분 유니크
+인덱스를 걸어 막고, URL 을 모르는 뉴스는 막지 못한 채 들어온다.
 
 비교 후보 목록은 지표값을 응답에 싣지 않고 정렬에만 쓴다. 기준연도가 응답에 나가지 않으므로
 연도를 파라미터로 받지 않고 "그 산업 안에서 정렬 지표의 값이 있는 가장 최근 해"를 서브쿼리로 정한다.

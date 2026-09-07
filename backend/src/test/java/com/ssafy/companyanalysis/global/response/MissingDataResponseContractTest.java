@@ -25,6 +25,10 @@ import com.ssafy.companyanalysis.focus.service.CompanySegmentsService;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
 import com.ssafy.companyanalysis.metric.controller.CompanyMetricController;
+import com.ssafy.companyanalysis.news.controller.CompanyNewsController;
+import com.ssafy.companyanalysis.news.dto.CompanyNewsResponse;
+import com.ssafy.companyanalysis.news.dto.NewsStatsResponse;
+import com.ssafy.companyanalysis.news.service.CompanyNewsService;
 import com.ssafy.companyanalysis.metric.dto.CompanyMetricsResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricPointResponse;
 import com.ssafy.companyanalysis.metric.dto.MetricRangeResponse;
@@ -41,6 +45,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,13 +70,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <b>같은 규칙</b>으로 움직이는지를 본다. 응답 봉투·Jackson 설정처럼 한 번 바뀌면
  * 전부 한꺼번에 깨지는 지점을 한 자리에서 잡기 위해서다.
  *
- * <p>기업 개요(S15P21A504-97)와 집중 분야 세 건(S15P21A504-98)까지 들어왔다. 최근 이슈
- * API(S15P21A504-99)가 붙을 때도 같은 형태의 케이스를 여기에 추가한다.
+ * <p>기업 개요(S15P21A504-97) · 집중 분야 세 건(S15P21A504-98) · 최근 이슈 세 건
+ * (S15P21A504-99)까지 전부 이 규칙 위에 있다. 새 엔드포인트가 붙을 때도 같은 형태의
+ * 케이스를 여기에 추가한다.
  */
 @WebMvcTest({CompanyController.class, CompanyMetricController.class,
         IndustryComparisonController.class, IndustryCompaniesController.class,
         CompanyFocusController.class, CompanySegmentsController.class,
-        CompanyActivitiesController.class})
+        CompanyActivitiesController.class, CompanyNewsController.class})
 class MissingDataResponseContractTest {
 
     private static final String CORP_CODE = "00164779";
@@ -110,6 +116,9 @@ class MissingDataResponseContractTest {
 
     @MockitoBean
     private CompanyActivityService companyActivityService;
+
+    @MockitoBean
+    private CompanyNewsService companyNewsService;
 
     @Test
     @DisplayName("규칙1 - 검색 결과가 없는 것은 오류가 아니라 빈 배열이다")
@@ -360,6 +369,54 @@ class MissingDataResponseContractTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.items", hasSize(0)))
                 .andExpect(jsonPath("$.error").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("규칙3 - AI 분석이 안 돌았으면 이슈 KPI 는 0 이 아니라 null 이다")
+    void unanalyzedNewsKpisAreNullNotZero() throws Exception {
+        // 뉴스는 수집됐지만 중요도 분석이 아직 안 돌아간 기업.
+        given(companyNewsService.getStats(eq(CORP_CODE), anyInt(), anyInt()))
+                .willReturn(new NewsStatsResponse(
+                        new NewsStatsResponse.Kpis(48L, 7, null, null, null, 30),
+                        new NewsStatsResponse.Distribution(30, null, List.of())));
+
+        mockMvc.perform(get("/api/companies/{corpCode}/news/stats", CORP_CODE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                // 수집된 뉴스 수는 그대로 나간다. 못 구하는 값만 비운다.
+                .andExpect(jsonPath("$.data.kpis.recentNewsCount").value(48))
+                .andExpect(jsonPath("$.data.kpis.importantIssueCount").hasJsonPath())
+                .andExpect(jsonPath("$.data.kpis.importantIssueCount").value(nullValue()))
+                .andExpect(jsonPath("$.data.kpis.techIssueCount").hasJsonPath())
+                .andExpect(jsonPath("$.data.kpis.techIssueCount").value(nullValue()))
+                // 기간은 값이 없어도 되돌려준다. 화면이 "최근 30일"을 표시해야 한다.
+                .andExpect(jsonPath("$.data.kpis.issueDays").value(30))
+                .andExpect(jsonPath("$.data.distribution.total").hasJsonPath())
+                .andExpect(jsonPath("$.data.distribution.total").value(nullValue()))
+                .andExpect(jsonPath("$.data.distribution.byCategory", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("규칙2 - AI 분류가 실패한 뉴스도 목록에 남고 분석 필드만 null 이다")
+    void unanalyzedNewsItemKeepsBasicFields() throws Exception {
+        given(companyNewsService.getNews(eq(CORP_CODE), any(), anyInt(), anyString(), anyInt(), anyInt()))
+                .willReturn(new CompanyNewsResponse(List.of(
+                        new CompanyNewsResponse.Item(10241, "공장 건설 본격화", null,
+                                LocalDate.of(2025, 5, 13), "https://news.example.com/10241",
+                                null, null, null)), 1));
+
+        mockMvc.perform(get("/api/companies/{corpCode}/news", CORP_CODE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                // 제목과 링크는 그대로 그린다.
+                .andExpect(jsonPath("$.data.items[0].title").value("공장 건설 본격화"))
+                .andExpect(jsonPath("$.data.items[0].originalUrl").value("https://news.example.com/10241"))
+                .andExpect(jsonPath("$.data.items[0].category").hasJsonPath())
+                .andExpect(jsonPath("$.data.items[0].category").value(nullValue()))
+                .andExpect(jsonPath("$.data.items[0].relatedBusiness").hasJsonPath())
+                .andExpect(jsonPath("$.data.items[0].relatedBusiness").value(nullValue()))
+                .andExpect(jsonPath("$.data.items[0].importanceScore").hasJsonPath())
+                .andExpect(jsonPath("$.data.items[0].importanceScore").value(nullValue()));
     }
 
     @Test
