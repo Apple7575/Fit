@@ -1,0 +1,2 @@
+# 조사 근거의 SHA-256이 체크아웃 후에도 유지되도록 원본 바이트를 보존한다.
+docs/news-poc/evidence/robots.txt -text

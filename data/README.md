@@ -31,6 +31,7 @@
 | [`docs/WORK_PLAN.md`](docs/WORK_PLAN.md) | 작업 계획. WP ↔ Jira 티켓 매핑, 일정 배치 |
 | [`docs/BACKLOG_STATUS.md`](docs/BACKLOG_STATUS.md) | 백로그 13개 AC 단위 진행률 |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 설계 결정 + 파싱 규칙(정규식·임계값) + 검증 수치 |
+| [`docs/news-poc/README.md`](docs/news-poc/README.md) | 뉴스 PoC 진행 현황·실행 방법·티켓별 조사 문서 |
 
 ---
 
