@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import logging
 import re
@@ -50,6 +51,9 @@ NO_DATA = "013"          # 조회된 데이터 없음 — 정상 흐름이다 (�
 NO_FILE = "014"          # 파일이 존재하지 않음 — 역시 빈 결과로 다룬다
 EMPTY_STATUSES = {NO_DATA, NO_FILE}
 RETRYABLE_STATUSES = {"020", "800", "900"}   # 요청제한 초과 / 점검중 / 정의되지 않은 오류
+
+# 다중회사 주요계정 1회 최대 회사 수. 실측으로 확인했다 — 101개면 status 021.
+MULTI_ACNT_MAX = 100
 
 STATUS_MESSAGE = {
     "000": "정상",
@@ -270,6 +274,33 @@ class DartClient:
         return self.get_json(
             "fnlttSinglAcntAll.json", f"fnlttSinglAcntAll_{corp_code}_{year}_{fs_div}.json",
             corp_code=corp_code, bsns_year=str(year), reprt_code=reprt_code, fs_div=fs_div)
+
+    def multi_acnt(self, corp_codes: list[str], year: int,
+                   reprt_code: str = "11011") -> dict:
+        """다중회사 주요계정(fnlttMultiAcnt). **한 번에 최대 100개사.**
+
+        2,703개사를 단건으로 훑으면 13,515콜이지만 이걸 쓰면 140콜이다.
+        실측으로 확인한 것 (scripts/probe_multi_acnt.py · 2026-09-07):
+
+          최대 100건   101개를 넣으면 status 021 로 거절된다
+          혼합 내성    없는 corp_code 가 섞여도 묶음이 죽지 않고 나머지가 온다
+          fs_div       CFS·OFS 가 **한 응답에 섞여 온다.** 파라미터가 아니다
+                       — fnlttSinglAcntAll 처럼 2번 부를 필요가 없다
+          회사당 행    연결·별도 둘 다 있으면 30행, 하나만 있으면 15행
+          단건 대조    fnlttSinglAcnt 와 값이 일치한다
+
+        **응답하지 않는 회사가 정상적으로 섞인다** (100개사 요청에 90개사 응답).
+        그 해 사업보고서가 없는 것이지 수집 실패가 아니다 — 결측으로 세지 마라.
+        """
+        if len(corp_codes) > MULTI_ACNT_MAX:
+            raise ValueError(
+                f"다중회사 주요계정은 최대 {MULTI_ACNT_MAX}개사다 (요청 {len(corp_codes)}). "
+                "pipeline.universe.batches() 로 나눠라"
+            )
+        digest = hashlib.sha1(",".join(corp_codes).encode()).hexdigest()[:8]
+        return self.get_json(
+            "fnlttMultiAcnt.json", f"fnlttMultiAcnt_{year}_{reprt_code}_{digest}.json",
+            corp_code=",".join(corp_codes), bsns_year=str(year), reprt_code=reprt_code)
 
     def emp_status(self, corp_code: str, year: int, reprt_code: str = "11011") -> dict:
         """직원 현황(empSttus). 사업부문×성별 다중 행. 평균근속 필드는 avrg_cnwk_sdytrn."""
