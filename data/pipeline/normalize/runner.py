@@ -80,6 +80,9 @@ class CompanyYear:
     bsns_year: int
     revenue: float | None = None
     operating_profit: float | None = None
+    net_income: float | None = None
+    total_liabilities: float | None = None
+    total_equity: float | None = None
     fs_div: str | None = None
     employee_count: int | None = None
     regular_count: int | None = None
@@ -153,6 +156,9 @@ def _do_financials(store, t, year, p, res: NormalizeResult):
 
     row.revenue = fin.revenue
     row.operating_profit = fin.operating_profit
+    row.net_income = fin.net_income.value
+    row.total_liabilities = fin.total_liabilities.value
+    row.total_equity = fin.total_equity.value
     row.fs_div = fin.fs_div
     row.rcept_no = fin.rcept_no
     res.warnings.extend(fin.warnings)
@@ -191,6 +197,19 @@ def _emit_revenue_evidence(t, year, p, res: NormalizeResult, fin, rnd_out) -> No
     res.evidence.append(Evidence(
         t.corp_code, year, "operating_profit", op_verdict, source=fin.revenue_source,
         evidence={"fs_div": fin.fs_div, "rcept_no": fin.rcept_no, "sanity": problem}))
+
+    # 당기순이익·부채총계·자본총계는 매출과 같은 3경로를 갖는다(역산은 없다).
+    # 매출 sanity 로 값을 버리지는 않는다 — 지분법이익·중단영업 때문에 매출보다 큰
+    # 당기순이익이 실제로 나올 수 있어서 크기 비교가 판정 근거가 못 된다
+    for metric_code, pick in (("net_income", fin.net_income),
+                              ("total_liabilities", fin.total_liabilities),
+                              ("total_equity", fin.total_equity)):
+        res.evidence.append(Evidence(
+            t.corp_code, year, metric_code,
+            REVENUE_VERDICT_MAP.get(pick.verdict, UNVERIFIED),
+            source=pick.source, gap_pct=pick.worst_gap_pct,
+            evidence={"raw_verdict": pick.verdict, "paths": pick.paths,
+                      "fs_div": fin.fs_div, "rcept_no": fin.rcept_no}))
 
 
 def _do_employee(store, t, year, p, res: NormalizeResult) -> None:

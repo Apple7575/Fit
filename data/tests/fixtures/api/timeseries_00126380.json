@@ -7,7 +7,7 @@
     }
   },
   "_status": 200,
-  "_elapsed_ms": 172,
+  "_elapsed_ms": 30,
   "_content_type": "application/json",
   "body": {
     "success": true,
@@ -24,23 +24,28 @@
           "points": [
             {
               "year": 2021,
-              "value": 279604799000000
+              "value": 279604799000000,
+              "changeRate": null
             },
             {
               "year": 2022,
-              "value": 302231360000000
+              "value": 302231360000000,
+              "changeRate": 8.1
             },
             {
               "year": 2023,
-              "value": 258935494000000
+              "value": 258935494000000,
+              "changeRate": -14.3
             },
             {
               "year": 2024,
-              "value": 300870903000000
+              "value": 300870903000000,
+              "changeRate": 16.2
             },
             {
               "year": 2025,
-              "value": 333605938000000
+              "value": 333605938000000,
+              "changeRate": 10.9
             }
           ]
         },
@@ -51,23 +56,60 @@
           "points": [
             {
               "year": 2021,
-              "value": 51633856000000
+              "value": 51633856000000,
+              "changeRate": null
             },
             {
               "year": 2022,
-              "value": 43376630000000
+              "value": 43376630000000,
+              "changeRate": -16.0
             },
             {
               "year": 2023,
-              "value": 6566976000000
+              "value": 6566976000000,
+              "changeRate": -84.9
             },
             {
               "year": 2024,
-              "value": 32725961000000
+              "value": 32725961000000,
+              "changeRate": 398.3
             },
             {
               "year": 2025,
-              "value": 43601051000000
+              "value": 43601051000000,
+              "changeRate": 33.2
+            }
+          ]
+        },
+        {
+          "key": "net_income",
+          "label": "당기순이익",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": 39907450000000,
+              "changeRate": null
+            },
+            {
+              "year": 2022,
+              "value": 55654077000000,
+              "changeRate": 39.5
+            },
+            {
+              "year": 2023,
+              "value": 15487100000000,
+              "changeRate": -72.2
+            },
+            {
+              "year": 2024,
+              "value": 34451351000000,
+              "changeRate": 122.5
+            },
+            {
+              "year": 2025,
+              "value": 45206805000000,
+              "changeRate": 31.2
             }
           ]
         },
@@ -78,23 +120,28 @@
           "points": [
             {
               "year": 2021,
-              "value": 113485
+              "value": 113485,
+              "changeRate": null
             },
             {
               "year": 2022,
-              "value": 121404
+              "value": 121404,
+              "changeRate": 7.0
             },
             {
               "year": 2023,
-              "value": 124804
+              "value": 124804,
+              "changeRate": 2.8
             },
             {
               "year": 2024,
-              "value": 129480
+              "value": 129480,
+              "changeRate": 3.7
             },
             {
               "year": 2025,
-              "value": 128881
+              "value": 128881,
+              "changeRate": -0.5
             }
           ]
         },
@@ -105,23 +152,28 @@
           "points": [
             {
               "year": 2021,
-              "value": 143955571
+              "value": 143955571,
+              "changeRate": null
             },
             {
               "year": 2022,
-              "value": 134344445
+              "value": 134344445,
+              "changeRate": -6.7
             },
             {
               "year": 2023,
-              "value": 119803644
+              "value": 119803644,
+              "changeRate": -10.8
             },
             {
               "year": 2024,
-              "value": 130190060
+              "value": 130190060,
+              "changeRate": 8.7
             },
             {
               "year": 2025,
-              "value": 157064509
+              "value": 157064509,
+              "changeRate": 20.6
             }
           ]
         },
@@ -132,50 +184,28 @@
           "points": [
             {
               "year": 2021,
-              "value": 12.1
+              "value": 12.1,
+              "changeRate": null
             },
             {
               "year": 2022,
-              "value": 12.5
+              "value": 12.5,
+              "changeRate": 3.3
             },
             {
               "year": 2023,
-              "value": 12.8
+              "value": 12.8,
+              "changeRate": 2.4
             },
             {
               "year": 2024,
-              "value": 13.0
+              "value": 13.0,
+              "changeRate": 1.6
             },
             {
               "year": 2025,
-              "value": 13.7
-            }
-          ]
-        },
-        {
-          "key": "rd_ratio",
-          "label": "R&D/매출",
-          "unit": "%",
-          "points": [
-            {
-              "year": 2021,
-              "value": 8.1
-            },
-            {
-              "year": 2022,
-              "value": 8.2
-            },
-            {
-              "year": 2023,
-              "value": 10.9
-            },
-            {
-              "year": 2024,
-              "value": 11.6
-            },
-            {
-              "year": 2025,
-              "value": 11.3
+              "value": 13.7,
+              "changeRate": 5.4
             }
           ]
         }

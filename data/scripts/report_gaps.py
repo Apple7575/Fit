@@ -172,10 +172,13 @@ def main() -> int:
             per_industry = cur.fetchall()
         print(f"  company {n_company:,}개사 중 지표 보유 {n_metric}개사 "
               f"({n_metric / n_company * 100:.2f}%)")
-        print("  동종업계 비교가 반환하는 업종:")
+        # v2 의 비교 응답에는 대상 기업과 고른 peers(최대 3)만 실린다. 그래서 이 비율은
+        # 비교 응답이 아니라 **후보 목록**(/api/industries/{code}/companies)의 이야기다 —
+        # 목록에서 아무나 고르면 열에 아홉은 값이 전부 null 인 기업을 고르게 된다.
+        print("  지표가 적재된 기업이 있는 업종 (비교 후보 목록의 모집단):")
         for ic, iname, tot, withm in per_industry:
             print(f"    KSIC {ic}  {iname[:28]:<30} {withm}/{tot}개사에 값 있음 "
-                  f"→ 응답의 {(tot - withm) / tot * 100:.0f}% 가 전부 null")
+                  f"→ 후보 목록의 {(tot - withm) / tot * 100:.0f}% 는 값이 전부 null")
 
     if args.csv:
         out = ROOT / "_out"

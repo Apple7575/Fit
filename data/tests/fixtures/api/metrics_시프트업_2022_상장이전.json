@@ -6,7 +6,7 @@
     }
   },
   "_status": 200,
-  "_elapsed_ms": 16,
+  "_elapsed_ms": 0,
   "_content_type": "application/json",
   "body": {
     "success": true,
@@ -24,6 +24,13 @@
         {
           "key": "operating_profit",
           "label": "영업이익",
+          "value": null,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "net_income",
+          "label": "당기순이익",
           "value": null,
           "unit": "KRW",
           "yoy": null
@@ -48,15 +55,13 @@
           "value": null,
           "unit": "YEAR",
           "yoy": null
-        },
-        {
-          "key": "rd_ratio",
-          "label": "R&D/매출",
-          "value": null,
-          "unit": "%",
-          "yoy": null
         }
-      ]
+      ],
+      "profitability": {
+        "operatingMargin": null,
+        "netMargin": null,
+        "debtRatio": null
+      }
     }
   },
   "text": null

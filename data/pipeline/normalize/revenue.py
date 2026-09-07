@@ -1,4 +1,4 @@
-"""매출액·영업이익 해석 (3경로 교차검증).
+"""재무제표 지표 해석 — 매출액·영업이익·당기순이익·부채총계·자본총계.
 
 초기 매출 검증 파서의 **규칙만** 옮겼다. 달라진 점:
 계정명·정규식·임계값을 `patterns.yaml` 에서 읽고, API 호출 대신 `RawStore` 만 본다.
@@ -33,6 +33,20 @@ from .text import squash, to_num
 
 
 @dataclass
+class Pick:
+    """계정 하나를 여러 경로로 찾은 결과.
+
+    매출은 R&D 역산(경로 D)이 붙어서 판정이 나중에 확정되지만, 여기 담기는
+    지표들은 보조 경로가 없어 찾는 즉시 판정이 끝난다.
+    """
+    value: float | None = None
+    source: str | None = None                  # A_major_name / B_full_id / C_full_name
+    verdict: str = "not_found"
+    paths: dict[str, float] = field(default_factory=dict)
+    worst_gap_pct: float | None = None
+
+
+@dataclass
 class RevenueResult:
     corp_code: str
     bsns_year: int
@@ -45,6 +59,9 @@ class RevenueResult:
     revenue_worst_gap_pct: float | None = None    # API 경로 간 최대 오차(%)
     backcalc_gap_pct: float | None = None         # 역산 매출과의 차이(%). 기록용
     operating_profit: float | None = None
+    net_income: Pick = field(default_factory=lambda: Pick())
+    total_liabilities: Pick = field(default_factory=lambda: Pick())
+    total_equity: Pick = field(default_factory=lambda: Pick())
     rcept_no: str | None = None
     warnings: list[str] = field(default_factory=list)
 
@@ -58,21 +75,31 @@ def _clean_name(s, p: Patterns) -> str:
     return p.revenue.prefix_strip.sub("", squash(s)).strip()
 
 
-def _income_rows(rows: list[dict], fs_div: str, p: Patterns) -> list[dict]:
-    """손익계산서 행만 고른다.
+def _statement_rows(rows: list[dict], fs_div: str, divs) -> list[dict]:
+    """지정한 재무제표 구분(sj_div)의 행만 고른다.
 
     행에 fs_div 가 **없는** 응답(전체재무제표)은 그대로 통과시킨다. 여기서
     거르면 213행이 전부 사라진다 — 실제로 이 버그로 폴백이 죽었다.
     """
     out = []
     for r in rows:
-        if squash(r.get("sj_div")) not in p.financial_statement.income_statement_div:
+        if squash(r.get("sj_div")) not in divs:
             continue
         row_fs = squash(r.get("fs_div"))
         if row_fs and row_fs != fs_div:
             continue
         out.append(r)
     return out
+
+
+def _income_rows(rows: list[dict], fs_div: str, p: Patterns) -> list[dict]:
+    """손익계산서 행. 매출·영업이익·당기순이익이 여기서 나온다."""
+    return _statement_rows(rows, fs_div, p.financial_statement.income_statement_div)
+
+
+def _balance_rows(rows: list[dict], fs_div: str, p: Patterns) -> list[dict]:
+    """재무상태표 행. 부채총계·자본총계가 여기서 나온다."""
+    return _statement_rows(rows, fs_div, p.financial_statement.balance_sheet_div)
 
 
 def _by_name(rows: list[dict], names, p: Patterns, *, exclude=True):
@@ -174,11 +201,74 @@ def resolve(store: RawStore, corp_code: str, year: int,
             # 경로 1개. 역산(D)이 붙을 수 있으므로 여기서 확정하지 않는다
             out.revenue_verdict = "single_source"
 
+        # 당기순이익·부채총계·자본총계는 매출과 같은 3경로를 쓰되 역산이 없다.
+        # 실측(13개사 x 5년 47건): 셋 다 A·B 가 전부 존재하고 오차 0.00% 로 일치했다.
+        # 부채총계·자본총계는 손익계산서가 아니라 재무상태표에서 찾는다.
+        #
+        # **이 자리여야 한다.** 위 continue 로 버려지는 재무제표 구분에서 부르면
+        # 채택되지 않은 값의 경고가 out.warnings 에 남는다. 경고는 기업-연도 단위라
+        # load_metrics 가 그 해의 모든 근거 행에 그대로 복사한다 — 근거를 읽는
+        # 사람이 채택된 구분에서 난 문제로 오해한다
+        mb = _balance_rows(major, fs, p)
+        fb = _balance_rows(full, fs, p)
+        out.net_income = _pick(mi, fi, p.net_income, p, "당기순이익", out.warnings)
+        out.total_liabilities = _pick(mb, fb, p.total_liabilities, p,
+                                      "부채총계", out.warnings)
+        out.total_equity = _pick(mb, fb, p.total_equity, p, "자본총계", out.warnings)
+
         out.fs_div = fs
         out.revenue_paths = paths
         out.operating_profit = profit
         return out
 
+    return out
+
+
+def _pick(major_rows: list[dict], full_rows: list[dict], spec, p: Patterns,
+          label: str, warnings: list[str]) -> Pick:
+    """한 계정을 매출과 같은 3경로로 찾아 채택하고 판정까지 낸다.
+
+        A  주요계정 / 계정명
+        B  전체재무제표 / 계정코드
+        C  전체재무제표 / 계정명
+
+    이름은 **정확일치만** 쓴다(`exclude` 를 끄고 부른다). 비슷한 이름의 다른
+    계정이 값까지 다르기 때문이다 — '법인세차감전 순이익', '부채와자본총계'.
+    근거는 `config/patterns.yaml` 의 각 지표 주석에 있다.
+    """
+    out = Pick()
+    va, _ = _by_name(major_rows, spec.names, p, exclude=False)
+    if va is not None:
+        out.paths["A_major_name"] = va
+    vb, _ = _by_id(full_rows, spec.account_ids, p)
+    if vb is not None:
+        out.paths["B_full_id"] = vb
+    vc, _ = _by_name(full_rows, spec.names, p, exclude=False)
+    if vc is not None:
+        out.paths["C_full_name"] = vc
+
+    if not out.paths:
+        return out
+
+    for key in ("A_major_name", "B_full_id", "C_full_name"):
+        if key in out.paths:
+            out.value = out.paths[key]
+            out.source = key
+            break
+
+    # 매출과 같은 규칙. 같은 값을 다른 방법으로 찾은 것이므로 엄격하게 본다.
+    # 손실이면 값이 음수라 분모에 절대값을 쓴다
+    if len(out.paths) >= 2 and out.value:
+        worst = max(abs(v - out.value) / abs(out.value) for v in out.paths.values())
+        out.worst_gap_pct = round(worst * 100, 2)
+        if worst <= p.thresholds.revenue_path_tolerance:
+            out.verdict = "verified"
+        else:
+            out.verdict = "conflict"
+            warnings.append(f"{label} 경로 불일치: "
+                            + ", ".join(f"{k}={v:,.0f}" for k, v in out.paths.items()))
+    else:
+        out.verdict = "single_source"
     return out
 
 

@@ -19,6 +19,9 @@ wide → long (D-2)
 
     CompanyYear.revenue          → metric_code='revenue'          fs_div 기록
     CompanyYear.operating_profit → metric_code='operating_profit'  fs_div 기록
+    CompanyYear.net_income       → metric_code='net_income'        fs_div 기록
+    CompanyYear.total_liabilities→ metric_code='total_liabilities' fs_div 기록 (비활성)
+    CompanyYear.total_equity     → metric_code='total_equity'      fs_div 기록 (비활성)
     CompanyYear.employee_count   → metric_code='employee_count'    fs_div NULL
     CompanyYear.avg_salary_krw   → metric_code='avg_salary'        fs_div NULL
     CompanyYear.avg_tenure_years → metric_code='avg_tenure'        fs_div NULL
@@ -74,6 +77,9 @@ EV_COLUMNS = EV_KEY + ["verdict", "source", "rcept_no", "evidence", "gap_pct", "
 VALUE_MAP = [
     ("revenue",          "revenue",          True),
     ("operating_profit", "operating_profit", True),
+    ("net_income",       "net_income",       True),
+    ("total_liabilities", "total_liabilities", True),
+    ("total_equity",     "total_equity",     True),
     ("employee_count",   "employee_count",   False),
     ("avg_salary_krw",   "average_salary",       False),
     ("avg_tenure_years", "average_tenure",       False),

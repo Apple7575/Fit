@@ -6,7 +6,7 @@
     }
   },
   "_status": 200,
-  "_elapsed_ms": 31,
+  "_elapsed_ms": 15,
   "_content_type": "application/json",
   "body": {
     "success": true,
@@ -32,6 +32,16 @@
           "yoy": {
             "prevValue": 152676273166,
             "changeRate": 18.8
+          }
+        },
+        {
+          "key": "net_income",
+          "label": "당기순이익",
+          "value": 191430447697,
+          "unit": "KRW",
+          "yoy": {
+            "prevValue": 147973272692,
+            "changeRate": 29.4
           }
         },
         {
@@ -63,18 +73,13 @@
             "prevValue": 3.1,
             "changeRate": 12.9
           }
-        },
-        {
-          "key": "rd_ratio",
-          "label": "R&D/매출",
-          "value": null,
-          "unit": "%",
-          "yoy": {
-            "prevValue": 12.8,
-            "changeRate": null
-          }
         }
-      ]
+      ],
+      "profitability": {
+        "operatingMargin": 61.6,
+        "netMargin": 65.0,
+        "debtRatio": 17.6
+      }
     }
   },
   "text": null

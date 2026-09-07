@@ -25,23 +25,28 @@
           "points": [
             {
               "year": 2021,
-              "value": null
+              "value": null,
+              "changeRate": null
             },
             {
               "year": 2022,
-              "value": null
+              "value": null,
+              "changeRate": null
             },
             {
               "year": 2023,
-              "value": null
+              "value": null,
+              "changeRate": null
             },
             {
               "year": 2024,
-              "value": 224084645616
+              "value": 224084645616,
+              "changeRate": null
             },
             {
               "year": 2025,
-              "value": 294545937439
+              "value": 294545937439,
+              "changeRate": 31.4
             }
           ]
         }

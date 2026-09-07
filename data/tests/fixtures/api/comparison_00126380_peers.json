@@ -1,0 +1,77 @@
+{
+  "_request": {
+    "path": "/api/companies/00126380/industry-comparison",
+    "params": {
+      "year": 2025,
+      "peers": "00401731,00164779"
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 15,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "year": 2025,
+      "industry": {
+        "code": "26",
+        "name": "전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",
+        "companyCount": 494
+      },
+      "metrics": [
+        "revenue",
+        "revenue_growth",
+        "operating_profit",
+        "operating_margin",
+        "employee_count",
+        "average_salary",
+        "rd_ratio"
+      ],
+      "companies": [
+        {
+          "corpCode": "00126380",
+          "corpName": "삼성전자",
+          "isTarget": true,
+          "values": {
+            "revenue": 333605938000000,
+            "revenue_growth": 10.9,
+            "operating_profit": 43601051000000,
+            "operating_margin": 13.1,
+            "employee_count": 128881,
+            "average_salary": 157064509,
+            "rd_ratio": 11.3
+          }
+        },
+        {
+          "corpCode": "00401731",
+          "corpName": "LG전자",
+          "isTarget": false,
+          "values": {
+            "revenue": 89200882000000,
+            "revenue_growth": 1.7,
+            "operating_profit": 2478392000000,
+            "operating_margin": 2.8,
+            "employee_count": 34144,
+            "average_salary": 117590675,
+            "rd_ratio": 5.9
+          }
+        },
+        {
+          "corpCode": "00164779",
+          "corpName": "SK하이닉스",
+          "isTarget": false,
+          "values": {
+            "revenue": 97146675000000,
+            "revenue_growth": 46.8,
+            "operating_profit": 47206319000000,
+            "operating_margin": 48.6,
+            "employee_count": 34549,
+            "average_salary": 185004892,
+            "rd_ratio": 6.9
+          }
+        }
+      ]
+    }
+  },
+  "text": null
+}

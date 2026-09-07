@@ -29,7 +29,8 @@ class RevenuePatterns:
 
 
 @dataclass(frozen=True)
-class ProfitPatterns:
+class AccountPatterns:
+    """계정명 정확일치 + XBRL 계정코드로 찾는 지표. 영업이익·당기순이익·재무상태표 계정."""
     names: tuple[str, ...]
     account_ids: frozenset[str]
 
@@ -75,13 +76,17 @@ class Thresholds:
 class FinancialStatement:
     fs_div_priority: tuple[str, ...]
     income_statement_div: frozenset[str]
+    balance_sheet_div: frozenset[str]
     reprt_code: str
 
 
 @dataclass(frozen=True)
 class Patterns:
     revenue: RevenuePatterns
-    operating_profit: ProfitPatterns
+    operating_profit: AccountPatterns
+    net_income: AccountPatterns
+    total_liabilities: AccountPatterns
+    total_equity: AccountPatterns
     rnd: RndPatterns
     employee: EmployeePatterns
     thresholds: Thresholds
@@ -98,6 +103,9 @@ def load_patterns(path: Path | None = None) -> Patterns:
 
     rev = raw["revenue"]
     op = raw["operating_profit"]
+    ni = raw["net_income"]
+    tl = raw["total_liabilities"]
+    te = raw["total_equity"]
     rnd = raw["rnd"]
     emp = raw["employee"]
     th = raw["thresholds"]
@@ -110,9 +118,21 @@ def load_patterns(path: Path | None = None) -> Patterns:
             account_ids=frozenset(rev["account_ids"]),
             prefix_strip=_re(rev["name_prefix_strip"]),
         ),
-        operating_profit=ProfitPatterns(
+        operating_profit=AccountPatterns(
             names=tuple(op["names"]),
             account_ids=frozenset(op["account_ids"]),
+        ),
+        net_income=AccountPatterns(
+            names=tuple(ni["names"]),
+            account_ids=frozenset(ni["account_ids"]),
+        ),
+        total_liabilities=AccountPatterns(
+            names=tuple(tl["names"]),
+            account_ids=frozenset(tl["account_ids"]),
+        ),
+        total_equity=AccountPatterns(
+            names=tuple(te["names"]),
+            account_ids=frozenset(te["account_ids"]),
         ),
         rnd=RndPatterns(
             section_title=_re(rnd["section_title_re"]),
@@ -148,6 +168,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
         financial_statement=FinancialStatement(
             fs_div_priority=tuple(fs["fs_div_priority"]),
             income_statement_div=frozenset(fs["income_statement_div"]),
+            balance_sheet_div=frozenset(fs["balance_sheet_div"]),
             reprt_code=str(fs["reprt_code"]),
         ),
     )
