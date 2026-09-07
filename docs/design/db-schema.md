@@ -34,6 +34,10 @@ erDiagram
     company  ||--o{ company_business : "개요"
     company  ||--o{ company_segment : "개요"
     company  ||--o{ company_product : "개요"
+    company  ||--o{ company_focus_direction : "집중"
+    company_focus_direction ||--o{ company_focus_direction_item : "목록"
+    company  ||--o{ company_rnd_field : "집중"
+    company  ||--o{ company_activity : "집중"
     company  ||--o{ dart_financial_account : "원본"
     company  ||--o{ dart_employee_status : "원본"
     company  ||--o{ staging_dart_otr_cpr_invstmnt : "원본"
@@ -77,12 +81,42 @@ erDiagram
         smallint fiscal_year PK
         varchar segment_code PK "사업보고서 표기 그대로"
         numeric revenue "미공시는 NULL"
+        integer employee_count "미공시는 NULL"
     }
     company_product {
         varchar corp_code PK,FK
         smallint fiscal_year PK
         varchar product_name PK
         smallint display_order "사업보고서 기재 순서"
+    }
+    company_focus_direction {
+        varchar corp_code PK,FK
+        smallint fiscal_year PK
+        text strategy_change "AI 생성물"
+        timestamptz generated_at
+    }
+    company_focus_direction_item {
+        varchar corp_code PK,FK
+        smallint fiscal_year PK,FK
+        varchar item_type PK "NEW_BUSINESS/KEYWORD"
+        varchar item_name PK
+        smallint display_order "AI 가 낸 순서"
+    }
+    company_rnd_field {
+        varchar corp_code PK,FK
+        smallint fiscal_year PK
+        varchar field_name PK
+        smallint display_order
+    }
+    company_activity {
+        bigint id PK
+        varchar corp_code FK
+        smallint fiscal_year
+        varchar activity_type "API 의 type 값 그대로"
+        varchar field_name
+        varchar purpose
+        numeric amount "미공시는 NULL"
+        varchar rcept_no "근거 공시"
     }
     dart_financial_account {
         bigint id PK
@@ -140,16 +174,6 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 
 `metric_evidence`(V5)도 명세에 없으나 정규화 검증(S15P21A504-84)이 쓰고 있어 이 정리 범위에 넣지 않았다.
 
-**새 착지 테이블은 `staging` 스키마에 만든다.** V9 의 `staging.dart_otr_cpr_invstmnt` 가 첫 사례다.
-
-`public` 을 확정 ERD 명세서와 일치시키는 것이 이 정리의 목적이므로, 착지 테이블을 `public` 에 두면
-새로 만드는 족족 정리 대상이 된다 — 만들자마자 옮기는 왕복이 생긴다. 그래서 처음부터 `staging` 에 만들기로
-파이프라인 담당과 합의했다(S15P21A504-120 회신 5장). 위 세 테이블도 같은 이유로 `staging` 이동이 예정돼 있고,
-`dart_financial_account` 는 읽는 곳이 없어 삭제하기로 했다.
-
-파이프라인은 테이블 이름을 스키마 없이 쓰고 `connect()` 의 `search_path` 로 푼다(`data/pipeline/db.py`).
-백엔드의 `search_path` 는 `public` 그대로 두므로 조회 API 와 엔티티 검증은 이 스키마를 보지 않는다.
-
 ---
 
 ## 3. API ↔ 쿼리 매핑
@@ -162,6 +186,9 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 | `GET /api/companies` | `company` | `corp_name LIKE '%?%'` | `company_corp_name_trgm_idx` |
 | `GET /api/companies/{corpCode}` | `company` + `industry` | PK 조회 | PK |
 | `GET .../profile` | `company_business` + `company_segment` + `company_product` | `corp_code=? AND fiscal_year=?` | PK 선두 |
+| `GET .../focus` | `company_focus_direction` (+`_item`) + `company_rnd_field` + `metric` ⟕ `company_metric` | `corp_code=? AND fiscal_year=?`, 지표는 `rd_cost`·`rd_ratio` | PK 선두 |
+| `GET .../segments` | `company_segment` 자기조인 + `metric` ⟕ `company_metric` | `corp_code=?` + `fiscal_year IN (?, ?-1)` | PK 선두 |
+| `GET .../activities` | `company_activity` | `corp_code=? AND activity_type=?` + 연도 범위 | `company_activity_lookup_idx` |
 | `GET .../metrics` | `company_metric` + `metric` | `corp_code=? AND fiscal_year=?` | PK 선두 |
 | `GET .../metrics/{metric}` | `company_metric` | `corp_code=? AND fiscal_year=? AND metric_code=?` | PK |
 | `GET .../metrics/timeseries` | `company_metric` | `corp_code=? AND fiscal_year BETWEEN ? AND ?` | PK 선두 |
@@ -183,6 +210,28 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 "부문 단순합"으로 정의했으므로 `company_segment.revenue`에서 조회 시점에 계산한다. 저장하면
 부문이 하나 늘거나 재적재될 때 합계가 원본과 어긋나고, 어긋난 쪽이 응답에 나간다. `yoy`를
 저장하지 않는 것과 같은 판단이다.
+
+집중 분야 세 API 도 파생값을 저장하지 않는다. 부문 인력 증감은 `company_segment`를 전년
+행과 자기조인해 빼고, R&D 증가율은 `rd_cost`의 전년 값과 비교해 만든다. R&D 금액과 매출
+비중은 지표 카탈로그의 `rd_cost`·`rd_ratio`가 이미 담고 있어 테이블을 만들지 않았다.
+
+전사 직원 순증감(`employeeTotalChange`)은 `employee_count` 지표의 전년 대비 차이다.
+명세가 "부문 합과 불일치(산식 확정 필요)"로 열어 둔 값이었고 근거는
+`docs/decisions/0002-employee-total-change.md`에 있다. 부문 증감의 합과 다른 것이
+정상이므로, 두 숫자를 맞추려고 어느 한쪽을 고치면 안 된다.
+
+`/focus`와 `/segments`의 기준연도는 자기 테이블만 보고 정하지 않는다. `/focus`는 사업 방향과
+R&D 분야 외에 `rd_cost`·`rd_ratio`의 연도까지, `/segments`는 부문 테이블 외에
+`employee_count`의 연도까지 함께 본다. 한 응답 안에 출처가 다른 블록이 섞여 있어서, 한쪽만
+보고 해를 정하면 이미 적재된 다른 블록이 조용히 빈다. 사업 방향 분석은 아직 안 돌았는데
+R&D 비용은 들어와 있는 기업이 실제로 그런 경우다.
+
+`company_focus_direction_item`은 방향 본 행을 복합 FK 로 참조한다. 목록만 있고 본 행이 없는
+상태를 막고, 기준연도를 정할 때 이 테이블을 따로 볼 필요가 없어진다.
+
+`company_activity`만 대리 키를 쓴다. 한 기업이 같은 해에 같은 유형의 이벤트를 여러 건 낼 수
+있어 자연키가 서지 않는다. 그래서 재적재는 upsert 가 아니라 기업 × 연도 × 유형 단위로 지우고
+다시 넣는 방식이 된다.
 
 비교 후보 목록은 지표값을 응답에 싣지 않고 정렬에만 쓴다. 기준연도가 응답에 나가지 않으므로
 연도를 파라미터로 받지 않고 "그 산업 안에서 정렬 지표의 값이 있는 가장 최근 해"를 서브쿼리로 정한다.
