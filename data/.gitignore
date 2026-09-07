@@ -19,3 +19,7 @@ _out/
 
 # 가상환경 (uv 로 재생성 가능하므로 커밋하지 않는다)
 .venv/
+
+# 뉴스 PoC 로컬 입력·출력
+news_poc/local_raw/
+news_poc/local_output/
