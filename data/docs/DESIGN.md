@@ -342,13 +342,19 @@ LG전자 2022    상세 근속 가중평균 12.75년  vs  합계 행 13.3년
 **raw 레이아웃** (파일명으로 무엇의 원본인지 알 수 있게)
 
 ```
-data/raw/CORPCODE.xml
-data/raw/company_<corp_code>.json
-data/raw/fnlttSinglAcnt_<corp_code>_<year>.json
-data/raw/fnlttSinglAcntAll_<corp_code>_<year>_<fs_div>.json
-data/raw/empSttus_<corp_code>_<year>.json
-data/raw/document_<rcept_no>.xml
+data/.cache/CORPCODE.xml
+data/.cache/company_<corp_code>.json
+data/.cache/fnlttSinglAcnt_<corp_code>_<year>.json
+data/.cache/fnlttSinglAcntAll_<corp_code>_<year>_<fs_div>.json
+data/.cache/empSttus_<corp_code>_<year>.json
+data/.cache/document_<rcept_no>.xml
 ```
+
+> 이 문서는 처음에 위 경로를 `data/raw/` 로 적어 두었으나 구현은 `data/.cache/` 를 쓴다
+> (`pipeline/paths.py` 의 `cache_dir()`, 환경변수 `DART_CACHE_DIR`). 실제 경로로 고쳤다.
+> `data/raw/opendart/` 로 옮기는 것이 앞으로의 기준이며 그 판단과 미룬 이유는
+> [`DATA_STORAGE_STANDARD.md`](DATA_STORAGE_STANDARD.md) 2장에 있다. 저장 위치·파일명·Git
+> 추적 범위의 정본은 그 문서다.
 
 **설정 파일** — 이름으로 찾는 부분은 전부 설정으로 뺀다. 커버리지가 안 나오면 **코드를 고치지 말고 후보 목록을 늘리는 것이 원칙.**
 

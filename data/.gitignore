@@ -23,3 +23,21 @@ _out/
 # 뉴스 PoC 로컬 입력·출력
 news_poc/local_raw/
 news_poc/local_output/
+
+# ── raw / staged / curated 3계층 (data/docs/DATA_STORAGE_STANDARD.md) ──
+# 원본은 커밋하지 않는다. 용량이 크고(DART 캐시 330MB+), 뉴스 RSS 는 저장·재배포
+# 조건이 확정되지 않았다(docs/news-poc/90-source-review.md). 폴더 구조만 남긴다.
+/raw/**
+!/raw/**/
+!/raw/**/.gitkeep
+
+# 정제 결과는 원본에서 재생성 가능하므로 커밋하지 않는다. _out/ 과 같은 판단이다.
+/staged/**
+!/staged/**/
+!/staged/**/.gitkeep
+
+# 뉴스 시드는 제3자 기사 제목·URL 을 담는다. 사용조건 확정까지 커밋하지 않는다.
+/curated/seed/company_news.csv
+
+# logs/ 는 저장소 루트 .gitignore 의 `logs/` 규칙에 이미 걸려 통째로 제외된다.
+# 실행 로그이므로 그대로 둔다. _log/ 과 같은 판단이다.

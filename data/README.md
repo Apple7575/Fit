@@ -31,6 +31,8 @@
 | [`docs/WORK_PLAN.md`](docs/WORK_PLAN.md) | 작업 계획. WP ↔ Jira 티켓 매핑, 일정 배치 |
 | [`docs/BACKLOG_STATUS.md`](docs/BACKLOG_STATUS.md) | 백로그 13개 AC 단위 진행률 |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 설계 결정 + 파싱 규칙(정규식·임계값) + 검증 수치 |
+| [`docs/DATA_STORAGE_STANDARD.md`](docs/DATA_STORAGE_STANDARD.md) | **저장 기준의 정본.** raw/staged/curated 경계, 파일명·식별자 규칙, 시드 CSV 기준, Git 추적 범위 |
+| [`docs/data_fields.csv`](docs/data_fields.csv) · [`docs/seed_csv_inventory.csv`](docs/seed_csv_inventory.csv) | 데이터 사전 / 테이블별 시드 CSV 보유 현황 |
 | [`docs/news-poc/README.md`](docs/news-poc/README.md) | 뉴스 PoC 진행 현황·실행 방법·티켓별 조사 문서 |
 
 ---
@@ -47,6 +49,17 @@ python scripts/normalize.py         # 캐시 원본 정규화
 python scripts/verify_normalize.py  # 기준선 150건 회귀 검증
 ```
 
+뉴스는 별도 흐름이다. 수집기는 `news_poc/pipeline/collect.py` 이고, 그 원본을 표준 구조로
+정제·적재본으로 만드는 것은 아래 네 CLI 다. 네트워크를 호출하지 않는다.
+
+```bash
+python scripts/import_news_raw.py --from <수집기 --out 폴더>   # raw 로 복사 + 체크섬 대조 + manifest
+python scripts/stage_news.py                                  # raw → staged
+python scripts/build_news_seed.py                             # staged → curated/seed/company_news.csv
+python scripts/verify_news.py                                 # 검증 14종
+python -m unittest discover -s tests/news -t .                # 단위·통합 테스트
+```
+
 정규화는 `.cache/`의 API 응답 원본만 읽으며 네트워크를 호출하지 않는다. 캐시는 커밋하지 않으므로(330MB), 없으면 `scripts/collect.py`로 먼저 수집한다. 다른 위치의 캐시를 쓰려면 `DART_CACHE_DIR` 환경변수로 지정한다.
 
 ---
@@ -59,13 +72,22 @@ data/
 │   ├── targets.csv             타깃 10개사 + KSIC 중분류 + 상장연도
 │   ├── company_universe.csv    상장사 3,930건 + 업종 (F-04 적재 입력)
 │   └── ksic_division.csv       KSIC 중분류 77개 코드→명칭
-├── docs/                       설계·계획·진행상태 문서
+├── docs/                       설계·계획·진행상태 문서 + 데이터 사전
+├── raw/                        원본 (출처별. gitignore)
+├── staged/                     정제 결과 (재생성 가능. gitignore)
+├── curated/seed/               DB 테이블별 적재본 CSV
+├── manifests/                  수집·시드 계보 기록
 ├── pipeline/                   수집·정규화 정식 구현
-│   └── normalize/              매출·직원·R&D 지표별 정규화
+│   ├── normalize/              매출·직원·R&D 지표별 정규화
+│   └── news/                   뉴스 raw → staged → curated
 ├── scripts/                    수집·정규화·적재·검증 CLI
 ├── tests/fixtures/normalize/   정규화 회귀 검증 기준선
-└── .cache/                     API 응답 원본 (gitignore)
+└── .cache/                     DART API 응답 원본 (gitignore)
 ```
+
+세 단계(`raw`/`staged`/`curated`)의 경계와 Git 추적 범위는
+[`docs/DATA_STORAGE_STANDARD.md`](docs/DATA_STORAGE_STANDARD.md) 에 있다. DART 원본은 아직
+`.cache/` 에 평면 파일명으로 있고 이동은 별도 작업이다.
 
 초기 프로토타입의 검증된 규칙은 `config/patterns.yaml`과 `pipeline/normalize/`로 이전했고, 기준 결과만 fixtures에 보존한다.
 
