@@ -53,3 +53,46 @@ def load_key() -> str:
             f"DART_API_KEY 가 없습니다. {ROOT / '.env.example'} 를 .env 로 복사하고 인증키를 넣으세요."
         )
     return key
+
+
+# ── 저장 기준 경로 (DATA_STORAGE_STANDARD.md 2장) ──────────────────────
+# 기존 10개사 경로는 .cache/ 평면 구조를 그대로 쓴다. 아래는 전 종목 수집이
+# 새로 쓰는 경로다 — 파일이 1만 개를 넘어가므로 처음부터 기준 위치에 둔다.
+RAW = ROOT / "raw"
+STAGED = ROOT / "staged"
+CURATED = ROOT / "curated"
+
+
+def raw_api_dir() -> Path:
+    """DART 정형 API 응답 원본. 읽기 전용, Git 제외."""
+    p = RAW / "opendart" / "api"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def staged_dir(source: str = "opendart") -> Path:
+    """표준화 결과. raw 에서 재생성 가능하므로 Git 제외."""
+    p = STAGED / source
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def curated_seed_dir() -> Path:
+    """DB 적재본 <table_name>.csv. Git 추적."""
+    p = CURATED / "seed"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def manifest_dir(provider: str = "opendart") -> Path:
+    """수집 계보 기록. Git 추적한다 — 원본이 없어도 무엇을 받았는지 남아야 한다."""
+    p = ROOT / "manifests" / provider
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def run_log_dir(provider: str = "opendart") -> Path:
+    """실행 로그. _log/ 는 기존 10개사 경로가 쓰므로 건드리지 않는다."""
+    p = ROOT / "logs" / provider
+    p.mkdir(parents=True, exist_ok=True)
+    return p

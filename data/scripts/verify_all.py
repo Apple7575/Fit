@@ -15,6 +15,7 @@
     [3] 원천 정합성   verify_source.py      검산 6축.           DB 필요
     [4] DB -> API     verify_api.py         3,449건.           DB 필요 · 응답 원본 필요
     [5] 누락 사유     report_gaps.py        리포트. 판정하지 않는다
+    [6] 전 종목 재무  verify_financials.py  검산 5축.           DB 불필요 · API 불필요
 
     ① 원천 ↔ ② DB ↔ ③ API 3자 대조가 [2]+[4] 로 완결된다 (F-30).
 
@@ -23,6 +24,10 @@
 [1] 은 `.cache/` 만 있으면 된다. [2][3] 은 DB 가, [4] 는 그 위에 API 응답
 원본까지 필요하다. 그래서 앞이 실패해도 뒤를 건너뛰지 않고 **각각 독립으로**
 돌린다 — 어디까지 되는지 알아야 원인을 좁힐 수 있다.
+
+[6] 은 `staged/opendart/financials.csv` 만 읽는다. **착지 테이블이 없어도
+돌아간다** — 적재를 거치지 않는 검산이 하나 있어야 적재 버그와 원천 문제를
+구분할 수 있다. 착지가 끝나도 이 경로는 남긴다.
 """
 from __future__ import annotations
 
@@ -42,6 +47,7 @@ STEPS = [
     ("원천 정합성 검산", "verify_source.py", [], True),
     ("DB → API 노출값", "verify_api.py", [], True),
     ("누락 사유 분류", "report_gaps.py", ["--csv"], False),
+    ("전 종목 재무 원천 검산", "verify_financials.py", [], True),
 ]
 
 
