@@ -2,8 +2,10 @@ package com.ssafy.companyanalysis.global.response;
 
 import com.ssafy.companyanalysis.company.controller.CompanyController;
 import com.ssafy.companyanalysis.company.dto.CompanyDetailResponse;
+import com.ssafy.companyanalysis.company.dto.CompanyProfileResponse;
 import com.ssafy.companyanalysis.company.dto.CompanySearchResponse;
 import com.ssafy.companyanalysis.company.service.CompanyDetailService;
+import com.ssafy.companyanalysis.company.service.CompanyProfileService;
 import com.ssafy.companyanalysis.company.service.CompanySearchService;
 import com.ssafy.companyanalysis.comparison.controller.IndustryCompaniesController;
 import com.ssafy.companyanalysis.comparison.controller.IndustryComparisonController;
@@ -50,12 +52,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 결측·부분 데이터 응답 기준(S15P21A504-100)을 엔드포인트 전체에 걸쳐 고정한다.
  *
  * <p>규칙 원문은 {@code docs/decisions/0001-missing-data-response.md} 에 있다.
- * 컨트롤러별 테스트가 각자의 화면 관점에서 결측을 확인한다면, 여기서는 다섯 개 API 가
+ * 컨트롤러별 테스트가 각자의 화면 관점에서 결측을 확인한다면, 여기서는 엔드포인트 전체가
  * <b>같은 규칙</b>으로 움직이는지를 본다. 응답 봉투·Jackson 설정처럼 한 번 바뀌면
- * 다섯 개가 한꺼번에 깨지는 지점을 한 자리에서 잡기 위해서다.
+ * 전부 한꺼번에 깨지는 지점을 한 자리에서 잡기 위해서다.
  *
- * <p>기업소개·집중 분야·최근 이슈 API(S15P21A504-97·98·99)가 붙을 때도
- * 같은 형태의 케이스를 여기에 추가한다.
+ * <p>기업 개요(S15P21A504-97)까지 들어왔다. 집중 분야·최근 이슈 API(S15P21A504-98·99)가
+ * 붙을 때도 같은 형태의 케이스를 여기에 추가한다.
  */
 @WebMvcTest({CompanyController.class, CompanyMetricController.class,
         IndustryComparisonController.class, IndustryCompaniesController.class})
@@ -76,6 +78,9 @@ class MissingDataResponseContractTest {
 
     @MockitoBean
     private CompanyDetailService companyDetailService;
+
+    @MockitoBean
+    private CompanyProfileService companyProfileService;
 
     @MockitoBean
     private CompanyMetricService companyMetricService;
@@ -236,6 +241,49 @@ class MissingDataResponseContractTest {
                 .andExpect(jsonPath("$.data.industry").value(nullValue()))
                 .andExpect(jsonPath("$.data.companies", hasSize(0)))
                 .andExpect(jsonPath("$.error").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("규칙4 - 개요가 한 해도 적재되지 않아도 200 이고 목록은 null 이 아니라 빈 배열이다")
+    void emptyProfileKeepsArraysAndReturnsOk() throws Exception {
+        given(companyProfileService.getProfile(eq(CORP_CODE), any()))
+                .willReturn(new CompanyProfileResponse(null, List.of(), List.of(), null, List.of()));
+
+        mockMvc.perform(get("/api/companies/{corpCode}/profile", CORP_CODE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.year").hasJsonPath())
+                .andExpect(jsonPath("$.data.year").value(nullValue()))
+                // 목록이 비면 빈 배열이지 null 이 아니다.
+                .andExpect(jsonPath("$.data.businesses", hasSize(0)))
+                .andExpect(jsonPath("$.data.segments", hasSize(0)))
+                .andExpect(jsonPath("$.data.products", hasSize(0)))
+                .andExpect(jsonPath("$.data.totalRevenue").hasJsonPath())
+                .andExpect(jsonPath("$.data.totalRevenue").value(nullValue()))
+                .andExpect(jsonPath("$.error").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("규칙2·3 - 매출 미공시 부문도 자리를 지키고 0 이 아니라 null 로 나간다")
+    void undisclosedSegmentKeepsKeysAndStaysNull() throws Exception {
+        given(companyProfileService.getProfile(eq(CORP_CODE), any()))
+                .willReturn(new CompanyProfileResponse(2025,
+                        List.of("반도체"),
+                        List.of(new CompanyProfileResponse.Segment("SDC", null, null)),
+                        null,
+                        List.of()));
+
+        mockMvc.perform(get("/api/companies/{corpCode}/profile", CORP_CODE))
+                .andExpect(status().isOk())
+                // 부문이 존재한다는 사실은 남기고 값만 비운다. 목록에서 빼면 부문 수가 달라진다.
+                .andExpect(jsonPath("$.data.segments", hasSize(1)))
+                .andExpect(jsonPath("$.data.segments[0].code").value("SDC"))
+                .andExpect(jsonPath("$.data.segments[0].revenue").hasJsonPath())
+                .andExpect(jsonPath("$.data.segments[0].revenue").value(nullValue()))
+                .andExpect(jsonPath("$.data.segments[0].revenueShare").hasJsonPath())
+                .andExpect(jsonPath("$.data.segments[0].revenueShare").value(nullValue()))
+                // 공시된 부문 매출이 없으면 합계도 0 이 아니라 null 이다.
+                .andExpect(jsonPath("$.data.totalRevenue").value(nullValue()));
     }
 
     @Test
