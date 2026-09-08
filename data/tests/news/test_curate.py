@@ -54,7 +54,7 @@ class CurateTest(unittest.TestCase):
 
     def test_AI_컬럼은_비운다(self):
         row = self.build([staged()]).rows[0]
-        for column in ("category", "related_business", "importance_score", "analyzed_at"):
+        for column in ("news_category", "related_business", "importance_score", "analyzed_at"):
             self.assertEqual(row[column], "", column)
 
     def test_기업코드_없는_행은_넣지_않고_사유를_남긴다(self):

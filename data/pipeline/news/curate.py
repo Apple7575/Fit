@@ -1,4 +1,4 @@
-"""staged → curated. `company_news` 에 바로 적재할 시드 CSV 를 만든다.
+"""staged → curated. `news_article` 에 바로 적재할 시드 CSV 를 만든다.
 
 규칙 (data/docs/DATA_STORAGE_STANDARD.md 6장)
 
@@ -9,7 +9,7 @@
 - corp_code 가 없는 행은 넣지 않는다 (FK 위반). 버리는 대신 사유와 함께 세어 보고한다
 - 길이·범위 위반은 잘라서 통과시키지 않는다. 위반으로 보고하고 그 행을 뺀다
 
-`company_news.source` 가 provider 인지 publisher 인지는 백엔드와 합의가 필요하다.
+`news_article.source` 가 provider 인지 publisher 인지는 백엔드와 합의가 필요하다.
 기본값은 publisher 다 — provider 는 staged·manifest 에 상수로 남아 있어 잃을 것이
 없는데 publisher 는 현재 스키마에 다른 자리가 없다. `--source-column provider` 로 바꾼다.
 """
@@ -32,7 +32,7 @@ SEED_MANIFEST_DIR = Path(__file__).resolve().parents[2] / "manifests" / "seed"
 
 # AI 분석은 아직 실행하지 않는다(S15P21A504-74 PoC). 채우지 않고 NULL 로 둔다 —
 # 0 이나 빈 문자열로 채우면 "분석했으나 결과가 없음" 과 구분이 사라진다.
-AI_COLUMNS = ("category", "related_business", "importance_score", "analyzed_at")
+AI_COLUMNS = ("news_category", "related_business", "importance_score", "analyzed_at")
 
 
 @dataclass
@@ -93,8 +93,13 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
             continue
 
         original_url = row.get("original_url") or ""
-        # DB 의 부분 UNIQUE 인덱스와 같은 조건이다 — company_news_url_uk 는
+        # V12 의 부분 UNIQUE 인덱스 company_news_url_uk 와 같은 조건이다 —
         # (corp_code, original_url) WHERE original_url IS NOT NULL.
+        #
+        # **V13 이 news_article 을 만들면서 이 인덱스를 다시 만들지 않았다.** 그래서
+        # 지금은 DB 가 중복을 막지 않고 이 판정이 유일한 방어다. 복원을 요청해 두었다
+        # (docs/S15P21A504-v13-followup.md 2장). 복원되든 안 되든 여기는 그대로 둔다 —
+        # 시드 단계에서 걸러야 적재가 실패하지 않는다.
         if original_url:
             key = (row["corp_code"], original_url)
             if key in seen_url:

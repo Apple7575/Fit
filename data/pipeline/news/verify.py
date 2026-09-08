@@ -233,7 +233,12 @@ def check_09_headers() -> Check:
 
 
 def check_10_seed_keys() -> Check:
-    """시드의 PK·UNIQUE 중복. company_news 는 (corp_code, original_url) 부분 UNIQUE 다."""
+    """시드의 PK·UNIQUE 중복. (corp_code, original_url) 을 부분 UNIQUE 로 본다.
+
+    V12 의 company_news_url_uk 가 그 규칙이었고 V13 이 news_article 로 옮기면서
+    인덱스를 다시 만들지 않았다. 복원 요청과 별개로 이 검사는 유지한다 —
+    시드가 중복을 담지 않는다는 사실 자체는 계속 확인해야 한다.
+    """
     seed_path = SEED_DIR / f"{SEED_TABLE}.csv"
     if not seed_path.exists():
         return Check(10, "시드 PK·UNIQUE 중복", "skip", {"reason": f"{seed_path.name} 이 없다"})

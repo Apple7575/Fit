@@ -55,7 +55,7 @@ python scripts/verify_normalize.py  # 기준선 150건 회귀 검증
 ```bash
 python scripts/import_news_raw.py --from <수집기 --out 폴더>   # raw 로 복사 + 체크섬 대조 + manifest
 python scripts/stage_news.py                                  # raw → staged
-python scripts/build_news_seed.py                             # staged → curated/seed/company_news.csv
+python scripts/build_news_seed.py                             # staged → curated/seed/news_article.csv
 python scripts/verify_news.py                                 # 검증 14종
 python -m unittest discover -s tests/news -t .                # 단위·통합 테스트
 ```

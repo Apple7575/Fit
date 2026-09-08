@@ -212,6 +212,13 @@ _UNIQUE_INDEX = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _INSERT_INTO = re.compile(r"^INSERT\s+INTO\s+(?:(\w+)\.)?(\w+)", re.IGNORECASE)
+# 테이블이 사라지거나 스키마를 옮기는 문장. 이것을 읽지 않으면 파서가 만든 스키마에
+# 이미 없는 테이블이 남는다 — V13 이 지운 일곱 개가 그대로 남아 데이터 사전·인벤토리
+# 대조(verify 9·12번)가 "문서에 있는데 스키마에 없다"를 거꾸로 판정한다.
+_DROP_TABLE = re.compile(
+    r"^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)", re.IGNORECASE)
+_SET_SCHEMA = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+SET\s+SCHEMA\s+(\w+)", re.IGNORECASE)
 _REFERENCES = re.compile(
     r"REFERENCES\s+(?:\w+\.)?(\w+)\s*\(\s*(\w+)\s*\)", re.IGNORECASE
 )
@@ -347,9 +354,20 @@ def load(migration_dir: Path | None = None) -> Schema:
             if insert:
                 schema.seeded_tables.add(insert.group(2))
                 continue
+            drop = _DROP_TABLE.match(statement)
+            if drop:
+                schema.tables.pop(drop.group(2), None)
+                schema.seeded_tables.discard(drop.group(2))
+                continue
+            moved = _SET_SCHEMA.match(statement)
+            if moved:
+                table = schema.tables.get(moved.group(2))
+                if table:
+                    table.schema = moved.group(3).lower()
+                continue
             if any(head.startswith(k) for k in (
                 "CREATE INDEX", "CREATE SCHEMA", "CREATE EXTENSION", "ALTER TABLE",
-                "DROP INDEX", "DROP TABLE", "UPDATE", "DELETE", "SET",
+                "DROP INDEX", "UPDATE", "DELETE", "SET",
             )):
                 continue
             raise ValueError(f"{path.name}: 파싱하지 못한 문장 — {statement[:120]!r}")
