@@ -2,7 +2,8 @@ import type { TrendSeries } from '../features/financial-trend/types';
 
 /**
  * 백엔드 없이 화면 확인용 임시 데이터. 응답 구조 확인용 예시값이며 실제 공시와 다르다.
- * GET /api/companies/{corpCode}/metrics/timeseries?from=2021&to=2025 의 series[6] 에 대응 (v2: changeRate 포함).
+ * GET /api/companies/{corpCode}/metrics/timeseries 의 series[6] 에 대응 (v2: changeRate 포함).
+ * 목업의 range 는 이 데이터가 가진 연도의 양 끝으로 계산한다.
  * 단위: 매출액·영업이익·순이익·급여 = 원, 직원 수 = 명, 근속 = 년
  * 2022년 평균 근속은 누락 케이스(null) 확인용. 2021년은 전년이 없어 changeRate null.
  */

@@ -180,7 +180,8 @@ describe('CompanyDetailPage', () => {
     expect(
       await screen.findByRole('heading', { name: '매출액 추이' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('최근 5년 성장 분석 (2021–2025)')).toBeInTheDocument();
+    // 헤더 구간은 시계열 응답의 range(2021~2025)에서 온다
+    expect(await screen.findByText('최근 5년 성장 분석 (2021–2025)')).toBeInTheDocument();
     // 기준연도는 기본정보의 dataYear(2025) 를 그대로 넘기고, 연도 없는 선행 호출은 없다
     const metricsCalls = fetchMock.mock.calls
       .map((call) => String(call[0]))
@@ -188,6 +189,11 @@ describe('CompanyDetailPage', () => {
     expect(metricsCalls).toEqual([
       expect.stringContaining('year=2025'),
     ]);
+    // 5년 추이도 같은 기준연도를 to 로 넘기고, from 은 서버(to-4)에 맡긴다
+    const trendCalls = fetchMock.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.includes('/metrics/timeseries'));
+    expect(trendCalls).toEqual([expect.stringContaining('timeseries?to=2025')]);
   });
 
   it('집중 분야 탭은 확정 영역을 보여주고 조건부 영역은 404 면 숨긴다', async () => {

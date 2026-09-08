@@ -10,14 +10,16 @@ import {
   type MetricKey,
 } from '../../types/metrics';
 import { formatMetricCompact } from '../../utils/formatMetric';
-import { TREND_END_YEAR, TREND_START_YEAR } from '../financial-trend/types';
-import { useFinancialTrend } from '../financial-trend/useFinancialTrend';
+import type { FinancialTrendState } from '../financial-trend/useFinancialTrend';
 
 /** 기본 선택 지표. 취준생이 가장 먼저 보는 규모 지표라 매출액. */
 export const DEFAULT_TREND_METRIC: MetricKey = 'revenue';
 
 interface GrowthTrendCardProps {
   corpCode: string;
+  /** 5년 추이 조회 상태. 헤더가 같은 응답의 구간을 쓰므로 조회는 호출부가 한다 */
+  state: FinancialTrendState;
+  onRetry: () => void;
 }
 
 const METRIC_OPTIONS = KEY_METRIC_KEYS.map((key) => ({
@@ -25,17 +27,18 @@ const METRIC_OPTIONS = KEY_METRIC_KEYS.map((key) => ({
   label: METRIC_LABELS[key],
 }));
 
-/** 5년 추이 카드: 지표 탭 + 막대(값)·꺾은선(증가율) 이중축 차트. 지표 전환은 재조회 없이 클라이언트에서. */
-export function GrowthTrendCard({ corpCode }: GrowthTrendCardProps) {
+/**
+ * 5년 추이 카드: 지표 탭 + 막대(값)·꺾은선(증가율) 이중축 차트. 지표 전환은 재조회 없이 클라이언트에서.
+ * 연도 구간은 응답의 range 만 쓴다 — 응답 전에는 연도를 표시하지 않는다.
+ */
+export function GrowthTrendCard({ corpCode, state, onRetry }: GrowthTrendCardProps) {
   const [metricKey, setMetricKey] = useState<MetricKey>(DEFAULT_TREND_METRIC);
-  const { state, retry } = useFinancialTrend(corpCode);
   const label = METRIC_LABELS[metricKey];
   const unit = METRIC_UNITS[metricKey];
   const unitLabel = UNIT_LABELS[unit];
-  const series =
-    state.status === 'success'
-      ? state.data.find((s) => s.key === metricKey)
-      : undefined;
+  const trend = state.status === 'success' ? state.data : null;
+  const series = trend?.series.find((s) => s.key === metricKey);
+  const rangeLabel = trend ? `${trend.from}–${trend.to} 연간 · ` : '';
 
   return (
     <section
@@ -54,7 +57,7 @@ export function GrowthTrendCard({ corpCode }: GrowthTrendCardProps) {
           {label} 추이
         </h3>
         <p className="text-xs font-semibold text-slate-400">
-          {TREND_START_YEAR}–{TREND_END_YEAR} 연간 · (단위: {unitLabel}, %)
+          {rangeLabel}(단위: {unitLabel}, %)
         </p>
       </div>
 
@@ -77,12 +80,12 @@ export function GrowthTrendCard({ corpCode }: GrowthTrendCardProps) {
               기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
             </InlineNotice>
           ) : (
-            <InlineNotice onRetry={retry}>
+            <InlineNotice onRetry={onRetry}>
               변화 그래프를 불러오지 못했습니다. {state.error.message}
             </InlineNotice>
           ))}
 
-        {state.status === 'success' &&
+        {trend &&
           (series ? (
             <BarLineChart
               formatValue={(v) => formatMetricCompact(unit, v)}
@@ -92,7 +95,7 @@ export function GrowthTrendCard({ corpCode }: GrowthTrendCardProps) {
                 rate: p.changeRate,
               }))}
               rateName="증가율"
-              title={`${label} ${TREND_START_YEAR}~${TREND_END_YEAR}년 변화 그래프`}
+              title={`${label} ${trend.from}~${trend.to}년 변화 그래프`}
               valueName={label}
             />
           ) : (
