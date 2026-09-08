@@ -263,5 +263,31 @@ describe('CompanyDetailPage', () => {
     expect(
       await screen.findByRole('heading', { name: '주요 사업' }),
     ).toBeInTheDocument();
+    // 실패를 "정보 없음"으로 위장하지 않고 안내 + 다시 시도를 보여준다
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /기업 기본정보를 불러오지 못했습니다/,
+    );
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+  });
+
+  it('기본정보가 404 면 기업 없음 안내만 보이고 개요 섹션은 내리지 않는다', async () => {
+    // 개요 섹션은 기본정보와 나란히 요청되지만, 기업이 없다고 확인되면 응답과 무관하게 내리지 않는다
+    vi.stubGlobal(
+      'fetch',
+      stubFetchByUrl(() =>
+        json(
+          { success: false, error: { code: 'COMPANY_NOT_FOUND', message: '없음' } },
+          404,
+        ),
+      ),
+    );
+
+    renderAt('/companies/99999999');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '기업 정보를 찾을 수 없습니다. 기업코드(99999999)를 확인해 주세요.',
+    );
+    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '주요 사업' })).not.toBeInTheDocument();
   });
 });

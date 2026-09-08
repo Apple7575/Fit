@@ -62,6 +62,31 @@ describe('fetchCompanyProfile', () => {
     expect(profile.totalRevenue).toBeNull();
   });
 
+  it('개요가 적재되지 않은 기업의 빈 골격은 year 를 null 로 유지한다 (0 변환 금지)', async () => {
+    vi.stubEnv('VITE_API_MOCK', 'false');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          json({
+            success: true,
+            data: { year: null, businesses: [], segments: [], totalRevenue: null, products: [] },
+          }),
+        ),
+      ),
+    );
+
+    const profile = await fetchCompanyProfile('00126380');
+
+    expect(profile).toEqual({
+      year: null,
+      businesses: [],
+      segments: [],
+      totalRevenue: null,
+      products: [],
+    });
+  });
+
   it('404 는 ApiError(COMPANY_NOT_FOUND) 로 던진다', async () => {
     vi.stubEnv('VITE_API_MOCK', 'false');
     vi.stubGlobal(
