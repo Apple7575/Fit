@@ -68,4 +68,19 @@ describe('AuthProvider', () => {
     await userEvent.click(screen.getByRole('button', { name: 'logout' }));
     await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('anonymous'));
   });
+
+  it('clears the user even when the logout request fails', async () => {
+    mockedApi.fetchMe.mockRejectedValue(new ApiError(401, 'UNAUTHENTICATED', ''));
+    mockedApi.login.mockResolvedValue({ id: 1, email: 'a@b.com', nickname: '민재' });
+    mockedApi.logout.mockRejectedValue(new ApiError(0, 'NETWORK_ERROR', '서버에 연결할 수 없습니다.'));
+
+    renderProbe();
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('anonymous'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'login' }));
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('민재'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'logout' }));
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('anonymous'));
+  });
 });
