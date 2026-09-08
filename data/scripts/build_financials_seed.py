@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pipeline.paths import curated_seed_dir, staged_dir
+from pipeline.paths import CURATED, staged_dir
 
 ACCOUNTS = ["매출액", "영업이익", "법인세차감전 순이익", "당기순이익(손실)", "총포괄손익",
             "자산총계", "부채총계", "자본총계", "자본금", "이익잉여금",
@@ -47,9 +47,16 @@ def main() -> int:
                               "fs_nm": r["fs_nm"], "rcept_no": r["rcept_no"],
                               "thstrm_dt": r["thstrm_dt"]})
 
+    # dict.fromkeys 로 중복을 접는다. COL 은 '영업이익(손실)' 을 '영업이익' 에 겹쳐
+    # 담으므로 values() 에 같은 이름이 두 번 나오고, 그대로 쓰면 헤더에 영업이익
+    # 컬럼이 두 개 생긴다.
     fields = (["corp_code", "stock_code", "bsns_year", "fs_div", "fs_nm", "currency"]
-              + list(COL.values()) + ["rcept_no", "기준일"])
-    out = curated_seed_dir() / "company_financials.csv"
+              + list(dict.fromkeys(COL.values())) + ["rcept_no", "기준일"])
+    # curated/seed/ 가 아니라 curated/ 바로 밑이다. seed/ 는 <table_name>.csv 전용인데
+    # 이 표는 어느 DB 테이블과도 1:1 이 아니다 — company_year_wide.csv 와 같은 분류다
+    # (DATA_STORAGE_STANDARD.md 9장 · seed_csv_inventory 의 not_applicable).
+    CURATED.mkdir(parents=True, exist_ok=True)
+    out = CURATED / "company_financials.csv"
     with out.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
