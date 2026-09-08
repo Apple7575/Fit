@@ -1,6 +1,6 @@
 {
   "table": "company_activity",
-  "generated_at": "2026-09-08T03:49:32.351063+00:00",
+  "generated_at": "2026-09-08T05:02:01.367678+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -31,7 +31,8 @@
     "V12__company_news.sql",
     "V13__erd_alignment.sql",
     "V14__users.sql",
-    "V15__email_verification.sql"
+    "V15__email_verification.sql",
+    "V16__news_article_drop_ai_columns.sql"
   ],
   "source": ".cache/otrCprInvstmntSttus_*.json (타법인 출자현황)",
   "seed_rows": 3409,

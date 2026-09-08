@@ -251,20 +251,28 @@ def check_10_seed_keys() -> Check:
 
 
 def check_11_foreign_keys() -> Check:
-    """corp_code 가 company 마스터의 원천에 있는지 본다."""
+    """corp_code 가 company 마스터의 원천에 있는지 본다.
+
+    대조 상대는 `curated/seed/company.csv` 다. 예전에는 `company_universe.csv`
+    (3,930건)를 봤는데, company 시드가 정규 시장 2,703건만 담게 되면서 그쪽이
+    실제보다 느슨해졌다 — corp_cls=E 기업을 가리키는 행이 통과하고 적재에서
+    FK 로 터진다.
+    """
     seed_path = SEED_DIR / f"{SEED_TABLE}.csv"
     if not seed_path.exists():
         return Check(11, "FK 참조 무결성", "skip", {"reason": f"{seed_path.name} 이 없다"})
-    universe = {
-        (r.get("corp_code") or "").strip()
-        for r in read_csv(corpmap.CONFIG / "company_universe.csv")
-    }
+    company_seed = SEED_DIR / "company.csv"
+    source = (company_seed if company_seed.exists()
+              else corpmap.CONFIG / "company_universe.csv")
+    master = {(r.get("corp_code") or "").strip() for r in read_csv(source)}
     rows = read_csv(seed_path)
-    missing = sorted({r["corp_code"] for r in rows if r["corp_code"] not in universe})
+    missing = sorted({r["corp_code"] for r in rows if r["corp_code"] not in master})
     return Check(11, "FK 참조 무결성", "fail" if missing else "pass",
-                 {"rows": len(rows), "universe_rows": len(universe),
-                  "corp_codes_not_in_universe": missing[:20], "missing_count": len(missing),
-                  "note": "company 테이블은 config/company_universe.csv 로 적재된다 (scripts/load_company.py)"})
+                 {"rows": len(rows), "master_source": source.name,
+                  "master_rows": len(master),
+                  "corp_codes_not_in_master": missing[:20], "missing_count": len(missing),
+                  "note": "company 테이블은 curated/seed/company.csv 로 적재된다 "
+                          "(scripts/load_company.py)"})
 
 
 def check_12_inventory_row_counts() -> Check:

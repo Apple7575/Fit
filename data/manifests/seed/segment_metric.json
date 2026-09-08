@@ -1,6 +1,6 @@
 {
   "table": "segment_metric",
-  "generated_at": "2026-09-08T03:49:32.278008+00:00",
+  "generated_at": "2026-09-08T05:02:01.166239+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -27,21 +27,22 @@
     "V12__company_news.sql",
     "V13__erd_alignment.sql",
     "V14__users.sql",
-    "V15__email_verification.sql"
+    "V15__email_verification.sql",
+    "V16__news_article_drop_ai_columns.sql"
   ],
   "source": ".cache/empSttus_*.json (직원 현황)",
-  "seed_rows": 190,
+  "seed_rows": 95,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "segment_name": 0,
     "metric_code": 0,
-    "metric_value": 95
+    "metric_value": 0
   },
   "notes": [
     "부문 축은 fo_bbm 이고 성별 행을 접어 하나로 만든다",
-    "segment_revenue 는 원천(사업보고서 추출)이 없어 값이 비었다",
-    "부문 목록의 원천이라 값이 없어도 행을 남긴다 (V13 주석)"
+    "segment_employee_count 만 넣는다 — segment_revenue 는 원천(사업보고서 추출)이 없어 행을 만들지 않는다 (MR !81)",
+    "부문 목록은 부문마다 반드시 있는 이 행이 지킨다"
   ],
   "distinct_corp_codes": 13,
   "fiscal_years": [
