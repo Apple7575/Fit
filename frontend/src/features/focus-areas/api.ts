@@ -1,7 +1,6 @@
 import { ApiError, apiGet } from '../../api/client';
 import { mockFinancialTrendByCompany } from '../../mocks/financialTrend';
 import { toTrendSeries, type FinancialTrendResponse } from '../financial-trend/api';
-import { TREND_END_YEAR, TREND_START_YEAR } from '../financial-trend/types';
 import {
   mockActivitiesByCompany,
   mockFocusByCompany,
@@ -208,7 +207,9 @@ export async function fetchAllActivities(
 
 /**
  * 전체 직원 수 5년 추이 — 명세대로 timeseries 를 keys=employee_count 로 부른다.
- * 응답에 없는 연도는 null (0 으로 그리지 않는다).
+ * 구간(from·to)은 보내지 않는다. 서버가 기준연도를 to 로, to-4 를 from 으로 정하고 응답의 range 로
+ * 알려주므로 화면은 그 구간을 그대로 그린다 (2021~2025 를 박아 두면 적재가 다음 해로 넘어가도
+ * 화면이 옛 해에 묶인다). 응답에 없는 연도는 null (0 으로 그리지 않는다).
  */
 export async function fetchEmployeeTrend(
   corpCode: string,
@@ -221,19 +222,17 @@ export async function fetchEmployeeTrend(
     return series.points.map((p) => ({ year: p.year, value: p.value }));
   }
 
-  const params = new URLSearchParams({
-    from: String(TREND_START_YEAR),
-    to: String(TREND_END_YEAR),
-    keys: 'employee_count',
-  });
+  const params = new URLSearchParams({ keys: 'employee_count' });
   const data = await apiGet<FinancialTrendResponse>(
     `/api/companies/${encodeURIComponent(corpCode)}/metrics/timeseries?${params}`,
     { signal },
   );
-  const series = toTrendSeries(data).find((s) => s.key === 'employee_count');
+  // 연도 축은 서버가 조회한 구간 그대로다. 화면에서 연도를 정하지 않는다
+  const { from, to } = data.range;
+  const series = toTrendSeries(data, from, to).find((s) => s.key === 'employee_count');
   if (series) return series.points.map((p) => ({ year: p.year, value: p.value }));
   const points: EmployeeTrendPoint[] = [];
-  for (let year = TREND_START_YEAR; year <= TREND_END_YEAR; year += 1) {
+  for (let year = from; year <= to; year += 1) {
     points.push({ year, value: null });
   }
   return points;

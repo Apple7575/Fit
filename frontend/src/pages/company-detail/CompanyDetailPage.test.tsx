@@ -46,9 +46,15 @@ const emptyComparison = {
 /** 상세 레이아웃·탭이 부르는 API 를 URL 로 구분해 응답한다. */
 const stubFetchByUrl = (
   detail: Response | (() => Response) = () => json(detailBody),
+  overrides: Record<string, () => Response> = {},
 ) =>
   vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
+    for (const [fragment, impl] of Object.entries(overrides)) {
+      if (url.includes(fragment)) {
+        return Promise.resolve(impl());
+      }
+    }
     if (url.includes('/profile')) {
       return Promise.resolve(json(profileBody));
     }
@@ -211,6 +217,25 @@ describe('CompanyDetailPage', () => {
     expect(
       screen.queryByRole('heading', { name: '집중 분야 요약' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('집중 분야 탭은 사업 방향·R&D 조회가 5xx 로 실패하면 숨기지 않고 안내와 다시 시도를 보여준다', async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetchByUrl(undefined, {
+        '/focus': () =>
+          json({ success: false, error: { code: 'INTERNAL_ERROR', message: '서버 오류' } }, 500),
+      }),
+    );
+
+    renderAt('/companies/00126380/focus');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /사업 방향·R&D 분석을 불러오지 못했습니다/,
+    );
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    // 확정 영역은 그대로 보인다
+    expect(await screen.findByRole('heading', { name: '투자' })).toBeInTheDocument();
   });
 
   it('최근 이슈 탭은 통계·TOP 이 없어도 기본 뉴스 목록을 보여준다', async () => {
