@@ -31,12 +31,12 @@ public class CompanySearchService {
                 companyRepository.search(keyword.trim(), PageRequest.of(page - 1, size));
 
         List<CompanySummaryResponse> items = found.getContent().stream()
-                .map(p -> new CompanySummaryResponse(
-                        p.getCorpCode(),
-                        p.getCorpName(),
-                        p.getStockCode(),
-                        p.getIndustryCode(),
-                        p.getIndustryName()))
+                .map(projection -> new CompanySummaryResponse(
+                        projection.getCorpCode(),
+                        projection.getCorpName(),
+                        projection.getStockCode(),
+                        projection.getIndustryCode(),
+                        projection.getIndustryName()))
                 .toList();
 
         return new CompanySearchResponse(items, found.getTotalElements());

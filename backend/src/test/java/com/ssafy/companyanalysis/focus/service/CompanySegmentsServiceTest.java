@@ -186,18 +186,18 @@ class CompanySegmentsServiceTest {
 
     private static SegmentChangeProjection segment(String code, String revenue,
                                                    Integer employees, Integer prevEmployees) {
-        SegmentChangeProjection p = mock(SegmentChangeProjection.class);
-        given(p.getSegmentCode()).willReturn(code);
-        given(p.getRevenue()).willReturn(revenue == null ? null : new BigDecimal(revenue));
-        given(p.getEmployeeCount()).willReturn(employees);
-        given(p.getPrevEmployeeCount()).willReturn(prevEmployees);
-        return p;
+        SegmentChangeProjection projection = mock(SegmentChangeProjection.class);
+        given(projection.getSegmentCode()).willReturn(code);
+        given(projection.getRevenue()).willReturn(revenue == null ? null : new BigDecimal(revenue));
+        given(projection.getEmployeeCount()).willReturn(employees);
+        given(projection.getPrevEmployeeCount()).willReturn(prevEmployees);
+        return projection;
     }
 
     private static MetricValueProjection metric(String value, String prevValue) {
-        MetricValueProjection p = mock(MetricValueProjection.class);
-        given(p.getValue()).willReturn(value == null ? null : new BigDecimal(value));
-        given(p.getPrevValue()).willReturn(prevValue == null ? null : new BigDecimal(prevValue));
-        return p;
+        MetricValueProjection projection = mock(MetricValueProjection.class);
+        given(projection.getValue()).willReturn(value == null ? null : new BigDecimal(value));
+        given(projection.getPrevValue()).willReturn(prevValue == null ? null : new BigDecimal(prevValue));
+        return projection;
     }
 }

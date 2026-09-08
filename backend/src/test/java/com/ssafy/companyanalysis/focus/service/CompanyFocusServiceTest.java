@@ -62,8 +62,8 @@ class CompanyFocusServiceTest {
                 item("NEW_BUSINESS", "파운드리"),
                 item("NEW_BUSINESS", "로봇"));
         given(companyFocusRepository.findDirectionItems(CORP_CODE, 2025)).willReturn(items);
-        FocusDirectionProjection d = direction("주력을 메모리에서 파운드리로 옮기고 있다");
-        given(companyFocusRepository.findDirection(CORP_CODE, 2025)).willReturn(Optional.of(d));
+        FocusDirectionProjection projection = direction("주력을 메모리에서 파운드리로 옮기고 있다");
+        given(companyFocusRepository.findDirection(CORP_CODE, 2025)).willReturn(Optional.of(projection));
         given(companyFocusRepository.findRndFields(CORP_CODE, 2025)).willReturn(List.of("HBM", "GAA"));
         List<MetricValueProjection> metrics = List.of(
                 metric("rd_cost", 0, "37000000000000", "34000000000000"),
@@ -140,8 +140,8 @@ class CompanyFocusServiceTest {
         // 목을 만드는 것도 스터빙이라 바깥 given(...) 안에서 만들면 스터빙이 겹친다.
         List<FocusDirectionItemProjection> items = List.of(item("KEYWORD", "AI"));
         given(companyFocusRepository.findDirectionItems(CORP_CODE, 2025)).willReturn(items);
-        FocusDirectionProjection d = direction(null);
-        given(companyFocusRepository.findDirection(CORP_CODE, 2025)).willReturn(Optional.of(d));
+        FocusDirectionProjection projection = direction(null);
+        given(companyFocusRepository.findDirection(CORP_CODE, 2025)).willReturn(Optional.of(projection));
 
         CompanyFocusResponse response = service.getFocus(CORP_CODE, null);
 
@@ -191,24 +191,24 @@ class CompanyFocusServiceTest {
     }
 
     private static FocusDirectionItemProjection item(String type, String name) {
-        FocusDirectionItemProjection p = mock(FocusDirectionItemProjection.class);
-        given(p.getItemType()).willReturn(type);
-        given(p.getItemName()).willReturn(name);
-        return p;
+        FocusDirectionItemProjection projection = mock(FocusDirectionItemProjection.class);
+        given(projection.getItemType()).willReturn(type);
+        given(projection.getItemName()).willReturn(name);
+        return projection;
     }
 
     private static FocusDirectionProjection direction(String strategyChange) {
-        FocusDirectionProjection p = mock(FocusDirectionProjection.class);
-        given(p.getStrategyChange()).willReturn(strategyChange);
-        return p;
+        FocusDirectionProjection projection = mock(FocusDirectionProjection.class);
+        given(projection.getStrategyChange()).willReturn(strategyChange);
+        return projection;
     }
 
     private static MetricValueProjection metric(String code, int scale, String value, String prevValue) {
-        MetricValueProjection p = mock(MetricValueProjection.class);
-        given(p.getMetricCode()).willReturn(code);
-        given(p.getValueScale()).willReturn((short) scale);
-        given(p.getValue()).willReturn(value == null ? null : new BigDecimal(value));
-        given(p.getPrevValue()).willReturn(prevValue == null ? null : new BigDecimal(prevValue));
-        return p;
+        MetricValueProjection projection = mock(MetricValueProjection.class);
+        given(projection.getMetricCode()).willReturn(code);
+        given(projection.getValueScale()).willReturn((short) scale);
+        given(projection.getValue()).willReturn(value == null ? null : new BigDecimal(value));
+        given(projection.getPrevValue()).willReturn(prevValue == null ? null : new BigDecimal(prevValue));
+        return projection;
     }
 }

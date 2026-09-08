@@ -124,12 +124,12 @@ class CompanyActivityServiceTest {
 
     private static ActivityProjection activity(int year, String type, String field,
                                                String purpose, String amount) {
-        ActivityProjection p = mock(ActivityProjection.class);
-        given(p.getYear()).willReturn(year);
-        given(p.getType()).willReturn(type);
-        given(p.getField()).willReturn(field);
-        given(p.getPurpose()).willReturn(purpose);
-        given(p.getAmount()).willReturn(amount == null ? null : new BigDecimal(amount));
-        return p;
+        ActivityProjection projection = mock(ActivityProjection.class);
+        given(projection.getYear()).willReturn(year);
+        given(projection.getType()).willReturn(type);
+        given(projection.getField()).willReturn(field);
+        given(projection.getPurpose()).willReturn(purpose);
+        given(projection.getAmount()).willReturn(amount == null ? null : new BigDecimal(amount));
+        return projection;
     }
 }
