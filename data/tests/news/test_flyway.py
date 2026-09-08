@@ -56,12 +56,25 @@ class SchemaTest(unittest.TestCase):
     def test_주석을_읽는다(self):
         table = self.schema.table(SEED_TABLE)
         self.assertIn("기업별 뉴스", table.comment)
-        self.assertIn("AI 분류", table.columns["news_category"].comment)
+        self.assertIn("수집 출처", table.columns["source"].comment)
         # V13 이 V12 의 컬럼 주석 다섯 개(title · description · published_at ·
         # related_business · importance_score)를 옮기지 않았다. 복원을 요청해 두었고
         # (docs/S15P21A504-v13-followup.md 2장) 그때까지는 데이터 사전이
         # build_data_fields.py 의 DESC 로 설명을 채운다.
         self.assertEqual(table.columns["importance_score"].comment, "")
+
+    def test_DROP_COLUMN_을_읽는다(self):
+        """V16 이 한 ALTER 에서 콤마로 지운 네 컬럼이 스키마에 남지 않아야 한다.
+
+        읽지 않으면 데이터 사전이 없는 컬럼을 문서화한 채로 9번이 통과한다 —
+        대조가 있으나 마나 해진다.
+        """
+        table = self.schema.table(SEED_TABLE)
+        for column in ("description", "news_category", "related_business", "analyzed_at"):
+            self.assertNotIn(column, table.columns, column)
+        # 같은 표의 나머지는 그대로다
+        for column in ("id", "corp_code", "title", "importance_score", "collected_at"):
+            self.assertIn(column, table.columns, column)
 
     def test_staging_스키마를_구분한다(self):
         table = self.schema.table("dart_otr_cpr_invstmnt")

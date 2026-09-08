@@ -32,7 +32,9 @@ SEED_MANIFEST_DIR = Path(__file__).resolve().parents[2] / "manifests" / "seed"
 
 # AI 분석은 아직 실행하지 않는다(S15P21A504-74 PoC). 채우지 않고 NULL 로 둔다 —
 # 0 이나 빈 문자열로 채우면 "분석했으나 결과가 없음" 과 구분이 사라진다.
-AI_COLUMNS = ("news_category", "related_business", "importance_score", "analyzed_at")
+#
+# V16 이 news_category · related_business · analyzed_at 을 지워 하나만 남았다.
+AI_COLUMNS = ("importance_score",)
 
 
 @dataclass
@@ -110,7 +112,6 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
         seed = {
             "corp_code": row["corp_code"],
             "title": title,
-            "description": row.get("description") or "",
             "published_at": row.get("published_at") or "",
             "original_url": original_url,
             "source": row.get("publisher", "") if source_column == "publisher" else PROVIDER,

@@ -259,9 +259,6 @@ note("news_article", "corp_code", DERIVED, "requests.json:query → staged.corp_
 note("news_article", "title", NEWS, "rss:item/title → staged.title",
      "derived:끝의 ' - <언론사>' 접미사만 제거", "삼성전자, 테일러 공장 가동", personal="possible",
      remarks="기사 제목에 인물명이 들어올 수 있다. 제3자 저작물이므로 저장·표시 조건 확인 필요")
-note("news_article", "description", NEWS, "rss:item/description → staged.description",
-     "derived:검토를 통과한 요약만. 제목 반복은 넣지 않는다", "",
-     remarks="현재 전부 NULL. RSS 설명이 제목 반복인 사례가 있어 요약으로 쓰지 않는다 (90번 문서)")
 note("news_article", "published_at", NEWS, "rss:item/pubDate → staged.published_at",
      "derived:RFC 2822 → UTC ISO 8601. 시간대 누락은 NULL", "2026-09-05T23:30:00+00:00",
      remarks="저장은 UTC, 기간 구분은 KST(staged.published_date_kst), 응답은 서울 기준 날짜")
@@ -272,14 +269,8 @@ note("news_article", "source", NEWS, "rss:item/source → staged.publisher",
      "derived:기본 publisher", "테스트일보",
      remarks=f"{AGREEMENT} — 컬럼이 하나뿐이라 provider(google_news_rss)와 publisher(언론사)를 "
              "함께 담을 수 없다. provider 컬럼 추가를 제안한다")
-note("news_article", "news_category", AI, "", "미적재", "",
-     remarks="AI 분류 미실행. 팀이 카테고리 분류를 하지 않기로 했고 프론트 어휘는 7종이다 — 합의 필요")
-note("news_article", "related_business", AI, "", "미적재", "",
-     remarks="AI 분석 PoC 단계(S15P21A504-74). 반복 안정성 미달로 적재하지 않는다")
 note("news_article", "importance_score", AI, "", "미적재", "",
      remarks="0~10. NULL 은 분석 실패이고 0 과 다른 사실이다")
-note("news_article", "analyzed_at", AI, "", "미적재", "",
-     remarks="분석을 돌린 시각. 기본 필드만 적재된 뉴스는 NULL")
 note("news_article", "collected_at", NEWS, "requests.json:checked_at → staged.collected_at",
      "raw", "2026-09-06T00:10:00+00:00",
      remarks="원본을 받은 시각. DB 기본값 now() 에 맡기지 않고 수집 시각을 넣는다")
@@ -391,17 +382,6 @@ DESC[("company_text", "id")] = "대리 키. DB 가 생성하며 시드 CSV 에 �
 DESC[("segment_metric", "metric_code")] = \
     "지표 코드. metric 을 참조하며 segment_revenue · segment_employee_count 두 값을 쓴다"
 for _column, _text in (
-    ("corp_code", "DART 고유번호 8자리. company 를 참조한다"),
-    ("title", "기사 제목"),
-    ("description", "기사 요약. 제목 반복은 넣지 않는다"),
-    ("published_at", "기사 발행 시각(UTC). 시간대를 알 수 없으면 NULL"),
-    ("original_url", "기사 원문 주소. Google 경유 주소가 아닌 외부 링크다"),
-    ("related_business", "AI 가 연결한 사업 영역. 미분석은 NULL"),
-    ("importance_score", "AI 중요도 0~10. NULL 은 분석 실패이고 0 과 다른 사실이다"),
-    ("collected_at", "원본을 받은 시각"),
-):
-    DESC[("news_article", _column)] = _text
-for _column, _text in (
     ("id", "대리 키. DB 가 생성한다"),
     ("email", "로그인 아이디로 쓰는 이메일 주소"),
     ("nickname", "화면에 보이는 이름"),
@@ -426,11 +406,9 @@ for _column, _text in (
 # 복원 요청은 docs/S15P21A504-v13-followup.md 2장에 적었다.
 for _column, _text in (
     ("title", "기사 제목. 응답의 title"),
-    ("description", "요약. 길이가 정해지지 않아 TEXT 다. 미제공은 NULL"),
     ("published_at", "기사 발행 시각. 응답에는 서울 기준 날짜(YYYY-MM-DD)로 나간다. "
                      "NULL 이면 기간 조회에 걸리지 않아 세 API 어디에도 나가지 않는다"),
     ("original_url", "언론사 직접 원문 URL. 확보하지 못하면 NULL"),
-    ("related_business", "AI 가 뽑은 관련 사업. 분석 실패나 해당 없음은 NULL"),
     ("importance_score", "AI 중요도 0.0~10.0. 프론트 목업 기준 소수 한 자리다. "
                          "분석 실패는 NULL 이고 0 과 다른 사실이다"),
     ("collected_at", "원본을 받은 시각"),

@@ -115,6 +115,29 @@ V10 → V13 → V14 로 밀렸으니, **번호를 쓰기 전에 `origin/develop`
 
 ## 4. 확인 부탁
 
-1. 2장 ① 인덱스 세 개 — 복원 여부와 번호(정리 마이그레이션 동승 vs 별 번호)
-2. 2장 ② 컬럼 주석 다섯 개 — ①과 함께 넣을지
+1. 2장 ① 인덱스 — **V16 이후 두 개**(`url_uk` · `importance_idx`)로 줄었다. 복원 여부와
+   번호(정리 마이그레이션 동승 vs 별 번호). 5장 참고
+2. 2장 ② 컬럼 주석 — **V16 이후 세 개**(`title` · `published_at` · `importance_score`)
 3. 2장 ③ `db-schema.md` 2·3장 갱신 — 그쪽에서 맡아주실지
+
+---
+
+## 5. V16 이후 — 요청 셋 중 둘이 줄었다
+
+이 문서를 쓴 뒤 `V16__news_article_drop_ai_columns.sql` 이 머지되어 `news_article` 의
+AI 컬럼 넷(`description` · `news_category` · `related_business` · `analyzed_at`)이
+사라졌다. 위 요청을 그만큼 줄인다.
+
+| 위 항목 | V16 이후 |
+|---|---|
+| ① `news_article_url_uk` (UNIQUE) | **그대로 필요하다.** 중복 차단은 컬럼과 무관하다 |
+| ① `news_article_importance_idx` | **그대로 필요하다.** `importance_score` 는 남았다 |
+| ① `news_article_category_idx` | **불필요.** `news_category` 가 없다 |
+| ② 주석 다섯 개 | `title` · `published_at` · `importance_score` **셋만** 남는다 |
+
+우리 쪽은 따라 맞췄다 — 파서가 `DROP COLUMN` 을 읽고(`pipeline/news/flyway.py`),
+`SEED_FIELDS` 가 7컬럼으로 줄었으며, 데이터 사전에서 네 컬럼을 뺐다.
+
+**파서가 `DROP COLUMN` 을 건너뛰던 동안 검증 9번이 가짜로 통과하고 있었다.** 사전이
+없는 컬럼 넷을 문서화한 채였는데 대조가 그걸 잡지 못했다. `DROP TABLE` 과 같은 종류의
+구멍이라 함께 막았고 회귀 테스트(`test_DROP_COLUMN_을_읽는다`)를 두었다.

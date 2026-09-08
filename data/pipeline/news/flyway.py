@@ -222,6 +222,17 @@ _DROP_TABLE = re.compile(
     r"^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)", re.IGNORECASE)
 _SET_SCHEMA = re.compile(
     r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+SET\s+SCHEMA\s+(\w+)", re.IGNORECASE)
+# 컬럼도 같은 이유로 읽는다. V16 이 news_article 의 AI 컬럼 넷을 지웠는데 이것을
+# 건너뛰면 사전이 없는 컬럼을 문서화한 채로 verify 9번이 통과한다 — 대조가 있으나
+# 마나 한 상태가 된다.
+#
+# 한 ALTER 에 `DROP COLUMN a, DROP COLUMN b` 처럼 여러 절이 붙는다(V16 이 그렇다).
+# 그래서 문장을 매치하는 것과 절을 훑는 것을 나눴다.
+_DROP_COLUMN_STMT = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+(.*DROP\s+COLUMN\s+.*)$",
+    re.IGNORECASE | re.DOTALL)
+_DROP_COLUMN_CLAUSE = re.compile(
+    r"DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?(\w+)", re.IGNORECASE)
 _REFERENCES = re.compile(
     r"REFERENCES\s+(?:\w+\.)?(\w+)\s*\(\s*(\w+)\s*\)", re.IGNORECASE
 )
@@ -367,6 +378,13 @@ def load(migration_dir: Path | None = None) -> Schema:
                 table = schema.tables.get(moved.group(2))
                 if table:
                     table.schema = moved.group(3).lower()
+                continue
+            dropped = _DROP_COLUMN_STMT.match(statement)
+            if dropped:
+                table = schema.tables.get(dropped.group(2))
+                if table:
+                    for name in _DROP_COLUMN_CLAUSE.findall(dropped.group(3)):
+                        table.columns.pop(name, None)
                 continue
             if any(head.startswith(k) for k in (
                 "CREATE INDEX", "CREATE SCHEMA", "CREATE EXTENSION", "ALTER TABLE",
