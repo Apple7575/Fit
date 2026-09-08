@@ -37,6 +37,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from pipeline.news.csvio import write_csv  # noqa: E402
 from pipeline.paths import curated_seed_dir, staged_dir  # noqa: E402
 
 # metric_code → 주요계정 이름
@@ -56,15 +57,14 @@ FS_PRIORITY = ("CFS", "OFS")     # config/patterns.yaml 의 fs_div_priority
 FIELDS = ["corp_code", "fiscal_year", "metric_code", "metric_value", "fs_div"]
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--verify-db", action="store_true",
-                    help="DB 의 기존 company_metric 과 대조한다")
-    args = ap.parse_args()
+def build_rows() -> tuple[list[dict], dict]:
+    """staged/financials.csv → company_metric 행과 집계 수치.
 
+    `scripts/build_curated_seed.py` 가 같은 규칙으로 다시 쓰지 않도록 뺐다.
+    여기가 company_metric 매핑 규칙의 유일한 자리다.
+    """
     src = staged_dir() / "financials.csv"
     rows = list(csv.DictReader(src.open(encoding="utf-8")))
-    print(f"staged {len(rows):,}행")
 
     # (corp_code, year, fs_div) -> {계정명: (값, 통화)}
     box: dict[tuple, dict[str, tuple[float, str]]] = defaultdict(dict)
@@ -107,16 +107,34 @@ def main() -> int:
             out.append({"corp_code": corp, "fiscal_year": year, "metric_code": code,
                         "metric_value": f"{value:.4f}", "fs_div": chosen})
 
+    # 적재 순서를 고정한다 — 같은 입력이면 같은 바이트여야 한다 (저장 기준 9장)
+    out.sort(key=lambda r: (r["corp_code"], r["fiscal_year"], r["metric_code"]))
+    return out, {"staged_rows": len(rows), "pairs": len(pairs), "used_fs": used_fs,
+                 "skipped_currency": skipped_currency, "missing": missing}
+
+
+def write_seed(rows: list[dict]) -> Path:
+    """BOM 없는 UTF-8 · LF 로 쓴다 (저장 기준 6장). 규칙은 csvio 한 곳에 있다."""
     dest = curated_seed_dir() / "company_metric.csv"
-    with dest.open("w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
-        w.writeheader()
-        # 적재 순서를 고정한다 — 같은 입력이면 같은 바이트여야 한다 (저장 기준 9장)
-        w.writerows(sorted(out, key=lambda r: (r["corp_code"], r["fiscal_year"],
-                                               r["metric_code"])))
+    write_csv(dest, FIELDS, rows)
+    return dest
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--verify-db", action="store_true",
+                    help="DB 의 기존 company_metric 과 대조한다")
+    args = ap.parse_args()
+
+    out, stats = build_rows()
+    pairs, used_fs = stats["pairs"], stats["used_fs"]
+    skipped_currency, missing = stats["skipped_currency"], stats["missing"]
+    print(f"staged {stats['staged_rows']:,}행")
+
+    dest = write_seed(out)
 
     corps = len({r["corp_code"] for r in out})
-    print(f"\n시드 {len(out):,}행 · 회사 {corps:,} · 기업-연도 {len(pairs):,}")
+    print(f"\n시드 {len(out):,}행 · 회사 {corps:,} · 기업-연도 {pairs:,}")
     print(f"  fs_div       연결 {used_fs['CFS']:,} · 별도 {used_fs['OFS']:,}")
     print(f"  지표별       " + " · ".join(
         f"{c} {sum(1 for r in out if r['metric_code'] == c):,}" for c in METRICS))

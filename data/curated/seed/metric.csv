@@ -1,0 +1,13 @@
+metric_code,name_ko,unit,value_scale,source_type,display_order,is_active,is_core
+revenue,매출액,KRW,0,FINANCIAL_STATEMENT,1,true,true
+operating_profit,영업이익,KRW,0,FINANCIAL_STATEMENT,2,true,true
+net_income,당기순이익,KRW,0,FINANCIAL_STATEMENT,3,true,true
+employee_count,직원 수,PERSON,0,EMPLOYEE_STATUS,4,true,true
+average_salary,1인 평균 급여,KRW,0,EMPLOYEE_STATUS,5,true,true
+average_tenure,평균 근속,YEAR,1,EMPLOYEE_STATUS,6,true,true
+rd_ratio,R&D/매출,%,1,DERIVED,7,true,false
+rd_cost,R&D 비용,KRW,0,FINANCIAL_STATEMENT,8,false,false
+total_liabilities,부채총계,KRW,0,FINANCIAL_STATEMENT,20,false,false
+total_equity,자본총계,KRW,0,FINANCIAL_STATEMENT,21,false,false
+segment_revenue,사업부 매출,KRW,0,FINANCIAL_STATEMENT,30,false,false
+segment_employee_count,사업부 직원 수,PERSON,0,EMPLOYEE_STATUS,31,false,false

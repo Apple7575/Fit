@@ -1,0 +1,49 @@
+{
+  "table": "metric",
+  "generated_at": "2026-09-08T03:49:30.916528+00:00",
+  "generated_by": "scripts/build_curated_seed.py",
+  "header": [
+    "metric_code",
+    "name_ko",
+    "unit",
+    "value_scale",
+    "source_type",
+    "display_order",
+    "is_active",
+    "is_core"
+  ],
+  "columns_excluded": [],
+  "flyway_files": [
+    "V1__init_schema.sql",
+    "V2__seed_metric.sql",
+    "V3__industry_ksic_division.sql",
+    "V4__rename_average_metric_codes.sql",
+    "V5__add_metric_evidence.sql",
+    "V6__document_corp_name_source.sql",
+    "V7__metric_catalog_v2.sql",
+    "V8__company_address_homepage.sql",
+    "V9__dart_otr_cpr_invstmnt.sql",
+    "V10__company_profile.sql",
+    "V11__company_focus_and_activity.sql",
+    "V12__company_news.sql",
+    "V13__erd_alignment.sql",
+    "V14__users.sql",
+    "V15__email_verification.sql"
+  ],
+  "source": "Flyway V2·V4·V5·V7·V13 의 INSERT (SQL 이 정본, 이것은 사본)",
+  "seed_rows": 12,
+  "null_counts": {
+    "metric_code": 0,
+    "name_ko": 0,
+    "unit": 0,
+    "value_scale": 0,
+    "source_type": 0,
+    "display_order": 0,
+    "is_active": 0,
+    "is_core": 0
+  },
+  "notes": [
+    "요청 헤더의 scope 는 DB 에 없어 뺐다 — 넣으려면 마이그레이션이 먼저다",
+    "--verify-db 가 DB 카탈로그와 대조한다"
+  ]
+}

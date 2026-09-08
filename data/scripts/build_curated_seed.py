@@ -1,0 +1,580 @@
+"""확정 ERD 6개 테이블의 시드 CSV 를 한 번에 만든다 → `curated/seed/`.
+
+팀장 요청 목록이다. 표는 저장 기준 2장대로 `curated/seed/<table_name>.csv` 에
+둔다 — `curated/` 바로 밑은 어느 테이블과도 1:1 이 아닌 보조 산출물 자리다
+(`company_financials.csv`).
+
+    industry          config/ksic_division.csv                      77행
+    company           config/company_universe.csv + 기업개황     3,930행
+    metric            Flyway V2·V4·V5·V7·V13 카탈로그의 사본        12행
+    company_metric    staged/opendart/financials.csv            58,327행
+    segment_metric    .cache/empSttus_*.json                     13개사
+    company_activity  .cache/otrCprInvstmntSttus_*.json          10개사
+
+**헤더는 손으로 적지 않는다.** 저장 기준 9장이 "Flyway 의 실제 컬럼명과 순서에
+일치" 를 요구하므로 마이그레이션에서 읽는다 (`pipeline/news/flyway.py`). 컬럼이
+늘면 헤더가 따라 늘고, 사람이 목록을 갱신하는 것을 잊어 사전이 낡는 경로를 없앤다.
+
+그래서 요청받은 헤더와 다른 곳이 셋이다. 전부 스키마가 근거다.
+
+  ① `company` 에 corp_name_eng·stock_code·corp_cls·induty_code·listed_date·
+     dart_modify_date 가 **더 붙는다.** 이 CSV 하나로 company 를 채울 수 있어야
+     한다 — corp_cls 가 없으면 응답의 market(KOSPI/KOSDAQ/KONEX)이 나오지 않는다.
+     listed_date·dart_modify_date 는 **빈 칸이다.** 기업개황 응답에 상장일 필드가
+     없고(실측) modify_date 는 corpCode.xml 에 있다. 컬럼은 두고 값을 비운다.
+  ② `company_metric` 에 **fs_div 가 남는다.** 요청 헤더에는 없지만 DB 에 있는
+     컬럼이고, 연결·별도 중 무엇을 읽었는지 잃으면 되짚을 방법이 없다 (V1 주석).
+  ③ `metric` 에 **scope 가 없다.** 확정 ERD 가 "제안" 으로 열어 둔 컬럼인데 V13 이
+     만들지 않기로 했다 — 사업부 지표를 is_active=FALSE 로 가르는 쪽을 택했다.
+     없는 컬럼을 CSV 에만 넣으면 적재가 깨지므로 빼고, 대신 카탈로그에
+     segment_revenue·segment_employee_count 가 그 구분을 들고 있다.
+     scope 로 가려면 마이그레이션이 먼저다.
+
+빈 값 규칙이 테이블마다 다르다. 잘못 맞추면 사실이 바뀐다.
+
+    company_metric    행이 없는 것이 결측이다.        NULL 을 넣지 않는다
+    segment_metric    행은 두고 metric_value 를 비운다. 부문 목록의 원천이라
+                      값이 없어도 부문이 남아야 한다 (V13 주석)
+
+    python scripts/build_curated_seed.py               # 6종 전부
+    python scripts/build_curated_seed.py --only company segment_metric
+    python scripts/build_curated_seed.py --verify-db   # DB 와 대조
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import re
+import sys
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from build_metric_seed import FIELDS as CM_FIELDS  # noqa: E402
+from build_metric_seed import build_rows as build_company_metric_rows  # noqa: E402
+from build_metric_seed import write_seed as write_company_metric  # noqa: E402
+from pipeline.news import flyway  # noqa: E402
+from pipeline.news.csvio import write_csv  # noqa: E402
+from pipeline.patterns import patterns as default_patterns  # noqa: E402
+from pipeline.normalize.text import squash, to_num  # noqa: E402
+from pipeline.paths import CONFIG, cache_dir, curated_seed_dir, raw_api_dir  # noqa: E402
+
+# 시드 계보. manifests/ 는 Git 추적한다 — 원본이 없어도 무엇으로 만들었는지 남아야 한다.
+SEED_MANIFEST_DIR = Path(__file__).resolve().parents[1] / "manifests" / "seed"
+
+RE_CORP_CODE = re.compile(r"^[0-9]{8}$")
+RE_STOCK_CODE = re.compile(r"^[0-9]{6}$")
+CORP_CLS = frozenset(("Y", "K", "N", "E"))
+
+TABLES = ("industry", "company", "metric", "company_metric",
+          "segment_metric", "company_activity")
+
+# DB 가 스스로 채우는 칸. NOT NULL DEFAULT now() 라서 빈 셀(=NULL)로 COPY 하면
+# 제약에 걸린다. 적재 시각은 적재한 DB 가 찍어야 하는 값이기도 하다.
+DB_MANAGED_COLUMNS = frozenset(("created_at", "updated_at"))
+
+
+def header(table: str) -> list[str]:
+    """Flyway 컬럼 순서 그대로. identity 와 DB 가 채우는 칸만 뺀다 (저장 기준 9장)."""
+    t = flyway.load().table(table)
+    if t is None:
+        raise SystemExit(f"{table} 이 마이그레이션에 없다 — backend/ 가 최신인지 확인하라")
+    return [c.name for c in t.ordered()
+            if not c.identity and c.name not in DB_MANAGED_COLUMNS]
+
+
+# Flyway V2 → V4(이름 변경) → V5 → V7 → V13 을 적용한 뒤의 metric 카탈로그.
+# SQL 이 정본이고 이것은 사본이다 — 어긋나면 --verify-db 가 잡는다.
+METRIC_CATALOG = [
+    # metric_code,            name_ko,        unit,     scale, source_type,           order, active, core
+    ("revenue",                "매출액",         "KRW",    0, "FINANCIAL_STATEMENT",  1, True,  True),
+    ("operating_profit",       "영업이익",       "KRW",    0, "FINANCIAL_STATEMENT",  2, True,  True),
+    ("net_income",             "당기순이익",     "KRW",    0, "FINANCIAL_STATEMENT",  3, True,  True),
+    ("employee_count",         "직원 수",        "PERSON", 0, "EMPLOYEE_STATUS",      4, True,  True),
+    ("average_salary",         "1인 평균 급여",  "KRW",    0, "EMPLOYEE_STATUS",      5, True,  True),
+    ("average_tenure",         "평균 근속",      "YEAR",   1, "EMPLOYEE_STATUS",      6, True,  True),
+    ("rd_ratio",               "R&D/매출",       "%",      1, "DERIVED",              7, True,  False),
+    ("rd_cost",                "R&D 비용",       "KRW",    0, "FINANCIAL_STATEMENT",  8, False, False),
+    ("total_liabilities",      "부채총계",       "KRW",    0, "FINANCIAL_STATEMENT", 20, False, False),
+    ("total_equity",           "자본총계",       "KRW",    0, "FINANCIAL_STATEMENT", 21, False, False),
+    ("segment_revenue",        "사업부 매출",    "KRW",    0, "FINANCIAL_STATEMENT", 30, False, False),
+    ("segment_employee_count", "사업부 직원 수", "PERSON", 0, "EMPLOYEE_STATUS",     31, False, False),
+]
+
+# segment_metric 이 부문마다 항상 만드는 두 행 (V13 주석).
+SEGMENT_METRICS = ("segment_revenue", "segment_employee_count")
+
+
+def _rows(path: Path) -> list[dict]:
+    """설정 CSV 읽기. 함정 셋은 scripts/load_company.py 주석과 같다.
+
+      - BOM 이 붙어 있다                                    → utf-8-sig
+      - 헤더가 ' division_name'(앞 공백)이고 값도 패딩됐다   → strip
+      - 쉼표 뒤 공백 때문에 따옴표가 필드 시작으로 인식되지 않아
+        업종명이 조각난다                                    → skipinitialspace
+    """
+    with path.open(encoding="utf-8-sig", newline="") as f:
+        out = []
+        for r in csv.DictReader(f, skipinitialspace=True):
+            if None in r:                     # 헤더보다 필드가 많다 = 인용 파손
+                raise ValueError(
+                    f"{path.name}: 헤더보다 필드가 많은 행이 있다 — 인용 부호를 확인하라. {r}")
+            out.append({(k or "").strip(): (v or "").strip() for k, v in r.items()})
+        return out
+
+
+def _write(table: str, rows: list[dict], source: str, notes: list[str],
+           stats: dict | None = None) -> Path:
+    """행에 헤더 밖의 칸이 있으면 멈춘다 — 스키마가 바뀌었는데 값이 조용히
+    버려지는 것을 막는다. 반대로 없는 칸은 빈 셀(=NULL)로 채운다.
+
+    쓰기는 `pipeline/news/csvio.py` 에 맡긴다. BOM 없는 UTF-8 · LF 규칙이
+    거기 한 곳에 있다 (저장 기준 6장) — 여기서 다시 정하면 갈라진다.
+    """
+    fields = header(table)
+    extra = {k for r in rows for k in r} - set(fields)
+    if extra:
+        raise SystemExit(f"{table}: 헤더에 없는 칸 {sorted(extra)} — 스키마를 확인하라")
+    rows, dropped = _drop_too_long(table, rows, fields)
+    if dropped:
+        stats = dict(stats or {})
+        stats.update({f"길이 초과로 제외: {k}": v for k, v in dropped.items()})
+        print(f"  ⚠ {table}: 길이 초과로 제외 {dict(dropped)}")
+    dest = curated_seed_dir() / f"{table}.csv"
+    write_csv(dest, fields, rows)
+    _manifest(table, rows, fields, source, notes, stats)
+    return dest
+
+
+def _drop_too_long(table: str, rows: list[dict],
+                   fields: list[str]) -> tuple[list[dict], Counter]:
+    """VARCHAR 길이를 넘는 행을 뺀다. **자르지 않는다** (저장 기준 9장).
+
+    잘라서 통과시키면 DB 에는 들어가지만 값이 조용히 달라진다. 빼고 세는 쪽이
+    나중에 왜 그 회사가 없는지 되짚을 수 있다.
+    """
+    limits = {}
+    for c in flyway.load().table(table).ordered():
+        m = re.fullmatch(r"VARCHAR\((\d+)\)", c.data_type or "")
+        if m and c.name in fields:
+            limits[c.name] = int(m.group(1))
+
+    kept, dropped = [], Counter()
+    for r in rows:
+        over = [k for k, n in limits.items() if len(str(r.get(k, "") or "")) > n]
+        if over:
+            for k in over:
+                dropped[k] += 1
+            continue
+        kept.append(r)
+    return kept, dropped
+
+
+def _manifest(table: str, rows: list[dict], fields: list[str], source: str,
+              notes: list[str], stats: dict | None) -> None:
+    """시드 계보 — 저장 기준 10장. 원본이 사라져도 무엇으로 만든 표인지 남는다."""
+    schema = flyway.load()
+    body = {
+        "table": table,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_by": "scripts/build_curated_seed.py",
+        "header": fields,
+        "columns_excluded": sorted(
+            {c.name for c in schema.table(table).ordered()} - set(fields)),
+        "flyway_files": schema.applied_files,
+        "source": source,
+        "seed_rows": len(rows),
+        # 빈 셀은 NULL 이다. 어느 칸이 얼마나 비었는지가 이 표의 커버리지다.
+        "null_counts": {k: sum(1 for r in rows if not str(r.get(k, "")).strip())
+                        for k in fields},
+        "notes": notes,
+    }
+    if rows and "corp_code" in fields:
+        body["distinct_corp_codes"] = len({r["corp_code"] for r in rows})
+    if rows and "fiscal_year" in fields:
+        years = sorted({int(r["fiscal_year"]) for r in rows})
+        body["fiscal_years"] = [years[0], years[-1]]
+    if stats:
+        body["build_stats"] = {k: v for k, v in sorted(stats.items())}
+
+    dest = SEED_MANIFEST_DIR
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / f"{table}.json").write_text(
+        json.dumps(body, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _profile_files() -> dict[str, Path]:
+    """기업개황 원본. 전 종목은 raw/, 기존 10개사 경로는 .cache/ 에 있다.
+
+    같은 corp_code 가 양쪽에 있으면 raw/ 를 쓴다 — 전 종목 수집이 최신이다.
+    """
+    out: dict[str, Path] = {}
+    for d in (cache_dir(), raw_api_dir()):
+        for p in d.glob("company_*.json"):
+            out[p.stem.split("_", 1)[1]] = p
+    return out
+
+
+# ------------------------------------------------------------------ industry
+
+def build_industry() -> list[dict]:
+    """KSIC 대분류 → industry. company.industry_code 의 FK 대상이다."""
+    out, seen = [], set()
+    for r in _rows(CONFIG / "ksic_division.csv"):
+        code, name = r.get("ksic_division", ""), r.get("division_name", "")
+        if not code or not name or code in seen:
+            continue
+        seen.add(code)
+        out.append({"industry_code": code, "industry_name": name})
+    return sorted(out, key=lambda r: r["industry_code"])
+
+
+# ------------------------------------------------------------------- company
+
+def build_company(industry_codes: set[str]) -> tuple[list[dict], Counter]:
+    """유니버스 + 기업개황 → company. 제약 위반 행은 넣지 않고 사유별로 센다.
+
+    판정 규칙은 scripts/load_company.py 와 같게 맞췄다. 적재 직전에 걸릴 행을
+    시드 단계에서 미리 뺀다 — CSV 는 통과했는데 DB 가 거부하는 상태를 만들지 않는다.
+    """
+    stats: Counter = Counter()
+    profiles = _profile_files()
+    out: list[dict] = []
+
+    for r in _rows(CONFIG / "company_universe.csv"):
+        corp_code = r.get("corp_code", "")
+        stock_code = r.get("stock_code", "")
+        corp_cls = r.get("corp_cls", "")
+        ksic = r.get("ksic_division", "")
+
+        why = None
+        if not RE_CORP_CODE.match(corp_code):
+            why = "corp_code 8자리 아님"
+        elif stock_code and not RE_STOCK_CODE.match(stock_code):
+            why = "stock_code 6자리 숫자 아님"
+        elif corp_cls and corp_cls not in CORP_CLS:
+            why = "corp_cls 가 Y/K/N/E 밖"
+        elif ksic and ksic not in industry_codes:
+            why = "industry_code 가 industry 에 없음(FK)"
+        if why:
+            stats[f"제외: {why}"] += 1
+            continue
+
+        row = {
+            "corp_code": corp_code,
+            "corp_name": r.get("corp_name", ""),
+            "ceo_nm": "", "established_date": "", "address": "", "homepage_url": "",
+            "corp_name_eng": "",
+            "industry_code": ksic,
+            "stock_code": stock_code,
+            "corp_cls": corp_cls,
+            "induty_code": r.get("induty_code", ""),
+        }
+
+        p = profiles.get(corp_code)
+        if p is None:
+            stats["개황 없음"] += 1
+        else:
+            body = json.loads(p.read_text(encoding="utf-8"))
+            if str(body.get("status")) != "000":
+                stats[f"개황 status {body.get('status')}"] += 1
+            else:
+                row.update(_profile_fields(body, stats))
+                stats["개황 채움"] += 1
+
+        stats[f"corp_cls {corp_cls or '(없음)'}"] += 1
+        out.append(row)
+
+    return sorted(out, key=lambda r: r["corp_code"]), stats
+
+
+def _profile_fields(body: dict, stats: Counter) -> dict:
+    """기업개황 응답 → company 의 나머지 칸.
+
+    est_dt 는 YYYYMMDD 다. 형식이 어긋나면 날짜를 지어내지 않고 비운다.
+    hm_url 은 'www.samsung.com/sec' 처럼 스킴이 없다 — **손대지 않는다.**
+    https 를 붙이는 것은 우리가 만든 값이고, 실제로 http 만 되는 곳이 있다.
+    """
+    est = squash(body.get("est_dt"))
+    if est and not re.fullmatch(r"\d{8}", est):
+        stats["est_dt 형식 이상"] += 1
+        est = ""
+    return {
+        "ceo_nm": squash(body.get("ceo_nm")),
+        "established_date": f"{est[:4]}-{est[4:6]}-{est[6:]}" if est else "",
+        "address": squash(body.get("adres")),
+        "homepage_url": squash(body.get("hm_url")),
+        "corp_name_eng": squash(body.get("corp_name_eng")),
+    }
+
+
+# -------------------------------------------------------------------- metric
+
+def build_metric() -> list[dict]:
+    """지표 카탈로그. 요청 헤더의 scope 는 DB 에 없어 넣지 않는다 (③).
+
+    사업부 지표를 가르는 것은 metric_code 접두사와 is_active=FALSE 다.
+    """
+    return [{
+        "metric_code": code, "name_ko": name, "unit": unit, "value_scale": scale,
+        "source_type": source, "display_order": order,
+        "is_active": str(active).lower(), "is_core": str(core).lower(),
+    } for code, name, unit, scale, source, order, active, core in METRIC_CATALOG]
+
+
+# ------------------------------------------------------------ segment_metric
+
+def build_segment_metric(corp_codes: set[str]) -> tuple[list[dict], Counter]:
+    """직원현황(empSttus) → 사업부별 지표.
+
+    부문 축은 fo_bbm 이고 행은 부문 × 성별로 온다. 성별을 더해 부문 하나로 접는다.
+    합계 행('성별합계' 등)은 빼야 한다 — 더하면 인원이 두 배가 된다
+    (`pipeline/normalize/employee.py` 와 같은 판정을 쓴다).
+
+    **segment_revenue 는 값을 비운 채 행만 만든다.** 사업부문별 매출의 원천은
+    사업보고서 원문이고 아직 추출 결과가 없다. 값이 없다고 행을 빼면 그 부문이
+    목록에서 사라지므로 V13 규칙대로 행은 둔다.
+    """
+    p = default_patterns()
+    f = p.employee.fields
+    nulls = p.employee.null_tokens
+    stats: Counter = Counter()
+
+    # (corp_code, year, segment) -> 인원 합
+    head: dict[tuple, float] = defaultdict(float)
+    seen: set[tuple] = set()
+
+    for path in sorted(cache_dir().glob("empSttus_*.json")):
+        parts = path.stem.split("_")
+        corp_code, year = parts[1], int(parts[2])
+        if corp_code not in corp_codes:
+            stats["company 에 없는 기업(건너뜀)"] += 1
+            continue
+        body = json.loads(path.read_text(encoding="utf-8"))
+        for r in body.get("list") or []:
+            seg = squash(r.get(f["segment"]))
+            if not seg:
+                stats["부문명 없음"] += 1
+                continue
+            if p.employee.total_row.match(seg):
+                stats["합계 행 제외"] += 1
+                continue
+            key = (corp_code, year, seg)
+            seen.add(key)
+            sm = to_num(r.get(f["total"]), nulls)
+            if sm is None:
+                # 인원을 안 적은 부문이다. 부문은 남기고 값만 비운다.
+                stats["인원 미기재"] += 1
+                continue
+            head[key] += sm
+
+    out: list[dict] = []
+    for key in sorted(seen):
+        corp_code, year, seg = key
+        for code in SEGMENT_METRICS:
+            value = head.get(key) if code == "segment_employee_count" else None
+            out.append({
+                "corp_code": corp_code, "fiscal_year": year, "segment_name": seg,
+                "metric_code": code,
+                "metric_value": "" if value is None else f"{value:.4f}",
+            })
+    stats["부문(기업×연도×부문)"] = len(seen)
+    return out, stats
+
+
+# ---------------------------------------------------------- company_activity
+
+def build_company_activity(corp_codes: set[str]) -> tuple[list[dict], Counter]:
+    """타법인 출자현황 → company_activity 의 corporate_invest.
+
+    activity_type 4종 중 이것만 원천이 확보돼 있다. facility·ma·transfer 는
+    주요사항보고서에서 오고 아직 수집 경로가 없다.
+
+    amount 는 **기말 장부가액**(trmend_blce_acntbk_amount)이다. 원천이 사건이
+    아니라 사업연도 말 잔액 스냅샷이라서 fiscal_year 축을 쓴다 (V13 4장).
+    field_name 은 **원천에 대응하는 값이 없어 비운다** — 투자 분야는 설비투자
+    공시의 항목이다. 없는 값을 만들지 않는다.
+    """
+    stats: Counter = Counter()
+    out: list[dict] = []
+
+    for path in sorted(cache_dir().glob("otrCprInvstmntSttus_*.json")):
+        parts = path.stem.split("_")
+        corp_code, year = parts[1], int(parts[2])
+        if corp_code not in corp_codes:
+            stats["company 에 없는 기업(건너뜀)"] += 1
+            continue
+        body = json.loads(path.read_text(encoding="utf-8"))
+        for r in body.get("list") or []:
+            name = squash(r.get("inv_prm"))
+            if name in ("합계", "계", "소계", "총계"):
+                # 표의 마지막 줄이다. 넣으면 출자 건수가 회사마다 하나씩 늘어난다.
+                stats["합계 행 제외"] += 1
+                continue
+            amount = to_num(r.get("trmend_blce_acntbk_amount"))
+            if amount is None:
+                stats["기말 장부가액 없음(NULL 로 둠)"] += 1
+            purpose = squash(r.get("invstmnt_purps"))
+            out.append({
+                "corp_code": corp_code,
+                "activity_type": "corporate_invest",
+                "counterparty": name if name not in ("-", "") else "",
+                "field_name": "",
+                "amount": "" if amount is None else f"{amount:.4f}",
+                "purpose": "" if purpose == "-" else purpose,
+                "fiscal_year": year,
+                "rcept_no": squash(r.get("rcept_no")),
+            })
+            stats["행"] += 1
+
+    # 대리 키 PK 라 정렬만으로 순서를 고정한다.
+    out.sort(key=lambda r: (r["corp_code"], r["fiscal_year"], r["counterparty"],
+                            r["rcept_no"]))
+    return out, stats
+
+
+# ----------------------------------------------------------------- 대조(DB)
+
+def verify_db(built: dict[str, list[dict]]) -> int:
+    """만든 시드를 DB 현재 상태와 대조한다. 지금 채울 수 있는 것은 metric 뿐이다."""
+    from pipeline.db import connect
+
+    bad = 0
+    with connect() as c, c.cursor() as cur:
+        cur.execute("SELECT metric_code, name_ko, unit, value_scale, source_type, "
+                    "display_order, is_active, is_core FROM metric")
+        db = {r[0]: r[1:] for r in cur.fetchall()}
+    seed = {r["metric_code"]: (r["name_ko"], r["unit"], int(r["value_scale"]),
+                               r["source_type"], int(r["display_order"]),
+                               r["is_active"] == "true", r["is_core"] == "true")
+            for r in built.get("metric", [])}
+    absent = []
+    for code in sorted(set(db) | set(seed)):
+        if code not in db:
+            absent.append(code); print(f"    DB 에 없음   {code}"); bad += 1
+        elif code not in seed:
+            print(f"    시드에 없음  {code}"); bad += 1
+        elif db[code] != seed[code]:
+            print(f"    다름 {code}: DB {db[code]} vs 시드 {seed[code]}"); bad += 1
+    print(f"\n[대조] metric  DB {len(db)} · 시드 {len(seed)} · 어긋남 {bad}")
+    if absent:
+        # 카탈로그가 틀린 것이 아니라 이 DB 가 뒤처진 경우가 흔하다. 어느 쪽인지
+        # 사람이 판단할 수 있게 마지막으로 적용된 마이그레이션을 함께 보여준다.
+        with connect() as c, c.cursor() as cur:
+            cur.execute("SELECT version, description FROM flyway_schema_history "
+                        "WHERE success ORDER BY installed_rank DESC LIMIT 1")
+            last = cur.fetchone()
+        print(f"       이 DB 의 마지막 마이그레이션 V{last[0]} ({last[1]}) — "
+              f"카탈로그를 늘린 마이그레이션이 아직 적용되지 않았을 수 있다")
+    return 1 if bad else 0
+
+
+# ----------------------------------------------------------------------- main
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--only", nargs="+", choices=TABLES,
+                    help="이 표만 다시 만든다 (기본: 6종 전부)")
+    ap.add_argument("--verify-db", action="store_true",
+                    help="metric 카탈로그를 DB 와 대조한다")
+    args = ap.parse_args()
+    want = set(args.only or TABLES)
+    built: dict[str, list[dict]] = {}
+
+    # industry 와 company 는 뒤 표들의 FK 대상이라 --only 와 무관하게 먼저 읽는다.
+    industry = build_industry()
+    industry_codes = {r["industry_code"] for r in industry}
+    company, company_stats = build_company(industry_codes)
+    corp_codes = {r["corp_code"] for r in company}
+
+    if "industry" in want:
+        built["industry"] = industry
+        dest = _write("industry", industry, "config/ksic_division.csv",
+                      ["V3 가 같은 77건을 SQL 로 시드한다 — CSV 적재는 중복이다"])
+        print(f"industry          {len(industry):>7,}행  → {dest.name}")
+
+    if "company" in want:
+        built["company"] = company
+        filled = company_stats["개황 채움"]
+        dest = _write("company", company,
+                      "config/company_universe.csv + 기업개황(company.json)",
+                      ["listed_date 는 기업개황 응답에 필드가 없다 (실측)",
+                       "dart_modify_date 는 corpCode.xml 에 있고 이 경로로는 안 온다",
+                       "address 는 공백만 정규화했다 — 원문과 그 외 차이 없음"],
+                      company_stats)
+        print(f"company           {len(company):>7,}행  → {dest.name}")
+        print(f"  개황 채움 {filled:,}/{len(company):,} ({filled / len(company):.1%}) · "
+              + " · ".join(f"{k} {v:,}" for k, v in sorted(company_stats.items())
+                           if k.startswith(("제외", "개황 status", "est_dt"))))
+        print("  " + " · ".join(f"{k} {v:,}" for k, v in sorted(company_stats.items())
+                                if k.startswith("corp_cls")))
+
+    if "metric" in want:
+        metric = build_metric()
+        built["metric"] = metric
+        dest = _write("metric", metric,
+                      "Flyway V2·V4·V5·V7·V13 의 INSERT (SQL 이 정본, 이것은 사본)",
+                      ["요청 헤더의 scope 는 DB 에 없어 뺐다 — 넣으려면 마이그레이션이 먼저다",
+                       "--verify-db 가 DB 카탈로그와 대조한다"])
+        print(f"metric            {len(metric):>7,}행  → {dest.name}")
+        print("  요청 헤더의 scope 는 DB 에 없어 빠졌다 — 넣으려면 마이그레이션이 먼저다")
+
+    if "company_metric" in want:
+        # 이 표만 build_metric_seed.py 가 쓴다. 그쪽 헤더는 상수라 스키마와
+        # 벌어질 수 있으므로 여기서 한 번 맞춰 본다.
+        if CM_FIELDS != header("company_metric"):
+            raise SystemExit(f"build_metric_seed.FIELDS 가 Flyway 와 다르다: "
+                             f"{CM_FIELDS} != {header('company_metric')}")
+        rows, st = build_company_metric_rows()
+        built["company_metric"] = rows
+        dest = write_company_metric(rows)
+        _manifest("company_metric", rows, CM_FIELDS,
+                  "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
+                  ["연결 우선·별도 폴백. 고른 쪽을 fs_div 에 남긴다",
+                   "결측은 행을 넣지 않는다 — metric_value 가 NOT NULL 이다",
+                   "KRW 가 아닌 통화는 넣지 않는다 (환산은 추정이다)"],
+                  {k: (dict(v) if isinstance(v, Counter) else v)
+                   for k, v in st.items()})
+        print(f"company_metric    {len(rows):>7,}행  → {dest.name}")
+        print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
+              f"연결 {st['used_fs']['CFS']:,} · 별도 {st['used_fs']['OFS']:,} · "
+              f"통화로 제외 {dict(st['skipped_currency'])}")
+        outside = {r["corp_code"] for r in rows} - corp_codes
+        if outside:
+            print(f"  ⚠ company 에 없는 corp_code {len(outside):,}개 — FK 위반이다")
+
+    if "segment_metric" in want:
+        rows, st = build_segment_metric(corp_codes)
+        built["segment_metric"] = rows
+        dest = _write("segment_metric", rows, ".cache/empSttus_*.json (직원 현황)",
+                      ["부문 축은 fo_bbm 이고 성별 행을 접어 하나로 만든다",
+                       "segment_revenue 는 원천(사업보고서 추출)이 없어 값이 비었다",
+                       "부문 목록의 원천이라 값이 없어도 행을 남긴다 (V13 주석)"], st)
+        print(f"segment_metric    {len(rows):>7,}행  → {dest.name}")
+        print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
+              + " · ".join(f"{k} {v:,}" for k, v in sorted(st.items())))
+        print("  segment_revenue 는 원천이 없어 값이 비어 있다 (행은 둔다)")
+
+    if "company_activity" in want:
+        rows, st = build_company_activity(corp_codes)
+        built["company_activity"] = rows
+        dest = _write("company_activity", rows,
+                      ".cache/otrCprInvstmntSttus_*.json (타법인 출자현황)",
+                      ["activity_type 은 corporate_invest 뿐 — 나머지 3종은 원천 미확보",
+                       "amount 는 기말 장부가액이다 (사건이 아니라 연말 잔액 스냅샷)",
+                       "field_name 은 원천에 대응하는 값이 없어 비운다"], st)
+        print(f"company_activity  {len(rows):>7,}행  → {dest.name}")
+        print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
+              + " · ".join(f"{k} {v:,}" for k, v in sorted(st.items())))
+        print("  activity_type 은 corporate_invest 뿐이다 — 나머지 3종은 원천 미확보")
+
+    print(f"\n→ {curated_seed_dir()}")
+    return verify_db(built) if args.verify_db else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
