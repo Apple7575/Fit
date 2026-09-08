@@ -98,8 +98,11 @@ sudo ufw allow 80,443,8000,8080/tcp
 sudo bash setup-ec2.sh        # Docker, 스왑, 타임존, edge 네트워크
 # 재로그인
 
-cp .env.prod.example .env.prod    # POSTGRES_PASSWORD 입력
-cp .env.dev.example  .env.dev     # POSTGRES_PASSWORD 입력
+# .env 는 Jenkins 가 배포 때 만든다(아래 '환경변수와 비밀값' 참고).
+# 아직 Jenkins 가 없는 최초 1회만 손으로 만든다.
+cp .env.prod.example .env.prod    # 빈 항목 채우기
+cp .env.dev.example  .env.dev
+chmod 600 .env.prod .env.dev
 
 bash proxy/init-cert.sh <이메일> --staging   # 검증
 bash proxy/init-cert.sh <이메일>             # 실제 발급
@@ -112,6 +115,36 @@ cp .env.example .env
 echo "DOCKER_GID=$(getent group docker | cut -d: -f3)" >> .env
 docker compose --env-file .env up -d --build
 ```
+
+## 환경변수와 비밀값
+
+`.env.<환경>` 은 **서버에서 손으로 고치지 않는다.** 배포할 때마다 Jenkins 가 새로 만든다.
+
+```
+.env.<환경>.example        (git, 비밀 아닌 값)
+        +                                        ->  ssh 표준입력  ->  .env.<환경>  (600)
+env-secrets-<환경>         (Jenkins Secret file, 비밀값)
+```
+
+Jenkins 에 있어야 하는 **Secret file 2개**: `env-secrets-prod`, `env-secrets-dev`.
+**없으면 배포가 실패한다.** 형식은 [`env-secrets.example`](env-secrets.example) 참고.
+
+```
+POSTGRES_PASSWORD=<현재 DB 비밀번호와 동일하게>
+SPRING_MAIL_USERNAME=<SMTP 계정>
+SPRING_MAIL_PASSWORD=<SMTP 비밀번호>
+APP_MAIL_FROM=<발신 주소. 보통 SMTP 계정과 같다>
+```
+
+여기 있는 키는 `.example` 의 같은 키를 덮는다. 키를 늘려도 `Jenkinsfile` 은 고치지 않아도 된다.
+**반대로 비밀이 아닌 값을 여기 넣으면 안 된다** — `.example` 을 고쳐도 조용히 무시된다.
+
+- 비밀 아닌 값(`TAG`, `SPRING_MAIL_HOST`, `APP_FRONTEND_BASE_URL` 등)은 `.example` 에서 고친다. MR 로 리뷰된다
+- 비밀값은 Jenkins UI 에서 파일을 다시 올려 고친다. 서버 SSH 가 필요 없다
+- **Jenkins 는 올린 파일 내용을 다시 보여주지 않는다.** 한 값만 바꾸려 해도 전체를 다시 올려야 하므로
+  원본 사본을 비밀번호 관리자 등에 따로 보관한다
+- **`POSTGRES_PASSWORD` 는 이미 떠 있는 DB 의 비밀번호와 같아야 한다.** postgres 는 최초 기동 때만
+  이 값을 쓰고 그 뒤로는 DB 안에 저장한다. 다른 값을 넣으면 비밀번호가 바뀌는 게 아니라 접속이 깨진다
 
 ## 알아둘 것
 

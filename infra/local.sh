@@ -41,6 +41,14 @@ ensure_env_file() {
     else
         info "      $ENV_FILE      OK"
     fi
+
+    # 없으면 compose 가 엉뚱한 오류를 내거나 다른 프로젝트 이름으로 별도 스택을 만든다.
+    local key gone=""
+    for key in ENV_NAME COMPOSE_PROJECT_NAME TAG POSTGRES_PASSWORD; do
+        grep -qE "^$key=." "$ENV_FILE" || gone="$gone $key"
+    done
+    [ -z "$gone" ] || die "$ENV_FILE 에 필수 항목이 없습니다:$gone
+       $EXAMPLE 을 보고 채우거나, $ENV_FILE 을 지우고 다시 실행하세요."
 }
 
 port_in_use() {
@@ -71,7 +79,7 @@ preflight() {
     ensure_env_file
 
     local pg_port
-    pg_port=$(grep -oE '^POSTGRES_PORT=[0-9]+' "$ENV_FILE" | cut -d= -f2)
+    pg_port=$(grep -oE '^POSTGRES_PORT=[0-9]+' "$ENV_FILE" | cut -d= -f2 || true)
 
     # 우리 스택이 떠 있으면 포트를 쥔 것이 자기 자신이다.
     if [ -z "$("${DC[@]}" ps -q 2>/dev/null)" ]; then
@@ -156,8 +164,8 @@ up() {
             ;;
         back)
             local pg_pw pg_port
-            pg_pw=$(grep -oE '^POSTGRES_PASSWORD=.*' "$ENV_FILE" | cut -d= -f2-)
-            pg_port=$(grep -oE '^POSTGRES_PORT=[0-9]+' "$ENV_FILE" | cut -d= -f2)
+            pg_pw=$(grep -oE '^POSTGRES_PASSWORD=.*' "$ENV_FILE" | cut -d= -f2- || true)
+            pg_port=$(grep -oE '^POSTGRES_PORT=[0-9]+' "$ENV_FILE" | cut -d= -f2 || true)
 
             info "  다음    IDE 에서 local 프로파일로 백엔드 실행  ->  http://localhost:8080"
             info "          VM options       -Dspring.profiles.active=local"

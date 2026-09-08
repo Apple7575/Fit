@@ -150,20 +150,35 @@ pipeline {
                 }
             }
             agent any
-            options {
-                skipDefaultCheckout()
-            }
             environment {
                 DEPLOY_ENV = "${env.BRANCH_NAME == 'main' ? 'prod' : 'dev'}"
             }
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'deploy-ssh',
                                                    keyFileVariable: 'SSH_KEY',
-                                                   usernameVariable: 'SSH_USER')]) {
-                    // git clean 을 쓰지 않는다. .env.prod / .env.dev 는 추적 대상이 아니라 같이 지워진다.
+                                                   usernameVariable: 'SSH_USER'),
+                                 file(credentialsId: "env-secrets-${env.DEPLOY_ENV}",
+                                      variable: 'SECRETS')]) {
+                    // .env 는 예제(비밀 아닌 값) + 크리덴셜 파일(비밀값) 로 여기서 만들어
+                    // 표준입력으로만 넘긴다. 명령줄에 실으면 ps 로 다른 사용자에게 보인다.
                     // flock : main 과 develop 이 동시에 빌드돼도 호스트 작업 디렉토리를 한 번에 하나만 건드리게 한다.
                     sh '''
-                        ssh -i "$SSH_KEY" \
+                        set +x
+                        EXAMPLE="infra/.env.$DEPLOY_ENV.example"
+                        [ -f "$EXAMPLE" ] || { echo "$EXAMPLE 가 없습니다."; exit 1; }
+
+                        # 크리덴셜 파일이 가진 키는 예제에서 빼고 그쪽 값으로 덮는다.
+                        # tr -d : 파일을 Windows 에서 만들면 값 끝에 CR 이 붙어 조용히 틀린다.
+                        KEYS=$(tr -d '\r' < "$SECRETS" | grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' | tr -d '=' | paste -sd '|' -)
+                        [ -n "$KEYS" ] || { echo "크리덴셜 파일에 KEY=VALUE 가 없습니다."; exit 1; }
+
+                        {
+                            grep -vE "^($KEYS)=" "$EXAMPLE"
+                            cat "$SECRETS"
+                            # 손으로 만든 파일이라 끝 개행이 없을 수 있다. 없으면 다음 줄이 값에 붙는다.
+                            echo ""
+                            echo '#transfer-ok'
+                        } | tr -d '\r' | ssh -i "$SSH_KEY" \
                             -o StrictHostKeyChecking=accept-new \
                             -o ConnectTimeout=10 \
                             "$SSH_USER@host.docker.internal" \
@@ -172,6 +187,10 @@ pipeline {
                                 cd /home/ubuntu/app
                                 git fetch --prune origin
                                 git reset --hard origin/$BRANCH_NAME
+                                cat > infra/.env.$DEPLOY_ENV.new
+                                grep -q ^#transfer-ok infra/.env.$DEPLOY_ENV.new
+                                chmod 600 infra/.env.$DEPLOY_ENV.new
+                                mv infra/.env.$DEPLOY_ENV.new infra/.env.$DEPLOY_ENV
                                 ./infra/deploy.sh $DEPLOY_ENV
                             '"
                     '''
