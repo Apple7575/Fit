@@ -7,10 +7,8 @@ import { CompanyBasicInfoCard } from './CompanyBasicInfoCard';
 const fullDetail: CompanyDetail = {
   corpCode: '00126380',
   corpName: '삼성전자',
-  stockCode: '005930',
   industryCode: '26',
   industryName: '전기·전자제품 제조업',
-  market: 'KOSPI',
   ceo: '한종희, 경계현',
   establishedDate: '1969-01-13',
   address: '경기도 수원시 영통구 삼성로 129',

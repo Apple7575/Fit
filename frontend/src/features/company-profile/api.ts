@@ -28,9 +28,9 @@ export async function fetchCompanyProfile(
     `/api/companies/${encodeURIComponent(corpCode)}/profile`,
     { signal },
   );
-  // 백엔드 초기 구현이 일부 필드를 생략해도 화면이 깨지지 않게 정규화한다
+  // 필드를 생략하는 응답에도 화면이 깨지지 않게 정규화한다. 값 없음은 0 이 아니라 null 이다
   return {
-    year: data.year ?? 0,
+    year: data.year ?? null,
     businesses: data.businesses ?? [],
     segments: data.segments ?? [],
     totalRevenue: data.totalRevenue ?? null,

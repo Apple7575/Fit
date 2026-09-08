@@ -4,16 +4,16 @@ import { detailExtrasFor } from '../../mocks/companyDetails';
 
 /**
  * GET /api/companies/{corpCode} 의 data 부분 (v2).
- * address·homepageUrl·dataYear 는 백엔드 v2 배포 전에는 응답에 없을 수 있어
- * fetch 쪽에서 null 로 정규화한다.
+ * 백엔드 CompanyDetailResponse 와 필드가 같다. v2 에서 stockCode·market 은 빠졌다
+ * (헤더에 표시하지 않아 응답에 싣지 않는다 — 종목코드는 검색 결과에만 있다).
+ * 값이 없는 필드는 서버가 null 로 보내지만, 구버전 응답이 필드를 생략해도 깨지지 않게
+ * fetch 쪽에서 한 번 더 null 로 정규화한다.
  */
 export interface CompanyDetail {
   corpCode: string;
   corpName: string;
-  stockCode: string | null;
   industryCode: string | null;
   industryName: string | null;
-  market: string | null;
   ceo: string | null;
   establishedDate: string | null;
   address: string | null;
@@ -41,17 +41,26 @@ export async function fetchCompanyDetail(
     if (!company) {
       throw new ApiError(404, 'COMPANY_NOT_FOUND', '해당 기업을 찾을 수 없습니다.');
     }
-    return { ...company, ...detailExtrasFor(corpCode) };
+    const { corpCode: code, corpName, industryCode, industryName } = company;
+    return {
+      corpCode: code,
+      corpName,
+      industryCode,
+      industryName,
+      ...detailExtrasFor(corpCode),
+    };
   }
 
   const data = await apiGet<CompanyDetail>(
     `/api/companies/${encodeURIComponent(corpCode)}`,
     { signal },
   );
-  // v2 미배포 백엔드 응답 방어: 없는 필드는 null 로 채운다
+  // 필드를 생략하는 응답 방어: 없는 필드는 null 로 채운다
   return {
-    ...data,
-    market: data.market ?? null,
+    corpCode: data.corpCode,
+    corpName: data.corpName,
+    industryCode: data.industryCode ?? null,
+    industryName: data.industryName ?? null,
     ceo: data.ceo ?? null,
     establishedDate: data.establishedDate ?? null,
     address: data.address ?? null,

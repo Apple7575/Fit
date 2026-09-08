@@ -21,10 +21,8 @@ describe('fetchCompanyDetail (실 API 경로)', () => {
             data: {
               corpCode: '00126380',
               corpName: '삼성전자',
-              stockCode: '005930',
               industryCode: '26',
               industryName: '전기·전자제품 제조업',
-              market: 'KOSPI',
               ceo: '한종희',
               establishedDate: '1969-01-13',
             },
@@ -40,6 +38,47 @@ describe('fetchCompanyDetail (실 API 경로)', () => {
     expect(detail.dataYear).toBeNull();
   });
 
+  it('백엔드 v2 응답 필드만 남긴다 (stockCode·market 은 없다)', async () => {
+    vi.stubEnv('VITE_API_MOCK', 'false');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          json({
+            success: true,
+            data: {
+              corpCode: '00126380',
+              corpName: '삼성전자',
+              industryCode: null,
+              industryName: null,
+              ceo: null,
+              establishedDate: null,
+              address: null,
+              homepageUrl: null,
+              dataYear: null,
+              stockCode: '005930',
+              market: 'KOSPI',
+            },
+          }),
+        ),
+      ),
+    );
+
+    const detail = await fetchCompanyDetail('00126380');
+
+    expect(detail).toEqual({
+      corpCode: '00126380',
+      corpName: '삼성전자',
+      industryCode: null,
+      industryName: null,
+      ceo: null,
+      establishedDate: null,
+      address: null,
+      homepageUrl: null,
+      dataYear: null,
+    });
+  });
+
   it('v2 필드가 오면 그대로 전달한다', async () => {
     vi.stubEnv('VITE_API_MOCK', 'false');
     vi.stubGlobal(
@@ -51,10 +90,8 @@ describe('fetchCompanyDetail (실 API 경로)', () => {
             data: {
               corpCode: '00126380',
               corpName: '삼성전자',
-              stockCode: '005930',
               industryCode: '26',
               industryName: '전기·전자제품 제조업',
-              market: 'KOSPI',
               ceo: '한종희',
               establishedDate: '1969-01-13',
               address: '경기도 수원시 영통구 삼성로 129',
