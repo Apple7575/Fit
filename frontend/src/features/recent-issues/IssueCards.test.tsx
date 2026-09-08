@@ -138,6 +138,37 @@ describe('IssueKpiRow / IssueDistributionCard', () => {
     expect(within(dl).getByText('미제공')).toBeInTheDocument();
   });
 
+  it('keeps the news count and marks the three AI-derived KPIs 미제공 when analysis has not run', () => {
+    render(
+      <IssueKpiRow
+        state={{
+          status: 'success',
+          data: {
+            ...stats,
+            kpis: { ...stats.kpis, importantIssueCount: null, investmentIssueCount: null, techIssueCount: null },
+          },
+        }}
+      />,
+    );
+
+    const dl = screen.getByLabelText('뉴스 KPI');
+    expect(within(dl).getByText('48')).toBeInTheDocument();
+    expect(within(dl).getAllByText('미제공')).toHaveLength(3);
+  });
+
+  it('hides the distribution card when nothing was classified', () => {
+    const { container } = render(
+      <IssueDistributionCard
+        onRetry={() => {}}
+        state={{
+          status: 'success',
+          data: { ...stats, distribution: { days: 30, total: null, byCategory: [] } },
+        }}
+      />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('draws one donut arc per category with the total in the middle', () => {
     render(<IssueDistributionCard onRetry={() => {}} state={{ status: 'success', data: stats }} />);
 
