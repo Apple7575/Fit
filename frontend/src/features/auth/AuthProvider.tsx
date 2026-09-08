@@ -64,9 +64,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // 서버 응답과 무관하게 로컬 세션은 비운다. 실패해도 로그아웃 의도는 반영한다.
   const logout = useCallback(async () => {
-    await authApi.logout();
-    setUser(null);
+    try {
+      await authApi.logout();
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+    } finally {
+      setUser(null);
+    }
   }, []);
 
   return (
