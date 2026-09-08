@@ -12,9 +12,9 @@ import java.util.List;
 /**
  * {@code /api/**} 의 CORS 설정.
  *
- * <p>MVP API 는 전부 인증 없는 조회다. 쿠키나 인증 헤더를 실어 보낼 일이 없어
- * {@code allowCredentials} 는 끈 채로 둔다. 이걸 켜면 Origin 별 응답 캐시 오염과 CSRF 를
- * 같이 떠안게 되므로, 인증이 생기는 시점에 별도로 검토한다.
+ * <p>세션 쿠키를 교차 오리진(로컬 FE:5173)에서 실어 보내야 하므로 {@code allowCredentials} 를 켠다.
+ * 자격증명 요청은 와일드카드 Origin 을 허용하지 않으므로 아래 허용 Origin 은 항상 명시값이어야 한다.
+ * 배포는 nginx 로 같은 오리진이라 허용 Origin 이 비어 매핑 자체가 등록되지 않는다.
  *
  * <p>허용 Origin 이 하나도 없으면 매핑 자체를 등록하지 않는다. 이 상태에서 preflight 는
  * 403 으로 거부된다.
@@ -25,11 +25,10 @@ public class WebCorsConfig implements WebMvcConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(WebCorsConfig.class);
 
-    /** 현재 API 는 조회 전용이다. 쓰기 메서드가 생기면 여기에 명시적으로 추가한다. */
-    private static final String[] ALLOWED_METHODS = {"GET", "HEAD", "OPTIONS"};
+    private static final String[] ALLOWED_METHODS = {"GET", "HEAD", "OPTIONS", "POST"};
 
-    /** FE 는 {@code Accept: application/json} 만 붙인다. 그 외 헤더는 필요해질 때 연다. */
-    private static final String[] ALLOWED_HEADERS = {"Accept", "Content-Type"};
+    /** X-XSRF-TOKEN 은 변경 요청의 CSRF 토큰을 실어 보내는 헤더다. */
+    private static final String[] ALLOWED_HEADERS = {"Accept", "Content-Type", "X-XSRF-TOKEN"};
 
     private final CorsProperties corsProperties;
 
@@ -50,7 +49,7 @@ public class WebCorsConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigins.toArray(String[]::new))
                 .allowedMethods(ALLOWED_METHODS)
                 .allowedHeaders(ALLOWED_HEADERS)
-                .allowCredentials(false)
+                .allowCredentials(true)
                 .maxAge(corsProperties.maxAge().toSeconds());
     }
 }

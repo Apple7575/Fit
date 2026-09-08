@@ -8,6 +8,7 @@ import com.ssafy.companyanalysis.company.service.CompanySearchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 어긋나도 통과해 버려서, 정작 막아야 할 실수를 못 잡는다.
  */
 @WebMvcTest(CompanyController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @TestPropertySource(properties = {
         "app.cors.allowed-origins=http://localhost:5173,http://127.0.0.1:5173",
         "app.cors.max-age=30m"
@@ -56,7 +58,7 @@ class WebCorsConfigTest {
                         .header("Access-Control-Request-Method", "GET"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
-                .andExpect(header().stringValues("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS"))
+                .andExpect(header().stringValues("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST"))
                 .andExpect(header().string("Access-Control-Max-Age", "1800"));
     }
 
@@ -90,7 +92,7 @@ class WebCorsConfigTest {
     }
 
     @Test
-    @DisplayName("본 요청 응답에도 Allow-Origin 이 붙고, 인증정보 허용은 켜지 않는다")
+    @DisplayName("본 요청 응답에 Allow-Origin 이 붙고, 세션 쿠키를 위해 인증정보 허용도 켜진다")
     void actualRequestCarriesAllowOriginHeader() throws Exception {
         given(companySearchService.search(eq("삼성"), anyInt(), anyInt()))
                 .willReturn(new CompanySearchResponse(List.of(), 0));
@@ -100,6 +102,6 @@ class WebCorsConfigTest {
                         .header("Origin", "http://localhost:5173"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
-                .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"));
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 }

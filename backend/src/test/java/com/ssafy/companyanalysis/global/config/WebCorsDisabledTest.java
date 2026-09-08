@@ -8,6 +8,7 @@ import com.ssafy.companyanalysis.company.service.CompanySearchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>이 상태가 안전한 쪽이어야 한다. 설정을 깜빡 빠뜨렸을 때 아무 Origin 이나 열리는 사고를 막는다.
  */
 @WebMvcTest(CompanyController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @TestPropertySource(properties = "app.cors.allowed-origins=")
 class WebCorsDisabledTest {
 
