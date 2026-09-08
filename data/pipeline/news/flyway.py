@@ -215,6 +215,9 @@ _INSERT_INTO = re.compile(r"^INSERT\s+INTO\s+(?:(\w+)\.)?(\w+)", re.IGNORECASE)
 # 테이블이 사라지거나 스키마를 옮기는 문장. 이것을 읽지 않으면 파서가 만든 스키마에
 # 이미 없는 테이블이 남는다 — V13 이 지운 일곱 개가 그대로 남아 데이터 사전·인벤토리
 # 대조(verify 9·12번)가 "문서에 있는데 스키마에 없다"를 거꾸로 판정한다.
+#
+# SET SCHEMA 는 아직 쓰는 마이그레이션이 없다. 정리 마이그레이션이 collection_run ·
+# dart_employee_status 를 staging 으로 옮길 예정이라 미리 읽는다.
 _DROP_TABLE = re.compile(
     r"^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)", re.IGNORECASE)
 _SET_SCHEMA = re.compile(

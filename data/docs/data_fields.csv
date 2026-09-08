@@ -111,11 +111,11 @@ dart_financial_account,sj_div,6,VARCHAR(3),NO,UK,,,"BS=재무상태표, IS=손�
 dart_financial_account,account_nm,7,VARCHAR(200),NO,UK,,,DART 응답의 계정명 원문,opendart,fnlttSinglAcntAll:account_nm,raw,매출액,no,
 dart_financial_account,thstrm_amount,8,"NUMERIC(24,4)",YES,,,,당기 금액(원),opendart,fnlttSinglAcntAll:thstrm_amount,derived:콤마 제거 후 수치화,300870903000000,no,
 dart_financial_account,collected_at,9,TIMESTAMPTZ,NO,,,,이 행을 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
-email_verification_token,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성한다,database,,미적재,,no,이메일 인증이 만드는 값이다. 시드 CSV 가 없다
-email_verification_token,user_id,2,BIGINT,NO,FK,users,id,토큰 주인. users 를 참조한다,database,,미적재,,yes,이메일 인증이 만드는 값이다. 시드 CSV 가 없다
-email_verification_token,token_hash,3,VARCHAR(64),NO,UK,,,원문 토큰의 SHA-256 해시(hex). 원문은 메일 링크에만,database,,미적재,,no,이메일 인증이 만드는 값이다. 시드 CSV 가 없다
-email_verification_token,expires_at,4,TIMESTAMPTZ,NO,,,,만료 시각. 지나면 인증에 쓸 수 없다,database,,미적재,,no,이메일 인증이 만드는 값이다. 시드 CSV 가 없다
-email_verification_token,used_at,5,TIMESTAMPTZ,YES,,,,사용한 시각. 아직 안 썼으면 NULL,database,,미적재,,no,이메일 인증이 만드는 값이다. 시드 CSV 가 없다
+email_verification_token,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성한다,database,,identity,1,no,
+email_verification_token,user_id,2,BIGINT,NO,FK,users,id,인증 대상 회원. users 를 참조한다,derived,users.id,raw,1,possible,회원을 가리키는 참조다. ON DELETE CASCADE
+email_verification_token,token_hash,3,VARCHAR(64),NO,UK,,,원문 토큰의 SHA-256 해시(hex). 원문은 메일 링크에만,app_user_input,,derived:원문 토큰의 SHA-256(hex),9f86d081884c7d65…,no,원문은 메일 링크에만 있다
+email_verification_token,expires_at,4,TIMESTAMPTZ,NO,,,,토큰 만료 시각,app_user_input,,derived:발급 시각 + 유효기간,2026-09-09T09:00:00+09:00,no,유효기간 길이는 합의 필요
+email_verification_token,used_at,5,TIMESTAMPTZ,YES,,,,인증에 쓰인 시각. 아직이면 NULL,app_user_input,,raw,,no,아직 쓰지 않은 토큰은 NULL
 industry,industry_code,1,VARCHAR(10),NO,PK,,,KSIC 중분류 2자리 코드,flyway_seed,ksic_division.csv:ksic_division,raw,26,no,V3 이 config/ksic_division.csv 77건을 시드한다. KSIC 중분류 2자리
 industry,industry_name,2,VARCHAR(200),NO,,,,KSIC 중분류 명칭,flyway_seed,ksic_division.csv:division_name,raw,"전자부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",no,
 metric,metric_code,1,VARCHAR(40),NO,PK,,,keys 쿼리파라미터로 들어오고 응답의 metrics[].key · series[].key 로 나가는 값. 확정 ERD 의 metric_code 와 같은 이름을 쓴다,flyway_seed,,constant,revenue,no,V2·V4·V5·V7 이 시드한다. API 경로변수 {metric} 값
@@ -155,12 +155,12 @@ segment_metric,segment_name,3,VARCHAR(100),NO,PK,,,사업부 이름. 연도별 �
 segment_metric,metric_code,4,VARCHAR(40),NO,"FK,PK",metric,metric_code,지표 코드. metric 을 참조하며 segment_revenue · segment_employee_count 두 값을 쓴다,derived,,constant,segment_employee_count,no,부문마다 segment_revenue·segment_employee_count 두 행을 항상 만든다
 segment_metric,metric_value,5,"NUMERIC(24,4)",YES,,,,NULL 은 그 부문이 이 지표를 공시하지 않았다는 사실이며 0 과 다르다. 부문 목록이 이 테이블에서 나오므로 값이 없어도 행을 만든다 — company_metric 의 행 부재 = 결측 규칙과 다르다,opendart,empSttus:sm,derived:부문 안의 성별 행 합계. segment_revenue 는 원천이 없어 NULL,112456,no,NULL 은 그 부문이 이 지표를 공시하지 않았다는 사실이며 0 과 다르다
 segment_metric,updated_at,6,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 적재한 시각,database,,default:now(),2026-09-08T12:00:00+09:00,no,
-users,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성한다,database,,미적재,,no,회원 가입이 만드는 값이다. 시드 CSV 가 없다
-users,email,2,VARCHAR(255),NO,UK,,,로그인 아이디로 쓰는 이메일 주소,database,,미적재,,yes,회원 가입이 만드는 값이다. 시드 CSV 가 없다
-users,password_hash,3,VARCHAR(100),NO,,,,BCrypt 해시. 평문은 저장하지 않는다,database,,미적재,,yes,회원 가입이 만드는 값이다. 시드 CSV 가 없다
-users,nickname,4,VARCHAR(50),NO,,,,화면에 보이는 이름,database,,미적재,,yes,회원 가입이 만드는 값이다. 시드 CSV 가 없다
-users,role,5,VARCHAR(20),NO,,,,권한 등급,database,,미적재,,no,회원 가입이 만드는 값이다. 시드 CSV 가 없다
-users,status,6,VARCHAR(20),NO,,,,계정 상태,database,,미적재,,no,회원 가입이 만드는 값이다. 시드 CSV 가 없다
+users,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성한다,database,,identity,1,no,
+users,email,2,VARCHAR(255),NO,UK,,,로그인 이메일. UNIQUE,app_user_input,회원가입 폼:email,raw,user@example.com,yes,로그인 식별자이며 UNIQUE 다. 개인정보 보관 기간·삭제 정책은 합의 필요
+users,password_hash,3,VARCHAR(100),NO,,,,BCrypt 해시. 평문은 저장하지 않는다,app_user_input,회원가입 폼:password,derived:BCrypt 해시,$2a$10$…,yes,평문은 저장하지 않는다. 화면·로그에 절대 노출하지 않는다
+users,nickname,4,VARCHAR(50),NO,,,,화면에 표시하는 별명,app_user_input,회원가입 폼:nickname,raw,세은,yes,
+users,role,5,VARCHAR(20),NO,,,,권한. ROLE_USER 또는 ROLE_ADMIN,database,,constant,ROLE_USER,no,ROLE_USER/ROLE_ADMIN. V14 의 CHECK 값 그대로
+users,status,6,VARCHAR(20),NO,,,,계정 상태. ACTIVE/SUSPENDED/WITHDRAWN/PENDING,database,,constant,PENDING,no,ACTIVE/SUSPENDED/WITHDRAWN/PENDING. V15 가 이메일 인증용 PENDING 을 더했다
 users,created_at,7,TIMESTAMPTZ,NO,,,,가입 시각,database,,미적재,,no,회원 가입이 만드는 값이다. 시드 CSV 가 없다
 users,updated_at,8,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 고친 시각,database,,미적재,,no,회원 가입이 만드는 값이다. 시드 CSV 가 없다
 staging.dart_otr_cpr_invstmnt,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다,database,,identity,1,no,identity

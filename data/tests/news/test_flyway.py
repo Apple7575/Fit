@@ -79,7 +79,7 @@ class SchemaTest(unittest.TestCase):
         self.assertIsNotNone(self.schema.table("segment_metric"))
 
     def test_set_schema_가_스키마를_옮긴다(self):
-        """V14 가 collection_run·dart_employee_status 를 staging 으로 옮긴다.
+        """정리 마이그레이션이 collection_run·dart_employee_status 를 staging 으로 옮긴다.
 
         아직 그런 마이그레이션이 없어 임시 디렉터리로 파서만 확인한다.
         """

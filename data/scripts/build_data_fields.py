@@ -35,6 +35,7 @@ DERIVED = "derived"                      # 파이프라인 계산 결과
 AI = "ai_analysis"                       # 외부 모델 생성물
 FLYWAY = "flyway_seed"                   # 마이그레이션 SQL 이 넣는 값
 DB = "database"                          # DB 기본값
+APP = "app_user_input"                   # 서비스 사용자가 화면에서 입력한 값
 UNSET = "미정"                            # 적재 경로가 아직 없다
 
 AGREEMENT = "합의 필요"
@@ -54,6 +55,11 @@ TABLE_PROVIDER = {
     "segment_metric": FILING,
     "company_activity": OPENDART,
     "news_article": NEWS,
+    # 인증 기능(S15P21A504-122 · 123)이 V14·V15 로 더한 테이블이다. 수집 파이프라인의
+    # 산출물이 아니라 서비스 사용자 입력이지만, 사전은 스키마 전체를 덮어야 하므로
+    # (verify_news.py 9번이 컬럼 단위로 대조한다) 여기에도 적는다.
+    "users": APP,
+    "email_verification_token": APP,
 }
 
 # (provider, source_field, transform_rule, example, contains_personal_data, remarks)
@@ -73,6 +79,7 @@ for table, column in (
     ("company", "created_at"), ("company", "updated_at"),
     ("company_metric", "updated_at"), ("company_text", "updated_at"),
     ("segment_metric", "updated_at"), ("company_activity", "updated_at"),
+    ("users", "created_at"), ("users", "updated_at"),
 ):
     note(table, column, DB, "", "default:now()", "2026-09-07T12:00:00+09:00")
 
@@ -436,6 +443,44 @@ for _column, _text in (
 ):
     DESC[("company_text", _column)] = _text
     DESC[("segment_metric", _column)] = _text
+
+
+# ── 인증 테이블 (V14 · V15, S15P21A504-122 · 123) ─────
+# DDL 에서 읽을 수 있는 것만 적는다. 보관 기간·삭제 정책처럼 확인할 수 없는 것은
+# 추측하지 않고 remarks 에 "합의 필요" 로 남긴다.
+note("users", "id", DB, "", "identity", "1")
+note("users", "email", APP, "회원가입 폼:email", "raw", "user@example.com", personal="yes",
+     remarks="로그인 식별자이며 UNIQUE 다. 개인정보 보관 기간·삭제 정책은 합의 필요")
+note("users", "password_hash", APP, "회원가입 폼:password", "derived:BCrypt 해시", "$2a$10$…",
+     personal="yes", remarks="평문은 저장하지 않는다. 화면·로그에 절대 노출하지 않는다")
+note("users", "nickname", APP, "회원가입 폼:nickname", "raw", "세은", personal="yes")
+note("users", "role", DB, "", "constant", "ROLE_USER",
+     remarks="ROLE_USER/ROLE_ADMIN. V14 의 CHECK 값 그대로")
+note("users", "status", DB, "", "constant", "PENDING",
+     remarks="ACTIVE/SUSPENDED/WITHDRAWN/PENDING. V15 가 이메일 인증용 PENDING 을 더했다")
+note("email_verification_token", "id", DB, "", "identity", "1")
+note("email_verification_token", "user_id", DERIVED, "users.id", "raw", "1", personal="possible",
+     remarks="회원을 가리키는 참조다. ON DELETE CASCADE")
+note("email_verification_token", "token_hash", APP, "", "derived:원문 토큰의 SHA-256(hex)",
+     "9f86d081884c7d65…", remarks="원문은 메일 링크에만 있다")
+note("email_verification_token", "expires_at", APP, "", "derived:발급 시각 + 유효기간",
+     "2026-09-09T09:00:00+09:00", remarks="유효기간 길이는 합의 필요")
+note("email_verification_token", "used_at", APP, "", "raw", "",
+     remarks="아직 쓰지 않은 토큰은 NULL")
+for _table, _column, _text in (
+    ("users", "email", "로그인 이메일. UNIQUE"),
+    ("users", "nickname", "화면에 표시하는 별명"),
+    ("users", "role", "권한. ROLE_USER 또는 ROLE_ADMIN"),
+    ("users", "status", "계정 상태. ACTIVE/SUSPENDED/WITHDRAWN/PENDING"),
+    ("users", "created_at", "가입 시각"),
+    ("users", "updated_at", "이 행을 마지막으로 고친 시각"),
+    ("users", "id", "대리 키. DB 가 생성한다"),
+    ("email_verification_token", "id", "대리 키. DB 가 생성한다"),
+    ("email_verification_token", "user_id", "인증 대상 회원. users 를 참조한다"),
+    ("email_verification_token", "expires_at", "토큰 만료 시각"),
+    ("email_verification_token", "used_at", "인증에 쓰인 시각. 아직이면 NULL"),
+):
+    DESC[(_table, _column)] = _text
 
 
 def main() -> int:

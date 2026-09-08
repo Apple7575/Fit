@@ -361,8 +361,8 @@ SQL 에서 읽고 FK 대조는 `config/company_universe.csv` 로 한다.
 - 뉴스 raw → staged → curated 코드 (`pipeline/news/`) 와 CLI 4종
   (`import_news_raw.py` · `stage_news.py` · `build_news_seed.py` · `verify_news.py`)
 - Flyway SQL 파서 (`pipeline/news/flyway.py`) — 검증과 데이터 사전의 기준
-- `docs/data_fields.csv` (13 테이블 133 컬럼) · `docs/seed_csv_inventory.csv` (16행) · 이 문서
-  — V13 이 테이블 일곱 개를 셋으로 합친 뒤의 수다
+- `docs/data_fields.csv` (15 테이블 146 컬럼) · `docs/seed_csv_inventory.csv` (18행) · 이 문서
+  — V13 이 테이블 일곱 개를 셋으로 합치고 V14·V15 가 인증 테이블 둘을 더한 뒤의 수다
 - 단위·통합 테스트 57건
 
 하지 않았다.

@@ -34,7 +34,7 @@ tests/news/                   위에 맞춰 갱신 + 파서 테스트 2건 추�
 **`flyway.py` 가 `DROP TABLE` 을 건너뛰고 있었다.** 파서가 마이그레이션을 순서대로 적용해
 현재 스키마를 만드는데, `DROP TABLE` 을 무시해서 V13 이 지운 일곱 테이블이 그대로 남아
 있었다. 그래서 데이터 사전 대조(`verify_news.py` 9번)가 "문서에 있는데 스키마에 없다"를
-거꾸로 판정했다. 이제 읽는다. **V14 를 미리 반영해 `ALTER … SET SCHEMA` 도 같이 읽는다** —
+거꾸로 판정했다. 이제 읽는다. **정리 마이그레이션을 미리 반영해 `ALTER … SET SCHEMA` 도 같이 읽는다** —
 `collection_run`·`dart_employee_status` 가 `staging` 으로 옮겨가도 파서가 따라간다.
 
 `.gitignore` 는 파일명이 박히는 자리라 옛 이름도 함께 남겼다. 이름이 어긋나는 순간 제외가
@@ -74,8 +74,8 @@ CREATE INDEX news_article_category_idx
     ON news_article (corp_code, news_category, published_at DESC) WHERE news_category IS NOT NULL;
 ```
 
-값이 0행이라 지금 넣는 것이 가장 싸다. **V14 에 함께 넣어도 되고 별 번호로 빼도 된다** —
-그쪽 판단에 맡긴다.
+값이 0행이라 지금 넣는 것이 가장 싸다. **정리 마이그레이션에 함께 넣어도 되고 별 번호로
+빼도 된다** — 그쪽 판단에 맡긴다.
 
 ### ② 컬럼 주석 다섯 개가 넘어오지 않았다
 
@@ -95,12 +95,19 @@ V13 을 반영하지 않아 mermaid ERD 에 지워진 일곱 테이블이 남아
 
 ---
 
-## 3. V14 리마인더
+## 3. 정리 마이그레이션 — 번호가 또 밀렸다
 
-이 문서와 별개로 **MR !69** 가 V14 준비를 담고 있다
+**어제까지 V14 라고 부르던 정리 마이그레이션은 이제 V16 이다.** 인증 기능이
+`V14__users.sql` · `V15__email_verification.sql` 을 가져갔다. 그 전에도 V7 → V9 →
+V10 → V13 → V14 로 밀렸으니, **번호를 쓰기 전에 `origin/develop` 의 마이그레이션
+목록을 먼저 보는 편이 안전하다.** 이 문서도 그래서 아래부터는 번호 대신 "정리
+마이그레이션" 이라고 쓴다.
+
+담을 내용은 그대로다 — `dart_financial_account` DROP, `collection_run` ·
+`dart_employee_status` 를 `staging` 으로 이동. 준비는 **MR !69** 에 있다
 (`pipeline/db.py` 의 `search_path`, `load_raw.py` 의 재무 적재 제거).
 
-**V14 의 두 이동은 `ALTER TABLE … SET SCHEMA` 로 해주세요.** 새로 만들고 옮겨 담는
+**두 이동은 `ALTER TABLE … SET SCHEMA` 로 해주세요.** 새로 만들고 옮겨 담는
 방식이면 `search_path` 가 `public` 우선이라 파이프라인이 곧 삭제될 `public` 테이블에
 계속 씁니다.
 
@@ -108,6 +115,6 @@ V13 을 반영하지 않아 mermaid ERD 에 지워진 일곱 테이블이 남아
 
 ## 4. 확인 부탁
 
-1. 2장 ① 인덱스 세 개 — 복원 여부와 번호(V14 동승 vs 별 번호)
+1. 2장 ① 인덱스 세 개 — 복원 여부와 번호(정리 마이그레이션 동승 vs 별 번호)
 2. 2장 ② 컬럼 주석 다섯 개 — ①과 함께 넣을지
 3. 2장 ③ `db-schema.md` 2·3장 갱신 — 그쪽에서 맡아주실지
