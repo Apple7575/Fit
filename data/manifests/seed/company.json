@@ -1,6 +1,6 @@
 {
   "table": "company",
-  "generated_at": "2026-09-08T03:49:30.872087+00:00",
+  "generated_at": "2026-09-08T04:52:06.558274+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -39,33 +39,35 @@
     "V15__email_verification.sql"
   ],
   "source": "config/company_universe.csv + 기업개황(company.json)",
-  "seed_rows": 3930,
+  "seed_rows": 2703,
   "null_counts": {
     "corp_code": 0,
     "corp_name": 0,
-    "corp_name_eng": 3,
+    "corp_name_eng": 0,
     "stock_code": 0,
     "corp_cls": 0,
     "industry_code": 0,
     "ceo_nm": 0,
     "established_date": 0,
-    "listed_date": 3930,
-    "dart_modify_date": 3930,
+    "listed_date": 2703,
+    "dart_modify_date": 2703,
     "induty_code": 0,
     "address": 0,
-    "homepage_url": 217
+    "homepage_url": 62
   },
   "notes": [
+    "정규 시장 상장사만 (corp_cls Y·K·N). E 1,227개사는 다른 표가 아무도 참조하지 않는다 — --include-unlisted 로 넣을 수 있다",
     "listed_date 는 기업개황 응답에 필드가 없다 (실측)",
     "dart_modify_date 는 corpCode.xml 에 있고 이 경로로는 안 온다",
-    "address 는 공백만 정규화했다 — 원문과 그 외 차이 없음"
+    "address 는 공백만 정규화했다 — 원문과 그 외 차이 없음",
+    "타깃 10개사의 corp_name 은 targets.csv 의 display_name 으로 덮는다"
   ],
-  "distinct_corp_codes": 3930,
+  "distinct_corp_codes": 2703,
   "build_stats": {
-    "corp_cls E": 1227,
     "corp_cls K": 1768,
     "corp_cls N": 106,
     "corp_cls Y": 829,
-    "개황 채움": 3930
+    "개황 채움": 2703,
+    "제외: 정규 시장 아님(corp_cls E)": 1227
   }
 }

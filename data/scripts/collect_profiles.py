@@ -1,23 +1,24 @@
-"""전 종목 기업개황 수집 — 상장사 3,930개사 × 1콜.
+"""전 종목 기업개황 수집 — 정규 시장 상장사 2,703개사 × 1콜.
 
 `company` 테이블의 ceo_nm · established_date · address · homepage_url 은
 `config/company_universe.csv` 에 없다. 기업개황(company.json)만이 원천이고
-회사당 1콜이라 전 종목이면 3,930콜이다 (일 한도 20,000 의 20%).
+회사당 1콜이라 전 종목이면 2,703콜이다 (일 한도 20,000 의 14%).
 
 collect.py --profile 은 `config/targets.csv` 10개사만 받는다. 이 스크립트는
 `pipeline/universe.py` 의 모집단을 쓴다는 점만 다르다 — collect_financials.py
-와 같은 짝이다.
+와 같은 짝이고, 모집단도 같은 2,703개사다.
 
-**기본값이 corp_cls=E 포함 3,930개사다.** 수치 수집(2,703개사)과 다른데,
-company 테이블이 유니버스 전체를 담기 때문이다 (scripts/load_company.py).
+corp_cls=E(기타) 1,227개사는 `--include-unlisted` 로 넣는다. company 시드가
+정규 시장만 담고 다른 표가 E 를 하나도 참조하지 않아 기본에서 뺐다
+(scripts/build_curated_seed.py).
 
 **받기만 한다. 값을 해석하지 않는다** — 정규화는 build_curated_seed.py 가 한다.
 원본은 저장 기준대로 `raw/opendart/api/` 에 둔다. 기존 10개사 경로(`.cache/`)는
 건드리지 않는다.
 
-    python scripts/collect_profiles.py --dry-run     # 호출 계획만
-    python scripts/collect_profiles.py               # 실제 수집
-    python scripts/collect_profiles.py --listed-only # 2,703개사로 좁힌다
+    python scripts/collect_profiles.py --dry-run          # 호출 계획만
+    python scripts/collect_profiles.py                    # 실제 수집
+    python scripts/collect_profiles.py --include-unlisted # E 까지 3,930개사
 """
 from __future__ import annotations
 
@@ -52,15 +53,15 @@ def _now() -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--listed-only", action="store_true",
-                    help="corp_cls=E(기타) 1,227개사를 뺀 2,703개사만 받는다")
+    ap.add_argument("--include-unlisted", action="store_true",
+                    help="corp_cls=E(기타) 1,227개사까지 받는다 (합계 3,930)")
     ap.add_argument("--dry-run", action="store_true", help="호출 계획만 낸다")
     ap.add_argument("--no-cache", action="store_true", help="캐시를 무시하고 새로 받는다")
     ap.add_argument("--limit", type=int, help="앞에서 N 개사만 받는다(점검용)")
     args = ap.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
 
-    universe = load_universe(listed_only=args.listed_only)
+    universe = load_universe(listed_only=not args.include_unlisted)
     # corp_code 순으로 고정한다 — 중간에 끊겨도 이어받는 지점이 같다.
     universe.sort(key=lambda c: c.corp_code)
     if args.limit:
@@ -117,7 +118,7 @@ def main() -> int:
     manifest = {
         "collection_run_id": run_id, "started_at": started, "finished_at": _now(),
         "provider": "opendart", "endpoint": "company.json",
-        "대상_회사": len(universe), "상장사만": args.listed_only,
+        "대상_회사": len(universe), "상장사만": not args.include_unlisted,
         "실제_호출": client.stats.calls, "캐시_히트": client.stats.cache_hits,
         "재시도": client.stats.retries, "빈결과": client.stats.empty,
         "받은_바이트": client.stats.bytes_in,

@@ -5,11 +5,15 @@
 (`company_financials.csv`).
 
     industry          config/ksic_division.csv                      77행
-    company           config/company_universe.csv + 기업개황     3,930행
+    company           config/company_universe.csv + 기업개황     2,703행
     metric            Flyway V2·V4·V5·V7·V13 카탈로그의 사본        12행
     company_metric    staged/opendart/financials.csv            58,327행
     segment_metric    .cache/empSttus_*.json                     13개사
     company_activity  .cache/otrCprInvstmntSttus_*.json          10개사
+
+`company` 는 정규 시장 상장사 2,703개사다 (corp_cls Y·K·N). 수집 모집단
+(`pipeline/universe.py`)과 같은 경계이고, corp_cls=E 1,227개사를 참조하는 행이
+다른 표에 하나도 없다. E 까지 넣으려면 `--include-unlisted`.
 
 **헤더는 손으로 적지 않는다.** 저장 기준 9장이 "Flyway 의 실제 컬럼명과 순서에
 일치" 를 요구하므로 마이그레이션에서 읽는다 (`pipeline/news/flyway.py`). 컬럼이
@@ -30,11 +34,11 @@
      segment_revenue·segment_employee_count 가 그 구분을 들고 있다.
      scope 로 가려면 마이그레이션이 먼저다.
 
-빈 값 규칙이 테이블마다 다르다. 잘못 맞추면 사실이 바뀐다.
-
-    company_metric    행이 없는 것이 결측이다.        NULL 을 넣지 않는다
-    segment_metric    행은 두고 metric_value 를 비운다. 부문 목록의 원천이라
-                      값이 없어도 부문이 남아야 한다 (V13 주석)
+두 long 표 모두 **행이 없는 것이 결측**이다. segment_metric 은 V13 주석이 "부문마다
+두 지표 행을 항상 만들고 미공시는 NULL" 로 정했지만, 값이 전부 NULL 인
+segment_revenue 95행은 넣지 않기로 했다 (MR !81). 부문 목록의 원천이 이 테이블
+하나여야 한다는 규칙의 목적은 부문마다 반드시 있는 segment_employee_count 행이
+지킨다. 인원을 안 적은 부문만 값 없이 행이 남는다 — 그 부문을 잃지 않기 위해서다.
 
     python scripts/build_curated_seed.py               # 6종 전부
     python scripts/build_curated_seed.py --only company segment_metric
@@ -62,6 +66,8 @@ from pipeline.news.csvio import write_csv  # noqa: E402
 from pipeline.patterns import patterns as default_patterns  # noqa: E402
 from pipeline.normalize.text import squash, to_num  # noqa: E402
 from pipeline.paths import CONFIG, cache_dir, curated_seed_dir, raw_api_dir  # noqa: E402
+from pipeline.targets import by_corp_code, load_targets  # noqa: E402
+from pipeline.universe import LISTED_CLS  # noqa: E402
 
 # 시드 계보. manifests/ 는 Git 추적한다 — 원본이 없어도 무엇으로 만들었는지 남아야 한다.
 SEED_MANIFEST_DIR = Path(__file__).resolve().parents[1] / "manifests" / "seed"
@@ -105,8 +111,9 @@ METRIC_CATALOG = [
     ("segment_employee_count", "사업부 직원 수", "PERSON", 0, "EMPLOYEE_STATUS",     31, False, False),
 ]
 
-# segment_metric 이 부문마다 항상 만드는 두 행 (V13 주석).
-SEGMENT_METRICS = ("segment_revenue", "segment_employee_count")
+# segment_metric 이 부문마다 만드는 행. 카탈로그의 segment_revenue 는 원천이
+# 확보되면 여기 하나 더 붙는다 — 지금 값 없이 행만 넣지는 않는다 (MR !81).
+SEGMENT_METRIC = "segment_employee_count"
 
 
 def _rows(path: Path) -> list[dict]:
@@ -235,14 +242,23 @@ def build_industry() -> list[dict]:
 
 # ------------------------------------------------------------------- company
 
-def build_company(industry_codes: set[str]) -> tuple[list[dict], Counter]:
+def build_company(industry_codes: set[str], *,
+                  include_unlisted: bool = False) -> tuple[list[dict], Counter]:
     """유니버스 + 기업개황 → company. 제약 위반 행은 넣지 않고 사유별로 센다.
+
+    **기본은 정규 시장 상장사 2,703개사다** (corp_cls Y·K·N). corp_cls=E 1,227개사는
+    사업보고서 제출 의무와 공시 범위가 달라 다른 표들이 아무도 참조하지 않는다 —
+    실측으로 company_metric · segment_metric · company_activity 셋 다 E 를 가리키는
+    행이 0건이다. 수집 모집단(`pipeline/universe.py`)과도 같아진다.
 
     판정 규칙은 scripts/load_company.py 와 같게 맞췄다. 적재 직전에 걸릴 행을
     시드 단계에서 미리 뺀다 — CSV 는 통과했는데 DB 가 거부하는 상태를 만들지 않는다.
     """
     stats: Counter = Counter()
     profiles = _profile_files()
+    # 결정 C — 종목명이 정본이되 타깃은 사람이 확인한 표시명으로 덮는다.
+    # 엔씨소프트의 종목명이 'NC' 라 그대로 두면 사용자가 아는 이름으로 못 찾는다.
+    targets = by_corp_code(load_targets())
     out: list[dict] = []
 
     for r in _rows(CONFIG / "company_universe.csv"):
@@ -250,6 +266,10 @@ def build_company(industry_codes: set[str]) -> tuple[list[dict], Counter]:
         stock_code = r.get("stock_code", "")
         corp_cls = r.get("corp_cls", "")
         ksic = r.get("ksic_division", "")
+
+        if not include_unlisted and corp_cls not in LISTED_CLS:
+            stats[f"제외: 정규 시장 아님(corp_cls {corp_cls or '(없음)'})"] += 1
+            continue
 
         why = None
         if not RE_CORP_CODE.match(corp_code):
@@ -264,9 +284,10 @@ def build_company(industry_codes: set[str]) -> tuple[list[dict], Counter]:
             stats[f"제외: {why}"] += 1
             continue
 
+        target = targets.get(corp_code)
         row = {
             "corp_code": corp_code,
-            "corp_name": r.get("corp_name", ""),
+            "corp_name": (target.display_name if target else r.get("corp_name", "")),
             "ceo_nm": "", "established_date": "", "address": "", "homepage_url": "",
             "corp_name_eng": "",
             "industry_code": ksic,
@@ -335,9 +356,12 @@ def build_segment_metric(corp_codes: set[str]) -> tuple[list[dict], Counter]:
     합계 행('성별합계' 등)은 빼야 한다 — 더하면 인원이 두 배가 된다
     (`pipeline/normalize/employee.py` 와 같은 판정을 쓴다).
 
-    **segment_revenue 는 값을 비운 채 행만 만든다.** 사업부문별 매출의 원천은
-    사업보고서 원문이고 아직 추출 결과가 없다. 값이 없다고 행을 빼면 그 부문이
-    목록에서 사라지므로 V13 규칙대로 행은 둔다.
+    **segment_revenue 는 행을 만들지 않는다.** 사업부문별 매출의 원천은 사업보고서
+    원문이고 아직 추출 결과가 없다. V13 주석은 "부문마다 두 지표 행을 항상 만들고
+    미공시는 NULL" 로 정했지만, 그 규칙의 목적인 "부문 목록의 원천이 이 테이블
+    하나" 는 segment_employee_count 행만으로도 지켜진다 — 부문마다 그 행이 반드시
+    있기 때문이다. 값이 전부 NULL 인 95행을 넣지 않기로 팀장과 정했다 (MR !81).
+    결과적으로 결측 표현이 company_metric 과 같아진다: 행이 없으면 미공시다.
     """
     p = default_patterns()
     f = p.employee.fields
@@ -373,15 +397,14 @@ def build_segment_metric(corp_codes: set[str]) -> tuple[list[dict], Counter]:
             head[key] += sm
 
     out: list[dict] = []
-    for key in sorted(seen):
-        corp_code, year, seg = key
-        for code in SEGMENT_METRICS:
-            value = head.get(key) if code == "segment_employee_count" else None
-            out.append({
-                "corp_code": corp_code, "fiscal_year": year, "segment_name": seg,
-                "metric_code": code,
-                "metric_value": "" if value is None else f"{value:.4f}",
-            })
+    for corp_code, year, seg in sorted(seen):
+        value = head.get((corp_code, year, seg))
+        out.append({
+            "corp_code": corp_code, "fiscal_year": year, "segment_name": seg,
+            "metric_code": SEGMENT_METRIC,
+            # 부문은 있는데 인원을 안 적은 경우다. 부문을 잃지 않도록 행은 둔다.
+            "metric_value": "" if value is None else f"{value:.4f}",
+        })
     stats["부문(기업×연도×부문)"] = len(seen)
     return out, stats
 
@@ -481,6 +504,8 @@ def main() -> int:
                     help="이 표만 다시 만든다 (기본: 6종 전부)")
     ap.add_argument("--verify-db", action="store_true",
                     help="metric 카탈로그를 DB 와 대조한다")
+    ap.add_argument("--include-unlisted", action="store_true",
+                    help="company 에 corp_cls=E(기타) 1,227개사까지 넣는다")
     args = ap.parse_args()
     want = set(args.only or TABLES)
     built: dict[str, list[dict]] = {}
@@ -488,7 +513,8 @@ def main() -> int:
     # industry 와 company 는 뒤 표들의 FK 대상이라 --only 와 무관하게 먼저 읽는다.
     industry = build_industry()
     industry_codes = {r["industry_code"] for r in industry}
-    company, company_stats = build_company(industry_codes)
+    company, company_stats = build_company(
+        industry_codes, include_unlisted=args.include_unlisted)
     corp_codes = {r["corp_code"] for r in company}
 
     if "industry" in want:
@@ -502,9 +528,12 @@ def main() -> int:
         filled = company_stats["개황 채움"]
         dest = _write("company", company,
                       "config/company_universe.csv + 기업개황(company.json)",
-                      ["listed_date 는 기업개황 응답에 필드가 없다 (실측)",
+                      ["정규 시장 상장사만 (corp_cls Y·K·N). E 1,227개사는 다른 표가"
+                       " 아무도 참조하지 않는다 — --include-unlisted 로 넣을 수 있다",
+                       "listed_date 는 기업개황 응답에 필드가 없다 (실측)",
                        "dart_modify_date 는 corpCode.xml 에 있고 이 경로로는 안 온다",
-                       "address 는 공백만 정규화했다 — 원문과 그 외 차이 없음"],
+                       "address 는 공백만 정규화했다 — 원문과 그 외 차이 없음",
+                       "타깃 10개사의 corp_name 은 targets.csv 의 display_name 으로 덮는다"],
                       company_stats)
         print(f"company           {len(company):>7,}행  → {dest.name}")
         print(f"  개황 채움 {filled:,}/{len(company):,} ({filled / len(company):.1%}) · "
@@ -552,12 +581,13 @@ def main() -> int:
         built["segment_metric"] = rows
         dest = _write("segment_metric", rows, ".cache/empSttus_*.json (직원 현황)",
                       ["부문 축은 fo_bbm 이고 성별 행을 접어 하나로 만든다",
-                       "segment_revenue 는 원천(사업보고서 추출)이 없어 값이 비었다",
-                       "부문 목록의 원천이라 값이 없어도 행을 남긴다 (V13 주석)"], st)
+                       "segment_employee_count 만 넣는다 — segment_revenue 는 원천"
+                       "(사업보고서 추출)이 없어 행을 만들지 않는다 (MR !81)",
+                       "부문 목록은 부문마다 반드시 있는 이 행이 지킨다"], st)
         print(f"segment_metric    {len(rows):>7,}행  → {dest.name}")
         print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
               + " · ".join(f"{k} {v:,}" for k, v in sorted(st.items())))
-        print("  segment_revenue 는 원천이 없어 값이 비어 있다 (행은 둔다)")
+        print("  segment_employee_count 만 넣는다 — segment_revenue 는 원천 미확보")
 
     if "company_activity" in want:
         rows, st = build_company_activity(corp_codes)
