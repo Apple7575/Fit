@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../../api/client';
 import type { KeyMetricsData } from '../../types/metrics';
+import { GrowthHeader } from './GrowthHeader';
 import { GrowthKpiRow } from './GrowthKpiRow';
 import { GrowthTrendCard } from './GrowthTrendCard';
 import { ProfitabilityCard } from './ProfitabilityCard';
@@ -78,62 +80,101 @@ describe('ProfitabilityCard', () => {
   });
 });
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-
 describe('GrowthTrendCard', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  const trend = {
+    from: 2021,
+    to: 2025,
+    series: [
+      {
+        key: 'revenue' as const,
+        points: [
+          { year: 2021, value: 279_600_000_000_000, changeRate: null },
+          { year: 2022, value: 302_200_000_000_000, changeRate: 8.1 },
+          { year: 2023, value: null, changeRate: null },
+          { year: 2024, value: 295_800_000_000_000, changeRate: null },
+          { year: 2025, value: 300_900_000_000_000, changeRate: 1.7 },
+        ],
+      },
+      {
+        key: 'employee_count' as const,
+        points: [{ year: 2025, value: 125_000, changeRate: 2.5 }],
+      },
+    ],
+  };
 
-  it('draws bars with rates, breaks at a missing year and switches metric without refetching', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      json({
-        success: true,
-        data: {
-          range: { from: 2021, to: 2025 },
-          series: [
-            {
-              key: 'revenue',
-              points: [
-                { year: 2021, value: 279_600_000_000_000, changeRate: null },
-                { year: 2022, value: 302_200_000_000_000, changeRate: 8.1 },
-                { year: 2024, value: 295_800_000_000_000, changeRate: null },
-                { year: 2025, value: 300_900_000_000_000, changeRate: 1.7 },
-              ],
-            },
-            {
-              key: 'employee_count',
-              points: [{ year: 2025, value: 125_000, changeRate: 2.5 }],
-            },
-          ],
-        },
-      }),
-    );
-    vi.stubGlobal('fetch', fetchMock);
+  it('draws bars with rates, breaks at a missing year and switches metric without refetching', () => {
+    render(<GrowthTrendCard corpCode="00126380" onRetry={() => {}} state={{ status: 'success', data: trend }} />);
 
-    render(<GrowthTrendCard corpCode="00126380" />);
-
-    const chart = await screen.findByRole('img', { name: /매출액 2021~2025년 변화 그래프/ });
+    const chart = screen.getByRole('img', { name: /매출액 2021~2025년 변화 그래프/ });
     expect(within(chart).getAllByTestId('bar')).toHaveLength(4);
     expect(within(chart).getAllByTestId('rate-point')).toHaveLength(2);
     expect(within(chart).getByText('미제공')).toBeInTheDocument();
     expect(within(chart).getByText('+8.1%')).toBeInTheDocument();
+    expect(screen.getByText('2021–2025 연간 · (단위: 원, %)')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: '직원 수' }));
     expect(screen.getByRole('heading', { name: '직원 수 추이' })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('explains when the selected metric has no series', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        json({ success: true, data: { range: { from: 2021, to: 2025 }, series: [] } }),
-      ),
+  it('labels the axis with whatever range the server returned', () => {
+    render(
+      <GrowthTrendCard
+        corpCode="00126380"
+        onRetry={() => {}}
+        state={{
+          status: 'success',
+          data: {
+            from: 2022,
+            to: 2026,
+            series: [{ key: 'revenue', points: [2022, 2023, 2024, 2025, 2026].map((year) => ({ year, value: null, changeRate: null })) }],
+          },
+        }}
+      />,
     );
-    render(<GrowthTrendCard corpCode="A" />);
-    expect(await screen.findByText('매출액 추이 데이터가 없습니다')).toBeInTheDocument();
+
+    const chart = screen.getByRole('img', { name: /매출액 2022~2026년 변화 그래프/ });
+    expect(within(chart).getAllByText('미제공')).toHaveLength(5);
+    expect(screen.getByText('2022–2026 연간 · (단위: 원, %)')).toBeInTheDocument();
+  });
+
+  it('shows no years while loading and explains when the selected metric has no series', () => {
+    const { unmount } = render(
+      <GrowthTrendCard corpCode="A" onRetry={() => {}} state={{ status: 'loading' }} />,
+    );
+    expect(screen.getByText('(단위: 원, %)')).toBeInTheDocument();
+    unmount();
+
+    render(
+      <GrowthTrendCard
+        corpCode="A"
+        onRetry={() => {}}
+        state={{ status: 'success', data: { from: 2021, to: 2025, series: [] } }}
+      />,
+    );
+    expect(screen.getByText('매출액 추이 데이터가 없습니다')).toBeInTheDocument();
+  });
+
+  it('offers a retry on a server error', () => {
+    const onRetry = vi.fn();
+    render(
+      <GrowthTrendCard
+        corpCode="A"
+        onRetry={onRetry}
+        state={{ status: 'error', error: new ApiError(500, 'INTERNAL_ERROR', '서버') }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GrowthHeader', () => {
+  it('shows the range only once the trend response is known', () => {
+    const { unmount } = render(<GrowthHeader corpName="삼성전자" range={null} />);
+    expect(screen.getByText('최근 5년 성장 분석')).toBeInTheDocument();
+    unmount();
+
+    render(<GrowthHeader corpName="삼성전자" range={{ from: 2022, to: 2026 }} />);
+    expect(screen.getByText('최근 5년 성장 분석 (2022–2026)')).toBeInTheDocument();
   });
 });

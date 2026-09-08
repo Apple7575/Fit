@@ -1,5 +1,6 @@
 import { useOutletContext } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
+import { useFinancialTrend } from '../../features/financial-trend/useFinancialTrend';
 import { GrowthHeader } from '../../features/growth-analysis/GrowthHeader';
 import { GrowthKpiRow } from '../../features/growth-analysis/GrowthKpiRow';
 import { GrowthTrendCard } from '../../features/growth-analysis/GrowthTrendCard';
@@ -10,7 +11,9 @@ import type { CompanyDetailOutletContext } from './CompanyDetailPage';
 
 /**
  * 성장 분석 탭: 헤더 → 기준연도 KPI 6장 → [5년 추이 차트 | 전년 대비 · 수익성/안정성].
- * 기준연도는 기본정보의 dataYear 를 따른다. 기본정보가 확정되기 전에는 지표를 조회하지 않아
+ * 기준연도는 기본정보의 dataYear 를 따르고, 5년 추이의 구간(to)도 같은 해로 맞춘다.
+ * 연도는 화면에서 정하지 않는다 — 헤더·차트의 구간은 시계열 응답의 range 그대로다.
+ * 기본정보가 확정되기 전에는 지표를 조회하지 않아
  * (연도 없이 한 번, 연도 붙여 한 번 부르는 이중 호출 방지) 자리만 잡아둔다.
  */
 export function CompanyGrowthTab() {
@@ -31,18 +34,34 @@ export function CompanyGrowthTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <GrowthHeader corpName={detail?.corpName ?? null} />
-      <GrowthBody corpCode={corpCode} year={detail?.dataYear ?? null} />
-    </div>
+    <GrowthBody
+      corpCode={corpCode}
+      corpName={detail?.corpName ?? null}
+      year={detail?.dataYear ?? null}
+    />
   );
 }
 
-function GrowthBody({ corpCode, year }: { corpCode: string; year: number | null }) {
+function GrowthBody({
+  corpCode,
+  corpName,
+  year,
+}: {
+  corpCode: string;
+  corpName: string | null;
+  year: number | null;
+}) {
   const { state, retry } = useKeyMetrics(corpCode, year);
+  const trend = useFinancialTrend(corpCode, year);
+  const range =
+    trend.state.status === 'success'
+      ? { from: trend.state.data.from, to: trend.state.data.to }
+      : null;
 
   return (
-    <>
+    <div className="space-y-4">
+      <GrowthHeader corpName={corpName} range={range} />
+
       {state.status === 'loading' && (
         <div
           aria-busy="true"
@@ -70,7 +89,7 @@ function GrowthBody({ corpCode, year }: { corpCode: string; year: number | null 
       {state.status === 'success' && <GrowthKpiRow data={state.data} />}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
-        <GrowthTrendCard corpCode={corpCode} />
+        <GrowthTrendCard corpCode={corpCode} onRetry={trend.retry} state={trend.state} />
         {state.status === 'success' && (
           <div className="space-y-4">
             <YoyCard metrics={state.data.metrics} year={state.data.year ?? year} />
@@ -83,6 +102,6 @@ function GrowthBody({ corpCode, year }: { corpCode: string; year: number | null 
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
