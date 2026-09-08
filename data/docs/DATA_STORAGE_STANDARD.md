@@ -100,7 +100,6 @@ data/
 | `data/.cache/document_*.xml` (사업보고서) | `raw/opendart/filings/annual_report/` | 위와 같다 |
 | `data/_out/*.csv` | `staged/opendart/` 또는 `curated/seed/` | `scripts/normalize.py` · `report_gaps.py` · `verify_db.py` 가 경로를 상수로 쓴다 |
 | `data/_log/*.csv` | `logs/` | `pipeline/paths.py` 의 `LOG` 가 가리킨다 |
-| 루트 `company.csv` · `industry.csv` · `company_metric.csv` | `curated/seed/` | 아무 코드도 읽지 않는 커밋된 스냅샷이다. 옮기는 것 자체는 안전하지만 헤더가 최신 스키마와 어긋나 있어 (9장) 옮기기 전에 재생성 여부를 정해야 한다 |
 
 **이번 브랜치에서는 옮기지 않았다.** DART 캐시·산출물 마이그레이션은 별도 작업으로 남긴다
 (12장). [`DESIGN.md`](DESIGN.md) 6장이 raw 레이아웃을 `data/raw/<endpoint>_<key>.json` 평면
@@ -228,15 +227,18 @@ DB 는 `(corp_code, original_url) WHERE original_url IS NOT NULL` 부분 UNIQUE 
 | 사업보고서 원문 | `data/.cache/document_*.xml` | |
 | 뉴스 원본 | `raw/google_news_rss/articles/<run_id>/*.xml` | 수집기의 `local_output/` 은 PoC 산출물 |
 | 뉴스 정제본 | `staged/google_news_rss/<run_id>/articles.csv` | |
-| 기업 마스터 적재 입력 | `config/company_universe.csv` (3,930건) | 루트 `company.csv` 는 10개사 표본 스냅샷 |
-| 산업 분류 | Flyway `V3` + `config/ksic_division.csv` | 루트 `industry.csv` 는 같은 77건의 스냅샷 |
-| 지표 카탈로그 | Flyway `V2`·`V4`·`V5`·`V7` | CSV 없음 |
-| 지표 값 | `company_metric` 테이블 (`scripts/load_metrics.py` 가 `.cache` 에서 정규화해 적재) | 루트 `company_metric.csv` 는 스냅샷 |
+| 기업 마스터 적재 입력 | `curated/seed/company.csv` (2,703건) | `config/company_universe.csv` 는 그 시드의 원천이다 |
+| 산업 분류 | Flyway `V3` + `config/ksic_division.csv` | `curated/seed/industry.csv` 는 같은 77건이고 대조에만 쓴다 |
+| 지표 카탈로그 | Flyway `V2`·`V4`·`V5`·`V7`·`V13` | `curated/seed/metric.csv` 는 SQL 의 사본이다 |
+| 지표 값 | `company_metric` 테이블 (`scripts/load_metrics.py` 가 `.cache` 에서 정규화해 적재) | 전 종목분은 `curated/seed/company_metric.csv` |
 | DB 스키마 | `backend/src/main/resources/db/migration/V*.sql` | `docs/data_fields.csv` 는 이 SQL 에서 생성한다 |
 
-루트 CSV 4종(`company.csv`·`industry.csv`·`company_metric.csv`·`company_year_wide.csv`)과
-`manifest.json` 은 **어떤 코드도 읽지 않는다** (저장소 전체 검색 결과 참조는
-`manifest.json` 의 주석 한 줄뿐). 커밋된 스냅샷이므로 지우거나 옮기기 전에 팀 확인이 필요하다.
+루트 CSV 3종(`company.csv`·`industry.csv`·`company_metric.csv`)은 **지웠다.**
+`curated/seed/` 의 재생성본이 같은 표를 더 넓게 담아 같은 표를 가리키는 파일이 둘이
+되었기 때문이다 (MR !81 에서 팀장 확인). 옛 `company_metric.csv` 에만 있던 직원·R&D
+지표 187행은 10개사 정규화 경로(`scripts/normalize.py` → `_out/`)가 계속 만들고 DB 에도
+있다. `company_year_wide.csv` 와 `manifest.json` 은 남긴다 — 보조 산출물이고
+`rnd_cost_krw` 가 QA 용으로 거기에만 있다.
 
 ---
 

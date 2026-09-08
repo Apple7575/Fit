@@ -1,6 +1,6 @@
 {
   "table": "company_metric",
-  "generated_at": "2026-09-08T03:49:32.194979+00:00",
+  "generated_at": "2026-09-08T05:02:01.058364+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -27,7 +27,8 @@
     "V12__company_news.sql",
     "V13__erd_alignment.sql",
     "V14__users.sql",
-    "V15__email_verification.sql"
+    "V15__email_verification.sql",
+    "V16__news_article_drop_ai_columns.sql"
   ],
   "source": "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
   "seed_rows": 58327,

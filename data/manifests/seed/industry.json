@@ -1,6 +1,6 @@
 {
   "table": "industry",
-  "generated_at": "2026-09-08T03:49:30.806493+00:00",
+  "generated_at": "2026-09-08T05:01:59.443697+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "industry_code",
@@ -22,7 +22,8 @@
     "V12__company_news.sql",
     "V13__erd_alignment.sql",
     "V14__users.sql",
-    "V15__email_verification.sql"
+    "V15__email_verification.sql",
+    "V16__news_article_drop_ai_columns.sql"
   ],
   "source": "config/ksic_division.csv",
   "seed_rows": 77,

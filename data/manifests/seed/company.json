@@ -1,6 +1,6 @@
 {
   "table": "company",
-  "generated_at": "2026-09-08T04:52:06.558274+00:00",
+  "generated_at": "2026-09-08T05:01:59.516112+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -36,7 +36,8 @@
     "V12__company_news.sql",
     "V13__erd_alignment.sql",
     "V14__users.sql",
-    "V15__email_verification.sql"
+    "V15__email_verification.sql",
+    "V16__news_article_drop_ai_columns.sql"
   ],
   "source": "config/company_universe.csv + 기업개황(company.json)",
   "seed_rows": 2703,
