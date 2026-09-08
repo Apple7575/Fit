@@ -288,6 +288,51 @@ note("company_news", "collected_at", NEWS, "requests.json:checked_at → staged.
      "raw", "2026-09-06T00:10:00+00:00",
      remarks="원본을 받은 시각. DB 기본값 now() 에 맡기지 않고 수집 시각을 넣는다")
 
+# ── V13 이 만든 표 — segment_metric · company_text · news_article ────
+# segment_metric 과 company_activity.counterparty 는 시드가 있으므로 채운다
+# (scripts/build_curated_seed.py). 나머지는 적재 경로가 없어 합의 필요로 둔다.
+note("segment_metric", "corp_code", OPENDART, "empSttus:corp_code", "raw", "00126380")
+note("segment_metric", "fiscal_year", OPENDART, "empSttus 요청의 bsns_year", "raw", "2024")
+note("segment_metric", "segment_name", OPENDART, "empSttus:fo_bbm",
+     "derived:공백 정리 후 성별 행을 접어 부문 하나로. 합계 행('성별합계' 등)은 뺀다", "DX",
+     remarks="연도별 자연키다. 회사가 부문 이름을 바꾸면 다른 부문이 된다")
+note("segment_metric", "metric_code", DERIVED, "", "constant",
+     "segment_employee_count",
+     remarks="부문마다 segment_revenue·segment_employee_count 두 행을 항상 만든다")
+note("segment_metric", "metric_value", OPENDART, "empSttus:sm",
+     "derived:부문 안의 성별 행 합계. segment_revenue 는 원천이 없어 NULL", "112456",
+     remarks="NULL 은 그 부문이 이 지표를 공시하지 않았다는 사실이며 0 과 다르다")
+note("segment_metric", "updated_at", DB, "", "default:now()", "2026-09-08T12:00:00+09:00")
+note("company_activity", "counterparty", OPENDART,
+     "otrCprInvstmntSttus:inv_prm", "derived:공백 정리", "삼성전기㈜",
+     remarks="피출자회사. 현재 /activities 응답에는 나가지 않는다")
+
+for _column in ("id", "corp_code", "fiscal_year", "attr_key", "seq", "value_text",
+                "generated_at", "updated_at"):
+    note("company_text", _column, UNSET, "", "미적재", "",
+         remarks=f"{AGREEMENT} — 사업보고서 추출 PoC 가 진행 중이라 적재 경로가 없다. "
+                 "attr_key 에 따라 원천이 사업보고서 원문과 AI 생성물로 갈린다")
+
+for _column in ("id", "corp_code", "title", "description", "published_at",
+                "original_url", "source", "news_category", "related_business",
+                "importance_score", "analyzed_at", "collected_at"):
+    note("news_article", _column, NEWS, "", "미적재", "",
+         remarks=f"{AGREEMENT} — V13 이 company_news 를 이 이름으로 옮겼는데 "
+                 "scripts/build_news_seed.py 가 아직 옛 이름으로 쓴다. "
+                 "매핑은 위 company_news 항목과 같다")
+
+# ── V14 · V15 인증 표 ─────────────────────────────────
+# 수집 파이프라인이 아니라 애플리케이션이 채운다. 시드 대상이 아니다.
+for _column in ("id", "email", "password_hash", "nickname", "role", "status",
+                "created_at", "updated_at"):
+    note("users", _column, DB, "", "미적재", "",
+         personal="yes" if _column in ("email", "password_hash", "nickname") else "no",
+         remarks="회원 가입이 만드는 값이다. 시드 CSV 가 없다")
+for _column in ("id", "user_id", "token_hash", "expires_at", "used_at"):
+    note("email_verification_token", _column, DB, "", "미적재", "",
+         personal="yes" if _column == "user_id" else "no",
+         remarks="이메일 인증이 만드는 값이다. 시드 CSV 가 없다")
+
 
 # SQL COMMENT 가 없는 컬럼의 설명. 있는 것은 COMMENT 를 그대로 쓴다.
 DESC = {
@@ -357,6 +402,43 @@ for _column, _text in (
 for _table in ("dart_financial_account", "dart_employee_status", "collection_run",
                "company_activity", "company_news", "staging.dart_otr_cpr_invstmnt"):
     DESC.setdefault((_table, "id"), "대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다")
+
+# V13 · V14 · V15 가 만든 표 중 SQL COMMENT 가 없는 컬럼.
+for _table in ("company_text", "segment_metric"):
+    DESC[(_table, "corp_code")] = "DART 고유번호 8자리. company 를 참조한다"
+    DESC[(_table, "fiscal_year")] = "회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다"
+    DESC[(_table, "updated_at")] = "이 행을 마지막으로 적재한 시각"
+DESC[("company_text", "id")] = "대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다"
+DESC[("segment_metric", "metric_code")] = \
+    "지표 코드. metric 을 참조하며 segment_revenue · segment_employee_count 두 값을 쓴다"
+for _column, _text in (
+    ("corp_code", "DART 고유번호 8자리. company 를 참조한다"),
+    ("title", "기사 제목"),
+    ("description", "기사 요약. 제목 반복은 넣지 않는다"),
+    ("published_at", "기사 발행 시각(UTC). 시간대를 알 수 없으면 NULL"),
+    ("original_url", "기사 원문 주소. Google 경유 주소가 아닌 외부 링크다"),
+    ("related_business", "AI 가 연결한 사업 영역. 미분석은 NULL"),
+    ("importance_score", "AI 중요도 0~10. NULL 은 분석 실패이고 0 과 다른 사실이다"),
+    ("collected_at", "원본을 받은 시각"),
+):
+    DESC[("news_article", _column)] = _text
+for _column, _text in (
+    ("id", "대리 키. DB 가 생성한다"),
+    ("email", "로그인 아이디로 쓰는 이메일 주소"),
+    ("nickname", "화면에 보이는 이름"),
+    ("role", "권한 등급"),
+    ("status", "계정 상태"),
+    ("created_at", "가입 시각"),
+    ("updated_at", "이 행을 마지막으로 고친 시각"),
+):
+    DESC[("users", _column)] = _text
+for _column, _text in (
+    ("id", "대리 키. DB 가 생성한다"),
+    ("user_id", "토큰 주인. users 를 참조한다"),
+    ("expires_at", "만료 시각. 지나면 인증에 쓸 수 없다"),
+    ("used_at", "사용한 시각. 아직 안 썼으면 NULL"),
+):
+    DESC[("email_verification_token", _column)] = _text
 
 
 def main() -> int:

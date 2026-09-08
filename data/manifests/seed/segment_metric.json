@@ -1,0 +1,55 @@
+{
+  "table": "segment_metric",
+  "generated_at": "2026-09-08T03:49:32.278008+00:00",
+  "generated_by": "scripts/build_curated_seed.py",
+  "header": [
+    "corp_code",
+    "fiscal_year",
+    "segment_name",
+    "metric_code",
+    "metric_value"
+  ],
+  "columns_excluded": [
+    "updated_at"
+  ],
+  "flyway_files": [
+    "V1__init_schema.sql",
+    "V2__seed_metric.sql",
+    "V3__industry_ksic_division.sql",
+    "V4__rename_average_metric_codes.sql",
+    "V5__add_metric_evidence.sql",
+    "V6__document_corp_name_source.sql",
+    "V7__metric_catalog_v2.sql",
+    "V8__company_address_homepage.sql",
+    "V9__dart_otr_cpr_invstmnt.sql",
+    "V10__company_profile.sql",
+    "V11__company_focus_and_activity.sql",
+    "V12__company_news.sql",
+    "V13__erd_alignment.sql",
+    "V14__users.sql",
+    "V15__email_verification.sql"
+  ],
+  "source": ".cache/empSttus_*.json (직원 현황)",
+  "seed_rows": 190,
+  "null_counts": {
+    "corp_code": 0,
+    "fiscal_year": 0,
+    "segment_name": 0,
+    "metric_code": 0,
+    "metric_value": 95
+  },
+  "notes": [
+    "부문 축은 fo_bbm 이고 성별 행을 접어 하나로 만든다",
+    "segment_revenue 는 원천(사업보고서 추출)이 없어 값이 비었다",
+    "부문 목록의 원천이라 값이 없어도 행을 남긴다 (V13 주석)"
+  ],
+  "distinct_corp_codes": 13,
+  "fiscal_years": [
+    2021,
+    2025
+  ],
+  "build_stats": {
+    "부문(기업×연도×부문)": 95,
+    "합계 행 제외": 28
+  }
+}

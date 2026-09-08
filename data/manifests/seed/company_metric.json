@@ -1,0 +1,72 @@
+{
+  "table": "company_metric",
+  "generated_at": "2026-09-08T03:49:32.194979+00:00",
+  "generated_by": "scripts/build_curated_seed.py",
+  "header": [
+    "corp_code",
+    "fiscal_year",
+    "metric_code",
+    "metric_value",
+    "fs_div"
+  ],
+  "columns_excluded": [
+    "updated_at"
+  ],
+  "flyway_files": [
+    "V1__init_schema.sql",
+    "V2__seed_metric.sql",
+    "V3__industry_ksic_division.sql",
+    "V4__rename_average_metric_codes.sql",
+    "V5__add_metric_evidence.sql",
+    "V6__document_corp_name_source.sql",
+    "V7__metric_catalog_v2.sql",
+    "V8__company_address_homepage.sql",
+    "V9__dart_otr_cpr_invstmnt.sql",
+    "V10__company_profile.sql",
+    "V11__company_focus_and_activity.sql",
+    "V12__company_news.sql",
+    "V13__erd_alignment.sql",
+    "V14__users.sql",
+    "V15__email_verification.sql"
+  ],
+  "source": "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
+  "seed_rows": 58327,
+  "null_counts": {
+    "corp_code": 0,
+    "fiscal_year": 0,
+    "metric_code": 0,
+    "metric_value": 0,
+    "fs_div": 0
+  },
+  "notes": [
+    "연결 우선·별도 폴백. 고른 쪽을 fs_div 에 남긴다",
+    "결측은 행을 넣지 않는다 — metric_value 가 NOT NULL 이다",
+    "KRW 가 아닌 통화는 넣지 않는다 (환산은 추정이다)"
+  ],
+  "distinct_corp_codes": 2578,
+  "fiscal_years": [
+    2021,
+    2025
+  ],
+  "build_stats": {
+    "missing": {
+      "net_income": 115,
+      "revenue": 367,
+      "total_equity": 26,
+      "operating_profit": 20,
+      "total_liabilities": 7
+    },
+    "pairs": 11880,
+    "skipped_currency": {
+      "USD": 268,
+      "CNY": 240,
+      "JPY": 25,
+      "HKD": 5
+    },
+    "staged_rows": 293332,
+    "used_fs": {
+      "OFS": 2307,
+      "CFS": 9573
+    }
+  }
+}
