@@ -113,9 +113,9 @@ export const mockIndustryComparisonByCompany: Record<string, IndustryComparison>
   },
 };
 
-/** 목업에 없는 기업에서도 화면이 깨지지 않도록 쓰는 빈 비교 결과 (명세: companies 빈 배열 200). */
+/** 목업에 없는 기업에서도 화면이 깨지지 않도록 쓰는 빈 비교 결과 (companies 빈 배열 200, 적재 없으면 year null). */
 export const emptyIndustryComparison: IndustryComparison = {
-  year: 2025,
+  year: null,
   industry: null,
   metrics: [],
   companies: [],
@@ -145,13 +145,16 @@ export const mockComparisonInsightsByCompany: Record<string, ComparisonInsight[]
   ],
 };
 
+
+/** 목업 시계열이 가진 구간. 실제 API 에서는 응답의 range 가 이 역할을 한다. */
+export const mockComparisonTrendRange = { from: 2021, to: 2025 };
+
 const series = (key: string, values: Array<number | null>): TrendSeriesLike => ({
   key,
-  points: values.map((value, i) => ({ year: 2021 + i, value })),
+  points: values.map((value, i) => ({ year: mockComparisonTrendRange.from + i, value })),
 });
-
 /**
- * GET /metrics/timeseries?keys=revenue,... 의 series[] 목업 (2021~2025, 기업별).
+ * GET /metrics/timeseries?keys=revenue,... 의 series[] 목업 (mockComparisonTrendRange 구간, 기업별).
  * 비교 화면의 5개년 꺾은선용. 리노공업·이오테크닉스는 일부 연도 결측.
  */
 export const mockComparisonTrendSeriesByCompany: Record<string, TrendSeriesLike[]> = {
