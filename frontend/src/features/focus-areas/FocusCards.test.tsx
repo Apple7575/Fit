@@ -224,14 +224,14 @@ describe('focus fetchers', () => {
     expect(items.map((i) => i.year)).toEqual([2025, 2023]);
   });
 
-  it('fetchEmployeeTrend requests keys=employee_count and fills missing years with null', async () => {
+  it('fetchEmployeeTrend requests keys=employee_count without a window and fills the server range with null', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       json({
         success: true,
         data: {
-          range: { from: 2021, to: 2025 },
+          range: { from: 2022, to: 2026 },
           series: [
-            { key: 'employee_count', points: [{ year: 2021, value: 100 }, { year: 2025, value: 120 }] },
+            { key: 'employee_count', points: [{ year: 2022, value: 100 }, { year: 2026, value: 120 }] },
           ],
         },
       }),
@@ -239,13 +239,29 @@ describe('focus fetchers', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const points = await fetchEmployeeTrend('00126380');
-    expect(String(fetchMock.mock.calls[0][0])).toContain('keys=employee_count');
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('keys=employee_count');
+    expect(url).not.toContain('from=');
+    expect(url).not.toContain('to=');
     expect(points).toEqual([
-      { year: 2021, value: 100 },
-      { year: 2022, value: null },
+      { year: 2022, value: 100 },
       { year: 2023, value: null },
       { year: 2024, value: null },
-      { year: 2025, value: 120 },
+      { year: 2025, value: null },
+      { year: 2026, value: 120 },
     ]);
+  });
+
+  it('fetchEmployeeTrend returns an all-null server range when the series is absent', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        json({ success: true, data: { range: { from: 2020, to: 2024 }, series: [] } }),
+      ),
+    );
+
+    const points = await fetchEmployeeTrend('00126380');
+    expect(points.map((p) => p.year)).toEqual([2020, 2021, 2022, 2023, 2024]);
+    expect(points.every((p) => p.value === null)).toBe(true);
   });
 });
