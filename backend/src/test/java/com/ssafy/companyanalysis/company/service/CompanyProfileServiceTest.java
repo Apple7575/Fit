@@ -170,9 +170,9 @@ class CompanyProfileServiceTest {
 
     /** 부문 한 행. revenue 가 null 이면 매출 미공시다. */
     private static ProfileSegmentProjection segment(String code, String revenue) {
-        ProfileSegmentProjection p = mock(ProfileSegmentProjection.class);
-        given(p.getSegmentCode()).willReturn(code);
-        given(p.getRevenue()).willReturn(revenue == null ? null : new BigDecimal(revenue));
-        return p;
+        ProfileSegmentProjection projection = mock(ProfileSegmentProjection.class);
+        given(projection.getSegmentCode()).willReturn(code);
+        given(projection.getRevenue()).willReturn(revenue == null ? null : new BigDecimal(revenue));
+        return projection;
     }
 }

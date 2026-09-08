@@ -315,23 +315,23 @@ class IndustryComparisonServiceTest {
 
     /** dataYear 는 스텁하지 않는다. v2 는 기준연도를 적재 전체에서 정하므로 이 기업 값을 읽지 않는다. */
     private CompanyDetailProjection target(String industryCode, String industryName) {
-        CompanyDetailProjection p = mock(CompanyDetailProjection.class);
-        given(p.getCorpCode()).willReturn(TARGET);
-        given(p.getCorpName()).willReturn("SK하이닉스");
-        given(p.getIndustryCode()).willReturn(industryCode);
-        given(p.getIndustryName()).willReturn(industryName);
-        return p;
+        CompanyDetailProjection projection = mock(CompanyDetailProjection.class);
+        given(projection.getCorpCode()).willReturn(TARGET);
+        given(projection.getCorpName()).willReturn("SK하이닉스");
+        given(projection.getIndustryCode()).willReturn(industryCode);
+        given(projection.getIndustryName()).willReturn(industryName);
+        return projection;
     }
 
     private IndustryComparisonProjection row(String corpCode, String corpName, String metricCode,
                                              Integer fiscalYear, BigDecimal value, Short valueScale) {
-        IndustryComparisonProjection p = mock(IndustryComparisonProjection.class);
-        given(p.getCorpCode()).willReturn(corpCode);
-        given(p.getCorpName()).willReturn(corpName);
-        given(p.getMetricCode()).willReturn(metricCode);
-        given(p.getFiscalYear()).willReturn(fiscalYear);
-        given(p.getValue()).willReturn(value);
-        given(p.getValueScale()).willReturn(valueScale);
-        return p;
+        IndustryComparisonProjection projection = mock(IndustryComparisonProjection.class);
+        given(projection.getCorpCode()).willReturn(corpCode);
+        given(projection.getCorpName()).willReturn(corpName);
+        given(projection.getMetricCode()).willReturn(metricCode);
+        given(projection.getFiscalYear()).willReturn(fiscalYear);
+        given(projection.getValue()).willReturn(value);
+        given(projection.getValueScale()).willReturn(valueScale);
+        return projection;
     }
 }

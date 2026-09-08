@@ -328,7 +328,7 @@ class CompanyMetricServiceTest {
                 service.getTimeseries(CORP_CODE, null, null, null).series().getFirst().points();
 
         assertThat(points).hasSize(5);
-        assertThat(points).allMatch(p -> p.value() == null && p.changeRate() == null);
+        assertThat(points).allMatch(point -> point.value() == null && point.changeRate() == null);
     }
 
     @Test

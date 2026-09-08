@@ -26,18 +26,18 @@ public class CompanyDetailService {
      */
     @Transactional(readOnly = true)
     public CompanyDetailResponse getCompany(String corpCode) {
-        CompanyDetailProjection p = companyRepository.findDetailByCorpCode(corpCode)
+        CompanyDetailProjection projection = companyRepository.findDetailByCorpCode(corpCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         return new CompanyDetailResponse(
-                p.getCorpCode(),
-                p.getCorpName(),
-                p.getIndustryCode(),
-                p.getIndustryName(),
-                p.getCeoNm(),
-                p.getEstablishedDate(),
-                p.getAddress(),
-                p.getHomepageUrl(),
-                p.getDataYear());
+                projection.getCorpCode(),
+                projection.getCorpName(),
+                projection.getIndustryCode(),
+                projection.getIndustryName(),
+                projection.getCeoNm(),
+                projection.getEstablishedDate(),
+                projection.getAddress(),
+                projection.getHomepageUrl(),
+                projection.getDataYear());
     }
 }

@@ -37,8 +37,8 @@ class CompanyDetailServiceTest {
     @DisplayName("헤더 조회는 프로젝션을 응답 DTO 로 그대로 옮긴다")
     void mapsProjectionToResponse() {
         // 목을 만드는 것도 스터빙이라 바깥 given(...) 안에서 만들면 스터빙이 겹친다.
-        CompanyDetailProjection p = projection();
-        given(companyRepository.findDetailByCorpCode(CORP_CODE)).willReturn(Optional.of(p));
+        CompanyDetailProjection projection = projection();
+        given(companyRepository.findDetailByCorpCode(CORP_CODE)).willReturn(Optional.of(projection));
 
         CompanyDetailResponse response = service.getCompany(CORP_CODE);
 
@@ -55,9 +55,9 @@ class CompanyDetailServiceTest {
     @Test
     @DisplayName("적재된 지표가 하나도 없으면 dataYear 는 null 이다")
     void nullDataYearWhenNothingLoaded() {
-        CompanyDetailProjection p = projection();
-        given(p.getDataYear()).willReturn(null);
-        given(companyRepository.findDetailByCorpCode(CORP_CODE)).willReturn(Optional.of(p));
+        CompanyDetailProjection projection = projection();
+        given(projection.getDataYear()).willReturn(null);
+        given(companyRepository.findDetailByCorpCode(CORP_CODE)).willReturn(Optional.of(projection));
 
         assertThat(service.getCompany(CORP_CODE).dataYear()).isNull();
     }
@@ -65,10 +65,10 @@ class CompanyDetailServiceTest {
     @Test
     @DisplayName("주소·홈페이지가 아직 적재되지 않았어도 오류가 아니라 null 로 나간다")
     void nullAddressAndHomepageAreNotAnError() {
-        CompanyDetailProjection p = projection();
-        given(p.getAddress()).willReturn(null);
-        given(p.getHomepageUrl()).willReturn(null);
-        given(companyRepository.findDetailByCorpCode(CORP_CODE)).willReturn(Optional.of(p));
+        CompanyDetailProjection projection = projection();
+        given(projection.getAddress()).willReturn(null);
+        given(projection.getHomepageUrl()).willReturn(null);
+        given(companyRepository.findDetailByCorpCode(CORP_CODE)).willReturn(Optional.of(projection));
 
         CompanyDetailResponse response = service.getCompany(CORP_CODE);
 
@@ -90,16 +90,16 @@ class CompanyDetailServiceTest {
     }
 
     private CompanyDetailProjection projection() {
-        CompanyDetailProjection p = mock(CompanyDetailProjection.class);
-        given(p.getCorpCode()).willReturn(CORP_CODE);
-        given(p.getCorpName()).willReturn("SK하이닉스");
-        given(p.getIndustryCode()).willReturn("26");
-        given(p.getIndustryName()).willReturn("전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업");
-        given(p.getCeoNm()).willReturn("곽노정");
-        given(p.getEstablishedDate()).willReturn(LocalDate.of(1949, 10, 15));
-        given(p.getAddress()).willReturn("경기도 이천시 부발읍 경충대로 2091");
-        given(p.getHomepageUrl()).willReturn("https://www.skhynix.com");
-        given(p.getDataYear()).willReturn(2025);
-        return p;
+        CompanyDetailProjection projection = mock(CompanyDetailProjection.class);
+        given(projection.getCorpCode()).willReturn(CORP_CODE);
+        given(projection.getCorpName()).willReturn("SK하이닉스");
+        given(projection.getIndustryCode()).willReturn("26");
+        given(projection.getIndustryName()).willReturn("전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업");
+        given(projection.getCeoNm()).willReturn("곽노정");
+        given(projection.getEstablishedDate()).willReturn(LocalDate.of(1949, 10, 15));
+        given(projection.getAddress()).willReturn("경기도 이천시 부발읍 경충대로 2091");
+        given(projection.getHomepageUrl()).willReturn("https://www.skhynix.com");
+        given(projection.getDataYear()).willReturn(2025);
+        return projection;
     }
 }

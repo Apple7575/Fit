@@ -277,40 +277,40 @@ class CompanyNewsServiceTest {
     private static NewsItemProjection news(long id, String title, String description,
                                            String publishedAt, String category,
                                            String relatedBusiness, String score) {
-        NewsItemProjection p = mock(NewsItemProjection.class);
-        given(p.getId()).willReturn(id);
-        given(p.getTitle()).willReturn(title);
-        given(p.getDescription()).willReturn(description);
-        given(p.getPublishedAt()).willReturn(LocalDate.parse(publishedAt));
-        given(p.getOriginalUrl()).willReturn("https://news.example.com/" + id);
-        given(p.getCategory()).willReturn(category);
-        given(p.getRelatedBusiness()).willReturn(relatedBusiness);
-        given(p.getImportanceScore()).willReturn(score == null ? null : new BigDecimal(score));
-        return p;
+        NewsItemProjection projection = mock(NewsItemProjection.class);
+        given(projection.getId()).willReturn(id);
+        given(projection.getTitle()).willReturn(title);
+        given(projection.getDescription()).willReturn(description);
+        given(projection.getPublishedAt()).willReturn(LocalDate.parse(publishedAt));
+        given(projection.getOriginalUrl()).willReturn("https://news.example.com/" + id);
+        given(projection.getCategory()).willReturn(category);
+        given(projection.getRelatedBusiness()).willReturn(relatedBusiness);
+        given(projection.getImportanceScore()).willReturn(score == null ? null : new BigDecimal(score));
+        return projection;
     }
 
     private static TopNewsProjection top(long id, String title, String category, String score) {
-        TopNewsProjection p = mock(TopNewsProjection.class);
-        given(p.getId()).willReturn(id);
-        given(p.getTitle()).willReturn(title);
-        given(p.getCategory()).willReturn(category);
-        given(p.getImportanceScore()).willReturn(new BigDecimal(score));
-        return p;
+        TopNewsProjection projection = mock(TopNewsProjection.class);
+        given(projection.getId()).willReturn(id);
+        given(projection.getTitle()).willReturn(title);
+        given(projection.getCategory()).willReturn(category);
+        given(projection.getImportanceScore()).willReturn(new BigDecimal(score));
+        return projection;
     }
 
     private static NewsKpiProjection kpi(long important, long investment, long tech, Boolean scored) {
-        NewsKpiProjection p = mock(NewsKpiProjection.class);
-        given(p.getImportantCount()).willReturn(important);
-        given(p.getInvestmentCount()).willReturn(investment);
-        given(p.getTechCount()).willReturn(tech);
-        given(p.getScored()).willReturn(scored);
-        return p;
+        NewsKpiProjection projection = mock(NewsKpiProjection.class);
+        given(projection.getImportantCount()).willReturn(important);
+        given(projection.getInvestmentCount()).willReturn(investment);
+        given(projection.getTechCount()).willReturn(tech);
+        given(projection.getScored()).willReturn(scored);
+        return projection;
     }
 
     private static CategoryCountProjection category(String name, long count) {
-        CategoryCountProjection p = mock(CategoryCountProjection.class);
-        given(p.getCategory()).willReturn(name);
-        given(p.getCount()).willReturn(count);
-        return p;
+        CategoryCountProjection projection = mock(CategoryCountProjection.class);
+        given(projection.getCategory()).willReturn(name);
+        given(projection.getCount()).willReturn(count);
+        return projection;
     }
 }

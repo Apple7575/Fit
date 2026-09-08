@@ -91,15 +91,15 @@ public class CompanyNewsService {
                 PageRequest.of(page - 1, size));
 
         List<CompanyNewsResponse.Item> items = found.getContent().stream()
-                .map(p -> new CompanyNewsResponse.Item(
-                        p.getId(),
-                        p.getTitle(),
-                        p.getDescription(),
-                        p.getPublishedAt(),
-                        p.getOriginalUrl(),
-                        p.getCategory(),
-                        p.getRelatedBusiness(),
-                        p.getImportanceScore()))
+                .map(projection -> new CompanyNewsResponse.Item(
+                        projection.getId(),
+                        projection.getTitle(),
+                        projection.getDescription(),
+                        projection.getPublishedAt(),
+                        projection.getOriginalUrl(),
+                        projection.getCategory(),
+                        projection.getRelatedBusiness(),
+                        projection.getImportanceScore()))
                 .toList();
 
         return new CompanyNewsResponse(items, found.getTotalElements());
