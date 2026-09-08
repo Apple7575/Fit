@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AuthButtons } from '../../features/auth/AuthButtons';
 
 interface LandingHeaderProps {
   /** "기업 검색" 버튼 — 히어로 검색창으로 스크롤·포커스 */
@@ -8,7 +9,6 @@ interface LandingHeaderProps {
 
 /**
  * 랜딩 상단 헤더. 처음엔 투명, 히어로를 지나면 흰 반투명 + blur.
- * 로그인은 현재 범위에 없어 넣지 않는다.
  */
 export function LandingHeader({ onSearchClick }: LandingHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -55,6 +55,7 @@ export function LandingHeader({ onSearchClick }: LandingHeaderProps) {
           >
             기업 검색
           </button>
+          <AuthButtons />
         </nav>
       </div>
     </header>
