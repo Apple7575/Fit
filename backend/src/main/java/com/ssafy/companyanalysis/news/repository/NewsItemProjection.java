@@ -8,6 +8,8 @@ import java.time.LocalDate;
  *
  * <p>{@code publishedAt} 이 날짜인 것은 쿼리에서 서울 기준으로 잘라 오기 때문이다. 저장은
  * 시각까지 하지만 응답에는 날짜만 나간다.
+ *
+ * <p>V16 에서 description · category · relatedBusiness 가 빠졌다. 남은 AI 값은 중요도뿐이다.
  */
 public interface NewsItemProjection {
 
@@ -15,17 +17,9 @@ public interface NewsItemProjection {
 
     String getTitle();
 
-    String getDescription();
-
     LocalDate getPublishedAt();
 
     String getOriginalUrl();
-
-    /** AI 분류 결과. 분석이 실패했으면 null. */
-    String getCategory();
-
-    /** AI 가 뽑은 관련 사업. 없으면 null. */
-    String getRelatedBusiness();
 
     /** AI 중요도 0.0~10.0. 없으면 null 이며 0 과 다른 사실이다. */
     BigDecimal getImportanceScore();

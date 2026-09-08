@@ -16,7 +16,9 @@ public record TopNewsResponse(List<Item> items) {
      *
      * <p>{@code rank} 는 1부터다. 응답 순서로도 알 수 있지만, 화면이 순위를 숫자로 보여주고
      * 네 유형을 섞어 다시 정렬하는 경우가 있어 항목에 남긴다.
+     *
+     * <p>V16 에서 category 가 빠졌다.
      */
-    public record Item(int rank, long id, String title, String category, BigDecimal importanceScore) {
+    public record Item(int rank, long id, String title, BigDecimal importanceScore) {
     }
 }

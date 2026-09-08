@@ -14,7 +14,5 @@ public interface TopNewsProjection {
 
     String getTitle();
 
-    String getCategory();
-
     BigDecimal getImportanceScore();
 }

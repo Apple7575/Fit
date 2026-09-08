@@ -26,11 +26,15 @@ import java.util.List;
  *
  * <p>별칭을 큰따옴표로 감싼 것은 PostgreSQL 이 따옴표 없는 식별자를 소문자로 접어
  * 프로젝션의 getter 와 어긋나기 때문이다.
+ *
+ * <p>V16 에서 news_category · description · related_business 가 사라졌다. 카테고리로
+ * 자르던 조회(목록 필터 · 투자·기술 KPI · 분포)는 근거가 없어져 함께 없앴고, 남은 분류
+ * 축은 중요도 하나다.
  */
 public interface CompanyNewsRepository extends Repository<Company, String> {
 
     /**
-     * 뉴스 목록. 카테고리를 주면 그 카테고리만, 주지 않으면 전체다.
+     * 뉴스 목록.
      *
      * <p>정렬은 {@code Pageable} 이 아니라 쿼리가 정한다. 명세의 정렬값(latest·importance)이
      * 컬럼 이름과 1:1 이 아니고, 같은 값이 겹칠 때의 2·3차 기준까지 정해 두어야 페이지를
@@ -45,17 +49,13 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
     @Query(value = """
             SELECT n.id                                              AS "id",
                    n.title                                           AS "title",
-                   n.description                                     AS "description",
                    (n.published_at AT TIME ZONE 'Asia/Seoul')::date  AS "publishedAt",
                    n.original_url                                    AS "originalUrl",
-                   n.news_category                                        AS "category",
-                   n.related_business                                AS "relatedBusiness",
                    n.importance_score                                AS "importanceScore"
             FROM news_article n
             WHERE n.corp_code    = :corpCode
               AND n.published_at IS NOT NULL
               AND n.published_at >= :since
-              AND (cast(:category AS varchar) IS NULL OR n.news_category = :category)
             ORDER BY CASE WHEN cast(:importanceFirst AS boolean) THEN n.importance_score END DESC NULLS LAST,
                      n.published_at DESC,
                      n.id DESC
@@ -66,12 +66,10 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
             WHERE n.corp_code    = :corpCode
               AND n.published_at IS NOT NULL
               AND n.published_at >= :since
-              AND (cast(:category AS varchar) IS NULL OR n.news_category = :category)
             """,
             nativeQuery = true)
     Page<NewsItemProjection> findNews(@Param("corpCode") String corpCode,
                                       @Param("since") OffsetDateTime since,
-                                      @Param("category") String category,
                                       @Param("importanceFirst") boolean importanceFirst,
                                       Pageable pageable);
 
@@ -88,7 +86,6 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
     @Query(value = """
             SELECT n.id               AS "id",
                    n.title            AS "title",
-                   n.news_category         AS "category",
                    n.importance_score AS "importanceScore"
             FROM news_article n
             WHERE n.corp_code        = :corpCode
@@ -102,7 +99,7 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
                                         @Param("since") OffsetDateTime since,
                                         @Param("limit") int limit);
 
-    /** 기간 내 뉴스 수. 분류·중요도와 무관하게 전부 센다. */
+    /** 기간 내 뉴스 수. 중요도와 무관하게 전부 센다. */
     @Query(value = """
             SELECT count(*)
             FROM news_article
@@ -113,22 +110,15 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
     long countNews(@Param("corpCode") String corpCode, @Param("since") OffsetDateTime since);
 
     /**
-     * 이슈 KPI 세 건과 "중요도가 매겨진 뉴스가 있었나"를 한 번에 센다.
+     * 중요 이슈 수와 "중요도가 매겨진 뉴스가 있었나"를 한 번에 센다.
      *
-     * <p>투자·기술 건수는 중요 이슈 안에서 센다. 카테고리 전체 건수는 분포 조회가 따로 준다.
-     * 프론트 목업이 중요 이슈 12건에 투자 5·기술 7 로 되어 있어 부분집합으로 읽었다.
-     *
-     * <p>{@code scored} 가 없으면 세 건수가 모두 0 으로 나오는데, 그것이 "중요한 일이 없었다"인지
+     * <p>{@code scored} 가 없으면 건수가 0 으로 나오는데, 그것이 "중요한 일이 없었다"인지
      * "분석이 아직 안 돌았다"인지 구분할 수 없다. 그래서 중요도가 매겨진 뉴스의 존재를 함께
-     * 물어보고, 없으면 서비스가 세 값을 null 로 바꾼다.
+     * 물어보고, 없으면 서비스가 값을 null 로 바꾼다.
      */
     @Query(value = """
-            SELECT count(*) FILTER (WHERE importance_score >= :threshold)                        AS "importantCount",
-                   count(*) FILTER (WHERE importance_score >= :threshold
-                                      AND news_category = :investmentCategory)                        AS "investmentCount",
-                   count(*) FILTER (WHERE importance_score >= :threshold
-                                      AND news_category = :techCategory)                              AS "techCount",
-                   bool_or(importance_score IS NOT NULL)                                         AS "scored"
+            SELECT count(*) FILTER (WHERE importance_score >= :threshold) AS "importantCount",
+                   bool_or(importance_score IS NOT NULL)                  AS "scored"
             FROM news_article
             WHERE corp_code    = :corpCode
               AND published_at IS NOT NULL
@@ -136,30 +126,5 @@ public interface CompanyNewsRepository extends Repository<Company, String> {
             """, nativeQuery = true)
     NewsKpiProjection findKpis(@Param("corpCode") String corpCode,
                                @Param("since") OffsetDateTime since,
-                               @Param("threshold") BigDecimal threshold,
-                               @Param("investmentCategory") String investmentCategory,
-                               @Param("techCategory") String techCategory);
-
-    /**
-     * 카테고리별 건수. 분류하지 못한 뉴스는 빠진다.
-     *
-     * <p>분류 실패를 "기타"로 묶지 않는다. 분류가 안 된 것과 실제로 그 카테고리인 것은 다른
-     * 사실이고, 도넛 차트에 회색 조각으로 들어가면 실제 분포가 왜곡된다.
-     *
-     * <p>많은 순으로 정렬한다. 화면이 도넛과 범례를 순서대로 그리므로 조회할 때마다 조각
-     * 순서가 바뀌면 안 된다. 같은 건수는 이름순으로 갈라 순서를 고정한다.
-     */
-    @Query(value = """
-            SELECT news_category   AS "category",
-                   count(*)   AS "count"
-            FROM news_article
-            WHERE corp_code    = :corpCode
-              AND published_at IS NOT NULL
-              AND published_at >= :since
-              AND news_category    IS NOT NULL
-            GROUP BY news_category
-            ORDER BY count(*) DESC, news_category
-            """, nativeQuery = true)
-    List<CategoryCountProjection> countByCategory(@Param("corpCode") String corpCode,
-                                                  @Param("since") OffsetDateTime since);
+                               @Param("threshold") BigDecimal threshold);
 }

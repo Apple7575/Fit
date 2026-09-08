@@ -56,25 +56,25 @@ public class CompanyNewsController {
     /**
      * 최신 뉴스 목록. 없으면 빈 배열이고 total 은 0 이다.
      *
-     * @param category 생략하면 전체
-     * @param sort     latest 또는 importance. 그 밖의 값은 400 INVALID_PARAMETER
+     * <p>V16 에서 category 파라미터가 사라졌다. 자를 근거가 되던 컬럼이 ERD 에서 빠졌다.
+     *
+     * @param sort latest 또는 importance. 그 밖의 값은 400 INVALID_PARAMETER
      */
     @GetMapping
     public ApiResponse<CompanyNewsResponse> getNews(
             @PathVariable String corpCode,
-            @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "" + DEFAULT_NEWS_DAYS) @Min(1) @Max(MAX_DAYS) int days,
             @RequestParam(defaultValue = DEFAULT_SORT) @NotBlank String sort,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE) @Min(1) int page,
             @RequestParam(defaultValue = "" + DEFAULT_SIZE) @Min(1) @Max(MAX_SIZE) int size) {
 
-        return ApiResponse.ok(companyNewsService.getNews(corpCode, category, days, sort, page, size));
+        return ApiResponse.ok(companyNewsService.getNews(corpCode, days, sort, page, size));
     }
 
     /**
-     * 뉴스 KPI와 이슈 분포.
+     * 뉴스 KPI.
      *
-     * <p>기간이 둘이다. 뉴스 수는 {@code newsDays}, 이슈 관련 값과 분포는 {@code issueDays} 를
+     * <p>기간이 둘이다. 뉴스 수는 {@code newsDays}, 이슈 관련 값은 {@code issueDays} 를
      * 본다. 명세 초안의 단일 {@code days} 를 화면 구성에 맞춰 나눈 것이다.
      */
     @GetMapping("/stats")
