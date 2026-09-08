@@ -374,13 +374,11 @@ class MissingDataResponseContractTest {
     }
 
     @Test
-    @DisplayName("규칙3 - AI 분석이 안 돌았으면 이슈 KPI 는 0 이 아니라 null 이다")
+    @DisplayName("규칙3 - AI 분석이 안 돌았으면 중요 이슈 수는 0 이 아니라 null 이다")
     void unanalyzedNewsKpisAreNullNotZero() throws Exception {
         // 뉴스는 수집됐지만 중요도 분석이 아직 안 돌아간 기업.
         given(companyNewsService.getStats(eq(CORP_CODE), anyInt(), anyInt()))
-                .willReturn(new NewsStatsResponse(
-                        new NewsStatsResponse.Kpis(48L, 7, null, null, null, 30),
-                        new NewsStatsResponse.Distribution(30, null, List.of())));
+                .willReturn(new NewsStatsResponse(new NewsStatsResponse.Kpis(48L, 7, null, 30)));
 
         mockMvc.perform(get("/api/companies/{corpCode}/news/stats", CORP_CODE))
                 .andExpect(status().isOk())
@@ -389,23 +387,18 @@ class MissingDataResponseContractTest {
                 .andExpect(jsonPath("$.data.kpis.recentNewsCount").value(48))
                 .andExpect(jsonPath("$.data.kpis.importantIssueCount").hasJsonPath())
                 .andExpect(jsonPath("$.data.kpis.importantIssueCount").value(nullValue()))
-                .andExpect(jsonPath("$.data.kpis.techIssueCount").hasJsonPath())
-                .andExpect(jsonPath("$.data.kpis.techIssueCount").value(nullValue()))
                 // 기간은 값이 없어도 되돌려준다. 화면이 "최근 30일"을 표시해야 한다.
-                .andExpect(jsonPath("$.data.kpis.issueDays").value(30))
-                .andExpect(jsonPath("$.data.distribution.total").hasJsonPath())
-                .andExpect(jsonPath("$.data.distribution.total").value(nullValue()))
-                .andExpect(jsonPath("$.data.distribution.byCategory", hasSize(0)));
+                .andExpect(jsonPath("$.data.kpis.issueDays").value(30));
     }
 
     @Test
-    @DisplayName("규칙2 - AI 분류가 실패한 뉴스도 목록에 남고 분석 필드만 null 이다")
+    @DisplayName("규칙2 - 중요도 분석이 실패한 뉴스도 목록에 남고 그 필드만 null 이다")
     void unanalyzedNewsItemKeepsBasicFields() throws Exception {
-        given(companyNewsService.getNews(eq(CORP_CODE), any(), anyInt(), anyString(), anyInt(), anyInt()))
+        given(companyNewsService.getNews(eq(CORP_CODE), anyInt(), anyString(), anyInt(), anyInt()))
                 .willReturn(new CompanyNewsResponse(List.of(
-                        new CompanyNewsResponse.Item(10241, "공장 건설 본격화", null,
+                        new CompanyNewsResponse.Item(10241, "공장 건설 본격화",
                                 LocalDate.of(2025, 5, 13), "https://news.example.com/10241",
-                                null, null, null)), 1));
+                                null)), 1));
 
         mockMvc.perform(get("/api/companies/{corpCode}/news", CORP_CODE))
                 .andExpect(status().isOk())
@@ -413,10 +406,6 @@ class MissingDataResponseContractTest {
                 // 제목과 링크는 그대로 그린다.
                 .andExpect(jsonPath("$.data.items[0].title").value("공장 건설 본격화"))
                 .andExpect(jsonPath("$.data.items[0].originalUrl").value("https://news.example.com/10241"))
-                .andExpect(jsonPath("$.data.items[0].category").hasJsonPath())
-                .andExpect(jsonPath("$.data.items[0].category").value(nullValue()))
-                .andExpect(jsonPath("$.data.items[0].relatedBusiness").hasJsonPath())
-                .andExpect(jsonPath("$.data.items[0].relatedBusiness").value(nullValue()))
                 .andExpect(jsonPath("$.data.items[0].importanceScore").hasJsonPath())
                 .andExpect(jsonPath("$.data.items[0].importanceScore").value(nullValue()));
     }
