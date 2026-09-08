@@ -2,12 +2,18 @@ import { ApiError, apiGet } from '../../api/client';
 import {
   emptyIndustryComparison,
   mockComparisonInsightsByCompany,
+  mockComparisonTrendRange,
   mockComparisonTrendSeriesByCompany,
   mockIndustryCompaniesByIndustry,
   mockIndustryComparisonByCompany,
 } from '../../mocks/industryComparison';
-import { TREND_END_YEAR, TREND_START_YEAR } from '../financial-trend/types';
-import { toComparisonTrend, TREND_SOURCE_KEYS, type TrendSeriesLike } from './trend';
+import {
+  emptyComparisonTrend,
+  toComparisonTrend,
+  TREND_SOURCE_KEYS,
+  type TrendRange,
+  type TrendSeriesLike,
+} from './trend';
 import {
   COMPARISON_METRIC_KEYS,
   type ComparisonInsight,
@@ -198,15 +204,19 @@ export async function fetchComparisonInsights(
   return toComparisonInsights(data);
 }
 
-/** GET /metrics/timeseries 의 data 부분 (여기서 쓰는 필드만) */
+/** GET /metrics/timeseries 의 data 부분 (여기서 쓰는 필드만). range 는 서버가 실제로 조회한 구간이다. */
 interface TimeseriesResponse {
+  range: TrendRange;
   series?: TrendSeriesLike[];
 }
 
 /**
  * 비교 기업 한 곳의 5개년 지표. timeseries 를 keys=5종 으로 한 번 부르고,
- * 매출 성장률·영업이익률은 시계열에서 계산한다. 기업이 없으면(404) 값이 전부 null 인 행으로 돌려
- * 다른 기업의 선까지 사라지지 않게 한다.
+ * 매출 성장률·영업이익률은 시계열에서 계산한다. 기업이 없으면(404) 구간을 모르므로 빈 행으로 돌리고,
+ * 호출부(fetchComparisonTrends)가 다른 기업의 구간으로 채워 선이 사라지지 않게 한다.
+ *
+ * 구간(from·to)은 보내지 않는다. 비교 조회(/industry-comparison)도 연도를 생략하므로 둘 다
+ * 서버가 같은 기준연도로 맞추고, 화면은 응답의 range 를 연도 축으로 쓴다.
  */
 export async function fetchComparisonTrend(
   company: IndustryCompany,
@@ -218,32 +228,38 @@ export async function fetchComparisonTrend(
       company.corpCode,
       company.corpName,
       mockComparisonTrendSeriesByCompany[company.corpCode] ?? [],
+      mockComparisonTrendRange,
     );
   }
 
-  const params = new URLSearchParams({
-    from: String(TREND_START_YEAR),
-    to: String(TREND_END_YEAR),
-    keys: TREND_SOURCE_KEYS.join(','),
-  });
+  const params = new URLSearchParams({ keys: TREND_SOURCE_KEYS.join(',') });
   try {
     const data = await apiGet<TimeseriesResponse>(
       `/api/companies/${encodeURIComponent(company.corpCode)}/metrics/timeseries?${params}`,
       { signal },
     );
-    return toComparisonTrend(company.corpCode, company.corpName, data.series ?? []);
+    return toComparisonTrend(company.corpCode, company.corpName, data.series ?? [], data.range);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      return toComparisonTrend(company.corpCode, company.corpName, []);
+      return emptyComparisonTrend(company.corpCode, company.corpName);
     }
     throw error;
   }
 }
 
-/** 선택된 기업 전부의 5개년 지표를 병렬로. 하나라도 5xx 면 전체 실패(재시도 안내). */
-export function fetchComparisonTrends(
+/**
+ * 선택된 기업 전부의 5개년 지표를 병렬로. 하나라도 5xx 면 전체 실패(재시도 안내).
+ * 404 로 구간을 못 받은 기업은 다른 기업이 받은 구간으로 값 없는 행을 만들어 같은 축에 놓는다.
+ */
+export async function fetchComparisonTrends(
   companies: IndustryCompany[],
   signal?: AbortSignal,
 ): Promise<CompanyTrend[]> {
-  return Promise.all(companies.map((c) => fetchComparisonTrend(c, signal)));
+  const trends = await Promise.all(companies.map((c) => fetchComparisonTrend(c, signal)));
+  const known = trends.find((t) => t.years.length > 0);
+  if (!known) return trends;
+  const range = { from: known.years[0], to: known.years[known.years.length - 1] };
+  return trends.map((t) =>
+    t.years.length > 0 ? t : toComparisonTrend(t.corpCode, t.corpName, [], range),
+  );
 }

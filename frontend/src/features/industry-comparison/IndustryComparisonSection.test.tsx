@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../api/client';
-import { toComparisonInsights } from './api';
+import { fetchComparisonTrends, toComparisonInsights } from './api';
 import {
   ComparisonResult,
   IndustryComparisonSection,
@@ -74,12 +74,14 @@ const yearRow = (revenue: number | null, op: number | null) => ({
   operating_profit: op,
   operating_margin: revenue && op !== null ? Math.round((op / revenue) * 1000) / 10 : null,
 });
+const YEARS = [2021, 2022, 2023, 2024, 2025];
 const trendsOk: ComparisonTrendsState = {
   status: 'success',
   data: [
     {
       corpCode: '00126380',
       corpName: '삼성전자',
+      years: YEARS,
       values: {
         2021: yearRow(279_600e9, 51_600e9),
         2022: yearRow(302_200e9, 43_400e9),
@@ -91,6 +93,7 @@ const trendsOk: ComparisonTrendsState = {
     {
       corpCode: '00164779',
       corpName: 'SK하이닉스',
+      years: YEARS,
       values: {
         2021: yearRow(42_900e9, 12_400e9),
         2022: yearRow(44_600e9, 6_800e9),
@@ -127,11 +130,34 @@ describe('ComparisonResult', () => {
     expect(legend.getByText('SK하이닉스')).toBeInTheDocument();
   });
 
+  it('labels the chart with the range the trends came back with', () => {
+    const shifted: ComparisonTrendsState = {
+      status: 'success',
+      data: [
+        {
+          corpCode: '00126380',
+          corpName: '삼성전자',
+          years: [2022, 2023, 2024, 2025, 2026],
+          values: { 2022: yearRow(1, 1), 2023: yearRow(2, 1), 2024: yearRow(3, 1), 2025: yearRow(4, 1), 2026: yearRow(5, 1) },
+        },
+      ],
+    };
+    render(
+      <ComparisonResult comparison={comparison} insights={okInsights} metricKey="revenue" trends={shifted} />,
+    );
+
+    expect(screen.getByRole('heading', { name: /매출 5개년 비교/ })).toHaveTextContent('2022–2026');
+    const chart = screen.getByRole('img', { name: '매출 기업별 5개년 비교 차트' });
+    expect(within(chart).getAllByTestId('line-point')).toHaveLength(5);
+  });
+
   it('shows a loading placeholder and an error notice for the trend chart only', () => {
     const { unmount } = render(
       <ComparisonResult comparison={comparison} insights={okInsights} metricKey="revenue" trends={{ status: 'loading' }} />,
     );
     expect(screen.getByRole('status')).toHaveTextContent('5개년 지표를 불러오는 중');
+    // 구간은 응답에서만 오므로 도착 전에는 연도를 표시하지 않는다
+    expect(screen.getByRole('heading', { name: /매출 5개년 비교/ })).toHaveTextContent('(단위: 원)');
     expect(screen.getByRole('table', { name: '기업별 비교 지표 전체 표' })).toBeInTheDocument();
     unmount();
 
@@ -189,6 +215,38 @@ describe('ComparisonResult', () => {
       />,
     );
     expect(screen.getByText('비교할 동종 기업 정보가 없습니다')).toBeInTheDocument();
+  });
+});
+
+describe('fetchComparisonTrends', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('puts a 404 company on the range the other companies came back with', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        Promise.resolve(
+          String(input).includes('/companies/GONE/')
+            ? json({ success: false, error: { code: 'COMPANY_NOT_FOUND', message: 'x' } }, 404)
+            : json({
+                success: true,
+                data: {
+                  range: { from: 2022, to: 2026 },
+                  series: [{ key: 'revenue', points: [{ year: 2026, value: 1 }] }],
+                },
+              }),
+        ),
+      ),
+    );
+
+    const trends = await fetchComparisonTrends([
+      { corpCode: 'GONE', corpName: '없는기업' },
+      { corpCode: 'A', corpName: '에이' },
+    ]);
+
+    expect(trends[1].years).toEqual([2022, 2023, 2024, 2025, 2026]);
+    expect(trends[0].years).toEqual([2022, 2023, 2024, 2025, 2026]);
+    expect(Object.values(trends[0].values[2026]).every((v) => v === null)).toBe(true);
   });
 });
 
@@ -289,6 +347,14 @@ describe('IndustryComparisonSection', () => {
     expect(urls[0]).not.toContain('peers=');
     // peers 가 없으면 인사이트도 요청하지 않는다
     expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/insights'))).toBe(false);
+    // 5개년 시계열도 구간을 박지 않고 서버 기준연도를 따른다 (비교 조회와 같은 해)
+    const trendUrls = fetchMock.mock.calls
+      .map((c) => String(c[0]))
+      .filter((u) => u.includes('/metrics/timeseries'));
+    expect(trendUrls).toHaveLength(1);
+    expect(trendUrls[0]).toContain('keys=revenue%2Coperating_profit%2Cemployee_count%2Caverage_salary%2Crd_ratio');
+    expect(trendUrls[0]).not.toContain('from=');
+    expect(trendUrls[0]).not.toContain('to=');
   });
 
   it('preselects the top three same-industry companies and requests insights for them', async () => {

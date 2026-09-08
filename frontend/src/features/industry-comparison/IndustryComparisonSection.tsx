@@ -16,7 +16,6 @@ import {
   type IndustryCompany,
   type IndustryComparison,
 } from './types';
-import { TREND_YEARS } from './trend';
 import {
   useComparisonInsights,
   type ComparisonInsightsState,
@@ -205,6 +204,9 @@ export function ComparisonResult({
   const unit = COMPARISON_METRIC_UNITS[metricKey];
   const unitLabel = UNIT_LABELS[unit];
   const ordered = [...companies].sort((a, b) => Number(b.isTarget) - Number(a.isTarget));
+  // 연도 축은 서버가 조회한 구간(응답 range)뿐이다. 도착 전에는 연도를 표시하지 않는다
+  const years = trends.status === 'success' ? (trends.data[0]?.years ?? []) : [];
+  const rangeLabel = years.length > 0 ? `${years[0]}–${years[years.length - 1]} · ` : '';
 
   if (companies.length === 0) {
     return (
@@ -224,7 +226,7 @@ export function ComparisonResult({
           <h3 className="text-base font-extrabold text-slate-950" id="comparison-chart-title">
             {label} 5개년 비교{' '}
             <span className="text-xs font-semibold text-slate-400">
-              ({TREND_YEARS[0]}–{TREND_YEARS[TREND_YEARS.length - 1]} · 단위: {unitLabel})
+              ({rangeLabel}단위: {unitLabel})
             </span>
           </h3>
           <div className="mt-4">
@@ -247,7 +249,7 @@ export function ComparisonResult({
                     label: t.corpName,
                     color: isTarget ? TARGET_COLOR : LINE_COLORS[(i - 1 + LINE_COLORS.length) % LINE_COLORS.length],
                     emphasis: isTarget,
-                    points: TREND_YEARS.map((year) => ({
+                    points: years.map((year) => ({
                       x: String(year),
                       y: t.values[year]?.[metricKey] ?? null,
                     })),

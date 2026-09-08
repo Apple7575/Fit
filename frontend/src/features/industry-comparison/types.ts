@@ -86,6 +86,8 @@ export interface ComparisonInsight {
 export interface CompanyTrend {
   corpCode: string;
   corpName: string;
+  /** 서버가 조회한 구간의 연도 (오름차순). 응답의 range 에서 온다 */
+  years: number[];
   /** year → 지표 키 → 값 */
   values: Record<number, Partial<Record<ComparisonMetricKey, number | null>>>;
 }
