@@ -11,12 +11,32 @@ import { CompanyFocusTab } from '../pages/company-detail/CompanyFocusTab';
 import { CompanyIssuesTab } from '../pages/company-detail/CompanyIssuesTab';
 import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
 import { HomePage } from '../pages/home/HomePage';
+import { LoginPage } from '../pages/auth/LoginPage';
+import { SignupPage } from '../pages/auth/SignupPage';
+import { VerifyPage } from '../pages/auth/VerifyPage';
+import { VerifySentPage } from '../pages/auth/VerifySentPage';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage';
 
 const routes: RouteObject[] = [
   {
     path: '/',
     element: <HomePage />,
+  },
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/signup',
+    element: <SignupPage />,
+  },
+  {
+    path: '/verify-sent',
+    element: <VerifySentPage />,
+  },
+  {
+    path: '/verify',
+    element: <VerifyPage />,
   },
   {
     path: '/companies/:companyId',

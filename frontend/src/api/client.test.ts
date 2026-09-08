@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, apiGet } from './client';
+import { ApiError, apiGet, apiPost } from './client';
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -45,5 +45,28 @@ describe('apiGet', () => {
 
     const error = await apiGet('/api/x').catch((e: unknown) => e);
     expect(error).toMatchObject({ status: 0, code: 'NETWORK_ERROR' });
+  });
+});
+
+describe('apiPost', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  });
+
+  it('sends credentials and echoes the XSRF-TOKEN cookie as X-XSRF-TOKEN', async () => {
+    document.cookie = 'XSRF-TOKEN=token-123';
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ success: true, data: { id: 1 } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiPost('/api/auth/login', { email: 'a@b.com', password: 'secret12' });
+
+    const init = fetchMock.mock.calls[0][1];
+    expect(init.method).toBe('POST');
+    expect(init.credentials).toBe('include');
+    expect(init.headers['X-XSRF-TOKEN']).toBe('token-123');
+    expect(JSON.parse(init.body)).toEqual({ email: 'a@b.com', password: 'secret12' });
   });
 });
