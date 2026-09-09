@@ -1,6 +1,6 @@
 {
   "table": "metric",
-  "generated_at": "2026-09-08T05:01:59.585629+00:00",
+  "generated_at": "2026-09-09T02:18:35.706629+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "metric_code",
@@ -29,10 +29,11 @@
     "V13__erd_alignment.sql",
     "V14__users.sql",
     "V15__email_verification.sql",
-    "V16__news_article_drop_ai_columns.sql"
+    "V16__news_article_drop_ai_columns.sql",
+    "V17__erd_alignment_followup.sql"
   ],
   "source": "Flyway V2·V4·V5·V7·V13 의 INSERT (SQL 이 정본, 이것은 사본)",
-  "seed_rows": 12,
+  "seed_rows": 15,
   "null_counts": {
     "metric_code": 0,
     "name_ko": 0,

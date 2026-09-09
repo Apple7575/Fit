@@ -109,8 +109,13 @@ def header(table: str) -> list[str]:
             if not c.identity and c.name not in DB_MANAGED_COLUMNS]
 
 
-# Flyway V2 → V4(이름 변경) → V5 → V7 → V13 을 적용한 뒤의 metric 카탈로그.
-# SQL 이 정본이고 이것은 사본이다 — 어긋나면 --verify-db 가 잡는다.
+# Flyway V2 → V4(이름 변경) → V5 → V7 → V13 → V17 을 적용한 뒤의 metric 카탈로그.
+# SQL 이 정본이고 이것은 사본이다.
+#
+# **사본이라 낡는다.** 실제로 한 번 낡았다 — V17 이 rd_cost 를 rd_expense 로 바꾸고
+# 지표 셋을 더했는데 이 목록이 그대로여서, 이미 머지된 시드가 없는 코드(rd_cost)를
+# 들고 있었다. `--verify-db` 는 DB 가 최신일 때만 잡아서 놓쳤다.
+# 그래서 `_codes_from_flyway()` 가 생성할 때마다 마이그레이션과 코드 집합을 대조한다.
 METRIC_CATALOG = [
     # metric_code,            name_ko,        unit,     scale, source_type,           order, active, core
     ("revenue",                "매출액",         "KRW",    0, "FINANCIAL_STATEMENT",  1, True,  True),
@@ -120,9 +125,14 @@ METRIC_CATALOG = [
     ("average_salary",         "1인 평균 급여",  "KRW",    0, "EMPLOYEE_STATUS",      5, True,  True),
     ("average_tenure",         "평균 근속",      "YEAR",   1, "EMPLOYEE_STATUS",      6, True,  True),
     ("rd_ratio",               "R&D/매출",       "%",      1, "DERIVED",              7, True,  False),
-    ("rd_expense",             "R&D 비용",      "KRW",    0, "FINANCIAL_STATEMENT",  8, False, False),
+    # V17 이 rd_cost 를 이 이름으로 옮겼다. INSERT…SELECT 로 속성을 그대로 복사했으므로
+    # 값은 rd_cost 와 같다 (V5 가 만들고 V7 이 display_order 를 8 로 바꾼 것).
+    ("rd_expense",             "R&D 비용",       "KRW",    0, "FINANCIAL_STATEMENT",  8, False, False),
     ("total_liabilities",      "부채총계",       "KRW",    0, "FINANCIAL_STATEMENT", 20, False, False),
     ("total_equity",           "자본총계",       "KRW",    0, "FINANCIAL_STATEMENT", 21, False, False),
+    ("total_assets",           "자산총계",       "KRW",    0, "FINANCIAL_STATEMENT", 22, False, False),
+    ("regular_employee_count", "정규직 수",      "PERSON", 0, "EMPLOYEE_STATUS",     23, False, False),
+    ("contract_employee_count", "계약직 수",     "PERSON", 0, "EMPLOYEE_STATUS",     24, False, False),
     ("segment_revenue",        "사업부 매출",    "KRW",    0, "FINANCIAL_STATEMENT", 30, False, False),
     ("segment_employee_count", "사업부 직원 수", "PERSON", 0, "EMPLOYEE_STATUS",     31, False, False),
 ]
@@ -364,11 +374,71 @@ def _profile_fields(body: dict, stats: Counter) -> dict:
 
 # -------------------------------------------------------------------- metric
 
+# metric 카탈로그를 건드리는 문장. 값 전체를 해석하지는 않고 **코드 집합만** 본다 —
+# 이름·순서까지 SQL 에서 읽으려면 INSERT…SELECT 와 UPDATE 를 해석해야 해서 사실상
+# SQL 인터프리터가 된다. 코드가 늘거나 줄거나 바뀌는 것만 잡아도 이번 같은 드리프트는
+# 막힌다. 값 불일치는 --verify-db 몫이다.
+_METRIC_INSERT_VALUES = re.compile(
+    r"INSERT\s+INTO\s+metric\s*\([^)]*\)\s*VALUES(.*)", re.IGNORECASE | re.DOTALL)
+_METRIC_INSERT_SELECT = re.compile(
+    r"INSERT\s+INTO\s+metric\s*\([^)]*\)\s*SELECT\s+'([\w]+)'", re.IGNORECASE | re.DOTALL)
+_METRIC_DELETE = re.compile(
+    r"DELETE\s+FROM\s+metric\s+WHERE\s+metric_code\s*(?:=\s*'([\w]+)'"
+    r"|IN\s*\(([^)]*)\))", re.IGNORECASE | re.DOTALL)
+_QUOTED = re.compile(r"'([^']*)'")
+
+
+def _codes_from_flyway() -> set[str]:
+    """마이그레이션이 실제로 남긴 metric_code 집합.
+
+    V4 와 V17 처럼 `INSERT … SELECT` 로 새 코드를 만들고 옛 코드를 `DELETE` 하는
+    개명이 있어서, 넣은 것과 뺀 것을 순서대로 반영해야 지금 값이 나온다.
+    """
+    codes: set[str] = set()
+    for path in sorted(flyway.MIGRATION_DIR.glob("V*.sql"),
+                       key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
+        sql = path.read_text(encoding="utf-8")
+        for statement in sql.split(";"):
+            values = _METRIC_INSERT_VALUES.search(statement)
+            if values:
+                # ('revenue', '매출액', …), ('operating_profit', …) → 각 튜플의 첫 값
+                for tuple_body in re.findall(r"\(([^)]*)\)", values.group(1), re.DOTALL):
+                    first = _QUOTED.search(tuple_body)
+                    if first:
+                        codes.add(first.group(1))
+                continue
+            renamed = _METRIC_INSERT_SELECT.search(statement)
+            if renamed:
+                codes.add(renamed.group(1))
+                continue
+            # V4 는 CASE 로 두 코드를 한꺼번에 만든다 — SELECT 뒤가 리터럴이 아니다.
+            if re.search(r"INSERT\s+INTO\s+metric\b", statement, re.IGNORECASE) \
+                    and re.search(r"\bCASE\b", statement, re.IGNORECASE):
+                body = statement[re.search(r"\bCASE\b", statement, re.IGNORECASE).end():]
+                body = body[:re.search(r"\bEND\b", body, re.IGNORECASE).start()]
+                codes.update(m.group(1) for m in re.finditer(r"THEN\s+'([\w]+)'", body))
+                continue
+            removed = _METRIC_DELETE.search(statement)
+            if removed:
+                if removed.group(1):
+                    codes.discard(removed.group(1))
+                else:
+                    codes -= set(_QUOTED.findall(removed.group(2)))
+    return codes
+
+
 def build_metric() -> list[dict]:
     """지표 카탈로그. 요청 헤더의 scope 는 DB 에 없어 넣지 않는다 (③).
 
     사업부 지표를 가르는 것은 metric_code 접두사와 is_active=FALSE 다.
     """
+    catalog = {row[0] for row in METRIC_CATALOG}
+    migrations = _codes_from_flyway()
+    if catalog != migrations:
+        raise SystemExit(
+            "metric 카탈로그가 마이그레이션과 어긋난다 — METRIC_CATALOG 를 고쳐야 한다.\n"
+            f"  마이그레이션에만: {sorted(migrations - catalog) or '없음'}\n"
+            f"  카탈로그에만:     {sorted(catalog - migrations) or '없음'}")
     return [{
         "metric_code": code, "name_ko": name, "unit": unit, "value_scale": scale,
         "source_type": source, "display_order": order,
