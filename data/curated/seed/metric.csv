@@ -9,5 +9,8 @@ rd_ratio,R&D/매출,%,1,DERIVED,7,true,false
 rd_expense,R&D 비용,KRW,0,FINANCIAL_STATEMENT,8,false,false
 total_liabilities,부채총계,KRW,0,FINANCIAL_STATEMENT,20,false,false
 total_equity,자본총계,KRW,0,FINANCIAL_STATEMENT,21,false,false
+total_assets,자산총계,KRW,0,FINANCIAL_STATEMENT,22,false,false
+regular_employee_count,정규직 수,PERSON,0,EMPLOYEE_STATUS,23,false,false
+contract_employee_count,계약직 수,PERSON,0,EMPLOYEE_STATUS,24,false,false
 segment_revenue,사업부 매출,KRW,0,FINANCIAL_STATEMENT,30,false,false
 segment_employee_count,사업부 직원 수,PERSON,0,EMPLOYEE_STATUS,31,false,false

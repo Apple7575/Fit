@@ -118,7 +118,7 @@ email_verification_token,expires_at,4,TIMESTAMPTZ,NO,,,,만료 시각. 지나면
 email_verification_token,used_at,5,TIMESTAMPTZ,YES,,,,사용한 시각. 아직 안 썼으면 NULL,database,,미적재,,no,이메일 인증이 만드는 값이다. 시드 CSV 가 없다
 industry,industry_code,1,VARCHAR(10),NO,PK,,,KSIC 중분류 2자리 코드,flyway_seed,ksic_division.csv:ksic_division,raw,26,no,V3 이 config/ksic_division.csv 77건을 시드한다. KSIC 중분류 2자리
 industry,industry_name,2,VARCHAR(200),NO,,,,KSIC 중분류 명칭,flyway_seed,ksic_division.csv:division_name,raw,"전자부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",no,
-metric,metric_code,1,VARCHAR(40),NO,PK,,,keys 쿼리파라미터로 들어오고 응답의 metrics[].key · series[].key 로 나가는 값. v2 규약에 따라 축약하지 않은 snake_case 를 쓴다,flyway_seed,,constant,revenue,no,V2·V4·V5·V7 이 시드한다. API 경로변수 {metric} 값
+metric,metric_code,1,VARCHAR(40),NO,PK,,,keys 쿼리파라미터로 들어오고 응답의 metrics[].key · series[].key 로 나가는 값. 확정 ERD 의 metric_code 와 같은 이름을 쓴다,flyway_seed,,constant,revenue,no,V2·V4·V5·V7 이 시드한다. API 경로변수 {metric} 값
 metric,name_ko,2,VARCHAR(50),NO,,,,지표 한글명. 응답의 name,flyway_seed,,constant,매출액,no,
 metric,unit,3,VARCHAR(10),NO,,,,API 응답의 unit 필드에 그대로 실린다,flyway_seed,,constant,KRW,no,KRW/PERSON/YEAR/% 4종
 metric,value_scale,4,SMALLINT,NO,,,,"표시 소수 자릿수. 금액·인원은 0, 근속연수·비율은 1",flyway_seed,,constant,0,no,
@@ -148,6 +148,7 @@ news_article,related_business,9,VARCHAR(200),YES,,,,AI 가 연결한 사업 영�
 news_article,importance_score,10,"NUMERIC(3,1)",YES,,,,AI 중요도 0~10. NULL 은 분석 실패이고 0 과 다른 사실이다,google_news_rss,,미적재,,no,합의 필요 — V13 이 company_news 를 이 이름으로 옮겼는데 scripts/build_news_seed.py 가 아직 옛 이름으로 쓴다. 매핑은 위 company_news 항목과 같다
 news_article,analyzed_at,11,TIMESTAMPTZ,YES,,,,AI 분류 시각. 확정 ERD 에 없던 컬럼이고 Notion 에 함께 반영한다,google_news_rss,,미적재,,no,합의 필요 — V13 이 company_news 를 이 이름으로 옮겼는데 scripts/build_news_seed.py 가 아직 옛 이름으로 쓴다. 매핑은 위 company_news 항목과 같다
 news_article,collected_at,12,TIMESTAMPTZ,NO,,,,원본을 받은 시각,google_news_rss,,미적재,,no,합의 필요 — V13 이 company_news 를 이 이름으로 옮겼는데 scripts/build_news_seed.py 가 아직 옛 이름으로 쓴다. 매핑은 위 company_news 항목과 같다
+news_article,guid,13,VARCHAR(500),YES,,,,Google 뉴스 RSS 가 기사마다 주는 식별자. 확정 ERD 의 중복 방지 키다,,,,,no,
 segment_metric,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,opendart,empSttus:corp_code,raw,00126380,no,
 segment_metric,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,opendart,empSttus 요청의 bsns_year,raw,2024,no,
 segment_metric,segment_name,3,VARCHAR(100),NO,PK,,,사업부 이름. 연도별 자연키이고 개수 제한이 없다. 회사가 부문 이름을 바꾸면 다른 부문이 된다,opendart,empSttus:fo_bbm,derived:공백 정리 후 성별 행을 접어 부문 하나로. 합계 행('성별합계' 등)은 뺀다,DX,no,연도별 자연키다. 회사가 부문 이름을 바꾸면 다른 부문이 된다
