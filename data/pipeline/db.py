@@ -8,6 +8,11 @@
 적재 멱등성은 여기의 `ON CONFLICT DO UPDATE` 가 담당한다.
 
 접속 정보는 `DATABASE_URL` 환경변수(또는 `.env`)에서 읽는다. 코드에 넣지 않는다.
+
+**테이블 이름에 스키마를 붙이지 않는다** (S15P21A504-120 합의). 착지 테이블은
+`staging` 스키마에 있고 조회 대상은 `public` 에 있는데, 부르는 쪽이 그걸 알면
+테이블이 스키마를 옮길 때마다 부르는 코드를 다 고쳐야 한다. `connect()` 가
+`search_path` 를 걸어 이 모듈 안에서 푼다 — `SEARCH_PATH` 참고.
 """
 from __future__ import annotations
 
@@ -30,6 +35,19 @@ class DatabaseNotConfigured(RuntimeError):
     pass
 
 
+# 스키마를 푸는 순서다. 이름이 겹치면 앞이 이긴다.
+#
+# `public` 을 앞에 두는 것은 조회 API 가 읽는 쪽이라서다. `public` 은 확정 ERD 와
+# 일치시키고 착지 테이블은 `staging` 에 만든다는 합의(S15P21A504-120 회신 5장)를
+# 따르면 이름이 겹칠 일 자체가 없지만, 겹쳤을 때 조용히 착지 테이블을 읽는 것보다
+# 조회 대상을 읽고 컬럼이 없다고 시끄럽게 죽는 편이 낫다.
+#
+# `.env` 의 DATABASE_URL 이나 DB 롤이 아니라 여기에 두는 이유는 이렇다 — `.env` 는
+# `.gitignore` 대상이라 팀원마다 따로 고쳐야 하고, 롤 설정은 리포지토리에서 보이지
+# 않는 의존이 된다. 코드에 두면 버전 관리되고 새 환경·CI 에서 따로 챙길 것이 없다.
+SEARCH_PATH = ("public", "staging")
+
+
 def database_url() -> str:
     _load_env()
     url = (os.getenv("DATABASE_URL") or "").strip().strip("\"'")
@@ -45,8 +63,15 @@ def connect(url: str | None = None):
 
     부분 적재는 '어디까지 들어갔는지 모르는 상태'를 만든다. 전부 들어가거나
     전부 안 들어가거나 둘 중 하나여야 재실행이 안전하다.
+
+    `search_path` 를 여기서 건다. 부르는 쪽이 테이블 이름에 스키마를 붙이지 않아도
+    `staging` 의 착지 테이블에 닿는다. 전제가 깨지면 `relation does not exist` 로
+    시끄럽게 죽지, 조용히 다른 곳을 읽지 않는다.
     """
     with psycopg.connect(url or database_url()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql.SQL("SET search_path TO {}").format(
+                sql.SQL(", ").join(map(sql.Identifier, SEARCH_PATH))))
         yield conn
 
 
@@ -164,11 +189,24 @@ def update_existing(conn, table: str, rows: Sequence[dict], *, pk: Sequence[str]
 
 
 def _has_column(conn, table: str, column: str) -> bool:
+    """스키마 없는 테이블 이름으로 컬럼 유무를 본다.
+
+    `current_schema()` 로 묶여 있으면 `search_path` 앞의 한 스키마만 봐서
+    `staging` 의 착지 테이블에 대해 항상 `False` 를 돌려준다. 그러면 `upsert` 가
+    붙이는 `collected_at = now()` 가 조용히 빠져 **재적재해도 수집 시각이
+    갱신되지 않는다** — INSERT 는 DEFAULT 로 채워지니 처음에는 티가 안 난다.
+
+    `to_regclass` 로 푸는 것은 이것이 INSERT · UPDATE 문이 쓰는 것과 **같은**
+    이름 해석이기 때문이다. `search_path` 순서를 여기서 다시 구현하면 두 해석이
+    갈릴 여지가 생기고, 갈리면 어느 스키마를 봤는지 모르는 채로 시각 컬럼이
+    붙거나 빠진다. 없는 이름에는 NULL 을 돌려주므로 예외도 나지 않는다.
+    """
     with conn.cursor() as cur:
         cur.execute("""
-            SELECT 1 FROM information_schema.columns
-             WHERE table_schema = current_schema()
-               AND table_name = %s AND column_name = %s
+            SELECT 1 FROM pg_attribute
+             WHERE attrelid = to_regclass(%s)
+               AND attname = %s
+               AND attnum > 0 AND NOT attisdropped
         """, (table, column))
         return cur.fetchone() is not None
 
