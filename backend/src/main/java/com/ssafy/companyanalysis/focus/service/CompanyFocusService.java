@@ -28,9 +28,9 @@ public class CompanyFocusService {
     private static final int RATE_SCALE = 1;
 
     /** R&D 수치의 원본 지표. 둘 다 카탈로그에 있고 company_metric 에 착지한다. */
-    private static final String RD_COST = "rd_cost";
+    private static final String RD_EXPENSE = "rd_expense";
     private static final String RD_RATIO = "rd_ratio";
-    private static final List<String> RND_METRICS = List.of(RD_COST, RD_RATIO);
+    private static final List<String> RND_METRICS = List.of(RD_EXPENSE, RD_RATIO);
 
     /** 사업 방향 목록의 구분값. 테이블의 CHECK 제약과 같은 문자열이다. */
     private static final String NEW_BUSINESS = "NEW_BUSINESS";
@@ -118,7 +118,7 @@ public class CompanyFocusService {
                 metricRepository.findMetricValues(corpCode, RND_METRICS, year, year - 1).stream()
                         .collect(Collectors.toMap(MetricValueProjection::getMetricCode, Function.identity()));
 
-        MetricValueProjection cost = metrics.get(RD_COST);
+        MetricValueProjection cost = metrics.get(RD_EXPENSE);
         MetricValueProjection ratio = metrics.get(RD_RATIO);
 
         return new CompanyFocusResponse.Rnd(
