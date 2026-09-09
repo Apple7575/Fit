@@ -56,13 +56,13 @@ VALUE_MAP = [
     ("net_income", "net_income"),
     ("employee_count", "employee_count"), ("avg_salary_krw", "average_salary"),
     ("avg_tenure_years", "average_tenure"), ("rnd_ratio_pct", "rd_ratio"),
-    ("rnd_cost_krw", "rd_cost"),
+    ("rnd_cost_krw", "rd_expense"),
     ("total_liabilities", "total_liabilities"), ("total_equity", "total_equity"),
 ]
 METRIC_ORDER = [m for _, m in VALUE_MAP]
 
 # fs_div 를 기록하는 지표. 재무제표에서 연결/별도를 골라 온 금액만 해당한다.
-# rd_cost 는 단위가 KRW 이고 카탈로그의 source_type 도 FINANCIAL_STATEMENT 지만
+# rd_expense 는 단위가 KRW 이고 카탈로그의 source_type 도 FINANCIAL_STATEMENT 지만
 # **사업보고서 문서를 파싱해서 얻는다.** 연결/별도 구분 자체가 없어 NULL 이다.
 # 그래서 카탈로그(unit·source_type)에서 유도하지 않고 여기 적어 둔다 — [1] 은
 # 적재 코드와 독립적으로 규칙을 다시 말하는 자리다

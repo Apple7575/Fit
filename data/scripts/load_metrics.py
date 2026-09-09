@@ -26,7 +26,7 @@ wide → long (D-2)
     CompanyYear.avg_salary_krw   → metric_code='average_salary'    fs_div NULL
     CompanyYear.avg_tenure_years → metric_code='average_tenure'    fs_div NULL
     CompanyYear.rnd_ratio_pct    → metric_code='rd_ratio'          fs_div NULL
-    CompanyYear.rnd_cost_krw     → metric_code='rd_cost'           fs_div NULL (비활성 지표)
+    CompanyYear.rnd_cost_krw     → metric_code='rd_expense'        fs_div NULL (비활성 지표)
 
 값이 없으면 행을 만들지 않는다
 ----------------------------
@@ -84,7 +84,7 @@ VALUE_MAP = [
     ("avg_salary_krw",   "average_salary",       False),
     ("avg_tenure_years", "average_tenure",       False),
     ("rnd_ratio_pct",    "rd_ratio",         False),
-    ("rnd_cost_krw",     "rd_cost",          False),
+    ("rnd_cost_krw",     "rd_expense",           False),
 ]
 
 REJECTED = "rejected"

@@ -64,7 +64,7 @@ data/
 ```
 industry                    77행   KSIC 중분류
 company                  3,930행   상장사 명부 (지표는 없다. 이름·업종만)
-metric                       7행   지표 카탈로그 (활성 6 + rd_cost 비활성 1)
+metric                       7행   지표 카탈로그 (활성 6 + rd_expense 비활성 1)
 dart_financial_account   1,647행   DART 주요계정 원본
 dart_employee_status       217행   DART 직원현황 원본
 company_metric             326행   ★ 백엔드 조회 API 가 읽는 테이블
@@ -75,6 +75,8 @@ collection_run               4행   실행 이력
 ### 마이그레이션
 
 **`V5__add_metric_evidence.sql`을 이번에 추가했다** — `metric_evidence` 테이블 + `metric`에 `rd_cost` 1행(`is_active=FALSE`).
+
+> 이 지표는 뒤에 `V17`에서 **`rd_expense`로 개명됐다**(확정 ERD 이름에 맞춤, MR !82). V5 가 만든 이름은 `rd_cost` 가 맞고, 지금 코드·시드가 쓰는 이름은 `rd_expense` 다.
 
 `V1`~`V4`는 백엔드 소유다. develop 현재 상태는 이렇다.
 
@@ -219,7 +221,7 @@ python scripts/verify_db.py --report
 | **D-1** | 파이프라인이 DB에 직접 upsert. 백엔드는 읽기만 | 확정 데이터는 연 1회 갱신 · 8.3MB XML 파싱은 요청 시간 내 불가 |
 | **D-2** | develop의 Flyway 스키마 기준. `company_year`(wide)는 버리고 `company_metric`(long)에 넣는다 | 백엔드 조회 API가 이미 이 테이블을 읽는다 |
 | **D-3** | 이번 범위는 84만. 85·86은 손대지 않는다 | — |
-| **A** | R&D 금액은 `metric`에 `rd_cost`를 `is_active=FALSE`로 추가해 착지시킨다 | 조회 경로 6개 전수 확인 결과 API에 노출되지 않는다 |
+| **A** | R&D 금액은 `metric`에 `rd_cost`를 `is_active=FALSE`로 추가해 착지시킨다 (V17에서 `rd_expense`로 개명) | 조회 경로 6개 전수 확인 결과 API에 노출되지 않는다 |
 | **B** | `metric_code`를 develop 카탈로그 값으로 개명. `runner.py`에서 바꾼다. **V4 반영: `average_salary`·`average_tenure`** | FK가 `metric`을 참조하므로 내부 이름은 적재가 거부된다(실측 확인). CSV와 DB가 같은 이름을 갖게 하려면 한 곳에서 바꿔야 한다 |
 | **C** | `company.corp_name`에 **종목명**을 넣는다. 타깃 10개사는 `targets.csv`의 `display_name`으로 덮어쓴다 | 등록명을 넣으면 `SK하이닉스`·`NHN`으로 검색이 안 된다 |
 | **D** | `company.listed_date`는 채우지 않는다. 커버리지 판정은 `targets.csv`의 `listed_from`으로 한다 | **확인 완료(2026-09-02): 기업개황 응답에 상장일 필드가 아예 없다.** KRX 등 다른 소스가 필요하다 |
@@ -259,7 +261,7 @@ python scripts/verify_db.py --report
 | `average_salary` | 47/47 | 100% | 46 | 1 | 0 |
 | `average_tenure` | 47/47 | 100% | 13 | 34 | 0 |
 | `rd_ratio` | 46/47 | 97.9% | 45 | 1 | 1 |
-| `rd_cost` | 45/47 | 95.7% | 45 | 1 | 1 |
+| `rd_expense` | 45/47 | 95.7% | 45 | 1 | 1 |
 
 **`unverified`가 많은 건 값이 틀렸다는 뜻이 아니다.** 확인할 방법이 없다는 뜻이다.
 - `operating_profit`은 대조할 두 번째 경로가 없어 **구조적으로 절대 `verified`가 되지 않는다**
@@ -289,7 +291,7 @@ python scripts/verify_db.py --report
 | 2-1 | `listed_date` — **기업개황 응답에 상장일 필드가 없음을 실측 확인.** KRX 등 다른 소스 필요 | 백엔드 공유 완료 |
 | 2-2 | `dart_modify_date` — 기업개황이 아니라 corpCode.xml 에 있다. 아직 안 채움 | 필요 시 |
 | 3 | `Metric.java` 주석 "V2 시드의 6행이 전부다"가 낡았다 (이제 7행) | 동작 영향 없음 |
-| 4 | `findAll()`을 쓰면 비활성 `rd_cost`까지 나온다 | 현재 호출부 0곳. `findByActiveTrue…`를 쓸 것 |
+| 4 | `findAll()`을 쓰면 비활성 `rd_expense`까지 나온다 | 현재 호출부 0곳. `findByActiveTrue…`를 쓸 것 |
 | 5 | `ddl-auto=validate` 유지 필수 | `update`로 바뀌면 적재 데이터가 위험하다 |
 
 ### 6-2. 스키마 변경이 필요해 못 한 것 (ALTER 금지라 보고만 함)
@@ -328,8 +330,8 @@ DART가 준 값 자체가 틀렸다. **고치지 않았다** — 회사명 분�
 
 | # | 항목 | 영향 |
 |---|---|---|
-| 1 | 시프트업 2024 R&D 금액 행 라벨이 `합계` 단독 | `rd_cost` 값 없음 (비율 12.75는 있음) |
-| 2 | 시프트업 2025 문서에 4,937행 병합 표 (마크업 파손) | `rd_cost`·`rd_ratio` `rejected` |
+| 1 | 시프트업 2024 R&D 금액 행 라벨이 `합계` 단독 | `rd_expense` 값 없음 (비율 12.75는 있음) |
+| 2 | 시프트업 2025 문서에 4,937행 병합 표 (마크업 파손) | `rd_expense`·`rd_ratio` `rejected` |
 | 3 | 다른 업종 미검증 | 지금은 KSIC 26·29·58·63. 제약(21)·금융(64·66) 미검증 |
 
 `patterns.yaml`에 `amount_row_fallback_re`·`candidate_table_max_rows`가 준비되어 있다.

@@ -128,7 +128,7 @@ metric,is_active,7,BOOLEAN,NO,,,,keys 로 요청할 수 있는 지표. FALSE 는
 metric,is_core,8,BOOLEAN,NO,,,,keys 없이 조회했을 때 기본으로 나가는 지표. v2 기준 6종이다,flyway_seed,,constant,true,no,V7 에서 추가
 metric_evidence,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,derived,,raw,00126380,no,
 metric_evidence,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,derived,,raw,2025,no,
-metric_evidence,metric_code,3,VARCHAR(40),NO,"FK,PK",metric,metric_code,지표 코드,derived,,raw,rd_cost,no,
+metric_evidence,metric_code,3,VARCHAR(40),NO,"FK,PK",metric,metric_code,지표 코드,derived,,raw,rd_expense,no,
 metric_evidence,verdict,4,VARCHAR(20),NO,,,,verified/unverified/rejected/not_found 4종. 파서 원본 등급은 evidence->>'raw_verdict',derived,,derived:교차검증 판정,verified,no,
 metric_evidence,source,5,VARCHAR(40),YES,,,,어느 경로로 얻었나. A_major_name(주요계정+계정명) / B_full_id(전체재무제표+계정코드) / C_full_name(전체재무제표+계정명) / detail(직원 상세행) / total_rows(직원 합계행) / doc_table(사업보고서 표),derived,,derived:획득 경로,doc_table,no,
 metric_evidence,rcept_no,6,VARCHAR(14),YES,,,,근거 공시 접수번호 14자리. evidence JSONB 에도 있으나 조인·집계가 잦아 컬럼으로 승격했다,opendart_filing,document.xml:rcept_no,raw,20260310002820,no,

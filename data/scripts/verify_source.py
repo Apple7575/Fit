@@ -18,7 +18,7 @@
     B. 급여 교차       연간급여총액 ÷ 인원  vs  회사가 적은 1인평균     62/62
     C. 착지 ↔ 지표     dart_employee_status 상세 합  vs  employee_count
     D. 자릿수 급변      전년 대비 5배 이상 튀는가 — 단위 오류 탐지
-    E. R&D 역산        rd_cost ÷ revenue × 100  vs  rd_ratio
+    E. R&D 역산        rd_expense ÷ revenue × 100  vs  rd_ratio
     F. 근속 대조       상세 가중평균  vs  합계 행 (A 와 같은 제약)
 
 기존 기록과의 관계
@@ -237,11 +237,11 @@ def run(conn, corp_codes: set[str], names: dict[str, str], verbose: bool) -> int
     with conn.cursor() as cur:
         cur.execute("""SELECT corp_code, fiscal_year, metric_code, metric_value
                          FROM company_metric WHERE metric_code IN
-                              ('rd_cost','rd_ratio','revenue')""")
+                              ('rd_expense','rd_ratio','revenue')""")
         rd = {(r[0], r[1], r[2]): Decimal(r[3]) for r in cur.fetchall()
               if r[0] in corp_codes}
     for (corp, year, code) in [k for k in rd if k[2] == "rd_ratio"]:
-        cost = rd.get((corp, year, "rd_cost"))
+        cost = rd.get((corp, year, "rd_expense"))
         rev = rd.get((corp, year, "revenue"))
         if cost is None or rev is None or rev <= 0:
             continue

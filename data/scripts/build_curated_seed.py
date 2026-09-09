@@ -1,4 +1,4 @@
-"""확정 ERD 6개 테이블의 시드 CSV 를 한 번에 만든다 → `curated/seed/`.
+"""확정 ERD 7개 테이블의 시드 CSV 를 한 번에 만든다 → `curated/seed/`.
 
 팀장 요청 목록이다. 표는 저장 기준 2장대로 `curated/seed/<table_name>.csv` 에
 둔다 — `curated/` 바로 밑은 어느 테이블과도 1:1 이 아닌 보조 산출물 자리다
@@ -7,9 +7,15 @@
     industry          config/ksic_division.csv                      77행
     company           config/company_universe.csv + 기업개황     2,703행
     metric            Flyway V2·V4·V5·V7·V13 카탈로그의 사본        12행
-    company_metric    staged/opendart/financials.csv            58,327행
-    segment_metric    .cache/empSttus_*.json                     13개사
-    company_activity  .cache/otrCprInvstmntSttus_*.json          10개사
+    company_metric    staged/opendart/financials.csv + 사업보고서 R&D
+    segment_metric    .cache/empSttus_*.json + 사업보고서 부문 매출
+    company_activity  .cache/otrCprInvstmntSttus_*.json + 사업보고서 시설투자
+    company_text      사업보고서 (표 파싱 + 팀 vLLM 추출)
+
+사업보고서 원천은 `scripts/parse_business_reports.py` 와
+`scripts/extract_business_text_llm.py` 가 `staged/business_report/` 에 만든다
+(S15P21A504-73). **없으면 그 부분만 비고 나머지는 그대로 나온다** — 이 스크립트는
+DART 정형 API 만으로도 돌아야 한다.
 
 `company` 는 정규 시장 상장사 2,703개사다 (corp_cls Y·K·N). 수집 모집단
 (`pipeline/universe.py`)과 같은 경계이고, corp_cls=E 1,227개사를 참조하는 행이
@@ -40,7 +46,12 @@ segment_revenue 95행은 넣지 않기로 했다 (MR !81). 부문 목록의 원�
 하나여야 한다는 규칙의 목적은 부문마다 반드시 있는 segment_employee_count 행이
 지킨다. 인원을 안 적은 부문만 값 없이 행이 남는다 — 그 부문을 잃지 않기 위해서다.
 
-    python scripts/build_curated_seed.py               # 6종 전부
+**segment_revenue 는 부문 축이 다르다** (S15P21A504-73). 직원현황의 fo_bbm 은 직원
+부문이고 사업보고서는 사업 부문이라, NAVER·카카오·NHN('전사')·NC('관리사무직/
+연구개발')는 이름이 겹치지 않는다. 억지로 맞추면 없는 대응을 지어내는 것이라
+사업보고서 부문을 행으로 더한다 — 한 기업에 두 축이 함께 보인다. 팀장 확인.
+
+    python scripts/build_curated_seed.py               # 7종 전부
     python scripts/build_curated_seed.py --only company segment_metric
     python scripts/build_curated_seed.py --verify-db   # DB 와 대조
 """
@@ -65,7 +76,8 @@ from pipeline.news import flyway  # noqa: E402
 from pipeline.news.csvio import write_csv  # noqa: E402
 from pipeline.patterns import patterns as default_patterns  # noqa: E402
 from pipeline.normalize.text import squash, to_num  # noqa: E402
-from pipeline.paths import CONFIG, cache_dir, curated_seed_dir, raw_api_dir  # noqa: E402
+from pipeline.paths import (CONFIG, cache_dir, curated_seed_dir,  # noqa: E402
+                            raw_api_dir, staged_dir)
 from pipeline.targets import by_corp_code, load_targets  # noqa: E402
 from pipeline.universe import LISTED_CLS  # noqa: E402
 
@@ -77,7 +89,11 @@ RE_STOCK_CODE = re.compile(r"^[0-9]{6}$")
 CORP_CLS = frozenset(("Y", "K", "N", "E"))
 
 TABLES = ("industry", "company", "metric", "company_metric",
-          "segment_metric", "company_activity")
+          "segment_metric", "company_activity", "company_text")
+
+# 사업보고서 파싱 산출물 (scripts/parse_business_reports.py) 과 LLM 추출 산출물
+# (scripts/extract_business_text_llm.py). 없으면 그 부분만 비고 나머지는 그대로 나온다.
+BR = "business_report"
 
 # DB 가 스스로 채우는 칸. NOT NULL DEFAULT now() 라서 빈 셀(=NULL)로 COPY 하면
 # 제약에 걸린다. 적재 시각은 적재한 DB 가 찍어야 하는 값이기도 하다.
@@ -104,16 +120,29 @@ METRIC_CATALOG = [
     ("average_salary",         "1인 평균 급여",  "KRW",    0, "EMPLOYEE_STATUS",      5, True,  True),
     ("average_tenure",         "평균 근속",      "YEAR",   1, "EMPLOYEE_STATUS",      6, True,  True),
     ("rd_ratio",               "R&D/매출",       "%",      1, "DERIVED",              7, True,  False),
-    ("rd_cost",                "R&D 비용",       "KRW",    0, "FINANCIAL_STATEMENT",  8, False, False),
+    ("rd_expense",             "R&D 비용",      "KRW",    0, "FINANCIAL_STATEMENT",  8, False, False),
     ("total_liabilities",      "부채총계",       "KRW",    0, "FINANCIAL_STATEMENT", 20, False, False),
     ("total_equity",           "자본총계",       "KRW",    0, "FINANCIAL_STATEMENT", 21, False, False),
     ("segment_revenue",        "사업부 매출",    "KRW",    0, "FINANCIAL_STATEMENT", 30, False, False),
     ("segment_employee_count", "사업부 직원 수", "PERSON", 0, "EMPLOYEE_STATUS",     31, False, False),
 ]
 
-# segment_metric 이 부문마다 만드는 행. 카탈로그의 segment_revenue 는 원천이
-# 확보되면 여기 하나 더 붙는다 — 지금 값 없이 행만 넣지는 않는다 (MR !81).
+# 직원현황에서 부문마다 만드는 행. segment_revenue 는 원천(사업보고서)과 부문 축이
+# 달라 같은 루프에서 만들지 않고 뒤에서 따로 더한다 (S15P21A504-73).
 SEGMENT_METRIC = "segment_employee_count"
+
+
+def _staged_br(name: str) -> list[dict]:
+    """staged/business_report/<name> 를 읽는다. 없으면 빈 목록.
+
+    사업보고서 파싱을 안 돌린 환경에서도 나머지 시드는 그대로 나와야 한다 —
+    이 스크립트는 DART 정형 API 만으로도 나머지 표를 만들 수 있어야 한다.
+    """
+    path = staged_dir(BR) / name
+    if not path.exists():
+        return []
+    with path.open(encoding="utf-8-sig", newline="") as f:
+        return list(csv.DictReader(f))
 
 
 def _rows(path: Path) -> list[dict]:
@@ -405,17 +434,55 @@ def build_segment_metric(corp_codes: set[str]) -> tuple[list[dict], Counter]:
             # 부문은 있는데 인원을 안 적은 경우다. 부문을 잃지 않도록 행은 둔다.
             "metric_value": "" if value is None else f"{value:.4f}",
         })
-    stats["부문(기업×연도×부문)"] = len(seen)
+    stats["직원현황 부문(기업×연도×부문)"] = len(seen)
+
+    # ── 사업보고서 부문별 매출 (S15P21A504-73)
+    #
+    # 부문 축이 직원현황과 다르다. 직원현황의 fo_bbm 은 **직원 부문**이라
+    # NAVER·카카오·NHN 이 '전사' 한 덩어리이고 NC 는 '관리사무직/연구개발' 이다.
+    # 사업보고서는 사업 부문(서치플랫폼·커머스·핀테크…)이라 이름이 겹치지 않는다.
+    #
+    # 그래서 **사업보고서 부문을 행으로 새로 더한다.** 한 기업에 직원 부문과 매출
+    # 부문이 함께 보이게 되지만, 이름을 억지로 맞추면 없는 대응을 지어내는 것이다.
+    # 팀장 확인을 받은 방향이다.
+    #
+    # 이름이 겹치는 기업(삼성전자 DX/DS, LG전자 H&A/HE/VS/BS)은 자연스럽게 같은
+    # segment_name 아래 두 지표가 붙는다 — V13 이 의도한 모양이다.
+    #
+    # 값 없는 행은 만들지 않는다. 이 시드는 "행이 없으면 미공시" 규칙을 쓴다
+    # (MR !81 에서 빈 segment_revenue 95행을 뺀 것과 같은 판단).
+    pk = {(r["corp_code"], r["fiscal_year"], r["segment_name"], r["metric_code"])
+          for r in out}
+    for r in _staged_br("segment_revenue.csv"):
+        corp, year = r["corp_code"], int(r["fiscal_year"])
+        if corp not in corp_codes:
+            stats["company 에 없는 기업(건너뜀)"] += 1
+            continue
+        if not r["metric_value"]:
+            continue
+        key = (corp, year, r["segment_name"], "segment_revenue")
+        if key in pk:
+            stats["부문 매출 중복(건너뜀)"] += 1
+            continue
+        pk.add(key)
+        out.append({"corp_code": corp, "fiscal_year": year,
+                    "segment_name": r["segment_name"],
+                    "metric_code": "segment_revenue",
+                    "metric_value": r["metric_value"]})
+        stats["사업보고서 부문 매출"] += 1
+
+    out.sort(key=lambda r: (r["corp_code"], r["fiscal_year"],
+                            r["segment_name"], r["metric_code"]))
     return out, stats
 
 
 # ---------------------------------------------------------- company_activity
 
 def build_company_activity(corp_codes: set[str]) -> tuple[list[dict], Counter]:
-    """타법인 출자현황 → company_activity 의 corporate_invest.
+    """타법인 출자현황 → corporate_invest, 사업보고서 → facility.
 
-    activity_type 4종 중 이것만 원천이 확보돼 있다. facility·ma·transfer 는
-    주요사항보고서에서 오고 아직 수집 경로가 없다.
+    activity_type 4종 중 둘의 원천이 확보됐다. ma·transfer 는 주요사항보고서에서
+    오고 아직 수집 경로가 없다.
 
     amount 는 **기말 장부가액**(trmend_blce_acntbk_amount)이다. 원천이 사건이
     아니라 사업연도 말 잔액 스냅샷이라서 fiscal_year 축을 쓴다 (V13 4장).
@@ -454,9 +521,84 @@ def build_company_activity(corp_codes: set[str]) -> tuple[list[dict], Counter]:
             })
             stats["행"] += 1
 
+    # ── 시설투자 (S15P21A504-73)
+    #
+    # 사업보고서 '3. 원재료 및 생산설비' 의 투자 계획·실적 표에서 왔다.
+    # counterparty 는 **비운다** — 설비투자는 상대방이 있는 거래가 아니다.
+    # investment_period 는 표에 있어도 뽑지 않는다 (팀장 기준 2항).
+    #
+    # amount 가 없는 행은 파싱 단계가 이미 버렸다. 여기 오는 것은 전부 금액이 있다.
+    for r in _staged_br("facility.csv"):
+        corp_code = r["corp_code"]
+        if corp_code not in corp_codes:
+            stats["company 에 없는 기업(건너뜀)"] += 1
+            continue
+        out.append({
+            "corp_code": corp_code,
+            "activity_type": "facility",
+            "counterparty": "",
+            "field_name": r["field_name"],
+            "amount": r["amount"],
+            "purpose": r["purpose"],
+            "fiscal_year": int(r["fiscal_year"]),
+            "rcept_no": r["rcept_no"],
+        })
+        stats["시설투자 행"] += 1
+
     # 대리 키 PK 라 정렬만으로 순서를 고정한다.
-    out.sort(key=lambda r: (r["corp_code"], r["fiscal_year"], r["counterparty"],
-                            r["rcept_no"]))
+    out.sort(key=lambda r: (r["corp_code"], r["fiscal_year"], r["activity_type"],
+                            r["counterparty"], r["field_name"], r["rcept_no"]))
+    return out, stats
+
+
+# -------------------------------------------------------------- company_text
+
+def build_company_text(corp_codes: set[str]) -> tuple[list[dict], Counter]:
+    """사업보고서 → 기업·연도별 글과 목록. attr_key 6종 (V13).
+
+    원천이 둘이고 성격이 다르다.
+
+        main_product                      표에서 규칙 파싱  → generated_at 비움
+        main_business·business_keyword    LLM 추출          → generated_at 채움
+        new_business·strategy_change
+        rd_field
+
+    generated_at 을 가르는 근거는 V13 주석이다 — "사업보고서에서 그대로 옮긴
+    항목은 NULL". 모델·프롬프트가 바뀌면 같은 기업·연도의 결과가 달라지므로
+    AI 생성물만 만든 시각을 남긴다.
+
+    (corp_code, fiscal_year, attr_key, seq) 가 UNIQUE 다. 겹치면 적재가 아니라
+    여기서 걸려야 한다 — LLM 을 --redo 없이 두 번 돌리면 파일에 같은 키가 두 번
+    들어갈 수 있다. 나중 행을 남긴다(재실행이 갱신이 되도록).
+    """
+    stats: Counter = Counter()
+    box: dict[tuple, dict] = {}
+
+    def put(corp, year, attr, seq, value, generated_at):
+        if corp not in corp_codes:
+            stats["company 에 없는 기업(건너뜀)"] += 1
+            return
+        value = squash(value)
+        if not value:
+            stats["빈 값(건너뜀)"] += 1
+            return
+        key = (corp, year, attr, seq)
+        if key in box:
+            stats["같은 키 덮어씀"] += 1
+        box[key] = {"corp_code": corp, "fiscal_year": year, "attr_key": attr,
+                    "seq": seq, "value_text": value, "generated_at": generated_at}
+        stats[attr] += 1
+
+    for r in _staged_br("main_product.csv"):
+        put(r["corp_code"], int(r["fiscal_year"]), "main_product",
+            int(r["seq"]), r["value_text"], "")
+
+    for r in _staged_br("text_llm.csv"):
+        put(r["corp_code"], int(r["fiscal_year"]), r["attr_key"],
+            int(r["seq"]), r["value_text"], r["generated_at"])
+
+    out = [box[k] for k in sorted(box)]
+    stats["행"] = len(out)
     return out, stats
 
 
@@ -501,7 +643,7 @@ def verify_db(built: dict[str, list[dict]]) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", nargs="+", choices=TABLES,
-                    help="이 표만 다시 만든다 (기본: 6종 전부)")
+                    help="이 표만 다시 만든다 (기본: 7종 전부)")
     ap.add_argument("--verify-db", action="store_true",
                     help="metric 카탈로그를 DB 와 대조한다")
     ap.add_argument("--include-unlisted", action="store_true",
@@ -579,28 +721,50 @@ def main() -> int:
     if "segment_metric" in want:
         rows, st = build_segment_metric(corp_codes)
         built["segment_metric"] = rows
-        dest = _write("segment_metric", rows, ".cache/empSttus_*.json (직원 현황)",
-                      ["부문 축은 fo_bbm 이고 성별 행을 접어 하나로 만든다",
-                       "segment_employee_count 만 넣는다 — segment_revenue 는 원천"
-                       "(사업보고서 추출)이 없어 행을 만들지 않는다 (MR !81)",
-                       "부문 목록은 부문마다 반드시 있는 이 행이 지킨다"], st)
+        dest = _write("segment_metric", rows,
+                      ".cache/empSttus_*.json (직원 현황) + "
+                      "staged/business_report/segment_revenue.csv (사업보고서)",
+                      ["segment_employee_count 의 부문 축은 fo_bbm 이고 성별 행을"
+                       " 접어 하나로 만든다",
+                       "segment_revenue 는 사업보고서 원문에서 오고 부문 축이 다르다"
+                       " — 직원 부문과 사업 부문이 한 기업에 함께 보인다 (S15P21A504-73)",
+                       "값 없는 행은 만들지 않는다 (MR !81 과 같은 규칙)"], st)
         print(f"segment_metric    {len(rows):>7,}행  → {dest.name}")
         print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
               + " · ".join(f"{k} {v:,}" for k, v in sorted(st.items())))
-        print("  segment_employee_count 만 넣는다 — segment_revenue 는 원천 미확보")
 
     if "company_activity" in want:
         rows, st = build_company_activity(corp_codes)
         built["company_activity"] = rows
         dest = _write("company_activity", rows,
-                      ".cache/otrCprInvstmntSttus_*.json (타법인 출자현황)",
-                      ["activity_type 은 corporate_invest 뿐 — 나머지 3종은 원천 미확보",
+                      ".cache/otrCprInvstmntSttus_*.json (타법인 출자현황) + "
+                      "staged/business_report/facility.csv (사업보고서 시설투자)",
+                      ["activity_type 은 corporate_invest·facility 둘 — ma·transfer 는"
+                       " 원천 미확보",
                        "amount 는 기말 장부가액이다 (사건이 아니라 연말 잔액 스냅샷)",
-                       "field_name 은 원천에 대응하는 값이 없어 비운다"], st)
+                       "corporate_invest 의 field_name 은 원천에 대응하는 값이 없어 비운다",
+                       "facility 의 counterparty 는 비운다 — 상대방이 있는 거래가 아니다",
+                       "investment_period 는 표에 있어도 뽑지 않는다 (팀장 기준 2항)"], st)
         print(f"company_activity  {len(rows):>7,}행  → {dest.name}")
         print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
               + " · ".join(f"{k} {v:,}" for k, v in sorted(st.items())))
-        print("  activity_type 은 corporate_invest 뿐이다 — 나머지 3종은 원천 미확보")
+        print("  activity_type 은 corporate_invest·facility 둘이다 — ma·transfer 는 원천 미확보")
+
+    if "company_text" in want:
+        rows, st = build_company_text(corp_codes)
+        built["company_text"] = rows
+        dest = _write("company_text", rows,
+                      "staged/business_report/main_product.csv (표 파싱) + "
+                      "staged/business_report/text_llm.csv (LLM 추출)",
+                      ["main_product 는 '주요 제품' 열을 그대로 옮긴 것이라"
+                       " generated_at 이 비어 있다 (V13 주석)",
+                       "나머지 5종은 팀 vLLM(Qwen3-32B-AWQ) 추출물이라 generated_at 을"
+                       " 남긴다 — 모델·프롬프트가 바뀌면 결과가 달라진다",
+                       "seq 는 사업보고서 기재 순서다. 글 항목은 늘 0 이다",
+                       "근거가 없으면 행을 만들지 않는다 (팀장 기준 4항)"], st)
+        print(f"company_text      {len(rows):>7,}행  → {dest.name}")
+        print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
+              + " · ".join(f"{k} {v:,}" for k, v in sorted(st.items())))
 
     print(f"\n→ {curated_seed_dir()}")
     return verify_db(built) if args.verify_db else 0
