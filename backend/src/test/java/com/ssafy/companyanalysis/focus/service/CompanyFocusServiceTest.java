@@ -66,9 +66,9 @@ class CompanyFocusServiceTest {
         given(companyFocusRepository.findDirection(CORP_CODE, 2025)).willReturn(Optional.of(projection));
         given(companyFocusRepository.findRndFields(CORP_CODE, 2025)).willReturn(List.of("HBM", "GAA"));
         List<MetricValueProjection> metrics = List.of(
-                metric("rd_cost", 0, "37000000000000", "34000000000000"),
+                metric("rd_expense", 0, "37000000000000", "34000000000000"),
                 metric("rd_ratio", 1, "9.3", "8.8"));
-        given(metricRepository.findMetricValues(CORP_CODE, List.of("rd_cost", "rd_ratio"), 2025, 2024))
+        given(metricRepository.findMetricValues(CORP_CODE, List.of("rd_expense", "rd_ratio"), 2025, 2024))
                 .willReturn(metrics);
 
         CompanyFocusResponse response = service.getFocus(CORP_CODE, null);
@@ -91,7 +91,7 @@ class CompanyFocusServiceTest {
         given(companyFocusRepository.findDirectionItems(CORP_CODE, 2025)).willReturn(List.of());
         given(companyFocusRepository.findDirection(CORP_CODE, 2025)).willReturn(Optional.empty());
         given(companyFocusRepository.findRndFields(CORP_CODE, 2025)).willReturn(List.of());
-        List<MetricValueProjection> metrics = List.of(metric("rd_cost", 0, "37000000000000", null));
+        List<MetricValueProjection> metrics = List.of(metric("rd_expense", 0, "37000000000000", null));
         given(metricRepository.findMetricValues(eq(CORP_CODE), any(), eq(2025), eq(2024)))
                 .willReturn(metrics);
 
@@ -110,7 +110,7 @@ class CompanyFocusServiceTest {
     @DisplayName("전년 R&D 비용이 0 이면 증가율을 계산하지 않는다")
     void zeroPreviousCostYieldsNullGrowthRate() {
         given(companyFocusRepository.findLatestFiscalYear(eq(CORP_CODE), any())).willReturn(2025);
-        List<MetricValueProjection> metrics = List.of(metric("rd_cost", 0, "1000000", "0"));
+        List<MetricValueProjection> metrics = List.of(metric("rd_expense", 0, "1000000", "0"));
         given(metricRepository.findMetricValues(eq(CORP_CODE), any(), eq(2025), eq(2024)))
                 .willReturn(metrics);
 
@@ -122,7 +122,7 @@ class CompanyFocusServiceTest {
     void amountsUseCatalogScale() {
         given(companyFocusRepository.findLatestFiscalYear(eq(CORP_CODE), any())).willReturn(2025);
         List<MetricValueProjection> metrics = List.of(
-                metric("rd_cost", 0, "37000000000000.0000", null),
+                metric("rd_expense", 0, "37000000000000.0000", null),
                 metric("rd_ratio", 1, "9.2500", null));
         given(metricRepository.findMetricValues(eq(CORP_CODE), any(), eq(2025), eq(2024)))
                 .willReturn(metrics);

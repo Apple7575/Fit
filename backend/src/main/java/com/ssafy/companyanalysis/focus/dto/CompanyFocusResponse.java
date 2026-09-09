@@ -33,7 +33,7 @@ public record CompanyFocusResponse(
     /**
      * R&D 지표. 공시 수치다.
      *
-     * <p>{@code expense} 와 {@code revenueRatio} 는 지표 카탈로그의 rd_cost·rd_ratio 에서
+     * <p>{@code expense} 와 {@code revenueRatio} 는 지표 카탈로그의 rd_expense·rd_ratio 에서
      * 그대로 온다. {@code growthRate} 만 전년 비용과 비교해 조회 시점에 만든다.
      *
      * <p>{@code fields} 는 사업보고서의 연구개발 실적에서 오는 분야 이름 목록이다.

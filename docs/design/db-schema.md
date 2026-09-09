@@ -3,7 +3,7 @@
 - 대상 이슈: `S15P21A504-34`
 - DBMS: PostgreSQL 18
 - 기준 문서: Notion [기업분석 API 명세서](https://app.notion.com/p/3c97eaa01a88802ab705fdae578e3b54) (F-33, 완료)
-- **ERD 기준 문서: Notion [기업 정보 ERD](https://rigorous-rook-646.notion.site/ERD-3ce305563fdc80d29b72f46e55897595) (확정)** — 테이블·컬럼은 이 문서가 원본이다. 어긋나면 명세를 따르고, 명세를 바꿔야 하면 Notion을 먼저 고친다.
+- **ERD 기준 문서: Notion [기업 정보 ERD](https://app.notion.com/p/ERD-3d0305563fdc803a874cd445b02a7230) (확정)** — 테이블·컬럼은 이 문서가 원본이다. 어긋나면 명세를 따르고, 명세를 바꿔야 하면 Notion을 먼저 고친다.
 - 마이그레이션: Flyway (`backend/src/main/resources/db/migration/`)
 
 ---
@@ -208,7 +208,7 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 | `GET /api/companies` | `company` | `corp_name LIKE '%?%'` | `company_corp_name_trgm_idx` |
 | `GET /api/companies/{corpCode}` | `company` + `industry` | PK 조회 | PK |
 | `GET .../profile` | `company_business` + `company_segment` + `company_product` | `corp_code=? AND fiscal_year=?` | PK 선두 |
-| `GET .../focus` | `company_focus_direction` (+`_item`) + `company_rnd_field` + `metric` ⟕ `company_metric` | `corp_code=? AND fiscal_year=?`, 지표는 `rd_cost`·`rd_ratio` | PK 선두 |
+| `GET .../focus` | `company_focus_direction` (+`_item`) + `company_rnd_field` + `metric` ⟕ `company_metric` | `corp_code=? AND fiscal_year=?`, 지표는 `rd_expense`·`rd_ratio` | PK 선두 |
 | `GET .../segments` | `company_segment` 자기조인 + `metric` ⟕ `company_metric` | `corp_code=?` + `fiscal_year IN (?, ?-1)` | PK 선두 |
 | `GET .../activities` | `company_activity` | `corp_code=? AND activity_type=?` + 연도 범위 | `company_activity_lookup_idx` |
 | `GET .../news` | `company_news` | `corp_code=?` + `published_at >= 기준시각` (+ `category=?`) | `company_news_latest_idx`, `company_news_category_idx` |
@@ -237,8 +237,8 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 저장하지 않는 것과 같은 판단이다.
 
 집중 분야 세 API 도 파생값을 저장하지 않는다. 부문 인력 증감은 `company_segment`를 전년
-행과 자기조인해 빼고, R&D 증가율은 `rd_cost`의 전년 값과 비교해 만든다. R&D 금액과 매출
-비중은 지표 카탈로그의 `rd_cost`·`rd_ratio`가 이미 담고 있어 테이블을 만들지 않았다.
+행과 자기조인해 빼고, R&D 증가율은 `rd_expense`의 전년 값과 비교해 만든다. R&D 금액과 매출
+비중은 지표 카탈로그의 `rd_expense`·`rd_ratio`가 이미 담고 있어 테이블을 만들지 않았다.
 
 전사 직원 순증감(`employeeTotalChange`)은 `employee_count` 지표의 전년 대비 차이다.
 명세가 "부문 합과 불일치(산식 확정 필요)"로 열어 둔 값이었고 근거는
@@ -246,7 +246,7 @@ V1 초기 스키마에서 "원본과 가공본을 분리한다"는 판단으로 
 정상이므로, 두 숫자를 맞추려고 어느 한쪽을 고치면 안 된다.
 
 `/focus`와 `/segments`의 기준연도는 자기 테이블만 보고 정하지 않는다. `/focus`는 사업 방향과
-R&D 분야 외에 `rd_cost`·`rd_ratio`의 연도까지, `/segments`는 부문 테이블 외에
+R&D 분야 외에 `rd_expense`·`rd_ratio`의 연도까지, `/segments`는 부문 테이블 외에
 `employee_count`의 연도까지 함께 본다. 한 응답 안에 출처가 다른 블록이 섞여 있어서, 한쪽만
 보고 해를 정하면 이미 적재된 다른 블록이 조용히 빈다. 사업 방향 분석은 아직 안 돌았는데
 R&D 비용은 들어와 있는 기업이 실제로 그런 경우다.
