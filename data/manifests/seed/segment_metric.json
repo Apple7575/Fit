@@ -1,6 +1,6 @@
 {
   "table": "segment_metric",
-  "generated_at": "2026-09-08T05:02:01.166239+00:00",
+  "generated_at": "2026-09-08T08:43:58.794267+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -30,8 +30,8 @@
     "V15__email_verification.sql",
     "V16__news_article_drop_ai_columns.sql"
   ],
-  "source": ".cache/empSttus_*.json (직원 현황)",
-  "seed_rows": 95,
+  "source": ".cache/empSttus_*.json (직원 현황) + staged/business_report/segment_revenue.csv (사업보고서)",
+  "seed_rows": 1234,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
@@ -40,17 +40,18 @@
     "metric_value": 0
   },
   "notes": [
-    "부문 축은 fo_bbm 이고 성별 행을 접어 하나로 만든다",
-    "segment_employee_count 만 넣는다 — segment_revenue 는 원천(사업보고서 추출)이 없어 행을 만들지 않는다 (MR !81)",
-    "부문 목록은 부문마다 반드시 있는 이 행이 지킨다"
+    "segment_employee_count 의 부문 축은 fo_bbm 이고 성별 행을 접어 하나로 만든다",
+    "segment_revenue 는 사업보고서 원문에서 오고 부문 축이 다르다 — 직원 부문과 사업 부문이 한 기업에 함께 보인다 (S15P21A504-73)",
+    "값 없는 행은 만들지 않는다 (MR !81 과 같은 규칙)"
   ],
-  "distinct_corp_codes": 13,
+  "distinct_corp_codes": 68,
   "fiscal_years": [
     2021,
     2025
   ],
   "build_stats": {
-    "부문(기업×연도×부문)": 95,
+    "사업보고서 부문 매출": 1139,
+    "직원현황 부문(기업×연도×부문)": 95,
     "합계 행 제외": 28
   }
 }

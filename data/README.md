@@ -60,6 +60,21 @@ python scripts/verify_news.py                                 # 검증 14종
 python -m unittest discover -s tests/news -t .                # 단위·통합 테스트
 ```
 
+사업보고서 원문에서 뽑는 값은 또 다른 흐름이다 (S15P21A504-73). DART 정형 API 로는
+못 얻는 부문별 매출·시설투자·기업 서술이고, 100개사 × 5년이 대상이다.
+
+```bash
+python scripts/select_business_report_universe.py   # 대상 100개사 → config/
+python scripts/collect_business_reports.py          # 원문 XML 수집 (유일한 네트워크 단계)
+python scripts/parse_business_reports.py            # 원문 → staged/business_report/
+python scripts/extract_business_text_llm.py         # 의미 해석 항목 (팀 vLLM)
+python scripts/build_curated_seed.py                # → curated/seed/ 7종
+python scripts/verify_business_report.py --report   # 검증 8축 + 커버리지
+```
+
+LLM 단계는 `data/.env` 의 `LLM_KEY` 가 필요하다 (팀 vLLM 서버, `.env.example` 참고).
+키가 없으면 그 단계만 건너뛰고 나머지는 그대로 돈다.
+
 정규화는 `.cache/`의 API 응답 원본만 읽으며 네트워크를 호출하지 않는다. 캐시는 커밋하지 않으므로(330MB), 없으면 `scripts/collect.py`로 먼저 수집한다. 다른 위치의 캐시를 쓰려면 `DART_CACHE_DIR` 환경변수로 지정한다.
 
 ---
@@ -70,15 +85,17 @@ python -m unittest discover -s tests/news -t .                # 단위·통합 �
 data/
 ├── config/
 │   ├── targets.csv             타깃 10개사 + KSIC 중분류 + 상장연도
+│   ├── business_report_universe.csv  사업보고서 파싱 대상 100개사
 │   ├── company_universe.csv    상장사 3,930건 + 업종 (F-04 적재 입력)
 │   └── ksic_division.csv       KSIC 중분류 77개 코드→명칭
 ├── docs/                       설계·계획·진행상태 문서 + 데이터 사전
 ├── raw/                        원본 (출처별. gitignore)
 ├── staged/                     정제 결과 (재생성 가능. gitignore)
-├── curated/seed/               DB 테이블별 적재본 CSV
+├── curated/seed/               DB 테이블별 적재본 CSV (7종)
 ├── manifests/                  수집·시드 계보 기록
 ├── pipeline/                   수집·정규화 정식 구현
 │   ├── normalize/              매출·직원·R&D 지표별 정규화
+│   ├── business_report/        사업보고서 원문 → 부문 매출·시설투자·기업 서술
 │   └── news/                   뉴스 raw → staged → curated
 ├── scripts/                    수집·정규화·적재·검증 CLI
 ├── tests/fixtures/normalize/   정규화 회귀 검증 기준선

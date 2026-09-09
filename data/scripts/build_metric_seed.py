@@ -12,6 +12,13 @@
     total_liabilities  부채총계            (is_active = FALSE · debtRatio 입력)
     total_equity       자본총계            (is_active = FALSE · debtRatio 입력)
 
+rd_expense 는 원천이 다르다 (S15P21A504-73)
+------------------------------------------
+위 5종은 DART 정형 API(주요계정)에서 온다. rd_expense 는 **사업보고서 원문**을
+파싱한 값이고 `staged/business_report/rd_expense.csv` 에서 읽는다. 그래서
+fs_div 가 빈 칸이다 — 문서 표에는 연결·별도 구분 자체가 없다
+(`scripts/verify_db.py` 의 fs_div 주석과 같은 판단).
+
 규칙 — 전부 기존 파이프라인과 같게 맞췄다
 
   ① 연결 우선, 없으면 별도. `patterns.yaml` 의 `fs_div_priority: [CFS, OFS]`
@@ -54,7 +61,43 @@ ALIAS = {"영업이익(손실)": "영업이익"}
 
 FS_PRIORITY = ("CFS", "OFS")     # config/patterns.yaml 의 fs_div_priority
 
+# 사업보고서 R&D 파서의 판정 중 시드에 넣을 것 (S15P21A504-73).
+# high  = 3경로 교차검증이 ±0.5%p 안에서 일치
+# medium= 검증 경로가 하나뿐이지만 비율이 상식 범위(0~60%) 안
+# low·mismatch 는 넣지 않는다 — mismatch 는 경로끼리 어긋난 것이라 값 자체를
+# 믿을 수 없고, 그런 값을 넣느니 행이 없는 편이 낫다 (팀장 기준 4항).
+RD_ACCEPT_VERDICTS = ("high", "medium")
+
 FIELDS = ["corp_code", "fiscal_year", "metric_code", "metric_value", "fs_div"]
+
+
+def build_rd_rows() -> tuple[list[dict], Counter]:
+    """사업보고서 파싱 결과 → rd_expense 행.
+
+    파싱 단계가 이미 단위 미상(unit_unknown)을 버렸다. 여기서는 판정만 더 거른다.
+    파일이 없으면 빈 목록이다 — 사업보고서 파싱을 안 돌린 환경에서도 나머지 5종
+    시드는 그대로 나와야 한다.
+    """
+    src = staged_dir("business_report") / "rd_expense.csv"
+    stats: Counter = Counter()
+    if not src.exists():
+        stats["원천 없음(parse_business_reports.py 미실행)"] = 1
+        return [], stats
+
+    out: list[dict] = []
+    with src.open(encoding="utf-8-sig", newline="") as f:
+        for r in csv.DictReader(f):
+            stats[f"판정 {r['verdict']}"] += 1
+            if r["verdict"] not in RD_ACCEPT_VERDICTS or not r["rd_expense"]:
+                continue
+            out.append({"corp_code": r["corp_code"],
+                        "fiscal_year": int(r["fiscal_year"]),
+                        "metric_code": "rd_expense",
+                        "metric_value": r["rd_expense"],
+                        # 문서 표에는 연결·별도 구분이 없다
+                        "fs_div": ""})
+    stats["채택"] = len(out)
+    return out, stats
 
 
 def build_rows() -> tuple[list[dict], dict]:
@@ -107,10 +150,23 @@ def build_rows() -> tuple[list[dict], dict]:
             out.append({"corp_code": corp, "fiscal_year": year, "metric_code": code,
                         "metric_value": f"{value:.4f}", "fs_div": chosen})
 
+    rd_rows, rd_stats = build_rd_rows()
+    # company_metric 은 (corp_code, fiscal_year, metric_code) 가 PK 다. 원천이 달라
+    # 겹칠 일이 없지만, 겹치면 적재가 아니라 여기서 걸려야 한다.
+    seen = {(r["corp_code"], r["fiscal_year"], r["metric_code"]) for r in out}
+    for r in rd_rows:
+        key = (r["corp_code"], r["fiscal_year"], r["metric_code"])
+        if key in seen:
+            rd_stats["PK 중복(건너뜀)"] += 1
+            continue
+        seen.add(key)
+        out.append(r)
+
     # 적재 순서를 고정한다 — 같은 입력이면 같은 바이트여야 한다 (저장 기준 9장)
     out.sort(key=lambda r: (r["corp_code"], r["fiscal_year"], r["metric_code"]))
     return out, {"staged_rows": len(rows), "pairs": len(pairs), "used_fs": used_fs,
-                 "skipped_currency": skipped_currency, "missing": missing}
+                 "skipped_currency": skipped_currency, "missing": missing,
+                 "rd": rd_stats}
 
 
 def write_seed(rows: list[dict]) -> Path:
@@ -138,6 +194,10 @@ def main() -> int:
     print(f"  fs_div       연결 {used_fs['CFS']:,} · 별도 {used_fs['OFS']:,}")
     print(f"  지표별       " + " · ".join(
         f"{c} {sum(1 for r in out if r['metric_code'] == c):,}" for c in METRICS))
+    rd = stats["rd"]
+    n_rd = sum(1 for r in out if r["metric_code"] == "rd_expense")
+    print(f"  rd_expense   {n_rd:,}행 (사업보고서 원문) — " +
+          " · ".join(f"{k} {v}" for k, v in sorted(rd.items())))
     print(f"  결측(행 없음) " + " · ".join(f"{c} {missing[c]:,}" for c in METRICS))
     if skipped_currency:
         print(f"  통화로 제외   {dict(skipped_currency)}  ← metric.unit 이 KRW 다")

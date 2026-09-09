@@ -164,7 +164,7 @@ def check_metrics(conn, rep: Report) -> None:
         corp, year = data["corpCode"], data["year"]
         keys = [m["key"] for m in data["metrics"]]
 
-        # 비활성 지표(rd_cost)는 응답에 없어야 한다
+        # 비활성 지표(rd_expense)는 응답에 없어야 한다
         for code in inactive:
             rep.check(code not in keys, f"{name}: 비활성 지표 {code} 가 응답에 있다")
         # 활성 지표는 값이 없어도 자리가 유지되어야 한다

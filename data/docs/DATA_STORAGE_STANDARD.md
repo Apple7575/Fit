@@ -74,7 +74,8 @@ data/
 │           └── <collection_run_id>/ *.xml · requests.json · run.json
 ├── staged/                          정제 결과. 재생성 가능, Git 제외
 │   ├── opendart/
-│   ├── business_report/
+│   ├── business_report/             segment_revenue · facility · main_product ·
+│   │                                rd_expense · passages.jsonl · text_llm.csv
 │   └── google_news_rss/
 │       └── <collection_run_id>/     articles.csv · rejects.csv · duplicates.csv · stage_summary.json
 ├── curated/

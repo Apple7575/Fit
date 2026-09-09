@@ -18,7 +18,7 @@ metric_code 는 develop 의 `metric` 카탈로그 값을 쓴다 (S15P21A504-84 �
     revenue · operating_profit · employee_count   그대로
     avg_salary_krw    → avg_salary
     avg_tenure_years  → avg_tenure
-    rnd_cost_krw      → rd_cost      (V3 에서 is_active=FALSE 로 추가한 지표)
+    rnd_cost_krw      → rd_expense    (V5 가 is_active=FALSE 로 추가, V17 이 rd_cost 에서 개명)
     rnd_ratio_pct     → rd_ratio
 
 **dataclass 필드명은 바꾸지 않았다.** 회귀 기준선(tests/fixtures/normalize)이
@@ -276,7 +276,7 @@ def _do_rnd(store, t, year, p, res: NormalizeResult):
     row = res.row
     if not row.rcept_no:
         res.warnings.append("rcept_no 없음 — 사업보고서를 찾을 수 없다")
-        res.evidence.append(Evidence(t.corp_code, year, "rd_cost", NOT_FOUND,
+        res.evidence.append(Evidence(t.corp_code, year, "rd_expense", NOT_FOUND,
                                      evidence={"error": "rcept_no 없음"}))
         return None
     try:
@@ -284,14 +284,14 @@ def _do_rnd(store, t, year, p, res: NormalizeResult):
         out = rnd_mod.from_document(path, row.revenue, p)
     except RawMissing as e:
         res.warnings.append(str(e))
-        res.evidence.append(Evidence(t.corp_code, year, "rd_cost", NOT_FOUND,
+        res.evidence.append(Evidence(t.corp_code, year, "rd_expense", NOT_FOUND,
                                      evidence={"error": "원본 없음",
                                                "rcept_no": row.rcept_no}))
         return None
     except Exception as e:
         log.exception("R&D 정규화 실패 %s %s", t.display_name, year)
         res.warnings.append(f"R&D 정규화 예외: {e}")
-        res.evidence.append(Evidence(t.corp_code, year, "rd_cost", NOT_FOUND,
+        res.evidence.append(Evidence(t.corp_code, year, "rd_expense", NOT_FOUND,
                                      evidence={"error": str(e)}))
         return None
 
@@ -306,7 +306,7 @@ def _do_rnd(store, t, year, p, res: NormalizeResult):
     gap = round(max(ratios) - min(ratios), 2) if len(ratios) >= 2 else None
 
     res.evidence.append(Evidence(
-        t.corp_code, year, "rd_cost", verdict, source="doc_table", gap_pct=gap,
+        t.corp_code, year, "rd_expense", verdict, source="doc_table", gap_pct=gap,
         evidence={"raw_verdict": out.verdict, "rcept_no": row.rcept_no,
                   "table_idx": out.table_idx, "section": out.section,
                   "unit": out.unit, "unit_src": out.unit_src,

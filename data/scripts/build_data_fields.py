@@ -192,7 +192,7 @@ note("company_metric", "fs_div", DERIVED, "dart_financial_account.fs_div", "raw"
 
 note("metric_evidence", "corp_code", DERIVED, "", "raw", "00126380")
 note("metric_evidence", "fiscal_year", DERIVED, "", "raw", "2025")
-note("metric_evidence", "metric_code", DERIVED, "", "raw", "rd_cost")
+note("metric_evidence", "metric_code", DERIVED, "", "raw", "rd_expense")
 note("metric_evidence", "verdict", DERIVED, "", "derived:교차검증 판정", "verified")
 note("metric_evidence", "source", DERIVED, "", "derived:획득 경로", "doc_table")
 note("metric_evidence", "rcept_no", FILING, "document.xml:rcept_no", "raw", "20260310002820")

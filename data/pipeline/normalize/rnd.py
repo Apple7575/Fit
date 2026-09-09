@@ -196,15 +196,21 @@ def _decimals(raw: str | None) -> int | None:
 
 
 def _unit(tables, i: int, p: Patterns):
-    """단위 표기 탐색. 자기 표부터 직전 N개까지 거슬러 올라간다."""
+    """단위 표기 탐색. 자기 표부터 직전 N개까지 거슬러 올라간다.
+
+    해석 규칙은 `business_report.doc.unit_from_blob` 에 있다. 두 파서가 같은
+    문서의 같은 표를 보므로 규칙이 갈리면 안 된다 (S15P21A504-73).
+    """
+    from ..business_report.doc import unit_from_blob
+
     lookback = p.rnd.unit_lookback_tables
     for k in range(i, max(-1, i - lookback - 1), -1):
         blob = tables[k]["caption"] + " " + " ".join(
             " ".join(r) for r in tables[k]["m"][:3])
-        if "단위" in blob:
-            for name, mult in p.rnd.units:
-                if name in blob:
-                    return name, mult, "자기표" if k == i else f"직전표-{i - k}"
+        found = unit_from_blob(blob, p.rnd.units)
+        if found:
+            name, mult = found
+            return name, mult, "자기표" if k == i else f"직전표-{i - k}"
     return None, None, None
 
 

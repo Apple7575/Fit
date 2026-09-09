@@ -60,6 +60,49 @@ class EmployeePatterns:
 
 
 @dataclass(frozen=True)
+class SegmentPatterns:
+    """부문별 매출 (S15P21A504-73)."""
+    section_title: re.Pattern
+    table_hint: re.Pattern
+    exclude_row: re.Pattern
+    exclude_cell: re.Pattern
+    name_strip: re.Pattern
+    name_max_len: int
+    value_position: int
+
+
+@dataclass(frozen=True)
+class FacilityPatterns:
+    """시설투자 (S15P21A504-73)."""
+    section_title: re.Pattern
+    table_hint: re.Pattern
+    exclude_row: re.Pattern
+    field_header: re.Pattern
+    purpose_header: re.Pattern
+    amount_header_priority: tuple[re.Pattern, ...]   # 순서 = 우선순위
+    amount_exclude_header: re.Pattern
+    foreign_currency: re.Pattern
+    period_in_purpose: re.Pattern
+
+
+@dataclass(frozen=True)
+class TextPatterns:
+    """company_text 6종의 원문 구간 (S15P21A504-73)."""
+    main_business_section: re.Pattern
+    main_product_section: re.Pattern
+    rd_section: re.Pattern
+    llm_input_chars: int
+    null_tokens: re.Pattern
+
+
+@dataclass(frozen=True)
+class BusinessReportPatterns:
+    segment: SegmentPatterns
+    facility: FacilityPatterns
+    text: TextPatterns
+
+
+@dataclass(frozen=True)
 class Thresholds:
     rnd_ratio_tolerance_pp: float
     rnd_ratio_min_pct: float
@@ -70,6 +113,7 @@ class Thresholds:
     salary_gap_warn_pct: float
     tenure_gap_warn_years: float
     candidate_table_max_rows: int
+    segment_sum_tolerance: float
 
 
 @dataclass(frozen=True)
@@ -89,6 +133,7 @@ class Patterns:
     total_equity: AccountPatterns
     rnd: RndPatterns
     employee: EmployeePatterns
+    business_report: BusinessReportPatterns
     thresholds: Thresholds
     financial_statement: FinancialStatement
 
@@ -108,6 +153,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
     te = raw["total_equity"]
     rnd = raw["rnd"]
     emp = raw["employee"]
+    br = raw["business_report"]
     th = raw["thresholds"]
     fs = raw["financial_statement"]
 
@@ -154,6 +200,36 @@ def load_patterns(path: Path | None = None) -> Patterns:
             null_tokens=frozenset(emp["null_tokens"]),
             fields=dict(emp["fields"]),
         ),
+        business_report=BusinessReportPatterns(
+            segment=SegmentPatterns(
+                section_title=_re(br["segment"]["section_title_re"]),
+                table_hint=_re(br["segment"]["table_hint_re"]),
+                exclude_row=_re(br["segment"]["exclude_row_re"]),
+                exclude_cell=_re(br["segment"]["exclude_cell_re"]),
+                name_strip=_re(br["segment"]["name_strip_re"]),
+                name_max_len=int(br["segment"]["name_max_len"]),
+                value_position=int(br["segment"]["value_position"]),
+            ),
+            facility=FacilityPatterns(
+                section_title=_re(br["facility"]["section_title_re"]),
+                table_hint=_re(br["facility"]["table_hint_re"]),
+                exclude_row=_re(br["facility"]["exclude_row_re"]),
+                field_header=_re(br["facility"]["field_header_re"]),
+                purpose_header=_re(br["facility"]["purpose_header_re"]),
+                amount_header_priority=tuple(
+                    _re(x) for x in br["facility"]["amount_header_priority_re"]),
+                amount_exclude_header=_re(br["facility"]["amount_exclude_header_re"]),
+                foreign_currency=_re(br["facility"]["foreign_currency_re"]),
+                period_in_purpose=_re(br["facility"]["period_in_purpose_re"]),
+            ),
+            text=TextPatterns(
+                main_business_section=_re(br["text"]["main_business_section_re"]),
+                main_product_section=_re(br["text"]["main_product_section_re"]),
+                rd_section=_re(br["text"]["rd_section_re"]),
+                llm_input_chars=int(br["text"]["llm_input_chars"]),
+                null_tokens=_re(br["text"]["null_tokens_re"]),
+            ),
+        ),
         thresholds=Thresholds(
             rnd_ratio_tolerance_pp=float(th["rnd_ratio_tolerance_pp"]),
             rnd_ratio_min_pct=float(th["rnd_ratio_min_pct"]),
@@ -164,6 +240,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
             salary_gap_warn_pct=float(th["salary_gap_warn_pct"]),
             tenure_gap_warn_years=float(th["tenure_gap_warn_years"]),
             candidate_table_max_rows=int(th["candidate_table_max_rows"]),
+            segment_sum_tolerance=float(th["segment_sum_tolerance"]),
         ),
         financial_statement=FinancialStatement(
             fs_div_priority=tuple(fs["fs_div_priority"]),

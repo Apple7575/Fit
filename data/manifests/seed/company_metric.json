@@ -1,6 +1,6 @@
 {
   "table": "company_metric",
-  "generated_at": "2026-09-08T05:02:01.058364+00:00",
+  "generated_at": "2026-09-08T08:43:58.619999+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -31,13 +31,13 @@
     "V16__news_article_drop_ai_columns.sql"
   ],
   "source": "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
-  "seed_rows": 58327,
+  "seed_rows": 58646,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "metric_code": 0,
     "metric_value": 0,
-    "fs_div": 0
+    "fs_div": 319
   },
   "notes": [
     "연결 우선·별도 폴백. 고른 쪽을 fs_div 에 남긴다",
@@ -58,6 +58,12 @@
       "total_liabilities": 7
     },
     "pairs": 11880,
+    "rd": {
+      "판정 high": 311,
+      "판정 medium": 8,
+      "판정 mismatch": 54,
+      "채택": 319
+    },
     "skipped_currency": {
       "USD": 268,
       "CNY": 240,
