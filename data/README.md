@@ -148,7 +148,7 @@ cd -
 
 python scripts/collect.py        # 원본 수집
 python scripts/load_company.py   # industry 77 + 기업 마스터 3,930건 (FK 때문에 이게 먼저)
-python scripts/load_raw.py       # DART 원본 착지 테이블
+python scripts/load_raw.py       # DART 직원현황 착지 테이블
 python scripts/load_metrics.py   # 지표 + 근거 적재
 python scripts/verify_db.py --report   # 적재 검증 + 커버리지 리포트
 ```
