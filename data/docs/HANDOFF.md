@@ -296,6 +296,11 @@ python scripts/verify_db.py --report
 
 ### 6-2. 스키마 변경이 필요해 못 한 것 (ALTER 금지라 보고만 함)
 
+> **후기 (S15P21A504-120).** 아래는 이 문서를 쓸 당시의 기록이다. 키를 넓히는
+> 대신 **테이블을 버리는 쪽으로 정리됐다** — 읽는 곳이 0곳이라 `load_raw.py` 의
+> 재무 적재를 뺐고(MR !69), 정리 마이그레이션 V18 이 `dart_financial_account` 를
+> DROP 한다. 계정명 원본은 `staging` 의 전 종목 재무 착지 테이블이 대신한다.
+
 **`dart_financial_account`에 전체재무제표(`fnlttSinglAcntAll`)를 넣지 못했다.**
 
 UNIQUE 키가 `(corp_code, bsns_year, reprt_code, fs_div, sj_div, account_nm)`인데 전체재무제표는 이 키로 행이 구분되지 않는다.
