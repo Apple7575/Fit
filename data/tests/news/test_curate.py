@@ -53,9 +53,20 @@ class CurateTest(unittest.TestCase):
         self.assertEqual(result.rows[0]["source"], PROVIDER)
 
     def test_AI_컬럼은_비운다(self):
+        # V16 이 news_category · related_business · analyzed_at 을 지워 하나만 남았다.
         row = self.build([staged()]).rows[0]
-        for column in ("category", "related_business", "importance_score", "analyzed_at"):
-            self.assertEqual(row[column], "", column)
+        self.assertEqual(row["importance_score"], "")
+        for column in ("news_category", "related_business", "analyzed_at", "description"):
+            self.assertNotIn(column, row, f"{column} 은 V16 이 지운 컬럼이다")
+
+    def test_guid_를_시드로_옮긴다(self):
+        """V17 이 더한 확정 ERD 의 중복 방지 키. staged 의 값을 그대로 넘긴다."""
+        self.assertEqual(self.build([staged()]).rows[0]["guid"], "g1")
+
+    def test_guid_가_없으면_빈_칸이다(self):
+        """RSS 가 guid 를 주지 않는 경우가 있다. 지어내지 않고 NULL 로 둔다 —
+        UNIQUE 가 (corp_code, guid) 라 NULL 인 행끼리는 서로 충돌하지 않는다."""
+        self.assertEqual(self.build([staged(guid="")]).rows[0]["guid"], "")
 
     def test_기업코드_없는_행은_넣지_않고_사유를_남긴다(self):
         result = self.build([staged(corp_code="", corp_map_reason="not_in_company_universe",

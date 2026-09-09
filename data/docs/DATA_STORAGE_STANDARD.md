@@ -119,7 +119,7 @@ data/
 | 뉴스 들여오기 기록 | `run.json` (대상 구간·체크섬) | |
 | 수집 manifest | `manifests/<provider>/<collection_run_id>.json` | |
 | staged | `staged/<provider>/<collection_run_id>/articles.csv` | |
-| 시드 CSV | `curated/seed/<table_name>.csv` | `curated/seed/company_news.csv` |
+| 시드 CSV | `curated/seed/<table_name>.csv` | `curated/seed/news_article.csv` |
 | 시드 manifest | `manifests/seed/<table_name>.json` | |
 
 **경로에 회사명을 주요 식별자로 쓰지 않는다.** 한 실행이 여러 기업을 다룰 수 있고, 회사명을
@@ -162,7 +162,7 @@ data/
 저장은 UTC, 날짜 구분은 KST, 노출은 서울 날짜다. 시간대를 읽을 수 없으면 **추정하지 않고
 `published_at` 을 비운 뒤** `rejects.csv` 의 `unparsed_published_at` 으로 분리한다.
 DB 는 `published_at` NULL 을 허용하지만 그 행은 세 뉴스 API 어디에도 나가지 않는다
-(`V12__company_news.sql` 주석).
+(`V12__company_news.sql` 주석. 테이블은 `V13` 에서 `news_article` 로 옮겨졌다).
 
 ---
 
@@ -181,8 +181,16 @@ DB 는 `published_at` NULL 을 허용하지만 그 행은 세 뉴스 API 어디�
 보지 않는다 — 같은 날짜 재조회에서도 결과가 달라진 실측이 있다
 ([`news-poc/91-collection-result.md`](news-poc/91-collection-result.md)).
 
-DB 는 `(corp_code, original_url) WHERE original_url IS NOT NULL` 부분 UNIQUE 인덱스로만
-막는다. 시드 생성은 같은 조건으로 한 번 더 걸러 적재 실패를 미리 잡는다.
+**지금 DB 는 URL 중복을 막지 않는다.** V12 의 부분 UNIQUE 인덱스
+`(corp_code, original_url) WHERE original_url IS NOT NULL` 이 V13 의 `news_article` 로
+넘어오지 않았다 — 복원을 요청해 두었다
+([`S15P21A504-v13-followup.md`](S15P21A504-v13-followup.md) 2장). 그래서 **시드 생성의
+같은 조건 판정(`pipeline/news/curate.py`)이 유일한 방어다.** 우리 파이프라인을 통과할
+때만 걸리므로 DB 레벨 방어가 아니라는 점을 알고 써야 한다.
+
+V17 이 확정 ERD 의 다른 중복 방지 키 `UNIQUE (corp_code, guid)` 를 넣었다. 이쪽은 DB 가
+막는다. 다만 RSS 가 guid 를 주지 않으면 NULL 이고 NULL 끼리는 충돌하지 않으므로,
+URL 판정을 대신하지는 못한다.
 
 ---
 
@@ -193,7 +201,7 @@ DB 는 `(corp_code, original_url) WHERE original_url IS NOT NULL` 부분 UNIQUE 
 | `raw/**` | **제외** (`.gitkeep` 만) | DART 캐시가 330MB 이상이고, 뉴스 RSS 는 저장·재배포 조건이 미확정이다 |
 | `staged/**` | **제외** (`.gitkeep` 만) | raw 에서 재생성 가능하다. `_out/` 과 같은 판단 |
 | `curated/seed/*.csv` | 추적 | 팀이 DB 를 채우는 입력이다 |
-| `curated/seed/company_news.csv` | **제외** | 제3자 기사 제목·URL 을 담는다. 사용조건 확정까지 커밋하지 않는다 |
+| `curated/seed/news_article.csv` | **제외** | 제3자 기사 제목·URL 을 담는다. 사용조건 확정까지 커밋하지 않는다. 옛 이름 `company_news.csv` 도 함께 제외한다 |
 | `manifests/**` | 추적 | 기사 내용이 아니라 건수·해시·요청 이력만 들어 있다. 원본을 커밋하지 않으므로 저장소에 남는 **유일한 계보 기록**이다 |
 | `logs/**` | 제외 | 저장소 루트 `.gitignore` 의 `logs/` 규칙에 이미 걸린다. 실행 산출물이라 그대로 둔다 |
 | `docs/data_fields.csv` · `docs/seed_csv_inventory.csv` | 추적 | 문서다 |
@@ -252,7 +260,7 @@ DB 는 `(corp_code, original_url) WHERE original_url IS NOT NULL` 부분 UNIQUE 
 - 빈 셀 = SQL NULL. `"null"` 이나 `"-"` 로 채우지 않는다
 - 날짜·시각은 ISO 8601 (`2026-09-05T23:30:00+00:00`), 날짜만인 컬럼은 `YYYY-MM-DD`
 - enum 은 DB CHECK 제약의 값을 그대로 쓴다 (`facility` / `corporate_invest` / `ma` / `transfer`)
-- **identity 컬럼은 넣지 않는다.** `company_news.id` 는 `GENERATED ALWAYS AS IDENTITY` 라
+- **identity 컬럼은 넣지 않는다.** `news_article.id` 는 `GENERATED ALWAYS AS IDENTITY` 라
   `OVERRIDING SYSTEM VALUE` 없이 INSERT 할 수 없다
 - PK·UNIQUE 중복 금지. FK 대상이 먼저 존재해야 한다 (`industry` → `company` → 나머지)
 - 같은 입력으로 다시 실행하면 같은 정렬·같은 바이트. 뉴스 시드는
@@ -361,8 +369,10 @@ SQL 에서 읽고 FK 대조는 `config/company_universe.csv` 로 한다.
 - 뉴스 raw → staged → curated 코드 (`pipeline/news/`) 와 CLI 4종
   (`import_news_raw.py` · `stage_news.py` · `build_news_seed.py` · `verify_news.py`)
 - Flyway SQL 파서 (`pipeline/news/flyway.py`) — 검증과 데이터 사전의 기준
-- `docs/data_fields.csv` (17 테이블 148 컬럼) · `docs/seed_csv_inventory.csv` (20행) · 이 문서
-- 단위·통합 테스트 57건
+- `docs/data_fields.csv` (15 테이블 143 컬럼) · `docs/seed_csv_inventory.csv` (26행) · 이 문서
+  — V13 이 테이블 일곱 개를 셋으로 합치고, V14·V15 가 인증 테이블 둘을 더하고,
+  V16 이 뉴스 AI 컬럼 넷을 지우고, V17 이 `guid` 를 더한 뒤의 수다
+- 단위·통합 테스트 63건
 
 하지 않았다.
 
@@ -375,7 +385,7 @@ SQL 에서 읽고 FK 대조는 `config/company_universe.csv` 로 한다.
 ### 후속 작업
 
 1. 뉴스 원본 폴더 공유 → `import_news_raw.py` → `stage_news.py` → `build_news_seed.py`
-2. `company_news.source` 가 `provider` 인지 `publisher` 인지 백엔드와 합의 (기본값은 `publisher`,
+2. `news_article.source` 가 `provider` 인지 `publisher` 인지 백엔드와 합의 (기본값은 `publisher`,
    `--source-column provider` 로 전환. `provider` 컬럼 추가를 제안한다)
 3. 뉴스 사용조건 확정 → 원본·시드의 Git 추적 정책 재판정
 4. `collection_run.run_type` CHECK 에 뉴스 수집 유형 추가 여부

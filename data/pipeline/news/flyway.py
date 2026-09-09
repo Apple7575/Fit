@@ -212,6 +212,33 @@ _UNIQUE_INDEX = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _INSERT_INTO = re.compile(r"^INSERT\s+INTO\s+(?:(\w+)\.)?(\w+)", re.IGNORECASE)
+# 테이블이 사라지거나 스키마를 옮기는 문장. 이것을 읽지 않으면 파서가 만든 스키마에
+# 이미 없는 테이블이 남는다 — V13 이 지운 일곱 개가 그대로 남아 데이터 사전·인벤토리
+# 대조(verify 9·12번)가 "문서에 있는데 스키마에 없다"를 거꾸로 판정한다.
+#
+# SET SCHEMA 는 아직 쓰는 마이그레이션이 없다. 정리 마이그레이션이 collection_run ·
+# dart_employee_status 를 staging 으로 옮길 예정이라 미리 읽는다.
+_DROP_TABLE = re.compile(
+    r"^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)", re.IGNORECASE)
+_SET_SCHEMA = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+SET\s+SCHEMA\s+(\w+)", re.IGNORECASE)
+# 컬럼도 같은 이유로 읽는다. V16 이 news_article 의 AI 컬럼 넷을 지웠는데 이것을
+# 건너뛰면 사전이 없는 컬럼을 문서화한 채로 verify 9번이 통과한다 — 대조가 있으나
+# 마나 한 상태가 된다.
+#
+# 한 ALTER 에 `DROP COLUMN a, DROP COLUMN b` 처럼 여러 절이 붙는다(V16 이 그렇다).
+# 그래서 문장을 매치하는 것과 절을 훑는 것을 나눴다.
+_DROP_COLUMN_STMT = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+(.*DROP\s+COLUMN\s+.*)$",
+    re.IGNORECASE | re.DOTALL)
+_DROP_COLUMN_CLAUSE = re.compile(
+    r"DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?(\w+)", re.IGNORECASE)
+# 나중에 붙는 유일성 제약. CREATE TABLE 안의 UNIQUE 와 CREATE UNIQUE INDEX 는 읽고
+# 있었는데 이 형태만 빠져 있었다 — V17 의 news_article_guid_uk 가 그렇다. 읽지 않으면
+# 확정 ERD 의 중복 방지 키가 사전에 그냥 널 허용 컬럼으로 남는다.
+_ADD_UNIQUE = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+ADD\s+CONSTRAINT\s+\w+\s+UNIQUE\s*\(([^)]*)\)",
+    re.IGNORECASE | re.DOTALL)
 _REFERENCES = re.compile(
     r"REFERENCES\s+(?:\w+\.)?(\w+)\s*\(\s*(\w+)\s*\)", re.IGNORECASE
 )
@@ -314,6 +341,15 @@ def load(migration_dir: Path | None = None) -> Schema:
                     if table and parts[-1] in table.columns:
                         table.columns[parts[-1]].comment = text
                 continue
+            unique = _ADD_UNIQUE.match(statement)
+            if unique:
+                table = schema.tables.get(unique.group(2))
+                if table:
+                    for raw in unique.group(3).split(","):
+                        name = raw.strip()
+                        if name in table.columns:
+                            _add_key(table.columns[name], "UK")
+                continue
             add = _ADD_COLUMN.match(statement)
             if add and not re.match(r"^ALTER\s+TABLE\s+[\w.]+\s+ADD\s+CONSTRAINT", statement, re.IGNORECASE):
                 table = schema.tables[add.group(2)]
@@ -347,9 +383,27 @@ def load(migration_dir: Path | None = None) -> Schema:
             if insert:
                 schema.seeded_tables.add(insert.group(2))
                 continue
+            drop = _DROP_TABLE.match(statement)
+            if drop:
+                schema.tables.pop(drop.group(2), None)
+                schema.seeded_tables.discard(drop.group(2))
+                continue
+            moved = _SET_SCHEMA.match(statement)
+            if moved:
+                table = schema.tables.get(moved.group(2))
+                if table:
+                    table.schema = moved.group(3).lower()
+                continue
+            dropped = _DROP_COLUMN_STMT.match(statement)
+            if dropped:
+                table = schema.tables.get(dropped.group(2))
+                if table:
+                    for name in _DROP_COLUMN_CLAUSE.findall(dropped.group(3)):
+                        table.columns.pop(name, None)
+                continue
             if any(head.startswith(k) for k in (
                 "CREATE INDEX", "CREATE SCHEMA", "CREATE EXTENSION", "ALTER TABLE",
-                "DROP INDEX", "DROP TABLE", "UPDATE", "DELETE", "SET",
+                "DROP INDEX", "UPDATE", "DELETE", "SET",
             )):
                 continue
             raise ValueError(f"{path.name}: 파싱하지 못한 문장 — {statement[:120]!r}")

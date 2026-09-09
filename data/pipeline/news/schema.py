@@ -19,7 +19,7 @@ COUNTRY = "KR"
 
 # 정제 코드 규격 버전. staged 산출물과 manifest 에 함께 남겨 재생성 결과를 대조한다.
 STAGE_SCHEMA_VERSION = "news-staged-v1"
-SEED_SCHEMA_VERSION = "company_news-seed-v1"
+SEED_SCHEMA_VERSION = "news_article-seed-v1"
 MANIFEST_SCHEMA_VERSION = "news-manifest-v1"
 
 # ── staged ────────────────────────────────────────────
@@ -76,26 +76,32 @@ STAGED_FIELDS = [
 REJECT_FIELDS = STAGED_FIELDS + ["reject_reason"]
 
 # ── curated seed ──────────────────────────────────────
-# company_news(V12) 컬럼과 헤더가 일치해야 한다. id 는 GENERATED ALWAYS AS IDENTITY 라
+# news_article(V13) 컬럼과 헤더가 일치해야 한다. id 는 GENERATED ALWAYS AS IDENTITY 라
 # OVERRIDING SYSTEM VALUE 없이 INSERT 할 수 없으므로 CSV 에 넣지 않는다.
-SEED_TABLE = "company_news"
+#
+# V13 이 V12 의 company_news 를 확정 ERD 이름인 news_article 로 옮겼고, **V16 이
+# AI 컬럼 넷(description · news_category · related_business · analyzed_at)을 지웠다.**
+# 남은 AI 값은 importance_score 하나뿐이다. **V17 이 guid 를 더했다** — 확정 ERD 의
+# 중복 방지 키이고 `UNIQUE (corp_code, guid)` 가 걸려 있다. 시드 파일명·manifest
+# 이름이 이 상수에서 나오므로 여기만 바꾸면 따라온다.
+#
+# 순서는 Flyway 컬럼 순서다. guid 가 마지막인 것은 나중에 붙은 컬럼이기 때문이고,
+# `curate.seed_header()` 가 그 순서를 그대로 읽어 대조한다.
+SEED_TABLE = "news_article"
 SEED_IDENTITY_COLUMNS = ["id"]
 SEED_FIELDS = [
     "corp_code",
     "title",
-    "description",
     "published_at",
     "original_url",
     "source",
-    "category",
-    "related_business",
     "importance_score",
-    "analyzed_at",
     "collected_at",
+    "guid",
 ]
 
-# company_news.source 가 provider·publisher 중 무엇을 담는지는 백엔드와 합의가 필요하다
-# (V12 주석은 "어느 뉴스 소스에서 왔나"로만 적혀 있다). 기본값은 publisher 다 —
+# news_article.source 가 provider·publisher 중 무엇을 담는지는 백엔드와 합의가 필요하다
+# (V13 주석도 "수집 출처"로만 적혀 있다). 기본값은 publisher 다 —
 # provider 는 manifest·staged 에 상수로 남아 있어 잃을 것이 없는데, publisher 는
 # 현재 스키마에 다른 자리가 없어 버리면 언론사 표시 근거가 사라진다.
 SEED_SOURCE_CHOICES = ("publisher", "provider")

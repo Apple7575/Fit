@@ -35,6 +35,7 @@ DERIVED = "derived"                      # 파이프라인 계산 결과
 AI = "ai_analysis"                       # 외부 모델 생성물
 FLYWAY = "flyway_seed"                   # 마이그레이션 SQL 이 넣는 값
 DB = "database"                          # DB 기본값
+APP = "app_user_input"                   # 서비스 사용자가 화면에서 입력한 값
 UNSET = "미정"                            # 적재 경로가 아직 없다
 
 AGREEMENT = "합의 필요"
@@ -50,14 +51,15 @@ TABLE_PROVIDER = {
     "dart_employee_status": OPENDART,
     "staging.dart_otr_cpr_invstmnt": OPENDART,
     "collection_run": DERIVED,
-    "company_business": FILING,
-    "company_product": FILING,
-    "company_segment": FILING,
-    "company_rnd_field": FILING,
-    "company_focus_direction": AI,
-    "company_focus_direction_item": AI,
+    "company_text": FILING,
+    "segment_metric": FILING,
     "company_activity": OPENDART,
-    "company_news": NEWS,
+    "news_article": NEWS,
+    # 인증 기능(S15P21A504-122 · 123)이 V14·V15 로 더한 테이블이다. 수집 파이프라인의
+    # 산출물이 아니라 서비스 사용자 입력이지만, 사전은 스키마 전체를 덮어야 하므로
+    # (verify_news.py 9번이 컬럼 단위로 대조한다) 여기에도 적는다.
+    "users": APP,
+    "email_verification_token": APP,
 }
 
 # (provider, source_field, transform_rule, example, contains_personal_data, remarks)
@@ -75,9 +77,9 @@ def note(table, column, provider=None, source_field="", transform_rule="raw",
 # ── 공통 관리 컬럼 ────────────────────────────────────
 for table, column in (
     ("company", "created_at"), ("company", "updated_at"),
-    ("company_metric", "updated_at"), ("company_business", "updated_at"),
-    ("company_product", "updated_at"), ("company_segment", "updated_at"),
-    ("company_rnd_field", "updated_at"), ("company_activity", "updated_at"),
+    ("company_metric", "updated_at"), ("company_text", "updated_at"),
+    ("segment_metric", "updated_at"), ("company_activity", "updated_at"),
+    ("users", "created_at"), ("users", "updated_at"),
 ):
     note(table, column, DB, "", "default:now()", "2026-09-07T12:00:00+09:00")
 
@@ -214,34 +216,28 @@ note("collection_run", "fail_count", DERIVED, "", "derived:실행 집계", "0")
 note("collection_run", "message", DERIVED, "", "raw", "")
 
 # ── 사업보고서 기반 ───────────────────────────────────
-for table, column, example in (
-    ("company_business", "business_name", "DX부문"),
-    ("company_product", "product_name", "메모리"),
-    ("company_rnd_field", "field_name", "차세대 메모리"),
-):
-    note(table, column, FILING, "document.xml:사업의 내용", "derived:추출 PoC 결과", example,
-         remarks="S15P21A504-73 추출 방식 확정 전. 현재 미적재")
-for table in ("company_business", "company_product", "company_rnd_field", "company_segment",
-              "company_focus_direction", "company_focus_direction_item", "company_activity"):
+# V13 이 V10·V11 의 다섯 테이블(company_business · company_product ·
+# company_rnd_field · company_focus_direction · company_focus_direction_item)을
+# company_text 한 개로, company_segment(wide)를 segment_metric(long)으로 합쳤다.
+# 그래서 항목 종류가 테이블 이름이 아니라 attr_key 값으로 들어간다.
+for table in ("company_text", "segment_metric", "company_activity"):
     note(table, "corp_code", None, "company.corp_code", "raw", "00126380")
     note(table, "fiscal_year", None, "", "derived:사업연도", "2025")
-for table in ("company_business", "company_product", "company_rnd_field",
-              "company_focus_direction_item"):
-    note(table, "display_order", None, "", "derived:기재 순서 보존", "1")
-note("company_segment", "segment_code", FILING, "document.xml:부문 표기", "raw", "DX",
-     remarks="기업별 표기 그대로. 표준 코드체계가 없다")
-note("company_segment", "revenue", FILING, "document.xml:부문 매출", "derived:원 단위", "1000000000000",
-     remarks="미공시는 NULL 이며 0 과 다른 사실이다")
-note("company_segment", "employee_count", FILING, "document.xml:부문 인력", "raw", "75200",
-     remarks="미공시는 NULL")
-note("company_segment", "updated_at", DB, "", "default:now()", "2026-09-07T12:00:00+09:00")
 
-note("company_focus_direction", "strategy_change", AI, "", "derived:모델 생성물", "",
-     remarks="공시 수치가 아니다. 화면에서 AI 분석으로 구분 표시한다. 현재 미적재")
-note("company_focus_direction", "generated_at", DB, "", "default:now()", "2026-09-07T12:00:00+09:00")
-note("company_focus_direction_item", "item_type", AI, "", "constant", "NEW_BUSINESS")
-note("company_focus_direction_item", "item_name", AI, "", "derived:모델 생성물", "로봇",
-     remarks="현재 미적재")
+note("company_text", "id", DB, "", "identity", "1")
+note("company_text", "attr_key", None, "", "constant", "main_business",
+     remarks="main_business·main_product·business_keyword·new_business·"
+             "strategy_change·rd_field 6종. 앞 둘·rd_field 는 사업보고서 추출이고 "
+             "나머지는 AI 생성물이라 한 테이블에 provider 가 섞인다")
+note("company_text", "seq", None, "", "derived:기재 순서 보존", "0")
+note("company_text", "value_text", FILING, "document.xml:사업의 내용",
+     "derived:추출 PoC 결과 또는 모델 생성물", "메모리",
+     remarks="S15P21A504-73 추출 방식 확정 전. 현재 미적재. attr_key 가 "
+             "new_business·strategy_change·business_keyword 면 원천이 AI 다")
+note("company_text", "generated_at", AI, "", "derived:모델 실행 시각", "",
+     remarks="AI 생성물만 값이 있다. 사업보고서에서 그대로 옮긴 항목은 NULL")
+
+# segment_metric 은 시드가 생긴 뒤 실측 원천으로 다시 적었다 — 아래 "V13 이 만든 표" 절.
 
 note("company_activity", "id", DB, "", "identity", "1")
 note("company_activity", "activity_type", OPENDART, "", "constant", "facility",
@@ -251,42 +247,37 @@ note("company_activity", "purpose", OPENDART, "주요사항보고서", "derived:
 note("company_activity", "amount", OPENDART, "주요사항보고서", "derived:원 단위", "44000000000000")
 note("company_activity", "rcept_no", OPENDART, "주요사항보고서:rcept_no", "raw", "20260310002820")
 
-# ── company_news — 뉴스 원본 필드와 DB 컬럼의 매핑 ────
+# ── news_article — 뉴스 원본 필드와 DB 컬럼의 매핑 ────
 # source_field 는 "RSS 필드 → staged 컬럼" 으로 적는다. 원본 그대로인 값과 파생값을
 # transform_rule 로 가른다. AI 컬럼은 적재 경로가 아직 없다.
-note("company_news", "id", DB, "", "identity", "1",
+note("news_article", "id", DB, "", "identity", "1",
      remarks="GENERATED ALWAYS AS IDENTITY. 시드 CSV 에 넣지 않는다")
-note("company_news", "corp_code", DERIVED, "requests.json:query → staged.corp_code",
+note("news_article", "corp_code", DERIVED, "requests.json:query → staged.corp_code",
      "derived:검색어를 company_universe.csv 의 corp_name·dart_corp_name 과 정확·정규화 일치로 매핑",
      "00126380",
      remarks="RSS 에 기업 식별자가 없다. 매핑 실패 행은 시드에 넣지 않고 사유를 남긴다")
-note("company_news", "title", NEWS, "rss:item/title → staged.title",
+note("news_article", "title", NEWS, "rss:item/title → staged.title",
      "derived:끝의 ' - <언론사>' 접미사만 제거", "삼성전자, 테일러 공장 가동", personal="possible",
      remarks="기사 제목에 인물명이 들어올 수 있다. 제3자 저작물이므로 저장·표시 조건 확인 필요")
-note("company_news", "description", NEWS, "rss:item/description → staged.description",
-     "derived:검토를 통과한 요약만. 제목 반복은 넣지 않는다", "",
-     remarks="현재 전부 NULL. RSS 설명이 제목 반복인 사례가 있어 요약으로 쓰지 않는다 (90번 문서)")
-note("company_news", "published_at", NEWS, "rss:item/pubDate → staged.published_at",
+note("news_article", "published_at", NEWS, "rss:item/pubDate → staged.published_at",
      "derived:RFC 2822 → UTC ISO 8601. 시간대 누락은 NULL", "2026-09-05T23:30:00+00:00",
      remarks="저장은 UTC, 기간 구분은 KST(staged.published_date_kst), 응답은 서울 기준 날짜")
-note("company_news", "original_url", NEWS, "rss:item/link → staged.original_url",
+note("news_article", "original_url", NEWS, "rss:item/link → staged.original_url",
      "derived:Google 경유 주소가 아닌 외부 링크만 후보로 남긴다", "https://n.example/article/1",
      remarks="Google 경유 rss_link 를 여기 넣지 않는다. 외부 링크도 접근 검증 전 후보다")
-note("company_news", "source", NEWS, "rss:item/source → staged.publisher",
+note("news_article", "source", NEWS, "rss:item/source → staged.publisher",
      "derived:기본 publisher", "테스트일보",
      remarks=f"{AGREEMENT} — 컬럼이 하나뿐이라 provider(google_news_rss)와 publisher(언론사)를 "
              "함께 담을 수 없다. provider 컬럼 추가를 제안한다")
-note("company_news", "category", AI, "", "미적재", "",
-     remarks="AI 분류 미실행. 팀이 카테고리 분류를 하지 않기로 했고 프론트 어휘는 7종이다 — 합의 필요")
-note("company_news", "related_business", AI, "", "미적재", "",
-     remarks="AI 분석 PoC 단계(S15P21A504-74). 반복 안정성 미달로 적재하지 않는다")
-note("company_news", "importance_score", AI, "", "미적재", "",
+note("news_article", "importance_score", AI, "", "미적재", "",
      remarks="0~10. NULL 은 분석 실패이고 0 과 다른 사실이다")
-note("company_news", "analyzed_at", AI, "", "미적재", "",
-     remarks="분석을 돌린 시각. 기본 필드만 적재된 뉴스는 NULL")
-note("company_news", "collected_at", NEWS, "requests.json:checked_at → staged.collected_at",
+note("news_article", "collected_at", NEWS, "requests.json:checked_at → staged.collected_at",
      "raw", "2026-09-06T00:10:00+00:00",
      remarks="원본을 받은 시각. DB 기본값 now() 에 맡기지 않고 수집 시각을 넣는다")
+note("news_article", "guid", NEWS, "rss:item/guid → staged.guid", "raw",
+     "CBMiWmh0dHBzOi8vbi5leGFtcGxlL2FydGljbGUvMQ",
+     remarks="V17 이 더한 확정 ERD 의 중복 방지 키. UNIQUE (corp_code, guid) 가 걸려 "
+             "있고, RSS 가 주지 않으면 NULL 이라 그 행끼리는 서로 충돌하지 않는다")
 
 # ── V13 이 만든 표 — segment_metric · company_text · news_article ────
 # segment_metric 과 company_activity.counterparty 는 시드가 있으므로 채운다
@@ -306,20 +297,6 @@ note("segment_metric", "updated_at", DB, "", "default:now()", "2026-09-08T12:00:
 note("company_activity", "counterparty", OPENDART,
      "otrCprInvstmntSttus:inv_prm", "derived:공백 정리", "삼성전기㈜",
      remarks="피출자회사. 현재 /activities 응답에는 나가지 않는다")
-
-for _column in ("id", "corp_code", "fiscal_year", "attr_key", "seq", "value_text",
-                "generated_at", "updated_at"):
-    note("company_text", _column, UNSET, "", "미적재", "",
-         remarks=f"{AGREEMENT} — 사업보고서 추출 PoC 가 진행 중이라 적재 경로가 없다. "
-                 "attr_key 에 따라 원천이 사업보고서 원문과 AI 생성물로 갈린다")
-
-for _column in ("id", "corp_code", "title", "description", "published_at",
-                "original_url", "source", "news_category", "related_business",
-                "importance_score", "analyzed_at", "collected_at"):
-    note("news_article", _column, NEWS, "", "미적재", "",
-         remarks=f"{AGREEMENT} — V13 이 company_news 를 이 이름으로 옮겼는데 "
-                 "scripts/build_news_seed.py 가 아직 옛 이름으로 쓴다. "
-                 "매핑은 위 company_news 항목과 같다")
 
 # ── V14 · V15 인증 표 ─────────────────────────────────
 # 수집 파이프라인이 아니라 애플리케이션이 채운다. 시드 대상이 아니다.
@@ -367,21 +344,16 @@ DESC = {
     ("dart_employee_status", "rgllbr_co"): "정규직 인원",
     ("dart_employee_status", "cnttk_co"): "계약직 인원",
     ("dart_employee_status", "collected_at"): "이 행을 적재한 시각",
-    ("company_news", "corp_code"): "이 뉴스를 붙인 기업. DART 고유번호 8자리",
-    ("company_news", "original_url"): "언론사 직접 원문 URL. 확보하지 못하면 NULL",
-    ("company_news", "collected_at"): "원본을 받은 시각",
+    ("news_article", "corp_code"): "이 뉴스를 붙인 기업. DART 고유번호 8자리",
     ("company_activity", "corp_code"): "DART 고유번호 8자리",
     ("company_activity", "fiscal_year"): "회계연도",
     ("company_activity", "updated_at"): "이 행을 마지막으로 적재한 시각",
-    ("company_focus_direction_item", "item_name"): "신규사업명 또는 전략 키워드",
-    ("company_rnd_field", "field_name"): "R&D 중점 분야명",
+    ("company_activity", "counterparty"): "거래 상대. 타법인 출자의 피출자회사다",
 }
-for _table in ("company_business", "company_product", "company_rnd_field", "company_segment",
-               "company_focus_direction", "company_focus_direction_item", "company_metric",
-               "metric_evidence"):
+for _table in ("company_text", "segment_metric", "company_metric", "metric_evidence"):
     DESC[(_table, "fiscal_year")] = "회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다"
     DESC[(_table, "corp_code")] = "DART 고유번호 8자리. company 를 참조한다"
-for _table in ("company_business", "company_product", "company_rnd_field", "company_segment"):
+for _table in ("company_text", "segment_metric"):
     DESC[(_table, "updated_at")] = "이 행을 마지막으로 적재한 시각"
 for _column, _text in (
     ("corp_code", "DART 고유번호 8자리"),
@@ -400,7 +372,8 @@ for _column, _text in (
 ):
     DESC[("staging.dart_otr_cpr_invstmnt", _column)] = _text
 for _table in ("dart_financial_account", "dart_employee_status", "collection_run",
-               "company_activity", "company_news", "staging.dart_otr_cpr_invstmnt"):
+               "company_activity", "company_text", "news_article",
+               "staging.dart_otr_cpr_invstmnt"):
     DESC.setdefault((_table, "id"), "대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다")
 
 # V13 · V14 · V15 가 만든 표 중 SQL COMMENT 가 없는 컬럼.
@@ -411,17 +384,6 @@ for _table in ("company_text", "segment_metric"):
 DESC[("company_text", "id")] = "대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다"
 DESC[("segment_metric", "metric_code")] = \
     "지표 코드. metric 을 참조하며 segment_revenue · segment_employee_count 두 값을 쓴다"
-for _column, _text in (
-    ("corp_code", "DART 고유번호 8자리. company 를 참조한다"),
-    ("title", "기사 제목"),
-    ("description", "기사 요약. 제목 반복은 넣지 않는다"),
-    ("published_at", "기사 발행 시각(UTC). 시간대를 알 수 없으면 NULL"),
-    ("original_url", "기사 원문 주소. Google 경유 주소가 아닌 외부 링크다"),
-    ("related_business", "AI 가 연결한 사업 영역. 미분석은 NULL"),
-    ("importance_score", "AI 중요도 0~10. NULL 은 분석 실패이고 0 과 다른 사실이다"),
-    ("collected_at", "원본을 받은 시각"),
-):
-    DESC[("news_article", _column)] = _text
 for _column, _text in (
     ("id", "대리 키. DB 가 생성한다"),
     ("email", "로그인 아이디로 쓰는 이메일 주소"),
@@ -439,6 +401,67 @@ for _column, _text in (
     ("used_at", "사용한 시각. 아직 안 썼으면 NULL"),
 ):
     DESC[("email_verification_token", _column)] = _text
+
+
+# V13 이 news_article 로 옮기면서 V12 의 컬럼 주석 다섯 개를 옮기지 않았다
+# (title · description · published_at · related_business · importance_score).
+# SQL 주석이 복원되면 그쪽이 이긴다 — description 은 column.comment 를 먼저 본다.
+# 복원 요청은 docs/S15P21A504-v13-followup.md 2장에 적었다.
+for _column, _text in (
+    ("title", "기사 제목. 응답의 title"),
+    ("published_at", "기사 발행 시각. 응답에는 서울 기준 날짜(YYYY-MM-DD)로 나간다. "
+                     "NULL 이면 기간 조회에 걸리지 않아 세 API 어디에도 나가지 않는다"),
+    ("original_url", "언론사 직접 원문 URL. 확보하지 못하면 NULL"),
+    ("importance_score", "AI 중요도 0.0~10.0. 프론트 목업 기준 소수 한 자리다. "
+                         "분석 실패는 NULL 이고 0 과 다른 사실이다"),
+    ("collected_at", "원본을 받은 시각"),
+):
+    DESC[("news_article", _column)] = _text
+for _column, _text in (
+    ("corp_code", "DART 고유번호 8자리. company 를 참조한다"),
+    ("fiscal_year", "회계연도"),
+    ("updated_at", "이 행을 마지막으로 적재한 시각"),
+):
+    DESC[("company_text", _column)] = _text
+    DESC[("segment_metric", _column)] = _text
+
+
+# ── 인증 테이블 (V14 · V15, S15P21A504-122 · 123) ─────
+# DDL 에서 읽을 수 있는 것만 적는다. 보관 기간·삭제 정책처럼 확인할 수 없는 것은
+# 추측하지 않고 remarks 에 "합의 필요" 로 남긴다.
+note("users", "id", DB, "", "identity", "1")
+note("users", "email", APP, "회원가입 폼:email", "raw", "user@example.com", personal="yes",
+     remarks="로그인 식별자이며 UNIQUE 다. 개인정보 보관 기간·삭제 정책은 합의 필요")
+note("users", "password_hash", APP, "회원가입 폼:password", "derived:BCrypt 해시", "$2a$10$…",
+     personal="yes", remarks="평문은 저장하지 않는다. 화면·로그에 절대 노출하지 않는다")
+note("users", "nickname", APP, "회원가입 폼:nickname", "raw", "세은", personal="yes")
+note("users", "role", DB, "", "constant", "ROLE_USER",
+     remarks="ROLE_USER/ROLE_ADMIN. V14 의 CHECK 값 그대로")
+note("users", "status", DB, "", "constant", "PENDING",
+     remarks="ACTIVE/SUSPENDED/WITHDRAWN/PENDING. V15 가 이메일 인증용 PENDING 을 더했다")
+note("email_verification_token", "id", DB, "", "identity", "1")
+note("email_verification_token", "user_id", DERIVED, "users.id", "raw", "1", personal="possible",
+     remarks="회원을 가리키는 참조다. ON DELETE CASCADE")
+note("email_verification_token", "token_hash", APP, "", "derived:원문 토큰의 SHA-256(hex)",
+     "9f86d081884c7d65…", remarks="원문은 메일 링크에만 있다")
+note("email_verification_token", "expires_at", APP, "", "derived:발급 시각 + 유효기간",
+     "2026-09-09T09:00:00+09:00", remarks="유효기간 길이는 합의 필요")
+note("email_verification_token", "used_at", APP, "", "raw", "",
+     remarks="아직 쓰지 않은 토큰은 NULL")
+for _table, _column, _text in (
+    ("users", "email", "로그인 이메일. UNIQUE"),
+    ("users", "nickname", "화면에 표시하는 별명"),
+    ("users", "role", "권한. ROLE_USER 또는 ROLE_ADMIN"),
+    ("users", "status", "계정 상태. ACTIVE/SUSPENDED/WITHDRAWN/PENDING"),
+    ("users", "created_at", "가입 시각"),
+    ("users", "updated_at", "이 행을 마지막으로 고친 시각"),
+    ("users", "id", "대리 키. DB 가 생성한다"),
+    ("email_verification_token", "id", "대리 키. DB 가 생성한다"),
+    ("email_verification_token", "user_id", "인증 대상 회원. users 를 참조한다"),
+    ("email_verification_token", "expires_at", "토큰 만료 시각"),
+    ("email_verification_token", "used_at", "인증에 쓰인 시각. 아직이면 NULL"),
+):
+    DESC[(_table, _column)] = _text
 
 
 def main() -> int:
