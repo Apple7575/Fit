@@ -8,6 +8,7 @@ V17 이 `rd_cost` 를 `rd_expense` 로 옮기고 지표 셋을 더했을 때 목
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -45,6 +46,44 @@ class MetricCatalogTest(unittest.TestCase):
     def test_카탈로그에_중복된_코드가_없다(self):
         codes = [row[0] for row in METRIC_CATALOG]
         self.assertEqual(len(codes), len(set(codes)))
+
+
+class ParserTest(unittest.TestCase):
+    """파서 자체를 고정 입력으로 본다.
+
+    실제 마이그레이션만 보면 로직이 맞아서 통과하는지, 우연히 통과하는지 가릴 수
+    없다. 아래 셋은 처음에 실제로 틀렸던 경우다 (MR !86 리뷰) — `split(";")` 로
+    자르고 주석을 지우지 않으면 전부 잘못 읽는다.
+    """
+
+    def codes(self, sql: str) -> set[str]:
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "V1__test.sql").write_text(sql, encoding="utf-8")
+            return _codes_from_flyway(Path(directory))
+
+    def test_주석_속_INSERT_는_세지_않는다(self):
+        self.assertEqual(self.codes(
+            "-- INSERT INTO metric (metric_code) VALUES ('ghost');\n"
+            "INSERT INTO metric (metric_code) VALUES ('real');"), {"real"})
+
+    def test_주석_속_DELETE_는_지우지_않는다(self):
+        """제일 위험한 경우다 — 되돌리기 DDL 을 주석에 적어 두는 습관이 있는데,
+        그것을 실행된 것으로 세면 멀쩡한 코드가 사라져 가드가 헛되이 멈춘다."""
+        self.assertEqual(self.codes(
+            "INSERT INTO metric (metric_code) VALUES ('keep');\n"
+            "-- 되돌리려면: DELETE FROM metric WHERE metric_code = 'keep';"), {"keep"})
+
+    def test_문자열_안의_세미콜론에서_문장을_자르지_않는다(self):
+        self.assertEqual(self.codes(
+            "INSERT INTO metric (metric_code, name_ko) VALUES ('a', '가; 나');\n"
+            "INSERT INTO metric (metric_code) VALUES ('b');"), {"a", "b"})
+
+    def test_INSERT_SELECT_개명과_DELETE_를_순서대로_반영한다(self):
+        self.assertEqual(self.codes(
+            "INSERT INTO metric (metric_code) VALUES ('old');\n"
+            "INSERT INTO metric (metric_code) SELECT 'new' FROM metric"
+            " WHERE metric_code = 'old';\n"
+            "DELETE FROM metric WHERE metric_code = 'old';"), {"new"})
 
 
 if __name__ == "__main__":

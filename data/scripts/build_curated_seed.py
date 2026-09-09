@@ -6,7 +6,7 @@
 
     industry          config/ksic_division.csv                      77행
     company           config/company_universe.csv + 기업개황     2,703행
-    metric            Flyway V2·V4·V5·V7·V13 카탈로그의 사본        12행
+    metric            Flyway V2·V4·V5·V7·V13·V17 카탈로그의 사본     15행
     company_metric    staged/opendart/financials.csv + 사업보고서 R&D
     segment_metric    .cache/empSttus_*.json + 사업보고서 부문 매출
     company_activity  .cache/otrCprInvstmntSttus_*.json + 사업보고서 시설투자
@@ -388,17 +388,25 @@ _METRIC_DELETE = re.compile(
 _QUOTED = re.compile(r"'([^']*)'")
 
 
-def _codes_from_flyway() -> set[str]:
+def _codes_from_flyway(migration_dir: Path | None = None) -> set[str]:
     """마이그레이션이 실제로 남긴 metric_code 집합.
 
     V4 와 V17 처럼 `INSERT … SELECT` 로 새 코드를 만들고 옛 코드를 `DELETE` 하는
     개명이 있어서, 넣은 것과 뺀 것을 순서대로 반영해야 지금 값이 나온다.
+
+    문장 자르기와 주석 지우기는 `pipeline/news/flyway.py` 의 것을 쓴다. 직접
+    `split(";")` 하면 **주석 속 코드를 세고, 주석 속 DELETE 가 실재 코드를 지우고,
+    문자열 안의 세미콜론에서 문장이 쪼개진다.** 우리 마이그레이션은 주석이 길고
+    되돌리기 DDL 을 적는 습관도 있어 실제로 걸린다 (MR !86 리뷰).
+
+    `migration_dir` 은 테스트가 고정 입력을 주기 위한 것이다.
     """
     codes: set[str] = set()
-    for path in sorted(flyway.MIGRATION_DIR.glob("V*.sql"),
+    directory = migration_dir or flyway.MIGRATION_DIR
+    for path in sorted(directory.glob("V*.sql"),
                        key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
-        sql = path.read_text(encoding="utf-8")
-        for statement in sql.split(";"):
+        sql = flyway._strip_comments(path.read_text(encoding="utf-8"))
+        for statement in flyway._split_statements(sql):
             values = _METRIC_INSERT_VALUES.search(statement)
             if values:
                 # ('revenue', '매출액', …), ('operating_profit', …) → 각 튜플의 첫 값
@@ -427,10 +435,12 @@ def _codes_from_flyway() -> set[str]:
     return codes
 
 
-def build_metric() -> list[dict]:
-    """지표 카탈로그. 요청 헤더의 scope 는 DB 에 없어 넣지 않는다 (③).
+def check_metric_catalog() -> None:
+    """카탈로그 사본이 마이그레이션과 같은지 본다. 어긋나면 아무것도 쓰지 않는다.
 
-    사업부 지표를 가르는 것은 metric_code 접두사와 is_active=FALSE 다.
+    **main 이 첫 파일을 쓰기 전에 부른다.** build_metric 안에서 터지면 industry ·
+    company 가 이미 쓰인 뒤라 "시드를 만들지 않고 멈춘다" 가 사실이 아니게 된다
+    (MR !86 리뷰).
     """
     catalog = {row[0] for row in METRIC_CATALOG}
     migrations = _codes_from_flyway()
@@ -438,7 +448,16 @@ def build_metric() -> list[dict]:
         raise SystemExit(
             "metric 카탈로그가 마이그레이션과 어긋난다 — METRIC_CATALOG 를 고쳐야 한다.\n"
             f"  마이그레이션에만: {sorted(migrations - catalog) or '없음'}\n"
-            f"  카탈로그에만:     {sorted(catalog - migrations) or '없음'}")
+            f"  카탈로그에만:     {sorted(catalog - migrations) or '없음'}\n"
+            "아무 시드도 만들지 않았다.")
+
+
+def build_metric() -> list[dict]:
+    """지표 카탈로그. 요청 헤더의 scope 는 DB 에 없어 넣지 않는다 (③).
+
+    사업부 지표를 가르는 것은 metric_code 접두사와 is_active=FALSE 다.
+    """
+    check_metric_catalog()
     return [{
         "metric_code": code, "name_ko": name, "unit": unit, "value_scale": scale,
         "source_type": source, "display_order": order,
@@ -722,6 +741,10 @@ def main() -> int:
     want = set(args.only or TABLES)
     built: dict[str, list[dict]] = {}
 
+    # 파일을 하나라도 쓰기 전에 본다. --only 로 metric 을 빼도 마찬가지다 —
+    # 카탈로그가 낡았다는 사실은 어느 표를 만들든 알아야 한다.
+    check_metric_catalog()
+
     # industry 와 company 는 뒤 표들의 FK 대상이라 --only 와 무관하게 먼저 읽는다.
     industry = build_industry()
     industry_codes = {r["industry_code"] for r in industry}
@@ -758,9 +781,11 @@ def main() -> int:
         metric = build_metric()
         built["metric"] = metric
         dest = _write("metric", metric,
-                      "Flyway V2·V4·V5·V7·V13 의 INSERT (SQL 이 정본, 이것은 사본)",
+                      "Flyway V2·V4·V5·V7·V13·V17 의 INSERT (SQL 이 정본, 이것은 사본)",
                       ["요청 헤더의 scope 는 DB 에 없어 뺐다 — 넣으려면 마이그레이션이 먼저다",
-                       "--verify-db 가 DB 카탈로그와 대조한다"])
+                       "생성할 때마다 마이그레이션의 코드 집합과 대조한다 —"
+                       " 어긋나면 시드를 만들지 않는다",
+                       "값(이름·순서·플래그)까지 보려면 --verify-db 다"])
         print(f"metric            {len(metric):>7,}행  → {dest.name}")
         print("  요청 헤더의 scope 는 DB 에 없어 빠졌다 — 넣으려면 마이그레이션이 먼저다")
 
