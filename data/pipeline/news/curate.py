@@ -116,6 +116,10 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
             "original_url": original_url,
             "source": row.get("publisher", "") if source_column == "publisher" else PROVIDER,
             "collected_at": collected_at,
+            # V17 이 더한 확정 ERD 의 중복 방지 키. staged 가 RSS item/guid 를 그대로
+            # 들고 있어 옮기기만 하면 된다. 없으면 빈 칸(NULL)이고, UNIQUE 는
+            # (corp_code, guid) 라 NULL 인 행끼리는 서로 충돌하지 않는다.
+            "guid": row.get("guid") or "",
         }
         for column in AI_COLUMNS:
             seed[column] = ""

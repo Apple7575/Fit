@@ -113,31 +113,54 @@ V10 → V13 → V14 로 밀렸으니, **번호를 쓰기 전에 `origin/develop`
 
 ---
 
-## 4. 확인 부탁
+## 4. 확인 부탁 — 회신받았다
 
-1. 2장 ① 인덱스 — **V16 이후 두 개**(`url_uk` · `importance_idx`)로 줄었다. 복원 여부와
-   번호(정리 마이그레이션 동승 vs 별 번호). 5장 참고
-2. 2장 ② 컬럼 주석 — **V16 이후 세 개**(`title` · `published_at` · `importance_score`)
-3. 2장 ③ `db-schema.md` 2·3장 갱신 — 그쪽에서 맡아주실지
+셋 다 답을 받아 닫는다. 정리된 내용은 5장에 있다.
+
+| 요청 | 회신 |
+|---|---|
+| 2장 ① 인덱스 복원 | `url_uk` · `importance_idx` 를 정리 마이그레이션에 넣는다. `category_idx` 는 대상이 없어졌다 |
+| 2장 ② 컬럼 주석 | 위와 함께 넣는다 (셋) |
+| 2장 ③ `db-schema.md` 2·3장 | 백엔드가 맡는다 |
+
+**남은 것은 정리 마이그레이션이 실제로 들어오는지 하나다.** 그때까지 DB 는 URL
+중복을 막지 않는다.
 
 ---
 
-## 5. V16 이후 — 요청 셋 중 둘이 줄었다
+## 5. V16 · V17 이후 — 요청이 줄었고, 회신도 받았다
 
-이 문서를 쓴 뒤 `V16__news_article_drop_ai_columns.sql` 이 머지되어 `news_article` 의
-AI 컬럼 넷(`description` · `news_category` · `related_business` · `analyzed_at`)이
-사라졌다. 위 요청을 그만큼 줄인다.
+이 문서를 쓴 뒤 마이그레이션 둘이 더 들어왔다.
 
-| 위 항목 | V16 이후 |
+- **V16** `news_article` 의 AI 컬럼 넷(`description` · `news_category` ·
+  `related_business` · `analyzed_at`)을 지웠다
+- **V17** `guid VARCHAR(500)` 을 더하고 `UNIQUE (corp_code, guid)` 를 걸었다.
+  확정 ERD 의 중복 방지 키다
+
+그래서 2장의 요청이 이렇게 정리된다.
+
+| 위 항목 | 지금 |
 |---|---|
-| ① `news_article_url_uk` (UNIQUE) | **그대로 필요하다.** 중복 차단은 컬럼과 무관하다 |
-| ① `news_article_importance_idx` | **그대로 필요하다.** `importance_score` 는 남았다 |
-| ① `news_article_category_idx` | **불필요.** `news_category` 가 없다 |
-| ② 주석 다섯 개 | `title` · `published_at` · `importance_score` **셋만** 남는다 |
+| ① `news_article_url_uk` (UNIQUE) | **아직 필요하다.** 정리 마이그레이션에 넣기로 회신받았다 |
+| ① `news_article_importance_idx` | **아직 필요하다.** 위와 같다 |
+| ① `news_article_category_idx` | **불필요.** V16 이 `news_category` 를 지웠다 |
+| ① (새로) `guid` 유일성 | **V17 이 넣었다.** 확정 ERD 대로 `UNIQUE (corp_code, guid)` |
+| ② 컬럼 주석 | 다섯 → **셋** (`title` · `published_at` · `importance_score`). 정리 마이그레이션 동승 |
+| ③ `db-schema.md` 2·3장 | 백엔드가 맡기로 했다 |
 
-우리 쪽은 따라 맞췄다 — 파서가 `DROP COLUMN` 을 읽고(`pipeline/news/flyway.py`),
-`SEED_FIELDS` 가 7컬럼으로 줄었으며, 데이터 사전에서 네 컬럼을 뺐다.
+`url_uk` 가 들어올 때까지 **DB 는 URL 중복을 막지 않는다.** 시드 생성의 같은 조건
+판정이 유일한 방어이고, 표준 문서 6장에도 그렇게 고쳐 적었다.
 
-**파서가 `DROP COLUMN` 을 건너뛰던 동안 검증 9번이 가짜로 통과하고 있었다.** 사전이
-없는 컬럼 넷을 문서화한 채였는데 대조가 그걸 잡지 못했다. `DROP TABLE` 과 같은 종류의
-구멍이라 함께 막았고 회귀 테스트(`test_DROP_COLUMN_을_읽는다`)를 두었다.
+## 6. 우리 쪽이 따라간 것
+
+파서에 뚫려 있던 구멍 셋을 같은 종류로 보고 함께 막았다. **셋 다 "읽지 않아서 검증이
+가짜로 통과" 하는 모양이었다** — 대조가 있으나 마나 한 상태를 만든다.
+
+| 문장 | 안 읽으면 | 회귀 테스트 |
+|---|---|---|
+| `DROP TABLE` | V13 이 지운 표 일곱이 스키마에 남는다 | `test_지워진_테이블은_스키마에_남지_않는다` |
+| `DROP COLUMN` | 사전이 없는 컬럼 넷을 문서화해도 안 잡힌다 | `test_DROP_COLUMN_을_읽는다` |
+| `ADD CONSTRAINT … UNIQUE` | 확정 ERD 의 중복 방지 키가 널 허용 컬럼으로 남는다 | `test_ADD_CONSTRAINT_UNIQUE_를_읽는다` |
+
+`SEED_FIELDS` 는 V16 으로 11 → 7 컬럼이 됐다가 V17 의 `guid` 로 8 컬럼이 됐고,
+`curate.py` 가 staged 의 `guid` 를 그대로 옮긴다. 데이터 사전도 다시 만들었다.

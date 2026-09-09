@@ -233,6 +233,12 @@ _DROP_COLUMN_STMT = re.compile(
     re.IGNORECASE | re.DOTALL)
 _DROP_COLUMN_CLAUSE = re.compile(
     r"DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?(\w+)", re.IGNORECASE)
+# 나중에 붙는 유일성 제약. CREATE TABLE 안의 UNIQUE 와 CREATE UNIQUE INDEX 는 읽고
+# 있었는데 이 형태만 빠져 있었다 — V17 의 news_article_guid_uk 가 그렇다. 읽지 않으면
+# 확정 ERD 의 중복 방지 키가 사전에 그냥 널 허용 컬럼으로 남는다.
+_ADD_UNIQUE = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+ADD\s+CONSTRAINT\s+\w+\s+UNIQUE\s*\(([^)]*)\)",
+    re.IGNORECASE | re.DOTALL)
 _REFERENCES = re.compile(
     r"REFERENCES\s+(?:\w+\.)?(\w+)\s*\(\s*(\w+)\s*\)", re.IGNORECASE
 )
@@ -334,6 +340,15 @@ def load(migration_dir: Path | None = None) -> Schema:
                     table = schema.tables.get(parts[-2])
                     if table and parts[-1] in table.columns:
                         table.columns[parts[-1]].comment = text
+                continue
+            unique = _ADD_UNIQUE.match(statement)
+            if unique:
+                table = schema.tables.get(unique.group(2))
+                if table:
+                    for raw in unique.group(3).split(","):
+                        name = raw.strip()
+                        if name in table.columns:
+                            _add_key(table.columns[name], "UK")
                 continue
             add = _ADD_COLUMN.match(statement)
             if add and not re.match(r"^ALTER\s+TABLE\s+[\w.]+\s+ADD\s+CONSTRAINT", statement, re.IGNORECASE):

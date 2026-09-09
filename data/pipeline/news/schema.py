@@ -81,8 +81,12 @@ REJECT_FIELDS = STAGED_FIELDS + ["reject_reason"]
 #
 # V13 이 V12 의 company_news 를 확정 ERD 이름인 news_article 로 옮겼고, **V16 이
 # AI 컬럼 넷(description · news_category · related_business · analyzed_at)을 지웠다.**
-# 남은 AI 값은 importance_score 하나뿐이다. 시드 파일명·manifest 이름이 이 상수에서
-# 나오므로 여기만 바꾸면 따라온다.
+# 남은 AI 값은 importance_score 하나뿐이다. **V17 이 guid 를 더했다** — 확정 ERD 의
+# 중복 방지 키이고 `UNIQUE (corp_code, guid)` 가 걸려 있다. 시드 파일명·manifest
+# 이름이 이 상수에서 나오므로 여기만 바꾸면 따라온다.
+#
+# 순서는 Flyway 컬럼 순서다. guid 가 마지막인 것은 나중에 붙은 컬럼이기 때문이고,
+# `curate.seed_header()` 가 그 순서를 그대로 읽어 대조한다.
 SEED_TABLE = "news_article"
 SEED_IDENTITY_COLUMNS = ["id"]
 SEED_FIELDS = [
@@ -93,6 +97,7 @@ SEED_FIELDS = [
     "source",
     "importance_score",
     "collected_at",
+    "guid",
 ]
 
 # news_article.source 가 provider·publisher 중 무엇을 담는지는 백엔드와 합의가 필요하다

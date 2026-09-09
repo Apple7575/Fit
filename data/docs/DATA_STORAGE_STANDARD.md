@@ -181,8 +181,16 @@ DB 는 `published_at` NULL 을 허용하지만 그 행은 세 뉴스 API 어디�
 보지 않는다 — 같은 날짜 재조회에서도 결과가 달라진 실측이 있다
 ([`news-poc/91-collection-result.md`](news-poc/91-collection-result.md)).
 
-DB 는 `(corp_code, original_url) WHERE original_url IS NOT NULL` 부분 UNIQUE 인덱스로만
-막는다. 시드 생성은 같은 조건으로 한 번 더 걸러 적재 실패를 미리 잡는다.
+**지금 DB 는 URL 중복을 막지 않는다.** V12 의 부분 UNIQUE 인덱스
+`(corp_code, original_url) WHERE original_url IS NOT NULL` 이 V13 의 `news_article` 로
+넘어오지 않았다 — 복원을 요청해 두었다
+([`S15P21A504-v13-followup.md`](S15P21A504-v13-followup.md) 2장). 그래서 **시드 생성의
+같은 조건 판정(`pipeline/news/curate.py`)이 유일한 방어다.** 우리 파이프라인을 통과할
+때만 걸리므로 DB 레벨 방어가 아니라는 점을 알고 써야 한다.
+
+V17 이 확정 ERD 의 다른 중복 방지 키 `UNIQUE (corp_code, guid)` 를 넣었다. 이쪽은 DB 가
+막는다. 다만 RSS 가 guid 를 주지 않으면 NULL 이고 NULL 끼리는 충돌하지 않으므로,
+URL 판정을 대신하지는 못한다.
 
 ---
 
@@ -361,9 +369,10 @@ SQL 에서 읽고 FK 대조는 `config/company_universe.csv` 로 한다.
 - 뉴스 raw → staged → curated 코드 (`pipeline/news/`) 와 CLI 4종
   (`import_news_raw.py` · `stage_news.py` · `build_news_seed.py` · `verify_news.py`)
 - Flyway SQL 파서 (`pipeline/news/flyway.py`) — 검증과 데이터 사전의 기준
-- `docs/data_fields.csv` (15 테이블 146 컬럼) · `docs/seed_csv_inventory.csv` (18행) · 이 문서
-  — V13 이 테이블 일곱 개를 셋으로 합치고 V14·V15 가 인증 테이블 둘을 더한 뒤의 수다
-- 단위·통합 테스트 57건
+- `docs/data_fields.csv` (15 테이블 143 컬럼) · `docs/seed_csv_inventory.csv` (26행) · 이 문서
+  — V13 이 테이블 일곱 개를 셋으로 합치고, V14·V15 가 인증 테이블 둘을 더하고,
+  V16 이 뉴스 AI 컬럼 넷을 지우고, V17 이 `guid` 를 더한 뒤의 수다
+- 단위·통합 테스트 63건
 
 하지 않았다.
 

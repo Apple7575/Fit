@@ -76,6 +76,19 @@ class SchemaTest(unittest.TestCase):
         for column in ("id", "corp_code", "title", "importance_score", "collected_at"):
             self.assertIn(column, table.columns, column)
 
+    def test_ADD_CONSTRAINT_UNIQUE_를_읽는다(self):
+        """V17 의 news_article_guid_uk 처럼 나중에 붙는 유일성 제약도 키로 잡아야 한다.
+
+        CREATE TABLE 안의 UNIQUE 와 CREATE UNIQUE INDEX 는 읽고 있었는데 이 형태만
+        빠져 있었다. 읽지 않으면 확정 ERD 의 중복 방지 키가 사전에 그냥 널 허용
+        컬럼으로 남는다 — 9번은 컬럼 이름만 대조하므로 잡지 못한다.
+        """
+        table = self.schema.table(SEED_TABLE)
+        self.assertIn("UK", table.columns["guid"].key_type)
+        self.assertIn("UK", table.columns["corp_code"].key_type)
+        # 제약에 없는 컬럼까지 UK 가 되지는 않는다
+        self.assertNotIn("UK", table.columns["title"].key_type)
+
     def test_staging_스키마를_구분한다(self):
         table = self.schema.table("dart_otr_cpr_invstmnt")
         self.assertEqual(table.schema, "staging")

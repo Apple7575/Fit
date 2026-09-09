@@ -274,6 +274,10 @@ note("news_article", "importance_score", AI, "", "미적재", "",
 note("news_article", "collected_at", NEWS, "requests.json:checked_at → staged.collected_at",
      "raw", "2026-09-06T00:10:00+00:00",
      remarks="원본을 받은 시각. DB 기본값 now() 에 맡기지 않고 수집 시각을 넣는다")
+note("news_article", "guid", NEWS, "rss:item/guid → staged.guid", "raw",
+     "CBMiWmh0dHBzOi8vbi5leGFtcGxlL2FydGljbGUvMQ",
+     remarks="V17 이 더한 확정 ERD 의 중복 방지 키. UNIQUE (corp_code, guid) 가 걸려 "
+             "있고, RSS 가 주지 않으면 NULL 이라 그 행끼리는 서로 충돌하지 않는다")
 
 # ── V13 이 만든 표 — segment_metric · company_text · news_article ────
 # segment_metric 과 company_activity.counterparty 는 시드가 있으므로 채운다
@@ -345,7 +349,6 @@ DESC = {
     ("company_activity", "fiscal_year"): "회계연도",
     ("company_activity", "updated_at"): "이 행을 마지막으로 적재한 시각",
     ("company_activity", "counterparty"): "거래 상대. 타법인 출자의 피출자회사다",
-    ("segment_metric", "metric_code"): "지표 코드. metric 카탈로그를 참조한다",
 }
 for _table in ("company_text", "segment_metric", "company_metric", "metric_evidence"):
     DESC[(_table, "fiscal_year")] = "회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다"
