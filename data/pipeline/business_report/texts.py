@@ -58,6 +58,10 @@ def _items(cell: str, tp) -> list[str]:
             continue
         if s.isdigit():
             continue
+        # 제품이 아닌 값. 행 라벨만 걸러서는 안 잡힌다 — 삼성전자는 첫 칸이 '기타'
+        # 이고 제품 칸에 '부문간 내부거래 제거 등' 이 들어 있다.
+        if tp.product_exclude.search(s):
+            continue
         out.append(s)
     return out
 

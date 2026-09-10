@@ -93,6 +93,7 @@ class TextPatterns:
     rd_section: re.Pattern
     llm_input_chars: int
     null_tokens: re.Pattern
+    product_exclude: re.Pattern
 
 
 @dataclass(frozen=True)
@@ -228,6 +229,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
                 rd_section=_re(br["text"]["rd_section_re"]),
                 llm_input_chars=int(br["text"]["llm_input_chars"]),
                 null_tokens=_re(br["text"]["null_tokens_re"]),
+                product_exclude=_re(br["text"]["product_exclude_re"]),
             ),
         ),
         thresholds=Thresholds(
