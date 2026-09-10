@@ -40,7 +40,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00101220,2022,main_product,10,프랜차이즈 체인화,
 00101220,2022,main_product,11,임대,
 00101220,2022,main_product,12,완성차,
-00101220,2022,main_product,13,총 합계,
 00101220,2022,rd_field,0,레독스 반응 감수제/유지제,2026-09-09T01:13:22+00:00
 00101220,2022,rd_field,1,페놀계 분산제,2026-09-09T01:13:22+00:00
 00101220,2022,rd_field,2,조기강도용 PC,2026-09-09T01:13:22+00:00
@@ -70,7 +69,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00101220,2023,main_product,12,완성차,
 00101220,2023,main_product,13,신용카드,
 00101220,2023,main_product,14,할부 금융업,
-00101220,2023,main_product,15,총 합계,
 00101220,2023,rd_field,0,레독스 반응 감수제/유지제,2026-09-09T01:13:38+00:00
 00101220,2023,rd_field,1,페놀계 분산제,2026-09-09T01:13:38+00:00
 00101220,2023,rd_field,2,바이오중유,2026-09-09T01:13:38+00:00
@@ -101,7 +99,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00101220,2024,main_product,11,완성차,
 00101220,2024,main_product,12,신용카드,
 00101220,2024,main_product,13,할부 금융업,
-00101220,2024,main_product,14,총 합계,
 00101220,2024,rd_field,0,레독스 반응 감수제/유지제,2026-09-09T01:13:50+00:00
 00101220,2024,rd_field,1,페놀계 분산제,2026-09-09T01:13:50+00:00
 00101220,2024,rd_field,2,조기강도용 PC,2026-09-09T01:13:50+00:00
@@ -130,7 +127,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00101220,2025,main_product,11,완성차,
 00101220,2025,main_product,12,신용카드,
 00101220,2025,main_product,13,할부 금융업,
-00101220,2025,main_product,14,총 합계,
 00101220,2025,new_business,0,바이오중유,2026-09-09T01:14:01+00:00
 00101220,2025,new_business,1,교육사업,2026-09-09T01:14:01+00:00
 00101220,2025,new_business,2,철강 및 항만,2026-09-09T01:14:01+00:00
@@ -321,8 +317,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00105271,2023,main_product,31,제품 계,
 00105271,2023,main_product,32,상품 계,
 00105271,2023,main_product,33,기타 계,
-00105271,2023,main_product,34,단순 합계,
-00105271,2023,main_product,35,총 합계,
 00105271,2023,rd_field,0,무기재료연구,2026-09-09T01:29:08+00:00
 00105271,2023,rd_field,1,건축자재 SYSTEM 연구,2026-09-09T01:29:08+00:00
 00105271,2023,rd_field,2,복합재료 연구,2026-09-09T01:29:08+00:00
@@ -1197,7 +1191,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00111704,2021,main_business,0,"당사는 LNG 운반선, 유조선, 컨테이너선, LPG선 등 각종 선박과 FPSO, 고정식 플랫폼, 원유 시추설비, 특수선을 건조하는 종합 조선·해양 전문회사입니다.",2026-09-09T01:04:18+00:00
 00111704,2021,main_product,0,선박,
 00111704,2021,main_product,1,해양 구조물및 잠수함,
-00111704,2021,main_product,2,기타,
 00111704,2021,rd_field,0,LNG 화물창 /연료탱크 기술개발,2026-09-09T01:04:18+00:00
 00111704,2021,rd_field,1,주력선종 및 신제품 기본성능향상 연구,2026-09-09T01:04:18+00:00
 00111704,2021,rd_field,2,친환경 성능 및 경제성 확보,2026-09-09T01:04:18+00:00
@@ -1217,7 +1210,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00111704,2022,main_business,0,"당사는 LNG 운반선, 유조선, 컨테이너선, LPG선 등 각종 선박과 FPSO, 고정식 플랫폼, 원유 시추설비 등 해양제품 및 잠수함, 구축함 등 특수선을 건조하는 종합 조선·해양 전문회사입니다.",2026-09-09T01:04:27+00:00
 00111704,2022,main_product,0,선박,
 00111704,2022,main_product,1,해양 구조물및 잠수함,
-00111704,2022,main_product,2,기타,
 00111704,2022,rd_field,0,선형추진,2026-09-09T01:04:27+00:00
 00111704,2022,rd_field,1,구조,2026-09-09T01:04:27+00:00
 00111704,2022,rd_field,2,진동소음,2026-09-09T01:04:27+00:00
@@ -1237,7 +1229,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00111704,2023,main_business,0,"당사는 LNG 운반선, 원유 운반선, 컨테이너선, LPG 운반선 등 각종 선박과 FPSO, 고정식 플랫폼, 원유 시추설비 등 해양제품 및 잠수함, 구축함, 구난함, 경비함 등 특수선을 건조하는 종합 조선·해양 전문회사입니다.",2026-09-09T01:04:35+00:00
 00111704,2023,main_product,0,선박,
 00111704,2023,main_product,1,해양 구조물및 잠수함,
-00111704,2023,main_product,2,기타,
 00111704,2023,new_business,0,Hanwha Ocean USA Holdings Corp.,2026-09-09T01:04:35+00:00
 00111704,2023,rd_field,0,선형추진,2026-09-09T01:04:35+00:00
 00111704,2023,rd_field,1,구조,2026-09-09T01:04:35+00:00
@@ -1259,7 +1250,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00111704,2024,main_product,0,선박,
 00111704,2024,main_product,1,해양 구조물및 잠수함,
 00111704,2024,main_product,2,석유화학플랜트건설,
-00111704,2024,main_product,3,기타,
 00111704,2024,new_business,0,플랜트 사업,2026-09-09T01:04:46+00:00
 00111704,2024,new_business,1,풍력 사업,2026-09-09T01:04:46+00:00
 00111704,2024,new_business,2,컴퓨터 통합자문 및 시스템 구축사업,2026-09-09T01:04:46+00:00
@@ -1284,7 +1274,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00111704,2025,main_product,0,선박,
 00111704,2025,main_product,1,해양 구조물및 잠수함,
 00111704,2025,main_product,2,석유화학플랜트건설,
-00111704,2025,main_product,3,기타,
 00111704,2025,new_business,0,풍력 사업,2026-09-09T01:04:56+00:00
 00111704,2025,new_business,1,컴퓨터 통합자문 및 시스템 구축사업,2026-09-09T01:04:56+00:00
 00111704,2025,rd_field,0,성능최적화,2026-09-09T01:04:56+00:00
@@ -1335,11 +1324,10 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00113410,2021,main_product,2,보관,
 00113410,2021,main_product,3,건설,
 00113410,2021,main_product,4,정비,
-00113410,2021,main_product,5,기타,
-00113410,2021,main_product,6,집하,
-00113410,2021,main_product,7,배송,
-00113410,2021,main_product,8,리조트,
-00113410,2021,main_product,9,부동산,
+00113410,2021,main_product,5,집하,
+00113410,2021,main_product,6,배송,
+00113410,2021,main_product,7,리조트,
+00113410,2021,main_product,8,부동산,
 00113410,2021,new_business,0,e-Fulfillment 서비스,2026-09-09T01:05:59+00:00
 00113410,2021,new_business,1,GDC,2026-09-09T01:05:59+00:00
 00113410,2021,new_business,2,Multi-Point 전담Hub,2026-09-09T01:05:59+00:00
@@ -1365,11 +1353,10 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00113410,2022,main_product,2,보관,
 00113410,2022,main_product,3,건설,
 00113410,2022,main_product,4,정비,
-00113410,2022,main_product,5,기타,
-00113410,2022,main_product,6,집하,
-00113410,2022,main_product,7,배송,
-00113410,2022,main_product,8,리조트,
-00113410,2022,main_product,9,부동산,
+00113410,2022,main_product,5,집하,
+00113410,2022,main_product,6,배송,
+00113410,2022,main_product,7,리조트,
+00113410,2022,main_product,8,부동산,
 00113410,2022,new_business,0,내일도착보장배송,2026-09-09T01:06:07+00:00
 00113410,2022,new_business,1,일요배송,2026-09-09T01:06:07+00:00
 00113410,2022,rd_field,0,AGV,2026-09-09T01:06:07+00:00
@@ -1391,12 +1378,11 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00113410,2023,main_product,2,보관,
 00113410,2023,main_product,3,건설,
 00113410,2023,main_product,4,정비,
-00113410,2023,main_product,5,기타,
-00113410,2023,main_product,6,가공,
-00113410,2023,main_product,7,집하,
-00113410,2023,main_product,8,배송,
-00113410,2023,main_product,9,리조트,
-00113410,2023,main_product,10,부동산,
+00113410,2023,main_product,5,가공,
+00113410,2023,main_product,6,집하,
+00113410,2023,main_product,7,배송,
+00113410,2023,main_product,8,리조트,
+00113410,2023,main_product,9,부동산,
 00113410,2023,rd_field,0,AGV,2026-09-09T01:06:14+00:00
 00113410,2023,rd_field,1,AMR,2026-09-09T01:06:14+00:00
 00113410,2023,rd_field,2,Grid Robot,2026-09-09T01:06:14+00:00
@@ -1971,8 +1957,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00120021,2021,main_product,7,경영컨설팅,
 00120021,2021,main_product,8,스포츠구단 운영,
 00120021,2021,main_product,9,임대수익,
-00120021,2021,main_product,10,단순합계,
-00120021,2021,main_product,11,총 합계,
 00120021,2021,rd_field,0,Digital Transformation,2026-09-09T01:23:39+00:00
 00120021,2021,rd_field,1,Artificial Intelligence,2026-09-09T01:23:39+00:00
 00120021,2021,rd_field,2,Big Data,2026-09-09T01:23:39+00:00
@@ -1996,8 +1980,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00120021,2022,main_product,7,경영컨설팅,
 00120021,2022,main_product,8,스포츠구단 운영,
 00120021,2022,main_product,9,임대수익,
-00120021,2022,main_product,10,단순합계,
-00120021,2022,main_product,11,총 합계,
 00120021,2022,rd_field,0,AI,2026-09-09T01:23:49+00:00
 00120021,2022,rd_field,1,Big Data,2026-09-09T01:23:49+00:00
 00120021,2022,rd_field,2,Cloud,2026-09-09T01:23:49+00:00
@@ -2022,8 +2004,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00120021,2023,main_product,7,경영컨설팅,
 00120021,2023,main_product,8,스포츠구단 운영,
 00120021,2023,main_product,9,임대수익,
-00120021,2023,main_product,10,단순합계,
-00120021,2023,main_product,11,총 합계,
 00120021,2023,new_business,0,생성형 인공지능(Generative AI) 사업,2026-09-09T01:24:00+00:00
 00120021,2023,rd_field,0,AI,2026-09-09T01:24:00+00:00
 00120021,2023,rd_field,1,Big Data,2026-09-09T01:24:00+00:00
@@ -2050,8 +2030,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00120021,2024,main_product,7,경영컨설팅,
 00120021,2024,main_product,8,스포츠구단 운영,
 00120021,2024,main_product,9,임대수익,
-00120021,2024,main_product,10,단순합계,
-00120021,2024,main_product,11,총 합계,
 00120021,2024,rd_field,0,AI,2026-09-09T01:24:10+00:00
 00120021,2024,rd_field,1,데이터,2026-09-09T01:24:10+00:00
 00120021,2024,rd_field,2,클라우드,2026-09-09T01:24:10+00:00
@@ -2077,8 +2055,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00120021,2025,main_product,7,경영컨설팅,
 00120021,2025,main_product,8,스포츠구단 운영,
 00120021,2025,main_product,9,임대수익,
-00120021,2025,main_product,10,단순합계,
-00120021,2025,main_product,11,총 합계,
 00120021,2025,rd_field,0,AI,2026-09-09T01:24:19+00:00
 00120021,2025,rd_field,1,Agentic AI,2026-09-09T01:24:19+00:00
 00120021,2025,rd_field,2,Physical AI,2026-09-09T01:24:19+00:00
@@ -3116,11 +3092,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00126380,2021,main_product,10,모바일AP,
 00126380,2021,main_product,11,스마트폰용 OLED 패널,
 00126380,2021,main_product,12,모니터용 LCD 패널,
-00126380,2021,main_product,13,부문내 내부거래 제거,
-00126380,2021,main_product,14,디지털 콕핏,
-00126380,2021,main_product,15,텔레 매 틱스,
-00126380,2021,main_product,16,스피커,
-00126380,2021,main_product,17,부문간 내부거래 제거,
+00126380,2021,main_product,13,디지털 콕핏,
+00126380,2021,main_product,14,텔레 매 틱스,
+00126380,2021,main_product,15,스피커,
 00126380,2021,rd_field,0,Mini LED,2026-09-08T08:43:45+00:00
 00126380,2021,rd_field,1,DDR5,2026-09-08T08:43:45+00:00
 00126380,2021,rd_field,2,OLED,2026-09-08T08:43:45+00:00
@@ -3153,7 +3127,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00126380,2022,main_product,12,디지털 콕핏,
 00126380,2022,main_product,13,텔레매틱스,
 00126380,2022,main_product,14,스피커,
-00126380,2022,main_product,15,부문간 내부거래 제거,
 00126380,2022,rd_field,0,Mini LED,2026-09-08T08:43:56+00:00
 00126380,2022,rd_field,1,GAA,2026-09-08T08:43:56+00:00
 00126380,2022,rd_field,2,Quantum Nano-Layer Multi-Cell,2026-09-08T08:43:56+00:00
@@ -3187,7 +3160,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00126380,2023,main_product,12,디지털 콕핏,
 00126380,2023,main_product,13,카오디오,
 00126380,2023,main_product,14,포터블 스피커,
-00126380,2023,main_product,15,부문간 내부거래 제거,
 00126380,2023,rd_field,0,Mini LED,2026-09-08T08:44:06+00:00
 00126380,2023,rd_field,1,Quantum Dot,2026-09-08T08:44:06+00:00
 00126380,2023,rd_field,2,Micro-LED,2026-09-08T08:44:06+00:00
@@ -3221,7 +3193,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00126380,2024,main_product,12,디지털 콕핏,
 00126380,2024,main_product,13,카오디오,
 00126380,2024,main_product,14,포터블 스피커,
-00126380,2024,main_product,15,부문간 내부거래 제거,
 00126380,2024,rd_field,0,Mini LED,2026-09-08T08:44:15+00:00
 00126380,2024,rd_field,1,Quantum Dot,2026-09-08T08:44:15+00:00
 00126380,2024,rd_field,2,White OLED,2026-09-08T08:44:15+00:00
@@ -3254,7 +3225,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00126380,2025,main_product,12,디지털 콕핏,
 00126380,2025,main_product,13,카오디오,
 00126380,2025,main_product,14,포터블 스피커,
-00126380,2025,main_product,15,부문간 내부거래 제거,
 00126478,2021,business_keyword,0,조선해양,2026-09-09T01:09:09+00:00
 00126478,2021,business_keyword,1,LNG선,2026-09-09T01:09:09+00:00
 00126478,2021,business_keyword,2,해양플랫폼,2026-09-09T01:09:09+00:00
@@ -3846,7 +3816,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00131832,2025,main_product,9,혈장분획제 관련 제품의제조,
 00131832,2025,main_product,10,에너지 발전,
 00131832,2025,main_product,11,부동산 데이터 솔루션 사업,
-00131832,2025,main_product,12,내부거래,
 00136378,2021,business_keyword,0,백화점,2026-09-09T01:24:33+00:00
 00136378,2021,business_keyword,1,럭셔리,2026-09-09T01:24:33+00:00
 00136378,2021,business_keyword,2,브랜드,2026-09-09T01:24:33+00:00
@@ -4395,8 +4364,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00145880,2021,main_product,6,자동차용부품,
 00145880,2021,main_product,7,반제품,
 00145880,2021,main_product,8,부산물 外,
-00145880,2021,main_product,9,단순합계,
-00145880,2021,main_product,10,내부거래,
 00145880,2021,rd_field,0,배합 원료 평가,2026-09-09T00:46:13+00:00
 00145880,2021,rd_field,1,공정 개발 연구,2026-09-09T00:46:13+00:00
 00145880,2021,rd_field,2,조업 생산성 향상,2026-09-09T00:46:13+00:00
@@ -5001,18 +4968,15 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00155319,2021,main_product,1,냉연,
 00155319,2021,main_product,2,스테인레스,
 00155319,2021,main_product,3,기타제품,
-00155319,2021,main_product,4,단순합계,
-00155319,2021,main_product,5,내부거래제거,
-00155319,2021,main_product,6,철강,
-00155319,2021,main_product,7,금속,
-00155319,2021,main_product,8,화학,
-00155319,2021,main_product,9,물자,
-00155319,2021,main_product,10,에너지,
-00155319,2021,main_product,11,기타,
-00155319,2021,main_product,12,국내도급,
-00155319,2021,main_product,13,해외도급,
-00155319,2021,main_product,14,자체공사,
-00155319,2021,main_product,15,전력판매,
+00155319,2021,main_product,4,철강,
+00155319,2021,main_product,5,금속,
+00155319,2021,main_product,6,화학,
+00155319,2021,main_product,7,물자,
+00155319,2021,main_product,8,에너지,
+00155319,2021,main_product,9,국내도급,
+00155319,2021,main_product,10,해외도급,
+00155319,2021,main_product,11,자체공사,
+00155319,2021,main_product,12,전력판매,
 00155319,2021,rd_field,0,내Sour용 극후물 송유관용 강재,2026-09-09T00:28:27+00:00
 00155319,2021,rd_field,1,초고강도 강재사용 부품의 수소지연파괴 평가 기술,2026-09-09T00:28:27+00:00
 00155319,2021,rd_field,2,고강도 자동차 경량휠용 강재,2026-09-09T00:28:27+00:00
@@ -5035,12 +4999,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00155319,2022,main_product,1,냉연,
 00155319,2022,main_product,2,스테인레스,
 00155319,2022,main_product,3,기타제품,
-00155319,2022,main_product,4,단순합계,
-00155319,2022,main_product,5,내부거래제거,
-00155319,2022,main_product,6,무역,
-00155319,2022,main_product,7,기타,
-00155319,2022,main_product,8,건설,
-00155319,2022,main_product,9,에너지,
+00155319,2022,main_product,4,무역,
+00155319,2022,main_product,5,건설,
+00155319,2022,main_product,6,에너지,
 00155319,2023,business_keyword,0,철강,2026-09-09T00:28:41+00:00
 00155319,2023,business_keyword,1,무역,2026-09-09T00:28:41+00:00
 00155319,2023,business_keyword,2,건설,2026-09-09T00:28:41+00:00
@@ -5054,12 +5015,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00155319,2023,main_product,1,냉연,
 00155319,2023,main_product,2,스테인레스,
 00155319,2023,main_product,3,기타제품,
-00155319,2023,main_product,4,단순합계,
-00155319,2023,main_product,5,내부거래제거,
-00155319,2023,main_product,6,무역부문,
-00155319,2023,main_product,7,기타,
-00155319,2023,main_product,8,건설부문,
-00155319,2023,main_product,9,물류 등 부문,
+00155319,2023,main_product,4,무역부문,
+00155319,2023,main_product,5,건설부문,
+00155319,2023,main_product,6,물류 등 부문,
 00155319,2024,business_keyword,0,철강,2026-09-09T00:28:50+00:00
 00155319,2024,business_keyword,1,무역,2026-09-09T00:28:50+00:00
 00155319,2024,business_keyword,2,건설,2026-09-09T00:28:50+00:00
@@ -5073,12 +5031,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00155319,2024,main_product,1,냉연,
 00155319,2024,main_product,2,스테인레스,
 00155319,2024,main_product,3,기타제품,
-00155319,2024,main_product,4,단순합계,
-00155319,2024,main_product,5,내부거래제거,
-00155319,2024,main_product,6,무역부문,
-00155319,2024,main_product,7,기타,
-00155319,2024,main_product,8,건설부문,
-00155319,2024,main_product,9,물류 등 부문,
+00155319,2024,main_product,4,무역부문,
+00155319,2024,main_product,5,건설부문,
+00155319,2024,main_product,6,물류 등 부문,
 00155319,2024,strategy_change,0,"2024년 4월 조직개편으로 기존 친환경인프라부문을 인프라부문으로, 친환경미래소재부문을 이차전지소재부문으로 명칭을 변경하였습니다.",2026-09-09T00:28:50+00:00
 00155319,2025,business_keyword,0,철강,2026-09-09T00:29:01+00:00
 00155319,2025,business_keyword,1,무역,2026-09-09T00:29:01+00:00
@@ -5093,12 +5048,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00155319,2025,main_product,1,냉연,
 00155319,2025,main_product,2,스테인레스,
 00155319,2025,main_product,3,기타제품,
-00155319,2025,main_product,4,단순합계,
-00155319,2025,main_product,5,내부거래제거,
-00155319,2025,main_product,6,무역부문,
-00155319,2025,main_product,7,기타,
-00155319,2025,main_product,8,건설부문,
-00155319,2025,main_product,9,물류 등 부문,
+00155319,2025,main_product,4,무역부문,
+00155319,2025,main_product,5,건설부문,
+00155319,2025,main_product,6,물류 등 부문,
 00155319,2025,rd_field,0,ALCOSTA,2026-09-09T00:29:01+00:00
 00155319,2025,rd_field,1,Worm Wheel Cover,2026-09-09T00:29:01+00:00
 00155319,2025,rd_field,2,나노촉매,2026-09-09T00:29:01+00:00
@@ -5254,10 +5206,8 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2021,main_product,0,전 기,
 00159193,2021,main_product,1,4.7,
 00159193,2021,main_product,2,전 기전력설비원전연료ICT해외수익,
-00159193,2021,main_product,3,단순합계,
-00159193,2021,main_product,4,총합계,
-00159193,2021,main_product,5,차감 : 중단사업 매출,
-00159193,2021,main_product,6,계속사업 매출,
+00159193,2021,main_product,3,차감 : 중단사업 매출,
+00159193,2021,main_product,4,계속사업 매출,
 00159193,2021,rd_field,0,KEPCO 전력 소프트웨어 공용 플랫폼 기술,2026-09-09T00:23:55+00:00
 00159193,2021,rd_field,1,BIPV용 반투명 고효율 페로브스카이트 태양전지,2026-09-09T00:23:55+00:00
 00159193,2021,rd_field,2,전력산업 정책 및 사업전략 수립을 위한 K-REGEN 모델,2026-09-09T00:23:55+00:00
@@ -5278,10 +5228,8 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2022,main_product,0,전 기,
 00159193,2022,main_product,1,5.4,
 00159193,2022,main_product,2,전 기전력설비원전연료ICT해외수익,
-00159193,2022,main_product,3,단순합계,
-00159193,2022,main_product,4,총합계,
-00159193,2022,main_product,5,차감 : 중단사업 매출,
-00159193,2022,main_product,6,계속사업 매출,
+00159193,2022,main_product,3,차감 : 중단사업 매출,
+00159193,2022,main_product,4,계속사업 매출,
 00159193,2022,rd_field,0,KEPCO 전력 소프트웨어 공용 플랫폼 기술 개발,2026-09-09T00:24:15+00:00
 00159193,2022,rd_field,1,BIPV용 반투명 고효율 페로브스카이트 태양전지 개발,2026-09-09T00:24:15+00:00
 00159193,2022,rd_field,2,전력산업 정책 및 사업전략 수립을 위한 K-REGEN 모델 개발,2026-09-09T00:24:15+00:00
@@ -5302,10 +5250,8 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2023,main_product,0,전 기,
 00159193,2023,main_product,1,4.1,
 00159193,2023,main_product,2,전 기전력설비원전연료ICT해외수익,
-00159193,2023,main_product,3,단순합계,
-00159193,2023,main_product,4,총합계,
-00159193,2023,main_product,5,차감 : 중단사업 매출,
-00159193,2023,main_product,6,계속사업 매출,
+00159193,2023,main_product,3,차감 : 중단사업 매출,
+00159193,2023,main_product,4,계속사업 매출,
 00159193,2023,rd_field,0,인공지능,2026-09-09T00:24:24+00:00
 00159193,2023,rd_field,1,ESS,2026-09-09T00:24:24+00:00
 00159193,2023,rd_field,2,가스터빈,2026-09-09T00:24:24+00:00
@@ -5326,10 +5272,8 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2024,main_product,0,전 기,
 00159193,2024,main_product,1,3.7,
 00159193,2024,main_product,2,전 기전력설비원전연료ICT해외수익,
-00159193,2024,main_product,3,단순합계,
-00159193,2024,main_product,4,총합계,
-00159193,2024,main_product,5,차감 : 중단사업 매출,
-00159193,2024,main_product,6,계속사업 매출,
+00159193,2024,main_product,3,차감 : 중단사업 매출,
+00159193,2024,main_product,4,계속사업 매출,
 00159193,2024,rd_field,0,다중영상병합기술,2026-09-09T00:24:39+00:00
 00159193,2024,rd_field,1,인공지능,2026-09-09T00:24:39+00:00
 00159193,2024,rd_field,2,AI 모니터링 시스템,2026-09-09T00:24:39+00:00
@@ -5350,10 +5294,8 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2025,main_product,0,전 기,
 00159193,2025,main_product,1,3.4,
 00159193,2025,main_product,2,전 기전력설비원전연료ICT해외수익,
-00159193,2025,main_product,3,단순합계,
-00159193,2025,main_product,4,총합계,
-00159193,2025,main_product,5,차감 : 중단사업 매출,
-00159193,2025,main_product,6,계속사업 매출,
+00159193,2025,main_product,3,차감 : 중단사업 매출,
+00159193,2025,main_product,4,계속사업 매출,
 00159193,2025,rd_field,0,풍력발전기의 전력변환장치에 대한 예측 및 감시기술,2026-09-09T00:24:54+00:00
 00159193,2025,rd_field,1,전력변환장치 화재예방 기술,2026-09-09T00:24:54+00:00
 00159193,2025,rd_field,2,온라인 모니터링 시스템,2026-09-09T00:24:54+00:00
@@ -7148,25 +7090,22 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00176914,2021,main_product,4,영화 투자,
 00176914,2021,main_product,5,제작,
 00176914,2021,main_product,6,배급,
-00176914,2021,main_product,7,비금융사업부 합계,
-00176914,2021,main_product,8,주식,
-00176914,2021,main_product,9,파생상품 거래,
-00176914,2021,main_product,10,채권 중개,
-00176914,2021,main_product,11,장외파생상품 거래,
-00176914,2021,main_product,12,IPO,
-00176914,2021,main_product,13,회사채의 발행,
-00176914,2021,main_product,14,부동산 PF,
-00176914,2021,main_product,15,ABCP 및ABS의 발행,
-00176914,2021,main_product,16,메자닌 투자,
-00176914,2021,main_product,17,Private Equity,
-00176914,2021,main_product,18,선물,
-00176914,2021,main_product,19,옵션 매매,
-00176914,2021,main_product,20,증권 브로커리지,
-00176914,2021,main_product,21,온라인 펀드,
-00176914,2021,main_product,22,해외주식,
-00176914,2021,main_product,23,FX마진 트레이딩,
-00176914,2021,main_product,24,금융사업부 합계,
-00176914,2021,main_product,25,전체 합계,
+00176914,2021,main_product,7,주식,
+00176914,2021,main_product,8,파생상품 거래,
+00176914,2021,main_product,9,채권 중개,
+00176914,2021,main_product,10,장외파생상품 거래,
+00176914,2021,main_product,11,IPO,
+00176914,2021,main_product,12,회사채의 발행,
+00176914,2021,main_product,13,부동산 PF,
+00176914,2021,main_product,14,ABCP 및ABS의 발행,
+00176914,2021,main_product,15,메자닌 투자,
+00176914,2021,main_product,16,Private Equity,
+00176914,2021,main_product,17,선물,
+00176914,2021,main_product,18,옵션 매매,
+00176914,2021,main_product,19,증권 브로커리지,
+00176914,2021,main_product,20,온라인 펀드,
+00176914,2021,main_product,21,해외주식,
+00176914,2021,main_product,22,FX마진 트레이딩,
 00176914,2022,business_keyword,0,뿌리오,2026-09-09T00:54:50+00:00
 00176914,2022,business_keyword,1,사방넷,2026-09-09T00:54:50+00:00
 00176914,2022,business_keyword,2,다우오피스,2026-09-09T00:54:50+00:00
@@ -7184,26 +7123,23 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00176914,2022,main_product,5,영화 투자,
 00176914,2022,main_product,6,제작,
 00176914,2022,main_product,7,배급,
-00176914,2022,main_product,8,비금융사업부 합계,
-00176914,2022,main_product,9,주식,
-00176914,2022,main_product,10,파생상품 거래,
-00176914,2022,main_product,11,채권 중개,
-00176914,2022,main_product,12,장외파생상품 거래,
-00176914,2022,main_product,13,IPO,
-00176914,2022,main_product,14,회사채의 발행,
-00176914,2022,main_product,15,부동산 PF,
-00176914,2022,main_product,16,ABCP,
-00176914,2022,main_product,17,ABS의 발행,
-00176914,2022,main_product,18,메자닌 투자,
-00176914,2022,main_product,19,Private Equity,
-00176914,2022,main_product,20,선물,
-00176914,2022,main_product,21,옵션 매매,
-00176914,2022,main_product,22,증권 브로커리지,
-00176914,2022,main_product,23,온라인 펀드,
-00176914,2022,main_product,24,해외주식,
-00176914,2022,main_product,25,FX마진 트레이딩,
-00176914,2022,main_product,26,금융사업부 합계,
-00176914,2022,main_product,27,전체 합계,
+00176914,2022,main_product,8,주식,
+00176914,2022,main_product,9,파생상품 거래,
+00176914,2022,main_product,10,채권 중개,
+00176914,2022,main_product,11,장외파생상품 거래,
+00176914,2022,main_product,12,IPO,
+00176914,2022,main_product,13,회사채의 발행,
+00176914,2022,main_product,14,부동산 PF,
+00176914,2022,main_product,15,ABCP,
+00176914,2022,main_product,16,ABS의 발행,
+00176914,2022,main_product,17,메자닌 투자,
+00176914,2022,main_product,18,Private Equity,
+00176914,2022,main_product,19,선물,
+00176914,2022,main_product,20,옵션 매매,
+00176914,2022,main_product,21,증권 브로커리지,
+00176914,2022,main_product,22,온라인 펀드,
+00176914,2022,main_product,23,해외주식,
+00176914,2022,main_product,24,FX마진 트레이딩,
 00176914,2022,rd_field,0,RTB 매체 광고 효율 제고를 위한 솔루션,2026-09-09T00:54:50+00:00
 00176914,2022,rd_field,1,광고 서버 및 플랫폼,2026-09-09T00:54:50+00:00
 00176914,2022,rd_field,2,페이스북 인스타그램 광고 최적화 서비스,2026-09-09T00:54:50+00:00
@@ -7230,26 +7166,23 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00176914,2023,main_product,5,영화 투자,
 00176914,2023,main_product,6,제작,
 00176914,2023,main_product,7,배급,
-00176914,2023,main_product,8,비금융사업부 합계,
-00176914,2023,main_product,9,주식,
-00176914,2023,main_product,10,파생상품 거래,
-00176914,2023,main_product,11,채권 중개,
-00176914,2023,main_product,12,장외파생상품 거래,
-00176914,2023,main_product,13,IPO,
-00176914,2023,main_product,14,회사채의 발행,
-00176914,2023,main_product,15,부동산 PF,
-00176914,2023,main_product,16,ABCP,
-00176914,2023,main_product,17,ABS의 발행,
-00176914,2023,main_product,18,메자닌 투자,
-00176914,2023,main_product,19,Private Equity,
-00176914,2023,main_product,20,선물,
-00176914,2023,main_product,21,옵션 매매,
-00176914,2023,main_product,22,증권 브로커리지,
-00176914,2023,main_product,23,온라인 펀드,
-00176914,2023,main_product,24,해외주식,
-00176914,2023,main_product,25,FX마진 트레이딩,
-00176914,2023,main_product,26,금융사업부 합계,
-00176914,2023,main_product,27,전체 합계,
+00176914,2023,main_product,8,주식,
+00176914,2023,main_product,9,파생상품 거래,
+00176914,2023,main_product,10,채권 중개,
+00176914,2023,main_product,11,장외파생상품 거래,
+00176914,2023,main_product,12,IPO,
+00176914,2023,main_product,13,회사채의 발행,
+00176914,2023,main_product,14,부동산 PF,
+00176914,2023,main_product,15,ABCP,
+00176914,2023,main_product,16,ABS의 발행,
+00176914,2023,main_product,17,메자닌 투자,
+00176914,2023,main_product,18,Private Equity,
+00176914,2023,main_product,19,선물,
+00176914,2023,main_product,20,옵션 매매,
+00176914,2023,main_product,21,증권 브로커리지,
+00176914,2023,main_product,22,온라인 펀드,
+00176914,2023,main_product,23,해외주식,
+00176914,2023,main_product,24,FX마진 트레이딩,
 00176914,2023,rd_field,0,RTB 매체 광고 효율 제고를 위한 솔루션 개발,2026-09-09T00:55:04+00:00
 00176914,2023,rd_field,1,광고 서버 및 플랫폼 개발,2026-09-09T00:55:04+00:00
 00176914,2023,rd_field,2,"페이스북 인스타그램, 스냅챗 광고 최적화 서비스 개발",2026-09-09T00:55:04+00:00
@@ -7270,26 +7203,23 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00176914,2024,main_product,2,쇼핑몰통합솔루션,
 00176914,2024,main_product,3,IDC,
 00176914,2024,main_product,4,인증보안사업,
-00176914,2024,main_product,5,비금융사업부 합계,
-00176914,2024,main_product,6,주식,
-00176914,2024,main_product,7,파생상품 거래,
-00176914,2024,main_product,8,채권 중개,
-00176914,2024,main_product,9,장외파생상품 거래,
-00176914,2024,main_product,10,IPO,
-00176914,2024,main_product,11,회사채의 발행,
-00176914,2024,main_product,12,부동산 PF,
-00176914,2024,main_product,13,ABCP,
-00176914,2024,main_product,14,ABS의 발행,
-00176914,2024,main_product,15,메자닌 투자,
-00176914,2024,main_product,16,Private Equity,
-00176914,2024,main_product,17,선물,
-00176914,2024,main_product,18,옵션 매매,
-00176914,2024,main_product,19,증권 브로커리지,
-00176914,2024,main_product,20,온라인 펀드,
-00176914,2024,main_product,21,해외주식,
-00176914,2024,main_product,22,FX마진 트레이딩,
-00176914,2024,main_product,23,금융사업부 합계,
-00176914,2024,main_product,24,전체 합계,
+00176914,2024,main_product,5,주식,
+00176914,2024,main_product,6,파생상품 거래,
+00176914,2024,main_product,7,채권 중개,
+00176914,2024,main_product,8,장외파생상품 거래,
+00176914,2024,main_product,9,IPO,
+00176914,2024,main_product,10,회사채의 발행,
+00176914,2024,main_product,11,부동산 PF,
+00176914,2024,main_product,12,ABCP,
+00176914,2024,main_product,13,ABS의 발행,
+00176914,2024,main_product,14,메자닌 투자,
+00176914,2024,main_product,15,Private Equity,
+00176914,2024,main_product,16,선물,
+00176914,2024,main_product,17,옵션 매매,
+00176914,2024,main_product,18,증권 브로커리지,
+00176914,2024,main_product,19,온라인 펀드,
+00176914,2024,main_product,20,해외주식,
+00176914,2024,main_product,21,FX마진 트레이딩,
 00176914,2024,rd_field,0,RTB 매체 광고 효율 제고를 위한 솔루션,2026-09-09T00:55:19+00:00
 00176914,2024,rd_field,1,광고 서버 및 플랫폼,2026-09-09T00:55:19+00:00
 00176914,2024,rd_field,2,"페이스북 인스타그램, 스냅챗 광고 최적화 서비스",2026-09-09T00:55:19+00:00
@@ -7312,26 +7242,23 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00176914,2025,main_product,2,쇼핑몰통합솔루션,
 00176914,2025,main_product,3,IDC,
 00176914,2025,main_product,4,인증보안사업,
-00176914,2025,main_product,5,비금융사업부 합계,
-00176914,2025,main_product,6,주식,
-00176914,2025,main_product,7,파생상품 거래,
-00176914,2025,main_product,8,채권 중개,
-00176914,2025,main_product,9,장외파생상품 거래,
-00176914,2025,main_product,10,IPO,
-00176914,2025,main_product,11,회사채의 발행,
-00176914,2025,main_product,12,부동산 PF,
-00176914,2025,main_product,13,ABCP,
-00176914,2025,main_product,14,ABS의 발행,
-00176914,2025,main_product,15,메자닌 투자,
-00176914,2025,main_product,16,Private Equity,
-00176914,2025,main_product,17,선물,
-00176914,2025,main_product,18,옵션 매매,
-00176914,2025,main_product,19,증권 브로커리지,
-00176914,2025,main_product,20,온라인 펀드,
-00176914,2025,main_product,21,해외주식,
-00176914,2025,main_product,22,FX마진 트레이딩,
-00176914,2025,main_product,23,금융사업부 합계,
-00176914,2025,main_product,24,전체 합계,
+00176914,2025,main_product,5,주식,
+00176914,2025,main_product,6,파생상품 거래,
+00176914,2025,main_product,7,채권 중개,
+00176914,2025,main_product,8,장외파생상품 거래,
+00176914,2025,main_product,9,IPO,
+00176914,2025,main_product,10,회사채의 발행,
+00176914,2025,main_product,11,부동산 PF,
+00176914,2025,main_product,12,ABCP,
+00176914,2025,main_product,13,ABS의 발행,
+00176914,2025,main_product,14,메자닌 투자,
+00176914,2025,main_product,15,Private Equity,
+00176914,2025,main_product,16,선물,
+00176914,2025,main_product,17,옵션 매매,
+00176914,2025,main_product,18,증권 브로커리지,
+00176914,2025,main_product,19,온라인 펀드,
+00176914,2025,main_product,20,해외주식,
+00176914,2025,main_product,21,FX마진 트레이딩,
 00176914,2025,rd_field,0,RTB 매체 광고 효율 제고를 위한 솔루션,2026-09-09T00:55:34+00:00
 00176914,2025,rd_field,1,광고 서버 및 플랫폼,2026-09-09T00:55:34+00:00
 00176914,2025,rd_field,2,"페이스북 인스타그램, 스냅챗 광고 최적화 서비스",2026-09-09T00:55:34+00:00
@@ -7546,10 +7473,8 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00231363,2021,business_keyword,7,인터넷전화,2026-09-09T00:59:40+00:00
 00231363,2021,main_business,0,"LG유플러스는 모바일과 스마트홈 서비스를 제공하는 컨슈머 사업과 기업인프라 사업을 영위하고 있으며, 5G 기술을 바탕으로 스마트팩토리, 스마트모빌리티 등 B2B 사업의 미래 성장동력을 발전시키고 있습니다.",2026-09-09T00:59:40+00:00
 00231363,2021,main_product,0,통신,
-00231363,2021,main_product,1,기타매출,
-00231363,2021,main_product,2,단말기 판매,
-00231363,2021,main_product,3,계속영업 소계,
-00231363,2021,main_product,4,중단영업(주1),
+00231363,2021,main_product,1,단말기 판매,
+00231363,2021,main_product,2,중단영업(주1),
 00231363,2021,rd_field,0,AI,2026-09-09T00:59:40+00:00
 00231363,2021,rd_field,1,Big Data,2026-09-09T00:59:40+00:00
 00231363,2021,rd_field,2,클라우드기술,2026-09-09T00:59:40+00:00
@@ -7568,10 +7493,8 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00231363,2022,business_keyword,7,플랫폼,2026-09-09T00:59:49+00:00
 00231363,2022,main_business,0,"LG유플러스는 모바일과 스마트홈 서비스를 제공하는 컨슈머 사업과 기업인프라 사업을 영위하고 있으며, 5G 기술을 바탕으로 각 사업의 미래 성장동력을 발전시키고 있습니다.",2026-09-09T00:59:49+00:00
 00231363,2022,main_product,0,통신,
-00231363,2022,main_product,1,기타매출,
-00231363,2022,main_product,2,단말기 판매,
-00231363,2022,main_product,3,계속영업 소계,
-00231363,2022,main_product,4,중단영업(주1),
+00231363,2022,main_product,1,단말기 판매,
+00231363,2022,main_product,2,중단영업(주1),
 00231363,2022,new_business,0,유플러스 3.0,2026-09-09T00:59:49+00:00
 00231363,2022,new_business,1,더라이프,2026-09-09T00:59:49+00:00
 00231363,2022,new_business,2,더드라마,2026-09-09T00:59:49+00:00
@@ -7595,8 +7518,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00231363,2023,business_keyword,7,인터넷전화,2026-09-09T00:59:58+00:00
 00231363,2023,main_business,0,"LG유플러스는 전기통신업으로 분류되며, 모바일, 스마트홈, 기업인프라 등의 사업을 영위하고 있으며, 5G 기술을 바탕으로 각 사업의 미래 성장동력을 발전시키고 있습니다.",2026-09-09T00:59:58+00:00
 00231363,2023,main_product,0,통신,
-00231363,2023,main_product,1,기타매출,
-00231363,2023,main_product,2,단말기 판매,
+00231363,2023,main_product,1,단말기 판매,
 00231363,2023,new_business,0,중고폰 사업,2026-09-09T00:59:58+00:00
 00231363,2023,rd_field,0,AI,2026-09-09T00:59:58+00:00
 00231363,2023,rd_field,1,Big Data,2026-09-09T00:59:58+00:00
@@ -7617,8 +7539,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00231363,2024,business_keyword,7,MVNO,2026-09-09T01:00:08+00:00
 00231363,2024,main_business,0,"LG유플러스는 전기통신업으로 분류되며, 모바일, 스마트홈, 기업인프라 등의 사업을 영위하고 있으며, 5G 기술을 바탕으로 각 사업의 미래 성장동력을 발전시키고 있습니다.",2026-09-09T01:00:08+00:00
 00231363,2024,main_product,0,통신,
-00231363,2024,main_product,1,기타매출,
-00231363,2024,main_product,2,단말기 판매,
+00231363,2024,main_product,1,단말기 판매,
 00231363,2024,new_business,0,중고폰 사업,2026-09-09T01:00:08+00:00
 00231363,2024,rd_field,0,AI,2026-09-09T01:00:08+00:00
 00231363,2024,rd_field,1,Big Data,2026-09-09T01:00:08+00:00
@@ -7636,8 +7557,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00231363,2025,business_keyword,7,MVNO,2026-09-09T01:00:19+00:00
 00231363,2025,main_business,0,"㈜LG유플러스는 전기통신업으로 분류되며, 모바일, 스마트홈, 기업인프라 등의 사업을 영위하고 있으며, 5G 기술을 바탕으로 미래 성장동력을 발전시키고 있습니다.",2026-09-09T01:00:19+00:00
 00231363,2025,main_product,0,통신,
-00231363,2025,main_product,1,기타매출,
-00231363,2025,main_product,2,단말기 판매,
+00231363,2025,main_product,1,단말기 판매,
 00231363,2025,new_business,0,AIDC 구축,2026-09-09T01:00:19+00:00
 00231363,2025,rd_field,0,AI,2026-09-09T01:00:19+00:00
 00231363,2025,rd_field,1,데이터,2026-09-09T01:00:19+00:00
@@ -8050,8 +7970,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00261285,2021,main_product,2,공사,
 00261285,2021,main_product,3,용역 서비스,
 00261285,2021,main_product,4,4.46%,
-00261285,2021,main_product,5,단순합계,
-00261285,2021,main_product,6,총 합 계,
 00261285,2021,new_business,0,수소충전 인프라,2026-09-09T00:33:20+00:00
 00261285,2021,new_business,1,수소설비 유지보수,2026-09-09T00:33:20+00:00
 00261285,2021,new_business,2,냉열사업,2026-09-09T00:33:20+00:00
@@ -8079,7 +7997,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00261285,2022,main_product,2,공사,
 00261285,2022,main_product,3,용역 서비스,
 00261285,2022,main_product,4,4.04%,
-00261285,2022,main_product,5,단순합계,
 00261285,2022,new_business,0,해외 그린수소 수입 터미널,2026-09-09T00:33:31+00:00
 00261285,2022,new_business,1,냉열 사업,2026-09-09T00:33:31+00:00
 00261285,2022,new_business,2,바이오가스 정제,2026-09-09T00:33:31+00:00
@@ -8105,7 +8022,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00261285,2023,main_product,2,공사,
 00261285,2023,main_product,3,용역 서비스,
 00261285,2023,main_product,4,4.05%,
-00261285,2023,main_product,5,단순합계,
 00261285,2023,new_business,0,수소충전 인프라,2026-09-09T00:33:46+00:00
 00261285,2023,new_business,1,바이오가스 정제,2026-09-09T00:33:46+00:00
 00261285,2023,new_business,2,냉열 사업,2026-09-09T00:33:46+00:00
@@ -8135,7 +8051,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00261285,2024,main_product,2,공사,
 00261285,2024,main_product,3,용역 서비스,
 00261285,2024,main_product,4,4.91%,
-00261285,2024,main_product,5,단순합계,
 00261285,2024,new_business,0,바이오가스 정제,2026-09-09T00:34:00+00:00
 00261285,2024,new_business,1,냉열 사업,2026-09-09T00:34:00+00:00
 00261285,2024,new_business,2,플랜트 신기술 제품,2026-09-09T00:34:00+00:00
@@ -8163,7 +8078,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00261285,2025,main_product,2,공사,
 00261285,2025,main_product,3,용역 서비스,
 00261285,2025,main_product,4,5.47%,
-00261285,2025,main_product,5,단순합계,
 00261285,2025,new_business,0,수소충전 인프라,2026-09-09T00:34:12+00:00
 00261285,2025,new_business,1,바이오가스 정제,2026-09-09T00:34:12+00:00
 00261285,2025,new_business,2,냉열 사업,2026-09-09T00:34:12+00:00
@@ -8762,8 +8676,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00366137,2022,main_product,0,개시일,
 00366137,2022,main_product,1,바이오중유,
 00366137,2022,main_product,2,97.9%,
-00366137,2022,main_product,3,기타,
-00366137,2022,main_product,4,2.1%,
+00366137,2022,main_product,3,2.1%,
 00366137,2022,rd_field,0,바이오연료 제품화,2026-09-09T01:21:05+00:00
 00366137,2022,rd_field,1,바이오중유의 고품질화,2026-09-09T01:21:05+00:00
 00366137,2022,rd_field,2,바이오중유 제조를 위한 탈산 및 탈검 공정,2026-09-09T01:21:05+00:00
@@ -9059,7 +8972,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00401731,2022,main_product,14,사이니지,
 00401731,2022,main_product,15,Optics Solution,
 00401731,2022,main_product,16,설비,
-00401731,2022,main_product,17,부문간 내부거래,
 00401731,2022,rd_field,0,인공지능,2026-09-08T08:45:14+00:00
 00401731,2022,rd_field,1,사물인터넷,2026-09-08T08:45:14+00:00
 00401731,2022,rd_field,2,컨버전스,2026-09-08T08:45:14+00:00
@@ -9093,7 +9005,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00401731,2023,main_product,13,사이니지,
 00401731,2023,main_product,14,Optics Solution,
 00401731,2023,main_product,15,설비,
-00401731,2023,main_product,16,부문간 내부거래,
 00401731,2023,new_business,0,로봇,2026-09-08T08:45:24+00:00
 00401731,2023,new_business,1,차량용 부품,2026-09-08T08:45:24+00:00
 00401731,2023,new_business,2,광학솔루션,2026-09-08T08:45:24+00:00
@@ -9128,7 +9039,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00401731,2024,main_product,13,사이니지,
 00401731,2024,main_product,14,Optics Solution,
 00401731,2024,main_product,15,설비,
-00401731,2024,main_product,16,부문간 내부거래,
 00401731,2024,new_business,0,로봇,2026-09-08T08:45:33+00:00
 00401731,2024,new_business,1,차량용 부품,2026-09-08T08:45:33+00:00
 00401731,2024,new_business,2,친환경 프리미엄 신제품,2026-09-08T08:45:33+00:00
@@ -9167,7 +9077,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00401731,2025,main_product,15,HVAC,
 00401731,2025,main_product,16,Optics Solution,
 00401731,2025,main_product,17,설비,
-00401731,2025,main_product,18,부문간 내부거래,
 00401731,2025,rd_field,0,스마트가전,2026-09-08T08:45:50+00:00
 00401731,2025,rd_field,1,스마트 홈,2026-09-08T08:45:50+00:00
 00401731,2025,rd_field,2,인공지능,2026-09-08T08:45:50+00:00
@@ -9566,8 +9475,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00631518,2025,main_product,5,기유,
 00631518,2025,main_product,6,자동차,
 00631518,2025,main_product,7,산업용,
-00631518,2025,main_product,8,기타,
-00631518,2025,main_product,9,연결 합계,
 00631518,2025,rd_field,0,Energy Saving,2026-09-09T00:26:01+00:00
 00631518,2025,rd_field,1,배터리,2026-09-09T00:26:01+00:00
 00631518,2025,rd_field,2,Energy Solution,2026-09-09T00:26:01+00:00
@@ -9914,7 +9821,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00904672,2021,main_business,0,"당사의 연결실체는 모바일 게임 개발 및 퍼블리싱 사업을 영위하고 있습니다. 넷마블㈜는 게임 개발 자회사가 개발한 게임 등을 퍼블리싱하는 사업을 전문적으로 영위하며, 자회사는 모바일 게임 개발 사업을 담당합니다.",2026-09-08T08:47:51+00:00
 00904672,2021,main_product,0,모바일게임,
 00904672,2021,main_product,1,온라인,
-00904672,2021,main_product,2,기타,
 00904672,2022,business_keyword,0,모바일 게임,2026-09-08T08:48:02+00:00
 00904672,2022,business_keyword,1,크로스 플랫폼 게임,2026-09-08T08:48:02+00:00
 00904672,2022,business_keyword,2,게임 개발,2026-09-08T08:48:02+00:00
@@ -9925,7 +9831,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00904672,2022,main_business,0,"당사의 연결실체는 모바일 게임 개발 및 퍼블리싱 사업을 영위하고 있습니다. 넷마블㈜는 게임 개발 자회사가 개발한 게임 등을 퍼블리싱하는 사업을 전문적으로 영위하며, 자회사들은 모바일을 비롯한 크로스 플랫폼 게임 개발 사업을 담당합니다.",2026-09-08T08:48:02+00:00
 00904672,2022,main_product,0,모바일게임,
 00904672,2022,main_product,1,온라인게임,
-00904672,2022,main_product,2,기타,
 00904672,2022,rd_field,0,게임 이상 탐지 시스템,2026-09-08T08:48:02+00:00
 00904672,2022,rd_field,1,프로필 서비스 시스템,2026-09-08T08:48:02+00:00
 00904672,2022,rd_field,2,게임 테스트 자동화 시스템,2026-09-08T08:48:02+00:00
@@ -9943,7 +9848,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00904672,2023,main_business,0,"당사의 연결실체는 모바일 게임 개발 및 퍼블리싱 사업을 영위하고 있습니다. 넷마블㈜는 게임 개발 자회사가 개발한 게임 등을 퍼블리싱하는 사업을 전문적으로 영위하며, 자회사들은 모바일을 비롯한 크로스 플랫폼 게임 개발 사업을 담당합니다.",2026-09-08T08:48:15+00:00
 00904672,2023,main_product,0,모바일게임,
 00904672,2023,main_product,1,온라인게임,
-00904672,2023,main_product,2,기타,
 00904672,2023,new_business,0,애니메이션 컨텐츠 제작 및 유통,2026-09-08T08:48:15+00:00
 00904672,2023,new_business,1,소프트웨어 자문 개발 및 공급,2026-09-08T08:48:15+00:00
 00904672,2023,new_business,2,서비스업,2026-09-08T08:48:15+00:00
@@ -9961,7 +9865,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00904672,2024,main_business,0,"당사의 연결실체는 모바일 게임 개발 및 퍼블리싱 사업을 영위하고 있습니다. 넷마블㈜는 게임 개발 자회사가 개발한 게임 등을 퍼블리싱하는 사업을 전문적으로 영위하며, 자회사들은 모바일을 비롯한 크로스 플랫폼 게임 개발 사업을 담당합니다.",2026-09-08T08:48:25+00:00
 00904672,2024,main_product,0,게임,
 00904672,2024,main_product,1,온라인게임,
-00904672,2024,main_product,2,기타,
 00904672,2024,rd_field,0,게임 이상 탐지 시스템,2026-09-08T08:48:25+00:00
 00904672,2024,rd_field,1,음성 AI,2026-09-08T08:48:25+00:00
 00904672,2024,rd_field,2,서비스 자동화,2026-09-08T08:48:25+00:00
@@ -9977,7 +9880,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00904672,2025,main_business,0,당사의 연결실체는 모바일 게임의 개발 및 퍼블리싱 사업을 영위하고 있습니다. 넷마블㈜는 게임 개발 자회사가 개발한 게임 등을 퍼블리싱하는 사업을 전문적으로 영위합니다.,2026-09-08T08:48:33+00:00
 00904672,2025,main_product,0,게임,
 00904672,2025,main_product,1,온라인게임,
-00904672,2025,main_product,2,기타,
 00904672,2025,rd_field,0,AI/DX,2026-09-08T08:48:33+00:00
 00904672,2025,rd_field,1,게임 이상 탐지 시스템,2026-09-08T08:48:33+00:00
 00904672,2025,rd_field,2,음성 AI,2026-09-08T08:48:33+00:00
@@ -10536,7 +10438,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01263022,2021,main_product,5,상품,
 01263022,2021,main_product,6,제품 판매,
 01263022,2021,main_product,7,임대,
-01263022,2021,main_product,8,기타,
 01263022,2021,rd_field,0,식품안정성,2026-09-09T01:14:09+00:00
 01263022,2021,rd_field,1,위해 / 유해 상품 관리,2026-09-09T01:14:09+00:00
 01263022,2021,rd_field,2,상품 품질 관리,2026-09-09T01:14:09+00:00
@@ -10562,7 +10463,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01263022,2022,main_product,5,상품,
 01263022,2022,main_product,6,제품 판매,
 01263022,2022,main_product,7,임대,
-01263022,2022,main_product,8,기타,
 01263022,2023,business_keyword,0,편의점,2026-09-09T01:14:22+00:00
 01263022,2023,business_keyword,1,가맹점,2026-09-09T01:14:22+00:00
 01263022,2023,business_keyword,2,CU,2026-09-09T01:14:22+00:00
@@ -10580,7 +10480,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01263022,2023,main_product,5,상품,
 01263022,2023,main_product,6,제품 판매,
 01263022,2023,main_product,7,임대,
-01263022,2023,main_product,8,기타,
 01263022,2023,rd_field,0,식품안정성,2026-09-09T01:14:22+00:00
 01263022,2023,rd_field,1,위해·유해 상품 관리,2026-09-09T01:14:22+00:00
 01263022,2023,rd_field,2,상품 품질 관리,2026-09-09T01:14:22+00:00
@@ -10609,7 +10508,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01263022,2024,main_product,8,상품,
 01263022,2024,main_product,9,제품 판매,
 01263022,2024,main_product,10,임대,
-01263022,2024,main_product,11,기타,
 01263022,2025,business_keyword,0,편의점,2026-09-09T01:14:38+00:00
 01263022,2025,business_keyword,1,CU,2026-09-09T01:14:38+00:00
 01263022,2025,business_keyword,2,가맹점,2026-09-09T01:14:38+00:00
@@ -10632,7 +10530,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01263022,2025,main_product,10,상품,
 01263022,2025,main_product,11,제품 판매,
 01263022,2025,main_product,12,임대,
-01263022,2025,main_product,13,기타,
 01263022,2025,rd_field,0,식품안정성,2026-09-09T01:14:38+00:00
 01263022,2025,rd_field,1,위해·유해 상품 관리,2026-09-09T01:14:38+00:00
 01263022,2025,rd_field,2,상품 품질 관리 기준 수립,2026-09-09T01:14:38+00:00
@@ -10879,7 +10776,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01390344,2021,main_product,2,화공발전설비 外,
 01390344,2021,main_product,3,엔진류,
 01390344,2021,main_product,4,기계설비 外,
-01390344,2021,main_product,5,기타,
 01390344,2021,new_business,0,암모니아 추진운반선,2026-09-09T00:51:00+00:00
 01390344,2021,rd_field,0,선박 설계 및 해석기술 개발,2026-09-09T00:51:00+00:00
 01390344,2021,rd_field,1,선박 성능·운항·구조 최적화,2026-09-09T00:51:00+00:00
@@ -10909,7 +10805,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01390344,2022,main_product,8,화공설비 外,
 01390344,2022,main_product,9,선박용엔진,
 01390344,2022,main_product,10,디젤발전설비 外,
-01390344,2022,main_product,11,기타,
 01390344,2022,rd_field,0,선박 설계 및 해석기술,2026-09-09T00:51:07+00:00
 01390344,2022,rd_field,1,선박 의장품 및 최적 용접기법,2026-09-09T00:51:07+00:00
 01390344,2022,rd_field,2,친환경 제품 설계기술,2026-09-09T00:51:07+00:00
@@ -10932,7 +10827,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01390344,2023,main_product,6,부유식 원유생산설비 外,
 01390344,2023,main_product,7,선박용엔진,
 01390344,2023,main_product,8,디젤발전설비 外,
-01390344,2023,main_product,9,기타,
 01390344,2023,rd_field,0,선박 설계 및 해석기술 개발,2026-09-09T00:51:13+00:00
 01390344,2023,rd_field,1,선박 의장품 개발,2026-09-09T00:51:13+00:00
 01390344,2023,rd_field,2,친환경 제품 설계기술 개발,2026-09-09T00:51:13+00:00
@@ -10956,7 +10850,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01390344,2024,main_product,6,부유식 원유생산설비 外,
 01390344,2024,main_product,7,선박용엔진,
 01390344,2024,main_product,8,디젤발전설비 外,
-01390344,2024,main_product,9,기타,
 01390344,2024,new_business,0,암모니아 추진운반선,2026-09-09T00:51:21+00:00
 01390344,2024,new_business,1,소형모듈원전,2026-09-09T00:51:21+00:00
 01390344,2024,new_business,2,해상풍력발전,2026-09-09T00:51:21+00:00
@@ -10982,7 +10875,6 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01390344,2025,main_product,6,부유식 원유생산설비 外,
 01390344,2025,main_product,7,선박용엔진,
 01390344,2025,main_product,8,디젤발전설비 外,
-01390344,2025,main_product,9,기타,
 01390344,2025,new_business,0,암모니아 추진운반선,2026-09-09T00:51:28+00:00
 01390344,2025,new_business,1,해상풍력발전,2026-09-09T00:51:28+00:00
 01390344,2025,new_business,2,소형모듈원자로(SMR),2026-09-09T00:51:28+00:00
