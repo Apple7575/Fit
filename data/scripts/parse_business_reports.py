@@ -39,11 +39,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pipeline.business_report import facility as fac_mod  # noqa: E402
-from pipeline.business_report import segments as seg_mod  # noqa: E402
-from pipeline.business_report import texts as txt_mod  # noqa: E402
-from pipeline.business_report.doc import Document  # noqa: E402
-from pipeline.normalize import rnd as rnd_mod  # noqa: E402
+from pipeline.business_report import extract as ex  # noqa: E402
 from pipeline.patterns import patterns  # noqa: E402
 from pipeline.paths import CONFIG, ROOT, cache_dir, curated_seed_dir, staged_dir  # noqa: E402
 
@@ -56,17 +52,12 @@ for _s in (sys.stdout, sys.stderr):
 UNIVERSE = CONFIG / "business_report_universe.csv"
 FINANCIALS = ROOT / "staged" / "opendart" / "financials.csv"
 
-SEG_FIELDS = ["corp_code", "fiscal_year", "segment_name", "metric_value",
-              "rcept_no", "verdict", "unit", "table_idx", "gap_ratio", "sum_krw"]
-FAC_FIELDS = ["corp_code", "fiscal_year", "field_name", "purpose", "amount",
-              "rcept_no", "verdict", "unit", "table_idx"]
-PRD_FIELDS = ["corp_code", "fiscal_year", "seq", "value_text", "rcept_no", "table_idx"]
-RND_FIELDS = ["corp_code", "fiscal_year", "rd_expense", "rd_ratio",
-              "rcept_no", "verdict", "raw_verdict", "unit"]
-SUM_FIELDS = ["corp_code", "corp_name", "fiscal_year", "rcept_no", "bytes",
-              "tables", "seg_verdict", "seg_count", "fac_verdict", "fac_count",
-              "product_count", "rnd_verdict", "business_chars", "rd_chars",
-              "seconds", "error"]
+# 헤더는 pipeline/business_report/extract.py 가 정본이다. Spark 잡도 같은 것을 쓴다.
+SEG_FIELDS = ex.SEGMENT_FIELDS
+FAC_FIELDS = ex.FACILITY_FIELDS
+PRD_FIELDS = ex.PRODUCT_FIELDS
+RND_FIELDS = ex.RND_FIELDS
+SUM_FIELDS = ex.SUMMARY_FIELDS
 
 
 def _read(path: Path) -> list[dict]:
@@ -146,78 +137,30 @@ def main() -> int:
     try:
         for i, (corp, year, no) in enumerate(jobs, 1):
             path = cache / f"document_{no}.xml"
-            row = {"corp_code": corp, "corp_name": names.get(corp, ""),
-                   "fiscal_year": year, "rcept_no": no,
-                   "bytes": path.stat().st_size, "error": ""}
-            t0 = time.monotonic()
-            try:
-                doc = Document(path, p)
-                row["tables"] = len(doc.tables)
-                ext = rev.get((corp, year))
-
-                # ── 부문별 매출
-                sr = seg_mod.extract(doc, ext, p)
-                row["seg_verdict"], row["seg_count"] = sr.verdict, len(sr.segments)
-                tally[f"seg:{sr.verdict}"] += 1
-                if sr.verdict == seg_mod.VERIFIED:
-                    for s in sr.segments:
-                        writers["seg"].writerow({
-                            "corp_code": corp, "fiscal_year": year,
-                            "segment_name": s.name, "metric_value": f"{s.krw:.4f}",
-                            "rcept_no": no, "verdict": sr.verdict, "unit": sr.unit,
-                            "table_idx": sr.table_idx, "gap_ratio": sr.gap_ratio,
-                            "sum_krw": f"{sr.sum_krw:.0f}"})
-
-                # ── 시설투자
-                fr = fac_mod.extract(doc, p)
-                row["fac_verdict"], row["fac_count"] = fr.verdict, len(fr.items)
-                tally[f"fac:{fr.verdict}"] += 1
-                if fr.verdict == fac_mod.OK:
-                    for it in fr.items:
-                        writers["fac"].writerow({
-                            "corp_code": corp, "fiscal_year": year,
-                            "field_name": it.field_name or "", "purpose": it.purpose or "",
-                            "amount": f"{it.krw:.4f}", "rcept_no": no,
-                            "verdict": fr.verdict, "unit": fr.unit,
-                            "table_idx": fr.table_idx})
-
-                # ── 주요 제품 + LLM 입력 구간
-                tr = txt_mod.extract(doc, p)
-                row["product_count"] = len(tr.main_product)
-                for seq, v in enumerate(tr.main_product):
-                    writers["prd"].writerow({
-                        "corp_code": corp, "fiscal_year": year, "seq": seq,
-                        "value_text": v, "rcept_no": no,
-                        "table_idx": tr.product_table_idx})
-                row["business_chars"] = len(tr.passages.get("business", ""))
-                row["rd_chars"] = len(tr.passages.get("rd", ""))
-                if row["business_chars"] or row["rd_chars"]:
-                    passages.write(json.dumps({
-                        "corp_code": corp, "fiscal_year": year, "rcept_no": no,
-                        "business": tr.passages.get("business", ""),
-                        "rd": tr.passages.get("rd", "")}, ensure_ascii=False) + "\n")
-
-                # ── R&D. 이미 펴 둔 표를 넘겨 문서를 다시 열지 않는다
-                tables = [{"idx": t.idx, "title": t.title, "caption": t.caption,
-                           "m": t.m} for t in doc.tables]
-                rr = rnd_mod.extract(tables, ext, p)
-                row["rnd_verdict"] = rr.verdict
-                tally[f"rnd:{rr.verdict}"] += 1
-                if rr.rnd_krw and rr.verdict not in ("unit_unknown",):
-                    writers["rnd"].writerow({
-                        "corp_code": corp, "fiscal_year": year,
-                        "rd_expense": f"{rr.rnd_krw:.4f}",
-                        "rd_ratio": rr.ratio_reported or rr.ratio_external
-                        or rr.ratio_self or "",
-                        "rcept_no": no, "verdict": rr.verdict,
-                        "raw_verdict": rr.verdict, "unit": rr.unit})
-            except Exception as e:                    # noqa: BLE001 — 한 건이 전체를 멈추지 않는다
-                row["error"] = f"{type(e).__name__}: {e}"[:200]
+            # 파싱 자체는 pipeline/business_report/extract.parse_one 이 한다.
+            # Spark 잡이 같은 함수를 부르므로 이 스크립트에는 파싱 로직이 없다.
+            r = ex.parse_one(path, corp_code=corp, fiscal_year=year, rcept_no=no,
+                             corp_name=names.get(corp, ""),
+                             external_revenue=rev.get((corp, year)), p=p)
+            row = r.summary
+            for k in ("seg_verdict", "fac_verdict", "rnd_verdict"):
+                if row.get(k):
+                    tally[f"{k.split('_')[0]}:{row[k]}"] += 1
+            if row.get("error"):
                 tally["doc:error"] += 1
                 print(f"  ! {names.get(corp)} {year}: {row['error']}", file=sys.stderr)
-                traceback.print_exc(limit=2, file=sys.stderr)
 
-            row["seconds"] = round(time.monotonic() - t0, 1)
+            for rr in r.segments:
+                writers["seg"].writerow(rr)
+            for rr in r.facilities:
+                writers["fac"].writerow(rr)
+            for rr in r.products:
+                writers["prd"].writerow(rr)
+            if r.rnd:
+                writers["rnd"].writerow(r.rnd)
+            if r.passages:
+                passages.write(json.dumps(r.passages, ensure_ascii=False) + "\n")
+
             writers["sum"].writerow(row)
             for h in handles.values():
                 h.flush()

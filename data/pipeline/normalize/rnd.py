@@ -51,13 +51,17 @@ class RndResult:
 
 # ------------------------------------------------------------------ XML 로딩
 
-def load_xml(path: Path):
-    """사업보고서 XML. 선언은 utf-8 인데 실제 인코딩이 다른 문서가 섞여 있다.
+def parse_xml_bytes(raw: bytes, name: str = "<bytes>"):
+    """사업보고서 XML 바이트 → (root, 인코딩). 선언은 utf-8 인데 실제 인코딩이
+    다른 문서가 섞여 있다.
 
     `recover=True` 로 파손된 마크업도 최대한 읽는다 — 안 그러면 표가 안 닫힌
     문서에서 통째로 실패한다.
+
+    **경로가 아니라 바이트를 받는 것**은 Spark 태스크가 HDFS 에서 읽은 내용을
+    그대로 넘기기 위해서다 (S15P21A504-73 0차). 로컬 실행은 load_xml 이 파일을
+    읽어 이 함수를 부른다 — 두 경로가 같은 코드를 지나야 결과가 갈리지 않는다.
     """
-    raw = path.read_bytes()
     parser = etree.XMLParser(recover=True, huge_tree=True, resolve_entities=False)
     for enc in ("utf-8", "cp949", "euc-kr"):
         try:
@@ -69,7 +73,13 @@ def load_xml(path: Path):
         root = etree.fromstring(text.encode("utf-8"), parser)
         if root is not None and len(root):
             return root, enc
-    raise RuntimeError(f"디코딩 실패: {path.name}")
+    raise RuntimeError(f"디코딩 실패: {name}")
+
+
+def load_xml(path: Path):
+    """사업보고서 XML 파일 → (root, 인코딩). 해석은 parse_xml_bytes 가 한다."""
+    path = Path(path)
+    return parse_xml_bytes(path.read_bytes(), path.name)
 
 
 def matrix(table, p: Patterns) -> list[list[str]]:
