@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../features/auth/AuthProvider';
 
@@ -8,7 +8,12 @@ const FIELD_CLASS =
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
+
+  // 로그인 후 돌아갈 내부 경로(예: 자소서 작성 화면). 외부 URL 은 무시한다.
+  const redirectParam = searchParams.get('redirect');
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +27,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      navigate('/');
+      navigate(redirectTo);
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'EMAIL_NOT_VERIFIED') {
         setNeedsVerification(true);
