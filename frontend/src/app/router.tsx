@@ -10,6 +10,8 @@ import { CompanyDetailPage } from '../pages/company-detail/CompanyDetailPage';
 import { CompanyFocusTab } from '../pages/company-detail/CompanyFocusTab';
 import { CompanyIssuesTab } from '../pages/company-detail/CompanyIssuesTab';
 import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
+import { CoverLetterListPage } from '../pages/cover-letter/CoverLetterListPage';
+import { CoverLetterWorkspacePage } from '../pages/cover-letter/CoverLetterWorkspacePage';
 import { HomePage } from '../pages/home/HomePage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { SignupPage } from '../pages/auth/SignupPage';
@@ -37,6 +39,18 @@ const routes: RouteObject[] = [
   {
     path: '/verify',
     element: <VerifyPage />,
+  },
+  {
+    path: '/cover-letters',
+    element: <CoverLetterListPage />,
+  },
+  {
+    path: '/cover-letters/new',
+    element: <CoverLetterWorkspacePage />,
+  },
+  {
+    path: '/cover-letters/:id',
+    element: <CoverLetterWorkspacePage />,
   },
   {
     path: '/companies/:companyId',

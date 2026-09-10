@@ -20,6 +20,10 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "권한이 없습니다."),
     EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다."),
     VERIFICATION_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "인증 링크가 유효하지 않거나 만료되었습니다."),
+    COVER_LETTER_NOT_FOUND(HttpStatus.NOT_FOUND, "자소서를 찾을 수 없습니다."),
+    AI_FEEDBACK_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI 피드백을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."),
+    AI_FEEDBACK_FAILED(HttpStatus.BAD_GATEWAY, "AI 피드백에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    FEEDBACK_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 많습니다. 잠시 후 다시 시도해 주세요."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;

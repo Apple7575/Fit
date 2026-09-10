@@ -44,6 +44,8 @@ public class SecurityConfig {
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/logout", "/api/auth/verify").permitAll()
+                        // 문항 피드백은 게스트도 쓸 수 있게 공개한다(무저장). CSRF 는 유지한다.
+                        .requestMatchers(HttpMethod.POST, "/api/cover-letters/feedback").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/companies/**", "/api/industries/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
