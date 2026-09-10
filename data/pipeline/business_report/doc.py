@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..patterns import Patterns, patterns as default_patterns
-from ..normalize.rnd import load_xml, matrix
+from ..normalize.rnd import load_xml, matrix, parse_xml_bytes
 from ..normalize.text import squash
 
 # 본문 문단으로 볼 태그. rnd.collect_tables 의 캡션 수집과 같은 집합이다.
@@ -80,11 +80,23 @@ class Section:
 class Document:
     """사업보고서 한 건. 생성 시점에 한 번 훑고 그 뒤로는 메모리에서 본다."""
 
-    def __init__(self, path: Path, p: Patterns | None = None):
-        self.path = Path(path)
-        self.rcept_no = self.path.stem.replace("document_", "")
+    def __init__(self, source: Path | str | bytes, p: Patterns | None = None,
+                 rcept_no: str | None = None):
+        """파일 경로 또는 XML 바이트를 받는다.
+
+        바이트를 받는 것은 Spark 태스크가 HDFS 에서 읽은 내용을 임시 파일로
+        떨구지 않고 그대로 넘기기 위해서다 (S15P21A504-73 0차). 어느 쪽이든
+        parse_xml_bytes 를 지나므로 로컬과 분산의 해석이 갈리지 않는다.
+        """
+        if isinstance(source, (bytes, bytearray)):
+            self.path = None
+            self.rcept_no = rcept_no or ""
+            root, self.encoding = parse_xml_bytes(bytes(source), rcept_no or "<bytes>")
+        else:
+            self.path = Path(source)
+            self.rcept_no = rcept_no or self.path.stem.replace("document_", "")
+            root, self.encoding = load_xml(self.path)
         self.p = p or default_patterns()
-        root, self.encoding = load_xml(self.path)
         self.sections: list[Section] = []
         self.tables: list[Table] = []
         self._walk(root)
