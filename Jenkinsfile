@@ -197,6 +197,35 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy-Data') {
+            when {
+                beforeAgent true
+                branch 'develop'
+            }
+            agent any
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: 'deploy-ssh',
+                                                   keyFileVariable: 'SSH_KEY',
+                                                   usernameVariable: 'SSH_USER')]) {
+                    // data/ 를 2호기(하둡 노드)로 직접 전송한다.
+                    sh '''
+                        tar czf - data | ssh -i "$SSH_KEY" \
+                            -o StrictHostKeyChecking=accept-new \
+                            -o ConnectTimeout=10 \
+                            "$SSH_USER@172.26.6.113" '
+                                set -e
+                                D=/home/ubuntu/pipeline
+                                rm -rf "$D/.data.new" && mkdir -p "$D/.data.new"
+                                tar xzf - -C "$D/.data.new"
+                                rm -rf "$D/data" && mv "$D/.data.new/data" "$D/data"
+                                rmdir "$D/.data.new"
+                                echo "data 동기화: $(find "$D/data" -type f | wc -l) 파일"
+                            '
+                    '''
+                }
+            }
+        }
     }
 
     post {

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>dfs.replication</name>
+    <value>2</value>
+  </property>
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>file:///opt/hadoop-data/nn</value>
+  </property>
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>file:///opt/hadoop-data/dn</value>
+  </property>
+  <!-- 1호기는 postgres·Docker 와 같은 파티션이다. 없으면 HDFS 가 디스크를 채워 DB 쓰기를 깨뜨린다. -->
+  <property>
+    <name>dfs.datanode.du.reserved</name>
+    <value>53687091200</value>
+  </property>
+  <property>
+    <name>dfs.namenode.http-address</name>
+    <value>ha-master:9870</value>
+  </property>
+</configuration>
