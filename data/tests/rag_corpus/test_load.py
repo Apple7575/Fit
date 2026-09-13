@@ -1,0 +1,109 @@
+from datetime import datetime, timezone
+import unittest
+
+from pipeline.rag_corpus.load import build_company_records, replace_company
+from pipeline.rag_corpus.models import EvidenceRecord
+from pipeline.rag_corpus.source import CompanySourceRows
+
+
+CORP_CODE = "00126380"
+
+
+def record(corp_code=CORP_CODE, source_identity="company:00126380"):
+    return EvidenceRecord(
+        evidence_id="company-1", corp_code=corp_code, source_type="COMPANY_PROFILE",
+        source_identity=source_identity, title="삼성전자 기업 기본 정보", content="본문",
+        reference_period=None, published_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        source_url=None, quality="PRIMARY", metadata={}, content_hash="0" * 64,
+        source_updated_at=None,
+    )
+
+
+class RecordingCursor:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def execute(self, query, params):
+        self.conn.executed.append((query, params))
+        normalized = " ".join(query.lower().split())
+        if normalized.startswith("delete"):
+            self.conn.deleted_company = params[0]
+        elif normalized.startswith("insert"):
+            self.conn.inserted_companies.append(params[1])
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+class FakeConnection:
+    def __init__(self):
+        self.deleted_company = None
+        self.inserted_companies = []
+        self.executed = []
+        self.committed = False
+
+    def cursor(self):
+        return RecordingCursor(self)
+
+    def commit(self):
+        self.committed = True
+
+
+class BuildCompanyRecordsTest(unittest.TestCase):
+    def test_builds_sorted_records_and_counts_generated_rejected_and_blank_inputs(self):
+        rows = CompanySourceRows(
+            profile={"corp_code": CORP_CODE, "corp_name": "삼성전자", "dart_modify_date": "20260913"},
+            metrics=[
+                {"corp_code": CORP_CODE, "corp_name": "삼성전자", "fiscal_year": 2025,
+                 "metric_code": "revenue", "metric_name": "매출액", "metric_value": "1",
+                 "unit": "KRW", "verdict": "verified", "rcept_no": None},
+                {"corp_code": CORP_CODE, "corp_name": "삼성전자", "fiscal_year": 2025,
+                 "metric_code": "rd_expense", "metric_name": "R&D 비용", "metric_value": "1",
+                 "unit": "KRW", "verdict": "rejected", "rcept_no": None},
+            ],
+            texts=[
+                {"corp_code": CORP_CODE, "corp_name": "삼성전자", "fiscal_year": 2025,
+                 "attr_key": "main_product", "seq": 0, "value_text": "메모리", "generated_at": None},
+                {"corp_code": CORP_CODE, "corp_name": "삼성전자", "fiscal_year": 2025,
+                 "attr_key": "main_product", "seq": 1, "value_text": "생성물", "generated_at": "2026-01-01"},
+                {"corp_code": CORP_CODE, "corp_name": "삼성전자", "fiscal_year": 2025,
+                 "attr_key": "main_product", "seq": 2, "value_text": " ", "generated_at": None},
+            ],
+            segments=[], activities=[],
+        )
+
+        result = build_company_records(rows)
+
+        self.assertEqual(result.input_counts, {"profile": 1, "metrics": 2, "texts": 3, "segments": 0, "activities": 0})
+        self.assertEqual(result.excluded_counts, {"generated_text": 1, "metric_rejected": 1, "blank_content": 1})
+        self.assertEqual([item.source_identity for item in result.records], [
+            "company:00126380", "company_metric:00126380:2025:revenue", "company_text:00126380:2025:main_product",
+        ])
+
+
+class ReplaceCompanyTest(unittest.TestCase):
+    def test_delete_and_insert_use_the_same_company(self):
+        conn = FakeConnection()
+
+        inserted = replace_company(conn, CORP_CODE, [record()])
+
+        self.assertEqual(inserted, 1)
+        self.assertEqual(conn.deleted_company, CORP_CODE)
+        self.assertEqual(conn.inserted_companies, [CORP_CODE])
+        self.assertFalse(conn.committed)
+        self.assertEqual(conn.executed[0][1], (CORP_CODE,))
+
+    def test_rejects_cross_company_records_before_delete(self):
+        conn = FakeConnection()
+
+        with self.assertRaisesRegex(ValueError, "다른 기업"):
+            replace_company(conn, CORP_CODE, [record("00164779", "company:00164779")])
+
+        self.assertFalse(conn.executed)
+
+
+if __name__ == "__main__":
+    unittest.main()
