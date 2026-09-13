@@ -25,7 +25,13 @@ public class WebCorsConfig implements WebMvcConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(WebCorsConfig.class);
 
-    private static final String[] ALLOWED_METHODS = {"GET", "HEAD", "OPTIONS", "POST"};
+    /**
+     * 변경 메서드를 모두 넣는다. 로컬(Vite :5173 → 프록시 → :8080)에서는 브라우저가 같은 오리진
+     * 요청에도 Origin 헤더를 붙여 보내므로 서버가 교차 출처로 보고 CORS 를 검사한다.
+     * 목록에 없는 메서드는 "Invalid CORS request" 403 으로 막힌다.
+     */
+    private static final String[] ALLOWED_METHODS =
+            {"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"};
 
     /** X-XSRF-TOKEN 은 변경 요청의 CSRF 토큰을 실어 보내는 헤더다. */
     private static final String[] ALLOWED_HEADERS = {"Accept", "Content-Type", "X-XSRF-TOKEN"};
