@@ -103,6 +103,21 @@ news_article,source,7,VARCHAR(50),YES,,,,수집 출처. 확정 ERD 에 없던 �
 news_article,importance_score,10,"NUMERIC(3,1)",YES,,,,AI 중요도 0.0~10.0. 프론트 목업 기준 소수 한 자리다. 분석 실패는 NULL 이고 0 과 다른 사실이다,ai_analysis,,미적재,,no,0~10. NULL 은 분석 실패이고 0 과 다른 사실이다
 news_article,collected_at,12,TIMESTAMPTZ,NO,,,,원본을 받은 시각,google_news_rss,requests.json:checked_at → staged.collected_at,raw,2026-09-06T00:10:00+00:00,no,원본을 받은 시각. DB 기본값 now() 에 맡기지 않고 수집 시각을 넣는다
 news_article,guid,13,VARCHAR(500),YES,UK,,,Google 뉴스 RSS 가 기사마다 주는 식별자. 확정 ERD 의 중복 방지 키다,google_news_rss,rss:item/guid → staged.guid,raw,CBMiWmh0dHBzOi8vbi5leGFtcGxlL2FydGljbGUvMQ,no,"V17 이 더한 확정 ERD 의 중복 방지 키. UNIQUE (corp_code, guid) 가 걸려 있고, RSS 가 주지 않으면 NULL 이라 그 행끼리는 서로 충돌하지 않는다"
+rag_evidence,evidence_id,1,VARCHAR(96),NO,PK,,,,,,,,no,
+rag_evidence,corp_code,2,VARCHAR(8),NO,FK,company,corp_code,,,,,,no,
+rag_evidence,source_type,3,VARCHAR(40),NO,,,,,,,,,no,
+rag_evidence,source_identity,4,VARCHAR(500),NO,UK,,,,,,,,no,
+rag_evidence,title,5,VARCHAR(300),NO,,,,,,,,,no,
+rag_evidence,content,6,TEXT,NO,,,,,,,,,no,
+rag_evidence,reference_period,7,VARCHAR(20),YES,,,,,,,,,no,
+rag_evidence,published_at,8,TIMESTAMPTZ,NO,,,,,,,,,no,
+rag_evidence,source_url,9,TEXT,YES,,,,,,,,,no,
+rag_evidence,quality,10,VARCHAR(20),NO,,,,,,,,,no,
+rag_evidence,metadata,11,JSONB,NO,,,,,,,,,no,
+rag_evidence,content_hash,12,CHAR(64),NO,,,,,,,,,no,
+rag_evidence,source_updated_at,13,TIMESTAMPTZ,YES,,,,,,,,,no,
+rag_evidence,created_at,14,TIMESTAMPTZ,NO,,,,,,,,,no,
+rag_evidence,updated_at,15,TIMESTAMPTZ,NO,,,,,,,,,no,
 segment_metric,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,opendart,empSttus:corp_code,raw,00126380,no,
 segment_metric,fiscal_year,2,SMALLINT,NO,PK,,,회계연도,opendart,empSttus 요청의 bsns_year,raw,2024,no,
 segment_metric,segment_name,3,VARCHAR(100),NO,PK,,,사업부 이름. 연도별 자연키이고 개수 제한이 없다. 회사가 부문 이름을 바꾸면 다른 부문이 된다,opendart,empSttus:fo_bbm,derived:공백 정리 후 성별 행을 접어 부문 하나로. 합계 행('성별합계' 등)은 뺀다,DX,no,연도별 자연키다. 회사가 부문 이름을 바꾸면 다른 부문이 된다
