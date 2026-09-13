@@ -4,6 +4,8 @@ import {
   Navigate,
   type RouteObject,
 } from 'react-router-dom';
+import { AgentRoomListPage } from '../pages/agent-room/AgentRoomListPage';
+import { AgentRoomPage } from '../pages/agent-room/AgentRoomPage';
 import { CompanyComparisonTab } from '../pages/company-detail/CompanyComparisonTab';
 import { CompanyGrowthTab } from '../pages/company-detail/CompanyGrowthTab';
 import { CompanyDetailPage } from '../pages/company-detail/CompanyDetailPage';
@@ -65,6 +67,14 @@ const routes: RouteObject[] = [
   {
     path: '/interviews/:id',
     element: <InterviewWorkspacePage />,
+  },
+  {
+    path: '/agent-rooms',
+    element: <AgentRoomListPage />,
+  },
+  {
+    path: '/agent-rooms/:roomId',
+    element: <AgentRoomPage />,
   },
   {
     path: '/companies/:companyId',
