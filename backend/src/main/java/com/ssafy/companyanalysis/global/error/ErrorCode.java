@@ -35,6 +35,9 @@ public enum ErrorCode {
     JOB_ROLE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 직무입니다."),
     COMPANY_RAG_NOT_INDEXED(HttpStatus.BAD_REQUEST, "아직 분석 자료가 준비되지 않은 기업입니다."),
     TURN_IN_PROGRESS(HttpStatus.CONFLICT, "이전 요청이 아직 끝나지 않았습니다."),
+    TURN_NOT_FOUND(HttpStatus.NOT_FOUND, "요청 기록을 찾을 수 없습니다."),
+    AGENT_SOURCE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "이 에이전트가 볼 자료가 아직 준비되지 않았습니다."),
+    ANALYSIS_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 많습니다. 잠시 후 다시 시도해 주세요."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;
