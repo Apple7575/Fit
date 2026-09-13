@@ -49,6 +49,26 @@ python scripts/normalize.py         # 캐시 원본 정규화
 python scripts/verify_normalize.py  # 기준선 150건 회귀 검증
 ```
 
+### PostgreSQL RAG 코퍼스 구축
+
+`DATABASE_URL`이 설정되어 있어야 한다. `--dry-run`은 정본을 읽고 변환·제외 건수만
+집계하며 `rag_evidence`를 삭제하거나 삽입하지 않는다. 실제 구축은 기업 하나씩 독립
+트랜잭션으로 교체하므로 종료 코드 `1`이 나오면 실패한 기업의 기존 코퍼스는 보존된다.
+
+```bash
+# 전체 기업을 정렬된 코드 순서로 검사만 한다
+python scripts/build_rag_corpus.py --dry-run
+
+# 한 기업만 재구축
+python scripts/build_rag_corpus.py --corp-code 00126380
+
+# 여러 기업만 재구축 (중복 코드는 한 번만 처리)
+python scripts/build_rag_corpus.py --corp-code 00126380 --corp-code 00164779
+
+# 전체 기업 코퍼스 재구축
+python scripts/build_rag_corpus.py
+```
+
 뉴스는 별도 흐름이다. 수집기는 `news_poc/pipeline/collect.py` 이고, 그 원본을 표준 구조로
 정제·적재본으로 만드는 것은 아래 네 CLI 다. 네트워크를 호출하지 않는다.
 
