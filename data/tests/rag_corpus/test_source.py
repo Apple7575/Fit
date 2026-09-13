@@ -14,8 +14,7 @@ class RecordingCursor:
 
     def execute(self, query, params):
         self.executed.append((query, params))
-        index = len(self.executed) - 1
-        self._current = self.result_sets[index] if index < len(self.result_sets) else []
+        self._current = self.result_sets[len(self.executed) - 1]
 
     def fetchone(self):
         return self._current[0] if self._current else None
@@ -39,6 +38,14 @@ class RecordingConnection:
 
 
 class CompanySourceReaderTest(unittest.TestCase):
+    def test_recording_cursor_rejects_queries_without_a_fixture(self):
+        cursor = RecordingCursor([[]])
+
+        cursor.execute("SELECT 1", ())
+
+        with self.assertRaises(IndexError):
+            cursor.execute("SELECT unexpected", ())
+
     def test_rejects_unknown_company_before_reading_other_canonical_sources(self):
         conn = RecordingConnection([[]])
 
