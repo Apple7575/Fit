@@ -85,3 +85,58 @@ export interface RoomCreateInput {
   title: string;
   agents: AgentSpec[];
 }
+
+/** 에이전트가 근거로 쓴 자료 한 건. */
+export interface Evidence {
+  docType: string | null;
+  title: string | null;
+  year: number | null;
+  page: number | null;
+  snippet: string | null;
+}
+
+export type MessageStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';
+
+/** 대화 내역의 한 줄. 사용자 발화와 에이전트 답변이 같은 모양이다. */
+export interface RoomMessage {
+  messageId: number;
+  /** 딸린 사용자 발화의 id. 사용자 발화는 자기 id 가 들어간다. */
+  turnId: number;
+  role: 'user' | 'agent';
+  agentKey: string | null;
+  agentName: string | null;
+  content: string | null;
+  evidences: Evidence[];
+  /** 총괄이 종합에 쓴 메시지 id. 근거 칩으로 연결한다. */
+  basedOn: number[];
+  status: MessageStatus;
+  error: string | null;
+  createdAt: string;
+}
+
+export interface MessagePage {
+  messages: RoomMessage[];
+  nextCursor: string | null;
+}
+
+export interface AgentProgress {
+  agentKey: string;
+  status: MessageStatus;
+  messageId: number | null;
+  error: string | null;
+}
+
+/** 턴 진행 상황. 저장된 값이 아니라 에이전트들의 상태를 모아 계산한 것이다. */
+export interface TurnStatus {
+  turnId: number;
+  status: MessageStatus;
+  agents: AgentProgress[];
+  supervisor: AgentProgress | null;
+}
+
+export interface TurnStarted {
+  turnId: number;
+  messageId: number;
+  status: MessageStatus;
+  agents: { agentKey: string; status: MessageStatus }[];
+}

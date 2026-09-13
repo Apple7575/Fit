@@ -2,10 +2,13 @@ import { apiGet, apiPatch, apiSend } from '../../api/client';
 import type {
   AgentCatalogEntry,
   JobRoleOption,
+  MessagePage,
   Room,
   RoomAgent,
   RoomCreateInput,
   RoomSummary,
+  TurnStarted,
+  TurnStatus,
 } from './types';
 
 /** 에이전트 6종. 로그인 없이도 볼 수 있는 참조 데이터다. */
@@ -48,3 +51,23 @@ export const updateAgentConfig = (
   agentKey: string,
   config: Record<string, unknown>,
 ) => apiPatch<RoomAgent>(`/api/rooms/${roomId}/agents/${agentKey}`, { config });
+
+/**
+ * 방에 말을 건다. 이것이 곧 분석 요청이다.
+ * 결과가 아니라 접수증(turnId)이 돌아온다 — 에이전트가 다 답하려면 1분을 넘긴다.
+ */
+export const sendMessage = (roomId: number, content: string, coverLetterItemId?: number) =>
+  apiSend<TurnStarted>('POST', `/api/rooms/${roomId}/messages`, {
+    content,
+    coverLetterItemId: coverLetterItemId ?? null,
+  });
+
+export const fetchTurnStatus = (roomId: number, turnId: number, signal?: AbortSignal) =>
+  apiGet<TurnStatus>(`/api/rooms/${roomId}/turns/${turnId}`, { signal });
+
+export const fetchMessages = (roomId: number, cursor?: string | null, signal?: AbortSignal) => {
+  const params = new URLSearchParams();
+  if (cursor) params.set('cursor', cursor);
+  const query = params.toString();
+  return apiGet<MessagePage>(`/api/rooms/${roomId}/messages${query ? `?${query}` : ''}`, { signal });
+};

@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { AgentConfigPanel } from './AgentConfigPanel';
-import { useAgents, useJobRoles, useRoom } from './queries';
+import { AGENT_DOT } from './agentStyle';
+import { MessageComposer } from './MessageComposer';
+import { MessageThread } from './MessageThread';
+import { useAgents, useJobRoles, useMessages, useRoom } from './queries';
+import { useTurnPolling } from './useTurnPolling';
 import type { RoomAgent } from './types';
 
 /** 칩에 설정 요약을 한 줄로 적는다. 방에 들어오자마자 무엇을 보고 말하는지 알 수 있게. */
@@ -13,25 +17,25 @@ function summarize(agent: RoomAgent): string | null {
   return null;
 }
 
-const DOT_COLORS: Record<string, string> = {
-  jd: 'bg-blue-600',
-  company: 'bg-violet-600',
-  position: 'bg-emerald-600',
-  news: 'bg-orange-600',
-  writing: 'bg-slate-500',
-  supervisor: 'bg-amber-600',
-};
-
 interface RoomWorkspaceProps {
   roomId: number;
 }
 
-/** 검토 방 한 개. 참여 에이전트 칩과 고른 에이전트의 설정 패널을 보여준다. */
+/** 검토 방 한 개. 참여 에이전트, 설정, 그리고 대화. */
 export function RoomWorkspace({ roomId }: RoomWorkspaceProps) {
   const { state: room, retry: reloadRoom } = useRoom(roomId);
   const { state: agents } = useAgents();
   const { state: jobRoles } = useJobRoles();
+  const { state: messages, retry: reloadMessages } = useMessages(roomId);
   const [openAgentKey, setOpenAgentKey] = useState<string | null>(null);
+  const [activeTurnId, setActiveTurnId] = useState<number | null>(null);
+
+  const turn = useTurnPolling(roomId, activeTurnId, () => {
+    setActiveTurnId(null);
+    reloadMessages();
+    // 마지막 대화 시각이 바뀌므로 방도 다시 읽는다.
+    reloadRoom();
+  });
 
   if (room.status === 'loading') {
     return (
@@ -59,6 +63,11 @@ export function RoomWorkspace({ roomId }: RoomWorkspaceProps) {
   const open = data.agents.find((agent) => agent.agentKey === openAgentKey);
   const catalog = agents.status === 'success' ? agents.data : [];
   const roles = jobRoles.status === 'success' ? jobRoles.data : [];
+  const agentNames = Object.fromEntries(data.agents.map((agent) => [agent.agentKey, agent.name]));
+
+  // 서버는 최신순으로 주는데 화면은 위에서 아래로 읽는다.
+  const thread = messages.status === 'success' ? [...messages.data.messages].reverse() : [];
+  const busy = activeTurnId !== null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,7 +88,7 @@ export function RoomWorkspace({ roomId }: RoomWorkspaceProps) {
             <li key={agent.agentKey}>
               <button
                 type="button"
-                disabled={!selectable}
+                disabled={!selectable || busy}
                 aria-pressed={openAgentKey === agent.agentKey}
                 onClick={() =>
                   setOpenAgentKey(openAgentKey === agent.agentKey ? null : agent.agentKey)
@@ -88,11 +97,11 @@ export function RoomWorkspace({ roomId }: RoomWorkspaceProps) {
                   openAgentKey === agent.agentKey
                     ? 'border-blue-400 bg-blue-50 text-blue-800'
                     : 'border-slate-200 bg-white text-slate-700'
-                } ${selectable ? 'hover:bg-slate-50' : 'cursor-default opacity-80'}`}
+                } ${selectable && !busy ? 'hover:bg-slate-50' : 'cursor-default opacity-80'}`}
               >
                 <span
                   aria-hidden
-                  className={`size-[7px] rounded-full ${DOT_COLORS[agent.agentKey] ?? 'bg-slate-400'}`}
+                  className={`size-[7px] rounded-full ${AGENT_DOT[agent.agentKey] ?? 'bg-slate-400'}`}
                 />
                 {agent.name}
                 {summary && <span className="text-slate-500">· {summary}</span>}
@@ -119,9 +128,22 @@ export function RoomWorkspace({ roomId }: RoomWorkspaceProps) {
         />
       )}
 
-      <p className="text-[12px] text-slate-400">
-        대화는 다음 작업에서 붙입니다. 지금은 방을 만들고 에이전트가 볼 대상을 정하는 것까지 됩니다.
-      </p>
+      {messages.status === 'error' && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3">
+          <p className="text-[13px] font-medium text-red-700">{messages.error.message}</p>
+          <button
+            type="button"
+            onClick={reloadMessages}
+            className="mt-1 text-[12px] font-semibold text-red-700 underline"
+          >
+            다시 시도
+          </button>
+        </div>
+      )}
+
+      <MessageThread messages={thread} running={turn} agentNames={agentNames} />
+
+      <MessageComposer roomId={roomId} busy={busy} onStarted={setActiveTurnId} />
     </div>
   );
 }
