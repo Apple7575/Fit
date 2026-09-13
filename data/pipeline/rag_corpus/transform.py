@@ -175,8 +175,12 @@ def segment_records(rows: Iterable[Mapping[str, object]]) -> list[EvidenceRecord
             metric_name = _present(row.get("metric_name")) or _required(row, "metric_code")
             unit = _present(row.get("unit"))
             parts.append(f"{metric_name} {row['metric_value']}" + (f" {unit}" if unit is not None else ""))
-        receipt_numbers = [row.get("rcept_no") for row in ordered]
-        published_at, date_inferred, receipt_no = _publication_date(next((item for item in receipt_numbers if item), None), fiscal_year)
+        publication_dates = [
+            _publication_date(row.get("rcept_no"), fiscal_year) for row in ordered
+        ]
+        published_at, date_inferred, receipt_no = max(
+            publication_dates, key=lambda candidate: (candidate[0], not candidate[1])
+        )
         metric_metadata = [
             _without_none({"metric_code": _required(row, "metric_code"), "unit": _present(row.get("unit"))})
             for row in ordered

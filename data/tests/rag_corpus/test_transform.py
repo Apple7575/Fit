@@ -100,6 +100,38 @@ class RagCorpusTransformTest(unittest.TestCase):
         self.assertEqual(records[0].content, "삼성전자의 2025년 DX 부문은 부문 매출 3 KRW입니다.")
         self.assertEqual(records[0].quality, "VERIFIED")
 
+    def test_segment_uses_latest_receipt_date_across_grouped_metrics(self):
+        records = segment_records([
+            {"corp_code": "00126380", "corp_name": "삼성전자", "fiscal_year": 2025,
+             "segment_name": "DX", "metric_code": "a_metric", "metric_name": "첫 지표",
+             "metric_value": Decimal("1"), "unit": "KRW", "verdict": "verified",
+             "rcept_no": "20260310002820", "source_updated_at": None},
+            {"corp_code": "00126380", "corp_name": "삼성전자", "fiscal_year": 2025,
+             "segment_name": "DX", "metric_code": "z_metric", "metric_name": "둘째 지표",
+             "metric_value": Decimal("2"), "unit": "KRW", "verdict": "verified",
+             "rcept_no": "20260410002820", "source_updated_at": None},
+        ])
+
+        self.assertEqual(records[0].published_at, datetime(2026, 4, 10, tzinfo=timezone.utc))
+        self.assertFalse(records[0].metadata["date_inferred"])
+        self.assertEqual(records[0].metadata["rcept_no"], "20260410002820")
+
+    def test_segment_compares_inferred_and_valid_receipt_dates_across_grouped_metrics(self):
+        records = segment_records([
+            {"corp_code": "00126380", "corp_name": "삼성전자", "fiscal_year": 2025,
+             "segment_name": "DX", "metric_code": "a_metric", "metric_name": "첫 지표",
+             "metric_value": Decimal("1"), "unit": "KRW", "verdict": "verified",
+             "rcept_no": "invalid", "source_updated_at": None},
+            {"corp_code": "00126380", "corp_name": "삼성전자", "fiscal_year": 2025,
+             "segment_name": "DX", "metric_code": "z_metric", "metric_name": "둘째 지표",
+             "metric_value": Decimal("2"), "unit": "KRW", "verdict": "verified",
+             "rcept_no": "20260410002820", "source_updated_at": None},
+        ])
+
+        self.assertEqual(records[0].published_at, datetime(2026, 4, 10, tzinfo=timezone.utc))
+        self.assertFalse(records[0].metadata["date_inferred"])
+        self.assertEqual(records[0].metadata["rcept_no"], "20260410002820")
+
     def test_activity_omits_null_values_from_complete_sentence(self):
         record = activity_record({
             "corp_code": "00126380", "corp_name": "삼성전자", "fiscal_year": 2025,
