@@ -26,6 +26,8 @@ def load_company_source_rows(conn: Any, corp_code: str) -> CompanySourceRows:
              WHERE c.corp_code = %s
         """, (corp_code,))
         profile = _fetch_one(cur)
+        if profile is None:
+            raise ValueError(f"기업을 찾을 수 없습니다: {corp_code}")
 
         cur.execute("""
             SELECT cm.corp_code, c.corp_name, cm.fiscal_year, cm.metric_code,

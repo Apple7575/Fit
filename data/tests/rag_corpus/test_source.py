@@ -14,7 +14,8 @@ class RecordingCursor:
 
     def execute(self, query, params):
         self.executed.append((query, params))
-        self._current = self.result_sets[len(self.executed) - 1]
+        index = len(self.executed) - 1
+        self._current = self.result_sets[index] if index < len(self.result_sets) else []
 
     def fetchone(self):
         return self._current[0] if self._current else None
@@ -38,6 +39,14 @@ class RecordingConnection:
 
 
 class CompanySourceReaderTest(unittest.TestCase):
+    def test_rejects_unknown_company_before_reading_other_canonical_sources(self):
+        conn = RecordingConnection([[]])
+
+        with self.assertRaisesRegex(ValueError, CORP_CODE):
+            load_company_source_rows(conn, CORP_CODE)
+
+        self.assertEqual(len(conn.cursor_instance.executed), 1)
+
     def test_queries_are_company_scoped_and_grouped_rows_are_deterministic(self):
         conn = RecordingConnection([
             [{"corp_code": CORP_CODE, "corp_name": "삼성전자"}],
@@ -60,7 +69,7 @@ class CompanySourceReaderTest(unittest.TestCase):
         self.assertIn("order by ca.fiscal_year, ca.activity_type, ca.id", " ".join(conn.cursor_instance.executed[4][0].lower().split()))
 
     def test_metric_query_joins_catalog_and_evidence_on_full_company_year_metric_key(self):
-        conn = RecordingConnection([[], [], [], [], []])
+        conn = RecordingConnection([[{"corp_code": CORP_CODE, "corp_name": "삼성전자"}], [], [], [], []])
 
         load_company_source_rows(conn, CORP_CODE)
 
