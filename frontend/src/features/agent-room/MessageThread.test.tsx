@@ -1,15 +1,16 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MessageThread } from './MessageThread';
 import type { RoomMessage, TurnStatus } from './types';
 
-const base = {
+const base: Pick<RoomMessage, 'turnId' | 'evidences' | 'basedOn' | 'error' | 'createdAt'> = {
   turnId: 100,
   evidences: [],
   basedOn: [],
   error: null,
   createdAt: '2026-09-14T10:00:00+09:00',
-} as const;
+};
 
 const userMessage: RoomMessage = {
   ...base,
@@ -34,6 +35,11 @@ const writingMessage: RoomMessage = {
 const names = { writing: '글쓰기 담당', news: '뉴스/트렌드 담당', supervisor: '총괄' };
 
 describe('MessageThread', () => {
+  beforeEach(() => {
+    // jsdom 에는 scrollIntoView 가 없다. 칩이 부르는 것만 확인한다.
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
   it('대화가 없으면 무엇을 하라고 알려준다', () => {
     render(<MessageThread messages={[]} running={null} agentNames={names} />);
 
@@ -86,20 +92,39 @@ describe('MessageThread', () => {
     expect(screen.getAllByText('글쓰기 담당')).toHaveLength(1);
   });
 
-  it('총괄이 무엇을 근거로 종합했는지 알려준다', () => {
-    const supervisor: RoomMessage = {
-      ...base,
-      messageId: 103,
-      role: 'agent',
-      agentKey: 'supervisor',
-      agentName: '총괄',
-      content: '두괄식으로 올리고 기술 서술을 붙이세요.',
-      basedOn: [101, 102],
-      status: 'DONE',
-    };
+  const supervisor: RoomMessage = {
+    ...base,
+    messageId: 103,
+    role: 'agent',
+    agentKey: 'supervisor',
+    agentName: '총괄',
+    content: '두괄식으로 올리고 기술 서술을 붙이세요.',
+    basedOn: [101],
+    status: 'DONE',
+  };
 
+  it('총괄 밑에 근거로 쓴 에이전트 칩이 붙는다', () => {
+    render(
+      <MessageThread messages={[writingMessage, supervisor]} running={null} agentNames={names} />,
+    );
+
+    expect(screen.getByText('근거')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /글쓰기 담당/ })).toBeInTheDocument();
+  });
+
+  it('근거 칩을 누르면 그 메시지로 이동한다', async () => {
+    render(
+      <MessageThread messages={[writingMessage, supervisor]} running={null} agentNames={names} />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /글쓰기 담당/ }));
+
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it('근거로 쓴 메시지가 화면에 없으면 칩을 띄우지 않는다', () => {
     render(<MessageThread messages={[supervisor]} running={null} agentNames={names} />);
 
-    expect(screen.getByText(/근거 메시지 2건/)).toBeInTheDocument();
+    expect(screen.queryByText('근거')).not.toBeInTheDocument();
   });
 });
