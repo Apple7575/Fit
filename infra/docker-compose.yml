@@ -62,6 +62,10 @@ services:
       # 인증 링크가 가리킬 공개 사이트 주소. prod/dev 는 각 도메인으로 설정한다.
       - APP_FRONTEND_BASE_URL=${APP_FRONTEND_BASE_URL:-http://localhost:5173}
       - GMS_KEY=${GMS_KEY:-}
+      # 모의 면접 LLM. provider=vllm(개발)이면 LLM_KEY·VLLM_BASE_URL, gms(시연)면 위 GMS_KEY 를 쓴다.
+      - AI_INTERVIEW_PROVIDER=${AI_INTERVIEW_PROVIDER:-vllm}
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://70.12.130.105:8000}
+      - LLM_KEY=${LLM_KEY:-}
       - TZ=${TZ:-Asia/Seoul}
     depends_on:
       postgres:

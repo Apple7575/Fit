@@ -24,6 +24,9 @@ public enum ErrorCode {
     AI_FEEDBACK_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI 피드백을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."),
     AI_FEEDBACK_FAILED(HttpStatus.BAD_GATEWAY, "AI 피드백에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     FEEDBACK_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 많습니다. 잠시 후 다시 시도해 주세요."),
+    INTERVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "면접 기록을 찾을 수 없습니다."),
+    INTERVIEW_AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "면접 AI를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."),
+    INTERVIEW_AI_FAILED(HttpStatus.BAD_GATEWAY, "면접 AI 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;
