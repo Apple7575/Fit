@@ -120,7 +120,7 @@ class RoomServiceTest {
     }
 
     @Test
-    @DisplayName("지식베이스가 없는 직무를 고르면 그 에이전트는 ready=false 다")
+    @DisplayName("열어 두지 않은 직무를 고르면 그 에이전트는 ready=false 다")
     void agentIsNotReadyWhenJobRoleHasNoKnowledgeBase() {
         RoomResponse response = service(Set.of("backend"), Set.of())
                 .create(USER, new RoomCreateRequest(LETTER, "데이터 직무",

@@ -56,7 +56,7 @@ export function AgentConfigFields({
                       type="button"
                       disabled={disabled || !role.ready}
                       aria-pressed={selected}
-                      title={role.ready ? role.topics.join(' · ') : '지식베이스가 아직 준비되지 않았습니다'}
+                      title={role.ready ? role.topics.join(' · ') : '지금은 열어 두지 않은 직무입니다'}
                       onClick={() => set('jobRole', role.key)}
                       className={`rounded-full px-3 py-1 text-[13px] transition ${
                         selected
@@ -65,7 +65,7 @@ export function AgentConfigFields({
                       } disabled:cursor-not-allowed disabled:border-dashed disabled:text-slate-300 disabled:hover:bg-transparent`}
                     >
                       {role.name}
-                      {!role.ready && <span className="ml-1 text-[11px]">준비 중</span>}
+                      {!role.ready && <span className="ml-1 text-[11px]">잠김</span>}
                     </button>
                   </li>
                 );

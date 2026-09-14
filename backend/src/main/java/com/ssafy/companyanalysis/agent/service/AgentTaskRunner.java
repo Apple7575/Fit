@@ -90,7 +90,7 @@ public class AgentTaskRunner {
         return text.toString();
     }
 
-    /** 직무 키만 넘기면 모델이 무엇을 봐야 하는지 모른다. 지식베이스가 덮는 범위를 같이 준다. */
+    /** 직무 키만 넘기면 모델이 어느 관점으로 볼지 모른다. 관점 힌트를 같이 준다. */
     private String jobRoleLabel(Map<String, Object> config) {
         Object key = config.get("jobRole");
         if (key == null) {

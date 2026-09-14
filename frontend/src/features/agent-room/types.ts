@@ -21,7 +21,7 @@ export interface AgentCatalogEntry {
   configSchema: Record<string, ConfigField>;
 }
 
-/** GET /api/job-roles 의 한 건. ready=false 면 지식베이스가 아직 없다. */
+/** GET /api/job-roles 의 한 건. ready=false 면 아직 열어 두지 않은 직무라 고를 수 없다. */
 export interface JobRoleOption {
   key: string;
   name: string;

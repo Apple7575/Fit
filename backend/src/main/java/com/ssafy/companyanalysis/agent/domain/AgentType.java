@@ -24,7 +24,7 @@ public enum AgentType {
             schema("corpCodes", new ConfigField("array", true, "분석 대상 기업의 corpCode 목록. 복수 선택"))),
 
     POSITION("position", "포지션 담당", "직무 요구 수준에 맞는 기술적 깊이를 검증합니다.",
-            "직무별 지식베이스(기술 스택 · CS · 아키텍처)", true,
+            "모델 지식 + 직무별 관점 힌트", true,
             schema("jobRole", new ConfigField("enum", true, "지원 직무. /api/job-roles 의 key"))),
 
     NEWS("news", "뉴스/트렌드 담당", "설득력을 높여줄 최근 기업 이슈 및 트렌드를 제안합니다.",
