@@ -58,7 +58,7 @@ class WebCorsConfigTest {
                         .header("Access-Control-Request-Method", "GET"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
-                .andExpect(header().stringValues("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST"))
+                .andExpect(header().stringValues("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,PATCH,DELETE"))
                 .andExpect(header().string("Access-Control-Max-Age", "1800"));
     }
 

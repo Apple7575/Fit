@@ -47,6 +47,8 @@ public class SecurityConfig {
                         // 문항 피드백은 게스트도 쓸 수 있게 공개한다(무저장). CSRF 는 유지한다.
                         .requestMatchers(HttpMethod.POST, "/api/cover-letters/feedback").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/companies/**", "/api/industries/**").permitAll()
+                        // 에이전트·직무 목록은 설정 화면을 그리는 참조 데이터라 공개한다(개인 정보 없음).
+                        .requestMatchers(HttpMethod.GET, "/api/agents", "/api/job-roles").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session

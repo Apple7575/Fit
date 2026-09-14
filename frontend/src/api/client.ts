@@ -79,7 +79,7 @@ export async function apiGet<T>(
  * X-XSRF-TOKEN 헤더로 되돌려 보낸다.
  */
 export async function apiSend<T>(
-  method: 'POST' | 'PUT' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
   options: { signal?: AbortSignal } = {},
@@ -112,6 +112,12 @@ export async function apiSend<T>(
 
   return unwrap<T>(response);
 }
+
+export const apiPatch = <T>(
+  path: string,
+  body?: unknown,
+  options?: { signal?: AbortSignal },
+): Promise<T> => apiSend<T>('PATCH', path, body, options);
 
 export const apiPost = <T>(
   path: string,

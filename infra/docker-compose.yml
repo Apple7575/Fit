@@ -66,6 +66,11 @@ services:
       - AI_INTERVIEW_PROVIDER=${AI_INTERVIEW_PROVIDER:-vllm}
       - VLLM_BASE_URL=${VLLM_BASE_URL:-http://70.12.130.105:8000}
       - LLM_KEY=${LLM_KEY:-}
+      # 자소서 멀티에이전트. 직무 지식베이스가 적재된 직무만 적는다(쉼표 구분).
+      # 비우면 모든 직무가 ready=false 로 나가 화면에서 고를 수 없다.
+      - APP_AGENT_READY_JOB_ROLES=${APP_AGENT_READY_JOB_ROLES:-}
+      # Vector DB 가 만들어진 기업(corpCode). 비우면 기업 선택을 막지 않는다.
+      - APP_AGENT_RAG_INDEXED_CORP_CODES=${APP_AGENT_RAG_INDEXED_CORP_CODES:-}
       - TZ=${TZ:-Asia/Seoul}
     depends_on:
       postgres:
