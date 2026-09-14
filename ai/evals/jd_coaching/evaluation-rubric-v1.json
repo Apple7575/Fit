@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "rubric_id": "jd-coaching-explanation-judge-v1",
+  "label_status": "DRAFT",
+  "purpose": "연결 라벨을 제외한 설명 품질을 LLM Judge로 평가한다.",
+  "score_scale": {
+    "0": "기준을 충족하지 않거나 근거와 충돌한다.",
+    "1": "일부 충족하지만 누락 또는 모호함이 있다.",
+    "2": "근거에 맞고 구체적이며 사용자 행동으로 이어질 수 있다."
+  },
+  "judge_criteria": [
+    {
+      "criterion_id": "job_evidence_faithfulness",
+      "description": "설명이 JD 원문 근거의 의미와 범위를 벗어나지 않는다."
+    },
+    {
+      "criterion_id": "experience_evidence_faithfulness",
+      "description": "설명이 사용자 경험에 명시된 행동, 기술, 결과만 사용한다."
+    },
+    {
+      "criterion_id": "explanation_consistency",
+      "description": "설명이 확정된 연결 라벨과 충족·누락 근거에 논리적으로 부합한다."
+    },
+    {
+      "criterion_id": "missing_information_clarity",
+      "description": "부족한 정보가 무엇인지 구체적으로 구분하고 확인 질문으로 전환할 수 있다."
+    }
+  ],
+  "judge_constraints": [
+    "연결 라벨의 정답 여부는 LLM Judge가 채점하지 않는다.",
+    "연결 라벨은 사람 확정 정답과 코드로 비교해 Accuracy와 Macro F1을 계산한다.",
+    "Judge는 제공된 JD 근거, 사용자 경험, 충족·누락 근거만 참고한다.",
+    "Judge는 새로운 직무 요구사항이나 사용자 경험을 생성하지 않는다."
+  ]
+}
