@@ -1,14 +1,40 @@
 """Spark 파싱 잡 — HDFS 원문 → staged Parquet (S15P21A504-73 0차).
 
     spark-submit --master yarn --deploy-mode client \
-        --conf spark.executor.instances=3 \
+        --conf spark.executor.instances=1 \
         --conf spark.executor.cores=2 \
         --conf spark.executor.memory=2g \
-        --conf spark.executor.memoryOverhead=2g \
-        --archives venv.tar.gz#env \
+        --conf spark.executor.memoryOverhead=3g \
+        --conf spark.executorEnv.PYTHONPATH=/home/ubuntu/pipeline/data \
         scripts/spark_parse_business_reports.py \
-            --jobs hdfs:///staged/business_report/jobs.parquet \
-            --out  hdfs:///staged/business_report
+            --jobs hdfs:///data/staged/business_report/jobs.csv \
+            --out  hdfs:///data/staged/business_report/spark \
+            --webhdfs http://ha-master:9870 --slices 8
+
+executor 자원이 위 값인 이유
+--------------------------
+NodeManager 가 한 대뿐이고(`ha-master`) YARN 에 6,144MB 만 주어져 있다. client
+모드의 AM 이 1,024MB 를 먹으므로 executor 컨테이너는 5,120MB 하나가 최대다.
+`instances=3` 으로 두면 하나만 뜨고 둘은 영영 pending 이다. vcore 도 3개 중
+AM 이 하나를 써서 `cores=2` 가 상한이다.
+
+배분을 클러스터 기본값 `4g + 1g` 이 아니라 `2g + 3g` 로 뒤집는 이유는 PySpark
+때문이다 — 파싱은 JVM 밖 파이썬 프로세스가 하고 문서 하나에 약 450MB 를 쓴다.
+`cores=2` 면 파이썬 워커 둘이 동시에 그만큼 쓰므로 그 몫이 memoryOverhead 로
+가야 한다.
+
+executor 가 `pipeline` 패키지를 찾는 법
+------------------------------------
+드라이버의 `sys.path` 조작은 executor 에 전해지지 않는다. 태스크 안에서
+`pipeline.business_report.extract` 를 import 하므로 executor 쪽 `PYTHONPATH` 가
+코드를 가리켜야 한다 — 없으면 `ModuleNotFoundError: No module named 'pipeline'`
+로 태스크가 전부 죽는다(실측).
+
+`--py-files pipeline.zip` 으로 보내면 안 된다. `pipeline.patterns` 가
+`config/patterns.yaml` 을 **패키지 위치 기준으로** 찾기 때문에 zip 안에서는 못
+찾는다. 지금은 CD(Jenkins `Deploy-Data`)가 `data/` 를 NodeManager 노드에 통째로
+두므로 그 경로를 PYTHONPATH 로 준다. **NodeManager 를 늘리면 그 노드에도 같은
+배포가 있어야 한다.**
 
 **파싱 로직이 여기 없다.** `pipeline.business_report.extract.parse_one` 을 부른다.
 로컬 실행(`scripts/parse_business_reports.py`)과 같은 함수라, 0차의 전제인
@@ -39,8 +65,8 @@ import argparse
 import os
 import sys
 
-# --archives 로 보낸 venv 안의 pipeline 패키지를 찾게 한다. spark-submit 이
-# 작업 디렉터리를 컨테이너 안으로 바꾸므로 상대 경로로는 못 찾는다.
+# 드라이버가 pipeline 패키지를 찾게 한다. executor 쪽은 이 조작이 닿지 않아
+# spark.executorEnv.PYTHONPATH 로 따로 준다 (위 docstring).
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if os.path.dirname(_HERE) not in sys.path:
     sys.path.insert(0, os.path.dirname(_HERE))
@@ -90,10 +116,19 @@ def make_partition_fn(webhdfs: str, user: str):
                                "error": f"read: {type(e).__name__}: {e}"[:200]}}
                 continue
 
+            # 대조 매출은 숫자여야 한다. 작업 목록이 CSV·Parquet 를 거치면서
+            # 문자열이 되는데, 그대로 넘기면 부문 합계 대조가
+            # `TypeError: unsupported operand type(s) for -: 'float' and 'str'`
+            # 로 죽는다(실측). 로컬 실행기는 float|None 을 넘기므로 여기서 맞춘다 —
+            # 타입이 다르면 "같은 함수를 부른다"는 0차의 전제가 깨진다.
+            ext = d.get("external_revenue")
+            if isinstance(ext, str):
+                ext = float(ext) if ext.strip() else None
+
             res = ex.parse_one(
                 raw, corp_code=d["corp_code"], fiscal_year=int(d["fiscal_year"]),
                 rcept_no=d["rcept_no"], corp_name=d.get("corp_name", ""),
-                external_revenue=d.get("external_revenue"),
+                external_revenue=ext,
                 size_bytes=len(raw), p=p)
 
             for r in res.segments:
@@ -112,7 +147,8 @@ def make_partition_fn(webhdfs: str, user: str):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--jobs", required=True, help="작업 목록 Parquet 경로")
+    ap.add_argument("--jobs", required=True,
+                    help="작업 목록 경로. .csv 면 CSV, 아니면 Parquet 로 읽는다")
     ap.add_argument("--out", required=True, help="산출 루트 (HDFS)")
     ap.add_argument("--webhdfs", default=os.environ.get(
         "WEBHDFS_URL", "http://localhost:9870"), help="NameNode WebHDFS 주소")
@@ -126,7 +162,12 @@ def main() -> int:
     spark = SparkSession.builder.appName("business-report-parse").getOrCreate()
     sc = spark.sparkContext
 
-    jobs = spark.read.parquet(args.jobs)
+    # build_spark_jobs.py 가 내놓는 것이 CSV 다. Parquet 로 한 번 옮기는 단계를
+    # 두면 그 변환 자체가 또 하나의 실패 지점이 된다 — 확장자로 갈라 그냥 읽는다.
+    if args.jobs.endswith(".csv"):
+        jobs = spark.read.option("header", True).csv(args.jobs)
+    else:
+        jobs = spark.read.parquet(args.jobs)
     n = jobs.count()
     print(f"작업 {n:,}건 · 파티션 {args.slices}")
 
@@ -135,6 +176,13 @@ def main() -> int:
     out = (jobs.repartition(args.slices).rdd
            .mapPartitions(make_partition_fn(args.webhdfs, args.user))
            .cache())
+
+    # 여기서 한 번에 물리게 한다. 이 줄이 없으면 아래 루프의 첫 `isEmpty()` 가
+    # **파티션 하나만** 계산하면서 나머지 슬롯을 놀린다 — 487건 실측에서 그 한
+    # 파티션에 3분 48초가 단독으로 들었다(전체 22분 중). 전부 한꺼번에 계산해
+    # 캐시에 올려두면 그 뒤 루프는 캐시만 읽는다.
+    produced = out.count()
+    print(f"산출 행 {produced:,} — 캐시 적재 완료")
 
     # 산출 종류별로 갈라 쓴다. Parquet 는 워커마다 파일이 생기는 것이 자연스럽고,
     # 시드 만들 때 한 번만 모은다 — CSV 로 쓰면 동시 쓰기가 깨진다.

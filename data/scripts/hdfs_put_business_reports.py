@@ -34,6 +34,47 @@ for _s in (sys.stdout, sys.stderr):
         pass
 
 
+def _rel(hdfs_path: str) -> str:
+    """`hdfs:///data/raw/...` → `/data/raw/...`. 스킴과 authority 를 뗀다."""
+    rel = hdfs_path.replace("hdfs://", "", 1)
+    if not rel.startswith("/"):
+        rel = "/" + rel.split("/", 1)[1]
+    return rel
+
+
+# 연도별로 묶어 한 번에 올린다. 파일마다 `hdfs dfs` 를 부르면 호출마다 JVM 이 떠서
+# 파일당 40초가 걸린다(2026-09-14 실측, 존재 확인까지 치면 호출 2회). 링크를 모아
+# 연도당 put 한 번으로 끝낸다 — 같은 487건이 호출 10회로 준다.
+_UPLOAD_SH = r"""
+STAGE=$(mktemp -d)
+trap 'rm -rf "$STAGE"' EXIT
+
+upload() {  # $1=연도, 나머지=<접수번호>=<HDFS 파일명>
+  local year="$1"; shift
+  mkdir -p "$STAGE/$year"
+
+  # 이미 올라간 것은 건너뛴다 — 원문은 불변이라 덮어쓸 일이 없다
+  local uploaded
+  # tr 이 없으면 목록이 줄바꿈으로 이어져 아래 case 의 " $dst " 패턴이 영영 안 맞는다
+  uploaded=$(hdfs dfs -ls "$ROOT/$year" 2>/dev/null | awk '{print $NF}' | sed 's|.*/||' | tr '\n' ' ')
+
+  local n=0 spec r dst
+  for spec in "$@"; do
+    # 로컬은 document_<접수번호>.xml 이고 HDFS 이름은 작업 목록이 정한다. 둘이 다르다.
+    r="${spec%%=*}"; dst="${spec#*=}"
+    case " $uploaded " in *" $dst "*) continue ;; esac
+    # 하드링크라 2.8GB 를 복사하지 않는다. 다른 파일시스템이면 복사로 물러선다.
+    ln "$LOCAL_ROOT/document_$r.xml" "$STAGE/$year/$dst" 2>/dev/null || cp "$LOCAL_ROOT/document_$r.xml" "$STAGE/$year/$dst"
+    n=$((n + 1))
+  done
+
+  if [ "$n" -eq 0 ]; then echo "$year: 새로 올릴 것 없음"; return 0; fi
+  hdfs dfs -put "$STAGE/$year"/*.xml "$ROOT/$year/"
+  echo "$year: $n 건"
+}
+"""
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--jobs", type=Path, default=ROOT / "_out" / "spark_jobs.csv")
@@ -52,6 +93,14 @@ def main() -> int:
         (have if src.exists() else missing).append(j)
 
     years = sorted({j["fiscal_year"] for j in have})
+
+    # 루트는 작업 목록에서 읽는다 — build_spark_jobs.py 의 --hdfs-root 와 어긋나면
+    # mkdir 한 곳과 put 하는 곳이 달라져 조용히 빈 디렉터리가 남는다.
+    roots = {_rel(j["hdfs_path"]).rsplit("/", 2)[0] for j in have}
+    if len(roots) != 1:
+        print(f"작업 목록의 HDFS 루트가 하나가 아니다: {sorted(roots)}", file=sys.stderr)
+        return 1
+    root = roots.pop()
     lines = [
         "#!/usr/bin/env bash",
         "# scripts/hdfs_put_business_reports.py 가 만든 파일이다. 직접 고치지 마라.",
@@ -62,16 +111,17 @@ def main() -> int:
         "",
         "# 연도별 디렉터리. 파일이 11,395개까지 늘어도 한 디렉터리에 몰리지 않는다.",
     ]
-    lines += [f"hdfs dfs -mkdir -p /raw/opendart/filings/annual_report/{y}" for y in years]
-    lines += ["", "put() {", "  # 이미 있으면 건너뛴다 — 원문은 불변이라 덮어쓸 일이 없다",
-              '  if hdfs dfs -test -e "$2"; then echo "skip $2"; else hdfs dfs -put "$1" "$2"; fi',
-              "}", ""]
+    lines += [f"ROOT={root}", ""]
+    lines += [f'hdfs dfs -mkdir -p "$ROOT"/{y}' for y in years]
+    lines.append(_UPLOAD_SH)
+
+    by_year: dict[str, list[str]] = {}
     for j in have:
-        rel = j["hdfs_path"].replace("hdfs://", "", 1)
-        if not rel.startswith("/"):
-            rel = "/" + rel.split("/", 1)[1]
-        lines.append(f'put "$LOCAL_ROOT/document_{j["rcept_no"]}.xml" "{rel}"')
-    lines += ["", 'echo "완료 — $(hdfs dfs -count /raw/opendart/filings/annual_report)"']
+        dst = _rel(j["hdfs_path"]).rsplit("/", 1)[1]
+        by_year.setdefault(j["fiscal_year"], []).append(f'{j["rcept_no"]}={dst}')
+    for y in years:
+        lines.append(f'upload {y} {" ".join(by_year[y])}')
+    lines += ["", 'echo "완료 — $(hdfs dfs -count "$ROOT")"']
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
