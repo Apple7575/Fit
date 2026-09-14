@@ -50,7 +50,7 @@ def main() -> int:
                     help="유니버스 앞 N개사. 없으면 전부")
     ap.add_argument("--years", type=int, nargs="+",
                     default=[2021, 2022, 2023, 2024, 2025])
-    ap.add_argument("--hdfs-root", default="hdfs:///raw/opendart/filings/annual_report")
+    ap.add_argument("--hdfs-root", default="hdfs:///data/raw/opendart/filings/annual_report")
     ap.add_argument("--out", type=Path, default=ROOT / "_out" / "spark_jobs.csv")
     args = ap.parse_args()
 
