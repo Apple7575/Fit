@@ -1,0 +1,676 @@
+{
+  "schema_version": "1.0",
+  "case_id": "samsung-ds-global-manufacturing-sw-intern-001",
+  "label_status": "HUMAN_APPROVED",
+  "label_note": "실제 모집 JD 기반 사례다. 필요 근거 분해 Judge와 초안이 충돌한 데이터 마이닝 및 SW·HW 플랫폼 활용 항목을 사람 검토해 확정했다.",
+  "source_document_ids": [
+    "samsung-ds-global-manufacturing-sw-intern-2026"
+  ],
+  "question": {
+    "source_type": "SYNTHETIC",
+    "text": "지원 직무와 관련된 전문지식과 경험을 구체적으로 작성해 주세요."
+  },
+  "experiences": [
+    {
+      "experience_id": "exp-ai-01",
+      "text": "반도체 설비 센서 시계열 데이터의 불량 여부를 예측하는 팀 프로젝트에서 Python으로 결측치를 처리하고 XGBoost 모델을 학습했습니다. 베이스라인과 비교해 F1 점수를 0.71에서 0.84로 높였고 FastAPI 추론 API로 배포했습니다."
+    },
+    {
+      "experience_id": "exp-embedded-02",
+      "text": "ARM Cortex-M 기반 보드에서 C++로 센서 Device Driver를 개발했습니다. 요구사항 문서의 10ms 응답 조건을 바탕으로 모듈 구조를 설계하고 Linux 환경에서 응답 조건을 검증하는 pytest 테스트 스크립트 24개를 구현했습니다."
+    },
+    {
+      "experience_id": "exp-nlp-03",
+      "text": "한국어 민원 문장 12,000건을 분석하는 프로젝트에서 Python과 KoBERT로 민원 유형 분류 모델을 개발하고 웹 서비스에 적용했습니다."
+    },
+    {
+      "experience_id": "exp-event-04",
+      "text": "교내 행사 홍보를 맡아 참여자 설문을 분석하고 홍보 채널을 조정했습니다."
+    }
+  ],
+  "essay_draft": "반도체 설비 센서 시계열 데이터 프로젝트에서 Python과 XGBoost를 활용해 불량 예측 모델을 개발했습니다. F1 점수를 0.71에서 0.84로 높이고 FastAPI 추론 API로 배포한 경험을 바탕으로 생산 데이터 분석과 자동화 솔루션 개발에 기여하겠습니다.",
+  "expected_role_elements": [
+    {
+      "role_element_id": "role-01",
+      "name": "프로그래밍 언어 활용",
+      "evidence_section_ids": [
+        "p54-requirement-programming-algorithm"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "programming-language",
+          "description": "사용한 프로그래밍 언어가 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "implementation-action",
+          "description": "해당 언어로 수행한 구현 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-02",
+      "name": "알고리즘 문제해결",
+      "evidence_section_ids": [
+        "p54-requirement-programming-algorithm"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "problem-context",
+          "description": "해결하려 한 문제가 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "algorithm-method",
+          "description": "선택하거나 설계한 알고리즘이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "application-result",
+          "description": "알고리즘을 적용한 행동이나 결과가 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-03",
+      "name": "임베디드 시스템",
+      "evidence_section_ids": [
+        "p54-requirement-embedded-arm-os"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "embedded-target",
+          "description": "임베디드 대상 장치나 환경이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "embedded-action",
+          "description": "임베디드 환경에서 수행한 개발 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-04",
+      "name": "ARM Architecture",
+      "evidence_section_ids": [
+        "p54-requirement-embedded-arm-os"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "arm-platform",
+          "description": "ARM 기반 플랫폼이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "arm-action",
+          "description": "ARM 환경에 적용한 개발 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-05",
+      "name": "운영체제 활용",
+      "evidence_section_ids": [
+        "p54-requirement-embedded-arm-os"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "operating-system",
+          "description": "Windows 또는 Linux 환경이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "os-action",
+          "description": "해당 운영체제 환경에서 수행한 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-06",
+      "name": "요구사항 이해",
+      "evidence_section_ids": [
+        "p54-requirement-design-test"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "stated-requirement",
+          "description": "주어진 요구사항이나 제약이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "requirement-application",
+          "description": "요구사항을 해석해 작업에 반영한 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-07",
+      "name": "요구사항 기반 소프트웨어 설계",
+      "evidence_section_ids": [
+        "p54-requirement-design-test"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "design-requirement",
+          "description": "설계가 충족해야 한 요구사항이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "design-decision",
+          "description": "요구사항을 반영한 설계 판단이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-08",
+      "name": "Test script 구현",
+      "evidence_section_ids": [
+        "p54-requirement-design-test"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "test-target",
+          "description": "검증하려 한 대상이나 조건이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "test-implementation",
+          "description": "테스트 스크립트 구현 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-09",
+      "name": "데이터 마이닝",
+      "evidence_section_ids": [
+        "p54-requirement-data-mining"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "data-source",
+          "description": "분석한 데이터가 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "mining-method",
+          "description": "데이터에서 패턴을 찾기 위한 방법이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "mining-result",
+          "description": "데이터에서 발견하거나 도출한 결과가 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-10",
+      "name": "Big Data 기반 연계 분석 모델 설계",
+      "evidence_section_ids": [
+        "p53-responsibility-big-data-model"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "data-modality",
+          "description": "분석한 데이터 유형이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "linked-analysis",
+          "description": "둘 이상의 데이터나 정보를 연계한 분석이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "model-design",
+          "description": "분석 모델을 설계하거나 구현한 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-11",
+      "name": "머신러닝 기반 설비·공정 데이터 분석 및 솔루션 개발",
+      "evidence_section_ids": [
+        "p53-responsibility-ml-analysis"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "equipment-process-data",
+          "description": "설비 또는 공정 데이터가 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "ml-analysis-method",
+          "description": "머신러닝·딥러닝·통계·수리과학 방법이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "analysis-solution",
+          "description": "분석 결과 또는 솔루션 개발이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-12",
+      "name": "SPC 기반 이상탐지 모델 개발",
+      "evidence_section_ids": [
+        "p53-responsibility-spc-anomaly"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "spc-method",
+          "description": "Statistical Process Control 적용이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "anomaly-target",
+          "description": "탐지하거나 예측할 이상 대상이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "anomaly-model",
+          "description": "이상탐지 모델 개발 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-13",
+      "name": "AI 기반 언어·이미지·영상 처리 솔루션 개발",
+      "evidence_section_ids": [
+        "p53-responsibility-ai-modalities"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "supported-modality",
+          "description": "음성·자연어·이미지·영상 중 처리 대상이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "ai-method",
+          "description": "적용한 AI 방법이나 모델이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "ai-solution",
+          "description": "처리 모델이나 솔루션 개발·적용 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-14",
+      "name": "Data Mining·Process Mining 기반 분석 및 솔루션 개발",
+      "evidence_section_ids": [
+        "p53-responsibility-mining-solution"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "explicit-mining-method",
+          "description": "Data Mining 또는 Process Mining 방법이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "mining-analysis-target",
+          "description": "분석 대상 데이터나 프로세스가 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "mining-solution",
+          "description": "분석 결과를 사용한 솔루션 개발이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-15",
+      "name": "직무 연관 경험",
+      "evidence_section_ids": [
+        "p54-preference-related-experience"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "experience-format",
+          "description": "프로젝트·논문·특허·경진대회 중 경험 형태가 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "job-relevance",
+          "description": "경험이 SW개발 또는 데이터 분석 직무와 관련됨을 보여주는 행동이 명시돼 있다."
+        }
+      ]
+    },
+    {
+      "role_element_id": "role-16",
+      "name": "SW·HW 플랫폼 활용 프로젝트",
+      "evidence_section_ids": [
+        "p54-preference-platform-project"
+      ],
+      "evidence_requirements": [
+        {
+          "evidence_requirement_id": "platform-name",
+          "description": "활용한 SW 또는 HW 플랫폼이 명시돼 있다."
+        },
+        {
+          "evidence_requirement_id": "platform-project-action",
+          "description": "프로젝트에서 해당 플랫폼을 사용한 행동이 명시돼 있다."
+        }
+      ]
+    }
+  ],
+  "expected_connections": [
+    {
+      "role_element_id": "role-01",
+      "experience_id": "exp-ai-01",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "programming-language",
+          "evidence_quote": "Python으로"
+        },
+        {
+          "evidence_requirement_id": "implementation-action",
+          "evidence_quote": "결측치를 처리하고 XGBoost 모델을 학습했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "Python을 사용해 데이터 처리와 모델 학습을 수행한 행동이 모두 확인된다."
+    },
+    {
+      "role_element_id": "role-02",
+      "experience_id": "exp-ai-01",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "problem-context",
+          "evidence_quote": "불량 여부를 예측하는"
+        },
+        {
+          "evidence_requirement_id": "algorithm-method",
+          "evidence_quote": "XGBoost 모델"
+        },
+        {
+          "evidence_requirement_id": "application-result",
+          "evidence_quote": "F1 점수를 0.71에서 0.84로 높였고"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "예측 문제, 적용 모델과 정량 결과가 모두 확인된다."
+    },
+    {
+      "role_element_id": "role-03",
+      "experience_id": "exp-embedded-02",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "embedded-target",
+          "evidence_quote": "ARM Cortex-M 기반 보드"
+        },
+        {
+          "evidence_requirement_id": "embedded-action",
+          "evidence_quote": "센서 Device Driver를 개발했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "임베디드 보드와 해당 환경에서의 드라이버 개발 행동이 확인된다."
+    },
+    {
+      "role_element_id": "role-04",
+      "experience_id": "exp-embedded-02",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "arm-platform",
+          "evidence_quote": "ARM Cortex-M 기반 보드"
+        },
+        {
+          "evidence_requirement_id": "arm-action",
+          "evidence_quote": "ARM Cortex-M 기반 보드에서 C++로 센서 Device Driver를 개발했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "ARM 플랫폼과 그 위에서 수행한 개발 행동이 확인된다."
+    },
+    {
+      "role_element_id": "role-05",
+      "experience_id": "exp-embedded-02",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "operating-system",
+          "evidence_quote": "Linux 환경에서"
+        },
+        {
+          "evidence_requirement_id": "os-action",
+          "evidence_quote": "Linux 환경에서 응답 조건을 검증하는 pytest 테스트 스크립트 24개를 구현했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "Linux 환경과 그 환경에서 수행한 테스트 구현이 확인된다."
+    },
+    {
+      "role_element_id": "role-06",
+      "experience_id": "exp-embedded-02",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "stated-requirement",
+          "evidence_quote": "요구사항 문서의 10ms 응답 조건"
+        },
+        {
+          "evidence_requirement_id": "requirement-application",
+          "evidence_quote": "10ms 응답 조건을 바탕으로 모듈 구조를 설계"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "명시된 응답 요구사항을 설계에 반영한 행동이 확인된다."
+    },
+    {
+      "role_element_id": "role-07",
+      "experience_id": "exp-embedded-02",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "design-requirement",
+          "evidence_quote": "10ms 응답 조건"
+        },
+        {
+          "evidence_requirement_id": "design-decision",
+          "evidence_quote": "10ms 응답 조건을 바탕으로 모듈 구조를 설계"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "설계 제약과 이를 반영한 모듈 설계가 확인된다."
+    },
+    {
+      "role_element_id": "role-08",
+      "experience_id": "exp-embedded-02",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "test-target",
+          "evidence_quote": "응답 조건을 검증하는"
+        },
+        {
+          "evidence_requirement_id": "test-implementation",
+          "evidence_quote": "pytest 테스트 스크립트 24개를 구현했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "검증 대상과 테스트 스크립트 구현이 모두 확인된다."
+    },
+    {
+      "role_element_id": "role-09",
+      "experience_id": "exp-ai-01",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "data-source",
+          "evidence_quote": "반도체 설비 센서 시계열 데이터"
+        },
+        {
+          "evidence_requirement_id": "mining-method",
+          "evidence_quote": "XGBoost 모델을 학습했습니다"
+        },
+        {
+          "evidence_requirement_id": "mining-result",
+          "evidence_quote": "F1 점수를 0.71에서 0.84로 높였고"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "분석 데이터, 예측 방법과 정량적인 모델 개선 결과가 모두 확인된다."
+    },
+    {
+      "role_element_id": "role-10",
+      "experience_id": "exp-ai-01",
+      "label": "PARTIALLY_SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "data-modality",
+          "evidence_quote": "센서 시계열 데이터"
+        },
+        {
+          "evidence_requirement_id": "model-design",
+          "evidence_quote": "XGBoost 모델을 학습했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [
+        "linked-analysis"
+      ],
+      "reason": "시계열 데이터와 모델 구현은 확인되지만 복수 데이터의 연계 분석은 확인되지 않는다."
+    },
+    {
+      "role_element_id": "role-11",
+      "experience_id": "exp-ai-01",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "equipment-process-data",
+          "evidence_quote": "반도체 설비 센서 시계열 데이터"
+        },
+        {
+          "evidence_requirement_id": "ml-analysis-method",
+          "evidence_quote": "XGBoost 모델을 학습했습니다"
+        },
+        {
+          "evidence_requirement_id": "analysis-solution",
+          "evidence_quote": "불량 여부를 예측하는"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "설비 데이터, 머신러닝 방법과 예측 솔루션이 모두 확인된다."
+    },
+    {
+      "role_element_id": "role-12",
+      "experience_id": "exp-ai-01",
+      "label": "PARTIALLY_SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "anomaly-target",
+          "evidence_quote": "불량 여부를 예측하는"
+        },
+        {
+          "evidence_requirement_id": "anomaly-model",
+          "evidence_quote": "XGBoost 모델을 학습했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [
+        "spc-method"
+      ],
+      "reason": "이상 예측 대상과 모델 개발은 확인되지만 SPC 적용은 확인되지 않는다."
+    },
+    {
+      "role_element_id": "role-13",
+      "experience_id": "exp-nlp-03",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "supported-modality",
+          "evidence_quote": "한국어 민원 문장 12,000건"
+        },
+        {
+          "evidence_requirement_id": "ai-method",
+          "evidence_quote": "KoBERT로"
+        },
+        {
+          "evidence_requirement_id": "ai-solution",
+          "evidence_quote": "민원 유형 분류 모델을 개발하고 웹 서비스에 적용했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "자연어 데이터, AI 모델과 서비스 적용이 모두 확인된다."
+    },
+    {
+      "role_element_id": "role-14",
+      "experience_id": "exp-nlp-03",
+      "label": "PARTIALLY_SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "mining-analysis-target",
+          "evidence_quote": "한국어 민원 문장 12,000건"
+        },
+        {
+          "evidence_requirement_id": "mining-solution",
+          "evidence_quote": "민원 유형 분류 모델을 개발하고 웹 서비스에 적용했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [
+        "explicit-mining-method"
+      ],
+      "reason": "분석 대상과 솔루션은 확인되지만 Data Mining 또는 Process Mining 방법은 명시되지 않는다."
+    },
+    {
+      "role_element_id": "role-15",
+      "experience_id": "exp-ai-01",
+      "label": "SUPPORTED",
+      "present_evidence": [
+        {
+          "evidence_requirement_id": "experience-format",
+          "evidence_quote": "팀 프로젝트"
+        },
+        {
+          "evidence_requirement_id": "job-relevance",
+          "evidence_quote": "Python으로 결측치를 처리하고 XGBoost 모델을 학습했습니다"
+        }
+      ],
+      "missing_evidence_requirement_ids": [],
+      "reason": "프로젝트 형태와 SW·데이터 분석 관련 행동이 확인된다."
+    },
+    {
+      "role_element_id": "role-16",
+      "experience_id": "exp-ai-01",
+      "label": "NOT_SUPPORTED",
+      "present_evidence": [],
+      "missing_evidence_requirement_ids": [
+        "platform-name",
+        "platform-project-action"
+      ],
+      "reason": "FastAPI 사용은 확인되지만 이를 JD가 요구하는 SW·HW 플랫폼 활용 경험으로 볼 근거는 확인되지 않는다."
+    },
+    {
+      "role_element_id": "role-01",
+      "experience_id": "exp-event-04",
+      "label": "NOT_SUPPORTED",
+      "present_evidence": [],
+      "missing_evidence_requirement_ids": [
+        "programming-language",
+        "implementation-action"
+      ],
+      "reason": "행사 홍보 경험에는 프로그래밍 언어와 구현 행동이 없다."
+    },
+    {
+      "role_element_id": "role-03",
+      "experience_id": "exp-ai-01",
+      "label": "NOT_SUPPORTED",
+      "present_evidence": [],
+      "missing_evidence_requirement_ids": [
+        "embedded-target",
+        "embedded-action"
+      ],
+      "reason": "AI 모델 경험에는 임베디드 대상과 임베디드 개발 행동이 없다."
+    },
+    {
+      "role_element_id": "role-13",
+      "experience_id": "exp-event-04",
+      "label": "NOT_SUPPORTED",
+      "present_evidence": [],
+      "missing_evidence_requirement_ids": [
+        "supported-modality",
+        "ai-method",
+        "ai-solution"
+      ],
+      "reason": "설문 분석만으로는 지원 대상 데이터 유형, AI 방법과 솔루션 개발을 확인할 수 없다."
+    },
+    {
+      "role_element_id": "role-16",
+      "experience_id": "exp-event-04",
+      "label": "NOT_SUPPORTED",
+      "present_evidence": [],
+      "missing_evidence_requirement_ids": [
+        "platform-name",
+        "platform-project-action"
+      ],
+      "reason": "홍보 채널 조정 경험에는 SW·HW 플랫폼과 플랫폼 활용 행동이 없다."
+    }
+  ],
+  "forbidden_outputs": [
+    "XGBoost를 사용했다는 이유만으로 SPC를 적용했다고 판단한다.",
+    "FastAPI 사용 경험을 임베디드 시스템 또는 ARM 역량으로 판단한다.",
+    "KoBERT 프로젝트를 Data Mining 또는 Process Mining 경험으로 단정한다.",
+    "설문 분석을 AI 기반 자연어 처리 경험으로 판단한다.",
+    "사용자가 경험에 적지 않은 성능, 기술, 역할을 생성한다."
+  ]
+}

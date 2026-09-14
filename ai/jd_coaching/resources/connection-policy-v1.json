@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "policy_id": "jd-experience-connection-v1",
+  "purpose": "하나의 원자적 JD 요구사항과 하나의 사용자 경험 사이의 연결 강도를 판정한다.",
+  "unit_of_judgment": "one_role_element_x_one_experience",
+  "labels": {
+    "SUPPORTED": {
+      "condition": "모든 증거 요구사항이 사용자 경험에 명시적으로 존재한다."
+    },
+    "PARTIALLY_SUPPORTED": {
+      "condition": "증거 요구사항이 하나 이상 명시적으로 존재하지만 일부는 확인되지 않는다."
+    },
+    "NOT_SUPPORTED": {
+      "condition": "증거 요구사항이 하나도 명시적으로 존재하지 않는다."
+    }
+  }
+}
