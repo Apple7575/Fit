@@ -54,6 +54,12 @@ export function LandingHeader({ onSearchClick }: LandingHeaderProps) {
           >
             자기소개서
           </Link>
+          <Link
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+            to="/interviews"
+          >
+            모의 면접
+          </Link>
           <button
             className="ml-1 rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             onClick={onSearchClick}

@@ -12,6 +12,8 @@ import { CompanyIssuesTab } from '../pages/company-detail/CompanyIssuesTab';
 import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
 import { CoverLetterListPage } from '../pages/cover-letter/CoverLetterListPage';
 import { CoverLetterWorkspacePage } from '../pages/cover-letter/CoverLetterWorkspacePage';
+import { InterviewListPage } from '../pages/interview/InterviewListPage';
+import { InterviewWorkspacePage } from '../pages/interview/InterviewWorkspacePage';
 import { HomePage } from '../pages/home/HomePage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { SignupPage } from '../pages/auth/SignupPage';
@@ -51,6 +53,18 @@ const routes: RouteObject[] = [
   {
     path: '/cover-letters/:id',
     element: <CoverLetterWorkspacePage />,
+  },
+  {
+    path: '/interviews',
+    element: <InterviewListPage />,
+  },
+  {
+    path: '/interviews/new',
+    element: <InterviewWorkspacePage />,
+  },
+  {
+    path: '/interviews/:id',
+    element: <InterviewWorkspacePage />,
   },
   {
     path: '/companies/:companyId',
