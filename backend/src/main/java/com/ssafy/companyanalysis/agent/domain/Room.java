@@ -19,7 +19,7 @@ import java.util.List;
  * 전부 함께 읽고, 설정을 바꿀 때도 한 행만 고치면 되기 때문이다.
  */
 @Entity
-@Table(name = "room")
+@Table(name = "agent_room")
 public class Room {
 
     @Id

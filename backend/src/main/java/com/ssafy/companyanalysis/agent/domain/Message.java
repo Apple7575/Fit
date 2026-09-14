@@ -22,7 +22,7 @@ import java.util.List;
  * 턴 상태는 저장하지 않고 같은 부모를 가진 행들의 상태를 모아 계산한다.
  */
 @Entity
-@Table(name = "message")
+@Table(name = "agent_message")
 public class Message {
 
     @Id
