@@ -120,7 +120,7 @@ wait_healthy() {
     return 1
 }
 
-ALL_SERVICES="postgres backend frontend"
+ALL_SERVICES="postgres backend frontend ai"
 
 # all 에서 front/back 으로 옮길 때 남는 컨테이너를 정리한다. 두면 낡은 화면이 계속 보인다.
 stop_others() {
@@ -157,6 +157,7 @@ up() {
         all)
             info "  화면    http://localhost:3000"
             info "  API     http://localhost:8080/actuator/health"
+            info "  AI      http://localhost:8000/docs"
             ;;
         front)
             info "  다음    cd frontend && npm run dev:api   ->  http://localhost:5173"
@@ -184,8 +185,8 @@ up() {
 
 case "${1:-all}" in
     all)
-        preflight 3000 8080
-        up all postgres backend frontend
+        preflight 3000 8080 8000
+        up all postgres backend frontend ai
         ;;
     front)
         preflight 8080

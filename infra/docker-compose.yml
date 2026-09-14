@@ -86,6 +86,39 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  ai:
+    image: ${REGISTRY:-local}/ai:${TAG:?환경별로 달라야 한다 (prod/dev/local)}
+    build:
+      context: ../ai
+    restart: unless-stopped
+    expose: ["8000"]
+    mem_limit: ${AI_MEM:-1g}
+    environment:
+      # 프록시가 /ai/ 로 넘기므로 문서·openapi 경로를 맞춘다. 로컬 직접 접속은 비운다.
+      - AI_ROOT_PATH=${AI_ROOT_PATH-/ai}
+      # jd_coaching 은 backend 와 같은 DB 를 쓴다(Flyway V20·V21 테이블).
+      - JD_DATABASE_URL=postgresql://${POSTGRES_USER:-ssafy}:${POSTGRES_PASSWORD:?환경변수에 POSTGRES_PASSWORD 설정 필요}@postgres:5432/${POSTGRES_DB:-company_analysis}
+      - JD_MAX_CONCURRENCY=${JD_MAX_CONCURRENCY:-4}
+      # LLM 서버. backend 의 모의 면접과 같은 vLLM(SSAFY GPU) 을 쓴다. 키는 LLM_KEY 를 재사용한다.
+      - QWEN_BASE_URL=${QWEN_BASE_URL:-http://70.12.130.105:8000/v1}
+      # 서빙 중인 모델 ID 는 main 하나다 (GET /v1/models 로 확인).
+      - QWEN_MODEL=${QWEN_MODEL:-main}
+      - QWEN_API_KEY=${LLM_KEY:-}
+      - TZ=${TZ:-Asia/Seoul}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      appnet:
+      edge:
+        aliases:
+          - ai-${ENV_NAME:?ENV_NAME 설정 필요 (prod|dev|local)}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   frontend:
     image: ${REGISTRY:-local}/frontend:${TAG:?환경별로 달라야 한다 (prod/dev/local)}
     build:
