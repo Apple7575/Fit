@@ -57,15 +57,14 @@ public class AgentTaskRunner {
                     .orElseThrow(() -> new IllegalStateException("모르는 에이전트: " + message.getAgentKey()));
 
             if (!type.isConfigured(context.configOf(type))) {
-                // 조사를 붙이면 "담당 가" 처럼 어색해진다. 이름 뒤에 바로 붙이지 않는다.
-                message.fail(type.displayName() + " 설정을 먼저 채워 주세요.");
+                // 이름 뒤에 "에이전트" 를 붙여야 조사가 자연스럽다("담당 가" → "담당 에이전트가").
+                message.fail(type.displayName() + " 에이전트 설정을 먼저 채워 주세요.");
                 return;
             }
 
             if (AgentPrompt.requiresUnbuiltSource(type)) {
                 // 자료원이 없는데 프롬프트만 돌리면 모델이 본 척 지어낸다. 아예 돌리지 않는다.
-                message.fail("기업 자료(사업보고서·IR) 검색 기능이 아직 연결되지 않았습니다. "
-                        + "다른 에이전트의 의견으로 먼저 진행해 주세요.");
+                message.fail(type.displayName() + " 에이전트가 볼 자료가 아직 준비되지 않았습니다.");
                 return;
             }
 
