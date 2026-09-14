@@ -21,9 +21,14 @@ public final class AgentPrompt {
     private AgentPrompt() {
     }
 
-    /** 자료원(크롤링·Vector DB·뉴스)이 아직 없어 실행할 수 없는 에이전트. */
+    /**
+     * 볼 자료를 아직 가져올 수 없는 에이전트.
+     *
+     * <p>기업 RAG 담당만 남았다. 사업보고서·IR 을 담은 Vector DB 가 있어야 하는데 그 파이프라인이
+     * 아직 없다(S15P21A504-132). 채용공고는 크롤러로, 뉴스는 기존 news_article 로 붙였다.
+     */
     public static boolean requiresUnbuiltSource(AgentType type) {
-        return type == AgentType.JD || type == AgentType.COMPANY || type == AgentType.NEWS;
+        return type == AgentType.COMPANY;
     }
 
     public static String systemInstruction(AgentType type) {
@@ -44,7 +49,17 @@ public final class AgentPrompt {
                     말고, 서로 맞물리는 것을 묶어 한 문단으로 쓴다. 어느 지적을 근거로 삼았는지
                     본문에 자연스럽게 드러낸다.
                     """;
-            case JD, COMPANY, NEWS -> throw new IllegalStateException(
+            case JD -> """
+                    [담당] 채용공고 대조
+                    공고에 적힌 자격요건·우대사항·주요업무를 자소서와 하나씩 맞춰 본다. 공고가 요구하는데
+                    자소서에 없는 것을 먼저 짚는다. 공고에 없는 이야기는 하지 않는다.
+                    """;
+            case NEWS -> """
+                    [담당] 뉴스·트렌드
+                    최근 기사 목록을 보고, 자소서에 얹으면 설득력이 붙을 이슈를 고른다. 기사 제목에 없는
+                    사실을 지어내지 않는다. 쓸 만한 이슈가 없으면 없다고 말한다.
+                    """;
+            case COMPANY -> throw new IllegalStateException(
                     "자료원이 아직 연결되지 않은 에이전트다: " + type.key());
         };
     }

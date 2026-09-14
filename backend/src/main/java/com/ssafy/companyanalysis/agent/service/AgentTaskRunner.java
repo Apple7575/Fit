@@ -2,6 +2,8 @@ package com.ssafy.companyanalysis.agent.service;
 
 import com.ssafy.companyanalysis.agent.ai.AgentLlmClient;
 import com.ssafy.companyanalysis.agent.ai.AgentPrompt;
+import com.ssafy.companyanalysis.agent.crawl.CompanyNewsDigest;
+import com.ssafy.companyanalysis.agent.crawl.JobPostingFetcher;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
 import com.ssafy.companyanalysis.agent.domain.JobRole;
 import com.ssafy.companyanalysis.agent.domain.Message;
@@ -28,10 +30,17 @@ public class AgentTaskRunner {
 
     private final MessageRepository messageRepository;
     private final AgentLlmClient llmClient;
+    private final JobPostingFetcher jobPostingFetcher;
+    private final CompanyNewsDigest companyNewsDigest;
 
-    public AgentTaskRunner(MessageRepository messageRepository, AgentLlmClient llmClient) {
+    public AgentTaskRunner(MessageRepository messageRepository,
+                           AgentLlmClient llmClient,
+                           JobPostingFetcher jobPostingFetcher,
+                           CompanyNewsDigest companyNewsDigest) {
         this.messageRepository = messageRepository;
         this.llmClient = llmClient;
+        this.jobPostingFetcher = jobPostingFetcher;
+        this.companyNewsDigest = companyNewsDigest;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -48,14 +57,15 @@ public class AgentTaskRunner {
                     .orElseThrow(() -> new IllegalStateException("모르는 에이전트: " + message.getAgentKey()));
 
             if (!type.isConfigured(context.configOf(type))) {
-                message.fail(type.displayName() + " 의 설정을 먼저 채워 주세요: "
-                        + String.join(", ", type.missingConfigKeys(context.configOf(type))));
+                // 조사를 붙이면 "담당 가" 처럼 어색해진다. 이름 뒤에 바로 붙이지 않는다.
+                message.fail(type.displayName() + " 설정을 먼저 채워 주세요.");
                 return;
             }
 
             if (AgentPrompt.requiresUnbuiltSource(type)) {
                 // 자료원이 없는데 프롬프트만 돌리면 모델이 본 척 지어낸다. 아예 돌리지 않는다.
-                message.fail(type.displayName() + " 가 볼 자료가 아직 준비되지 않았습니다.");
+                message.fail("기업 자료(사업보고서·IR) 검색 기능이 아직 연결되지 않았습니다. "
+                        + "다른 에이전트의 의견으로 먼저 진행해 주세요.");
                 return;
             }
 
