@@ -33,7 +33,7 @@ public class AgentCatalogService {
         return new AgentCatalogResponse(agents);
     }
 
-    /** 지식베이스가 없는 직무도 목록에는 남긴다. 화면에서 왜 못 고르는지 보여줘야 하기 때문이다. */
+    /** 닫아 둔 직무도 목록에는 남긴다. 화면에서 왜 못 고르는지 보여줘야 하기 때문이다. */
     public JobRoleListResponse listJobRoles() {
         List<JobRoleListResponse.JobRole> roles = Arrays.stream(com.ssafy.companyanalysis.agent.domain.JobRole.values())
                 .map(role -> {

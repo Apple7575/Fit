@@ -85,7 +85,7 @@ class AgentCatalogServiceTest {
     }
 
     @Test
-    @DisplayName("지식베이스가 없는 직무는 목록에 남되 topics 가 빈 배열이다")
+    @DisplayName("열어 두지 않은 직무는 목록에 남되 topics 가 빈 배열이다")
     void notReadyRoleKeepsItsPlaceButHasNoTopics() {
         JobRoleListResponse response = service("backend").listJobRoles();
 

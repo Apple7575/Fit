@@ -32,7 +32,7 @@ describe('AgentConfigFields', () => {
     expect(screen.getByLabelText('기업명으로 검색')).toBeInTheDocument();
   });
 
-  it('지식베이스가 없는 직무는 고를 수 없다', () => {
+  it('열어 두지 않은 직무는 고를 수 없다', () => {
     renderFields({ jobRole: { type: 'enum', required: true, description: '지원 직무' } });
 
     expect(screen.getByRole('button', { name: /백엔드/ })).toBeEnabled();
