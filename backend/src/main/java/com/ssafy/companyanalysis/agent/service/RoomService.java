@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,6 +62,43 @@ public class RoomService {
         Room saved = roomRepository.save(
                 Room.create(userId, coverLetter.getId(), request.title().trim(), agents));
         return toDetail(saved, coverLetter);
+    }
+
+    /**
+     * 자소서를 고르면 대화할 자리를 미리 깔아 준다. 에이전트마다 전담 방 하나씩과 합동 논의 방
+     * 하나를 만든다. 사용자가 방을 하나씩 만들어야 한다면 첫 화면부터 할 일이 생긴다.
+     *
+     * <p>여러 번 불러도 안전하다. 이미 있는 조합은 건너뛴다.
+     */
+    @Transactional
+    public RoomListResponse ensureDefaults(Long userId, Long coverLetterId) {
+        ownedCoverLetter(userId, coverLetterId);
+        List<Room> existing = roomRepository.findAllForSidebarByCoverLetter(userId, coverLetterId);
+
+        List<AgentType> selectable = Arrays.stream(AgentType.values())
+                .filter(AgentType::selectable)
+                .toList();
+
+        List<Room> created = new ArrayList<>();
+        for (AgentType type : selectable) {
+            boolean already = existing.stream().anyMatch(room -> isSoloRoomFor(room, type));
+            if (!already) {
+                created.add(Room.create(userId, coverLetterId, type.displayName(),
+                        List.of(new RoomAgent(type.key(), Map.of()))));
+            }
+        }
+        if (existing.stream().noneMatch(room -> room.getAgents().size() >= 2)) {
+            created.add(Room.create(userId, coverLetterId, "총괄 논의",
+                    selectable.stream().map(type -> new RoomAgent(type.key(), Map.of())).toList()));
+        }
+        roomRepository.saveAll(created);
+
+        return list(userId, coverLetterId);
+    }
+
+    private static boolean isSoloRoomFor(Room room, AgentType type) {
+        List<RoomAgent> agents = room.getAgents();
+        return agents.size() == 1 && agents.get(0).agentKey().equals(type.key());
     }
 
     public RoomListResponse list(Long userId, Long coverLetterId) {
@@ -156,7 +194,8 @@ public class RoomService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.AGENT_NOT_SUPPORTED, agent.agentKey()));
 
         Map<String, Object> view = new LinkedHashMap<>(agent.config());
-        boolean ready = true;
+        // 필수 설정이 덜 찼으면 아직 쓸 수 없다. 화면이 "설정 필요" 로 보여준다.
+        boolean ready = type.isConfigured(agent.config());
 
         Object corpCodes = view.remove("corpCodes");
         if (corpCodes instanceof Collection<?> codes) {

@@ -47,6 +47,12 @@ public class AgentTaskRunner {
             AgentType type = AgentType.from(message.getAgentKey())
                     .orElseThrow(() -> new IllegalStateException("모르는 에이전트: " + message.getAgentKey()));
 
+            if (!type.isConfigured(context.configOf(type))) {
+                message.fail(type.displayName() + " 의 설정을 먼저 채워 주세요: "
+                        + String.join(", ", type.missingConfigKeys(context.configOf(type))));
+                return;
+            }
+
             if (AgentPrompt.requiresUnbuiltSource(type)) {
                 // 자료원이 없는데 프롬프트만 돌리면 모델이 본 척 지어낸다. 아예 돌리지 않는다.
                 message.fail(type.displayName() + " 가 볼 자료가 아직 준비되지 않았습니다.");

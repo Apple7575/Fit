@@ -68,6 +68,7 @@ export interface Room {
 export interface RoomSummary {
   roomId: number;
   title: string;
+  /** 1 이면 에이전트 전담 방, 2 이상이면 총괄이 붙은 논의 방이다. */
   agentCount: number;
   lastMessagePreview: string | null;
   lastMessageAt: string | null;

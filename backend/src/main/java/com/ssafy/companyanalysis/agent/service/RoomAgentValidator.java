@@ -61,7 +61,12 @@ public class RoomAgentValidator {
         return type;
     }
 
-    /** 설정이 스키마를 만족하는지 본다. 통과하면 스키마에 있는 키만 남긴 맵을 준다. */
+    /**
+     * 설정 값이 말이 되는지 본다. 통과하면 스키마에 있는 키만 남긴 맵을 준다.
+     *
+     * <p>덜 채운 설정도 저장한다 — 고르다 만 상태를 그대로 두는 편이 낫다. 값이 들어 있으면
+     * 그 값이 올바른지는 여기서 본다(없는 기업, 모르는 직무).
+     */
     public Map<String, Object> validateConfig(AgentType type, Map<String, Object> config) {
         Map<String, Object> source = config == null ? Map.of() : config;
         Map<String, Object> cleaned = new java.util.LinkedHashMap<>();
@@ -70,10 +75,9 @@ public class RoomAgentValidator {
             String name = entry.getKey();
             Object value = source.get(name);
             if (isEmpty(value)) {
-                if (entry.getValue().required()) {
-                    throw new BusinessException(ErrorCode.AGENT_CONFIG_REQUIRED,
-                            type.displayName() + " 의 " + name + " 을(를) 채워야 합니다.");
-                }
+                // 필수 항목이 비어도 여기서 막지 않는다. 방은 자소서를 고르면 자동으로 만들어지고,
+                // 설정은 그 방에 들어가서 채우기 때문이다. 다 찼는지는 실제로 돌릴 때 본다
+                // (AgentType#isConfigured).
                 continue;
             }
             cleaned.put(name, normalize(name, value));

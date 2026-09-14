@@ -84,13 +84,27 @@ class RoomAgentValidatorTest {
     }
 
     @Test
-    @DisplayName("필수 설정이 비어 있으면 AGENT_CONFIG_REQUIRED")
-    void missingRequiredConfigIsRejected() {
-        assertThatThrownBy(() -> validator(Set.of(), Set.of())
-                .validateAll(List.of(spec("company", Map.of("corpCodes", List.of())))))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.AGENT_CONFIG_REQUIRED);
+    @DisplayName("필수 설정이 비어도 저장은 된다 — 방은 설정 없이 자동으로 만들어진다")
+    void partialConfigIsAccepted() {
+        List<RoomAgent> agents = validator(Set.of(), Set.of())
+                .validateAll(List.of(spec("company", Map.of("corpCodes", List.of()))));
+
+        assertThat(agents).singleElement()
+                .satisfies(agent -> assertThat(agent.config()).isEmpty());
+    }
+
+    @Test
+    @DisplayName("덜 채운 설정은 아직 쓸 수 없다고 표시된다")
+    void partialConfigIsNotYetUsable() {
+        assertThat(AgentType.COMPANY.isConfigured(Map.of())).isFalse();
+        assertThat(AgentType.COMPANY.missingConfigKeys(Map.of())).containsExactly("corpCodes");
+        assertThat(AgentType.COMPANY.isConfigured(Map.of("corpCodes", List.of("00126380")))).isTrue();
+    }
+
+    @Test
+    @DisplayName("설정할 것이 없는 에이전트는 언제나 쓸 수 있다")
+    void agentsWithoutConfigAreAlwaysUsable() {
+        assertThat(AgentType.WRITING.isConfigured(Map.of())).isTrue();
     }
 
     @Test

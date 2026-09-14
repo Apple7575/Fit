@@ -57,6 +57,40 @@ public enum AgentType {
         this.configSchema = configSchema;
     }
 
+    /**
+     * 필수 설정이 다 찼는지. 방은 자소서를 고르면 설정 없이 자동으로 만들어지므로,
+     * 덜 채운 상태가 정상이다. 실제로 돌리기 직전에 이걸로 거른다.
+     */
+    public boolean isConfigured(Map<String, Object> config) {
+        Map<String, Object> given = config == null ? Map.of() : config;
+        return configSchema.entrySet().stream()
+                .filter(entry -> entry.getValue().required())
+                .allMatch(entry -> isPresent(given.get(entry.getKey())));
+    }
+
+    /** 비어 있는 설정에서 빠진 필수 항목 이름. 화면에 무엇을 채우라고 알려줄 때 쓴다. */
+    public java.util.List<String> missingConfigKeys(Map<String, Object> config) {
+        Map<String, Object> given = config == null ? Map.of() : config;
+        return configSchema.entrySet().stream()
+                .filter(entry -> entry.getValue().required())
+                .filter(entry -> !isPresent(given.get(entry.getKey())))
+                .map(Map.Entry::getKey)
+                .toList();
+    }
+
+    private static boolean isPresent(Object value) {
+        if (value == null) {
+            return false;
+        }
+        if (value instanceof String text) {
+            return !text.isBlank();
+        }
+        if (value instanceof java.util.Collection<?> collection) {
+            return !collection.isEmpty();
+        }
+        return true;
+    }
+
     /** 키로 찾는다. 모르는 키는 비어 있는 값으로 돌려주고 호출부가 400 을 낸다. */
     public static java.util.Optional<AgentType> from(String key) {
         return java.util.Arrays.stream(values()).filter(type -> type.key.equals(key)).findFirst();

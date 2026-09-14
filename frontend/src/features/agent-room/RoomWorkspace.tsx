@@ -19,10 +19,12 @@ function summarize(agent: RoomAgent): string | null {
 
 interface RoomWorkspaceProps {
   roomId: number;
+  /** 대화가 끝나 사이드바의 미리보기가 바뀌었을 때 알린다. */
+  onConversationChanged?: () => void;
 }
 
 /** 검토 방 한 개. 참여 에이전트, 설정, 그리고 대화. */
-export function RoomWorkspace({ roomId }: RoomWorkspaceProps) {
+export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspaceProps) {
   const { state: room, retry: reloadRoom } = useRoom(roomId);
   const { state: agents } = useAgents();
   const { state: jobRoles } = useJobRoles();
@@ -33,8 +35,9 @@ export function RoomWorkspace({ roomId }: RoomWorkspaceProps) {
   const turn = useTurnPolling(roomId, activeTurnId, () => {
     setActiveTurnId(null);
     reloadMessages();
-    // 마지막 대화 시각이 바뀌므로 방도 다시 읽는다.
+    // 마지막 대화 시각이 바뀌므로 방과 사이드바도 다시 읽는다.
     reloadRoom();
+    onConversationChanged?.();
   });
 
   if (room.status === 'loading') {

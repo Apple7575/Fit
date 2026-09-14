@@ -2,6 +2,7 @@ package com.ssafy.companyanalysis.agent.controller;
 
 import com.ssafy.companyanalysis.agent.dto.AgentConfigRequest;
 import com.ssafy.companyanalysis.agent.dto.RoomCreateRequest;
+import com.ssafy.companyanalysis.agent.dto.RoomDefaultsRequest;
 import com.ssafy.companyanalysis.agent.dto.RoomListResponse;
 import com.ssafy.companyanalysis.agent.dto.RoomResponse;
 import com.ssafy.companyanalysis.agent.dto.RoomUpdateRequest;
@@ -38,6 +39,13 @@ public class RoomController {
     public ApiResponse<RoomResponse> create(@AuthenticationPrincipal UserPrincipal principal,
                                             @RequestBody @Valid RoomCreateRequest request) {
         return ApiResponse.ok(roomService.create(principal.getId(), request));
+    }
+
+    /** 자소서를 고르면 에이전트 전담 방과 총괄 논의 방을 깔아 준다. 여러 번 불러도 안전하다. */
+    @PostMapping("/defaults")
+    public ApiResponse<RoomListResponse> ensureDefaults(@AuthenticationPrincipal UserPrincipal principal,
+                                                        @RequestBody @Valid RoomDefaultsRequest request) {
+        return ApiResponse.ok(roomService.ensureDefaults(principal.getId(), request.coverLetterId()));
     }
 
     @GetMapping

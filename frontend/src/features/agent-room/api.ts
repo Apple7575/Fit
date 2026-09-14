@@ -35,6 +35,15 @@ export const fetchRoom = (roomId: number, signal?: AbortSignal) =>
 export const createRoom = (input: RoomCreateInput) =>
   apiSend<Room>('POST', '/api/rooms', input);
 
+/**
+ * 자소서를 고르면 대화할 자리를 미리 깔아 준다(에이전트별 전담 방 + 총괄 논의 방).
+ * 여러 번 불러도 안전하다 — 이미 있는 조합은 건너뛴다.
+ */
+export const ensureDefaultRooms = (coverLetterId: number) =>
+  apiSend<{ rooms: RoomSummary[] }>('POST', '/api/rooms/defaults', { coverLetterId }).then(
+    (data) => data.rooms,
+  );
+
 export const renameRoom = (roomId: number, title: string) =>
   apiPatch<Room>(`/api/rooms/${roomId}`, { title });
 
