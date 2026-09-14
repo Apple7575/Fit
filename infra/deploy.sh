@@ -20,7 +20,7 @@ ENV_FILE=".env.${ENV_NAME}"
 
 DC="docker compose --env-file $ENV_FILE"
 PROJECT=$(grep -E '^COMPOSE_PROJECT_NAME=' "$ENV_FILE" | cut -d= -f2 || true)
-SERVICES="backend frontend"
+SERVICES="backend frontend ai"
 
 # compose 가 만드는 이미지 이름과 정확히 같아야 한다. 어긋나면 롤백용 보관이 조용히 실패한다.
 REGISTRY=$(grep -E '^REGISTRY=' "$ENV_FILE" | cut -d= -f2 || true)
@@ -34,7 +34,7 @@ echo "=================================================="
 echo " 배포 시작 : $ENV_NAME (project: $PROJECT)"
 echo "=================================================="
 
-echo "[1/5] 롤백용으로 현재 이미지 보관"
+echo "[1/6] 롤백용으로 현재 이미지 보관"
 for s in $SERVICES; do
   IMG="$REGISTRY/$s:$TAG"
   if docker image inspect "$IMG" >/dev/null 2>&1; then
@@ -45,13 +45,13 @@ for s in $SERVICES; do
   fi
 done
 
-echo "[2/5] 이미지 빌드"
+echo "[2/6] 이미지 빌드"
 $DC build
 
-echo "[3/5] 컨테이너 교체"
+echo "[3/6] 컨테이너 교체"
 $DC up -d
 
-echo "[4/5] 헬스체크 대기"
+echo "[4/6] 헬스체크 대기"
 HEALTHY=0
 GIVE_UP=0
 for i in $(seq 1 40); do
@@ -81,7 +81,7 @@ done
 if [ "$HEALTHY" != "1" ]; then
   echo ""
   echo "!! 헬스체크 실패. 최근 로그:"
-  $DC logs --tail 40 backend || true
+  $DC logs --tail 40 backend ai || true
   echo ""
   echo "[롤백] 직전 이미지로 되돌립니다."
   ROLLED=0
@@ -101,8 +101,24 @@ if [ "$HEALTHY" != "1" ]; then
   exit 1
 fi
 
-echo "[5/5] 미사용 이미지 정리"
+echo "[5/6] 미사용 이미지 정리"
 docker image prune -f >/dev/null
+
+# proxy 는 conf.d 를 읽기 전용으로 마운트하므로 git 으로 바뀐 설정은 reload 해야 반영된다.
+# 자동 reload 는 6시간 주기라 배포 직후 새 경로(/ai/ 등)가 열리도록 여기서 한 번 돌린다.
+echo "[6/6] 프록시 설정 반영"
+PROXY="docker compose -f proxy/docker-compose.yml"
+if [ -n "$($PROXY ps -q nginx 2>/dev/null)" ]; then
+  if $PROXY exec -T nginx nginx -t >/dev/null 2>&1; then
+    $PROXY exec -T nginx nginx -s reload
+    echo "  reload 완료"
+  else
+    echo "  !! proxy nginx 설정 검사 실패. reload 하지 않았습니다. 기존 설정으로 계속 동작합니다."
+    $PROXY exec -T nginx nginx -t || true
+  fi
+else
+  echo "  proxy 가 떠 있지 않아 건너뜁니다."
+fi
 
 echo ""
 echo "배포 완료: $ENV_NAME"

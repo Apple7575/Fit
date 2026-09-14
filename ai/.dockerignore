@@ -1,0 +1,10 @@
+docs/
+evals/
+scripts/
+tests/
+README.md
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*

@@ -22,7 +22,7 @@ pipeline {
                     def ok = sh(returnStatus: true, script: '''
                         set -u
                         OUT=.ci-areas
-                        ALL="backend frontend infra"
+                        ALL="backend frontend infra ai"
                         run_all() { echo "$ALL" > $OUT; exit 0; }
 
                         # main/develop 은 deploy.sh 가 두 이미지를 모두 다시 빌드하므로 예외 없이 전부 검증한다.
@@ -37,28 +37,30 @@ pipeline {
                         git diff --name-only "$BASE" HEAD > .ci-changed         || run_all
                         [ -s .ci-changed ]                                      || run_all
 
-                        b=""; f=""; i=""
+                        b=""; f=""; i=""; a=""
                         while IFS= read -r path; do
                             case "$path" in
                                 backend/*)             b="backend" ;;
                                 frontend/*)            f="frontend" ;;
                                 infra/*)               i="infra" ;;
+                                ai/*)                  a="ai" ;;
                                 docs/*|.gitlab/*|*.md) ;;
                                 *)                     run_all ;;
                             esac
                         done < .ci-changed
 
-                        [ -z "$b$f$i" ] && i="infra"
-                        echo "$b $f $i" > $OUT
+                        [ -z "$b$f$i$a" ] && i="infra"
+                        echo "$b $f $i $a" > $OUT
                         exit 0
                     ''')
 
                     def areas = (ok == 0 && fileExists('.ci-areas')) ? readFile('.ci-areas').trim() : ''
-                    if (!areas) { areas = 'backend frontend infra' }
+                    if (!areas) { areas = 'backend frontend infra ai' }
 
                     env.RUN_BACKEND  = areas.contains('backend')  ? 'true' : 'false'
                     env.RUN_FRONTEND = areas.contains('frontend') ? 'true' : 'false'
                     env.RUN_INFRA    = areas.contains('infra')    ? 'true' : 'false'
+                    env.RUN_AI       = areas.contains('ai')       ? 'true' : 'false'
                     echo "검증 대상: ${areas}"
                 }
             }
@@ -107,6 +109,28 @@ pipeline {
                             sh 'npm run lint'
                             sh 'npm run build'
                         }
+                    }
+                }
+
+                stage('ai') {
+                    when {
+                        beforeAgent true
+                        expression { env.RUN_AI == 'true' }
+                    }
+                    agent {
+                        docker { image 'python:3.12-slim' }
+                    }
+                    environment {
+                        PIP_CACHE_DIR = "${CI_CACHE}/pip"
+                    }
+                    steps {
+                        // 테스트가 ai.jd_coaching 처럼 저장소 루트 기준으로 import 하므로 루트에서 돈다.
+                        // 컨테이너 uid 에 홈이 없어 --user 설치가 안 된다. 워크스페이스에 venv 를 만든다.
+                        sh '''
+                            python -m venv .venv
+                            .venv/bin/pip install --quiet -r ai/requirements-dev.txt
+                            .venv/bin/python -m unittest discover -s ai/tests -t .
+                        '''
                     }
                 }
 
