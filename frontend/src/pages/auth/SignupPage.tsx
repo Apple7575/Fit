@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { SiteHeader } from '../../components/layout/SiteHeader';
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../features/auth/AuthProvider';
 
@@ -11,6 +12,7 @@ export function SignupPage() {
   const { signup } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -18,6 +20,11 @@ export function SignupPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    // 서버는 비밀번호를 한 번만 받는다. 오타 방지는 여기서만 한다.
+    if (password !== passwordConfirm) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
     setSubmitting(true);
     try {
       const trimmedEmail = email.trim();
@@ -31,78 +38,104 @@ export function SignupPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <h1 className="mb-6 text-2xl font-extrabold tracking-tight text-slate-950">회원가입</h1>
+    <div className="min-h-screen bg-slate-50">
+      <SiteHeader />
+      <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6">
+        <h1 className="mb-6 text-2xl font-extrabold tracking-tight text-slate-950">회원가입</h1>
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-slate-700" htmlFor="signup-email">
-            이메일
-          </label>
-          <input
-            autoComplete="email"
-            className={FIELD_CLASS}
-            id="signup-email"
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            type="email"
-            value={email}
-          />
-        </div>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-semibold text-slate-700" htmlFor="signup-email">
+              이메일
+            </label>
+            <input
+              autoComplete="email"
+              className={FIELD_CLASS}
+              id="signup-email"
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              type="email"
+              value={email}
+            />
+          </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-slate-700" htmlFor="signup-nickname">
-            닉네임
-          </label>
-          <input
-            className={FIELD_CLASS}
-            id="signup-nickname"
-            maxLength={50}
-            onChange={(event) => setNickname(event.target.value)}
-            required
-            type="text"
-            value={nickname}
-          />
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-semibold text-slate-700" htmlFor="signup-nickname">
+              닉네임
+            </label>
+            <input
+              className={FIELD_CLASS}
+              id="signup-nickname"
+              maxLength={50}
+              onChange={(event) => setNickname(event.target.value)}
+              required
+              type="text"
+              value={nickname}
+            />
+          </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-slate-700" htmlFor="signup-password">
-            비밀번호
-          </label>
-          <input
-            autoComplete="new-password"
-            className={FIELD_CLASS}
-            id="signup-password"
-            minLength={8}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            type="password"
-            value={password}
-          />
-          <p className="text-xs text-slate-500">8자 이상 입력하세요.</p>
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-semibold text-slate-700" htmlFor="signup-password">
+              비밀번호
+            </label>
+            <input
+              autoComplete="new-password"
+              className={FIELD_CLASS}
+              id="signup-password"
+              minLength={8}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              type="password"
+              value={password}
+            />
+            <p className="text-xs text-slate-500">8자 이상 입력하세요.</p>
+          </div>
 
-        {error && (
-          <p className="text-sm font-medium text-red-600" role="alert">
-            {error}
-          </p>
-        )}
+          <div className="flex flex-col gap-1.5">
+            <label
+              className="text-sm font-semibold text-slate-700"
+              htmlFor="signup-password-confirm"
+            >
+              비밀번호 확인
+            </label>
+            <input
+              aria-invalid={passwordConfirm.length > 0 && passwordConfirm !== password}
+              autoComplete="new-password"
+              className={FIELD_CLASS}
+              id="signup-password-confirm"
+              minLength={8}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+              required
+              type="password"
+              value={passwordConfirm}
+            />
+            {passwordConfirm.length > 0 && passwordConfirm !== password && (
+              <p className="text-xs font-medium text-red-600">비밀번호가 일치하지 않습니다.</p>
+            )}
+          </div>
 
-        <button
-          className="mt-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          disabled={submitting}
-          type="submit"
-        >
-          {submitting ? '가입 중…' : '회원가입'}
-        </button>
-      </form>
+          {error && (
+            <p className="text-sm font-medium text-red-600" role="alert">
+              {error}
+            </p>
+          )}
 
-      <p className="mt-6 text-center text-sm text-slate-600">
-        이미 계정이 있으신가요?{' '}
-        <Link className="font-semibold text-blue-600 hover:text-blue-700" to="/login">
-          로그인
-        </Link>
-      </p>
-    </main>
+          <button
+            className="mt-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={submitting}
+            type="submit"
+          >
+            {submitting ? '가입 중…' : '회원가입'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-slate-600">
+          이미 계정이 있으신가요?{' '}
+          <Link className="font-semibold text-blue-600 hover:text-blue-700" to="/login">
+            로그인
+          </Link>
+        </p>
+      </main>
+    </div>
   );
 }

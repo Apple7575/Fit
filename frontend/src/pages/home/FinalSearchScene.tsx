@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { DEMO_COMPANIES } from '../../data/homepageDemo';
-import { LogoMark } from './LandingHeader';
+import { LogoMark } from '../../components/layout/LogoMark';
 import { Reveal } from './Reveal';
 
 interface FinalSearchSceneProps {
