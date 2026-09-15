@@ -39,12 +39,18 @@ class RecordingCursor:
         elif normalized.startswith("insert"):
             self.conn.inserted_companies.append(params[1])
             existing = self.conn.stored_evidence.get(params[0])
-            guarded = "where rag_evidence.corp_code = excluded.corp_code" in normalized
-            if existing and existing["corp_code"] != params[1] and guarded:
+            same_company = not existing or existing["corp_code"] == params[1]
+            same_source_type = not existing or existing.get("source_type", params[2]) == params[2]
+            guarded_company = "rag_evidence.corp_code = excluded.corp_code" in normalized
+            guarded_source_type = "rag_evidence.source_type = excluded.source_type" in normalized
+            if existing and guarded_company and (
+                not same_company or (guarded_source_type and not same_source_type)
+            ):
                 self.rowcount = 0
             else:
                 self.conn.stored_evidence[params[0]] = {
                     "corp_code": existing["corp_code"] if existing else params[1],
+                    "source_type": existing.get("source_type", params[2]) if existing else params[2],
                     "source_identity": params[3], "content": params[5],
                 }
                 self.rowcount = 1
@@ -283,6 +289,29 @@ class ReplaceBusinessReportsTest(unittest.TestCase):
         delete_sql, delete_params = conn.executed[-1]
         self.assertIn("source_type = %s", " ".join(delete_sql.split()))
         self.assertEqual(delete_params, (CORP_CODE, "DART_BUSINESS_REPORT", ["dart-report-1"]))
+
+    # 이 테스트가 막는 결함: 같은 기업의 NEWS/COMPANY evidence_id를 사업보고서가 덮어쓰는 경우.
+    def test_rejects_same_company_different_source_type_evidence_id_collision(self):
+        conn = FakeConnection()
+        report = record(
+            source_identity="dart_business_report:00126380:2025:1",
+            evidence_id="shared-id",
+            source_type="DART_BUSINESS_REPORT",
+        )
+        conn.stored_evidence = {
+            "shared-id": {
+                "corp_code": CORP_CODE,
+                "source_type": "NEWS",
+                "source_identity": "news:00126380:existing",
+                "content": "기존 뉴스",
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "기업 또는 source type 충돌"):
+            replace_business_reports(conn, CORP_CODE, [report])
+
+        self.assertEqual(conn.stored_evidence["shared-id"]["source_type"], "NEWS")
+        self.assertEqual(len(conn.executed), 1)
 
 
 if __name__ == "__main__":

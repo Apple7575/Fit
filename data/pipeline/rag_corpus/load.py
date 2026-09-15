@@ -185,9 +185,10 @@ def replace_business_reports(conn: Any, corp_code: str, records: Iterable[Eviden
                     source_updated_at = EXCLUDED.source_updated_at,
                     updated_at = now()
                 WHERE rag_evidence.corp_code = EXCLUDED.corp_code
+                  AND rag_evidence.source_type = EXCLUDED.source_type
             """, tuple(row[column] for column in columns))
             if cur.rowcount == 0:
-                raise ValueError(f"다른 기업의 evidence_id와 충돌했습니다: {item.evidence_id}")
+                raise ValueError(f"기업 또는 source type 충돌: {item.evidence_id}")
         cur.execute(
             "DELETE FROM rag_evidence WHERE corp_code = %s AND source_type = %s AND evidence_id <> ALL(%s)",
             (corp_code, "DART_BUSINESS_REPORT", [item.evidence_id for item in replacement]),
