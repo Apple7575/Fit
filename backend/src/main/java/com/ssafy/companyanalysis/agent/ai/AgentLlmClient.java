@@ -3,6 +3,7 @@ package com.ssafy.companyanalysis.agent.ai;
 import com.ssafy.companyanalysis.coverletter.ai.GmsProperties;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
+import com.ssafy.companyanalysis.global.text.PlainText;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -64,7 +65,8 @@ public class AgentLlmClient {
         if (text == null || text.isBlank()) {
             throw new BusinessException(ErrorCode.AI_FEEDBACK_FAILED, "모델이 빈 응답을 돌려줬습니다.");
         }
-        return text.trim();
+        // 화면이 평문으로 뿌리므로 마크다운 기호가 그대로 보인다. 프롬프트로 이르지만 자주 어긴다.
+        return PlainText.of(text);
     }
 
     private static String extractText(JsonNode response) {
