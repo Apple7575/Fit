@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import (
-    BACKEND_V1_EXPERIENCE_TYPES,
+    CLAIM_TYPES,
     DOCUMENT_TYPES,
     ELEMENT_CODES,
     VERDICTS,
-    load_position_profile,
-    validate_analysis_output,
+    load_experience_rubric,
+    validate_experience_analysis_output,
 )
 
 
@@ -19,7 +19,8 @@ CASE_FIELDS = {
     "schema_version",
     "case_id",
     "label_status",
-    "position_profile_id",
+    "rubric_id",
+    "position_context",
     "question",
     "documents",
     "expected_findings",
@@ -27,18 +28,19 @@ CASE_FIELDS = {
 }
 DOCUMENT_FIELDS = {"document_id", "document_type", "text"}
 EXPECTED_FINDING_FIELDS = {
-    "experience_type",
+    "claim_type",
     "claim_quote",
     "verdict",
     "present_elements",
     "missing_elements",
 }
 PREDICTION_FIELDS = {"schema_valid", "output", "response_text"}
-PROFILE_PATH = Path(__file__).parent / "resources" / "profiles" / "backend-v1.json"
+POSITION_CONTEXT_FIELDS = {"position_name", "priority_requirements"}
+RUBRIC_PATH = Path(__file__).parent / "resources" / "rubrics" / "experience-depth-v1.json"
 
 
 def load_evaluation_case(path: Path) -> dict[str, Any]:
-    """Load one independently authored evaluation case under the strict v1 contract."""
+    """Load one independently authored evaluation case under the strict v2 contract."""
     if not isinstance(path, Path):
         raise ValueError("evaluation case source must be a Path")
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -49,16 +51,17 @@ def validate_evaluation_case(case: Mapping[str, Any]) -> dict[str, Any]:
     """Validate an in-memory evaluation case and return a detached plain dictionary."""
     payload = _mapping(case, "evaluation case")
     _exact_fields(payload, CASE_FIELDS, "evaluation case")
-    if payload["schema_version"] != "1.0":
+    if payload["schema_version"] != "2.0":
         raise ValueError("unsupported evaluation case schema_version")
 
     case_id = _text(payload["case_id"], "case_id")
     label_status = payload["label_status"]
     if type(label_status) is not str or label_status not in {"DRAFT", "HUMAN_APPROVED"}:
         raise ValueError("label_status must be DRAFT or HUMAN_APPROVED")
-    profile_id = payload["position_profile_id"]
-    if type(profile_id) is not str or profile_id != "backend-v1":
-        raise ValueError("position_profile_id must reference backend-v1")
+    rubric_id = payload["rubric_id"]
+    if type(rubric_id) is not str or rubric_id != "experience-depth-v1":
+        raise ValueError("rubric_id must reference experience-depth-v1")
+    position_context = _validate_position_context(payload["position_context"])
     question = _text(payload["question"], "question")
 
     documents_value = _list(payload["documents"], "documents")
@@ -103,10 +106,11 @@ def validate_evaluation_case(case: Mapping[str, Any]) -> dict[str, Any]:
         forbidden.append(value)
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "case_id": case_id,
         "label_status": label_status,
-        "position_profile_id": profile_id,
+        "rubric_id": rubric_id,
+        "position_context": position_context,
         "question": question,
         "documents": documents,
         "expected_findings": expected_findings,
@@ -138,7 +142,7 @@ def score_evaluation(
     schema_valid_count = 0
     forbidden_occurrences = 0
     aligned_pairs: list[tuple[Mapping[str, Any], Mapping[str, Any]]] = []
-    profile = load_position_profile(PROFILE_PATH)
+    rubric = load_experience_rubric(RUBRIC_PATH)
 
     for case in validated_cases:
         case_id = case["case_id"]
@@ -155,7 +159,9 @@ def score_evaluation(
             continue
 
         schema_valid_count += 1
-        output = validate_analysis_output(envelope["output"], case["documents"], profile)
+        output = validate_experience_analysis_output(
+            envelope["output"], case["documents"], rubric
+        )
         expected_by_key = {
             _expected_key(finding): finding for finding in case["expected_findings"]
         }
@@ -212,9 +218,9 @@ def _validate_expected_finding(
 ) -> dict[str, Any]:
     finding = _mapping(item, "expected finding")
     _exact_fields(finding, EXPECTED_FINDING_FIELDS, "expected finding")
-    experience_type = _text(finding["experience_type"], "experience_type")
-    if experience_type not in BACKEND_V1_EXPERIENCE_TYPES:
-        raise ValueError("unsupported experience_type")
+    claim_type = _text(finding["claim_type"], "claim_type")
+    if claim_type not in CLAIM_TYPES:
+        raise ValueError("unsupported claim_type")
     claim_quote = _text(finding["claim_quote"], "claim_quote", strip=False)
     if not any(claim_quote in document["text"] for document in documents):
         raise ValueError("claim_quote must occur in a case document")
@@ -224,7 +230,7 @@ def _validate_expected_finding(
     present = _element_list(finding["present_elements"], "present_elements")
     missing = _element_list(finding["missing_elements"], "missing_elements")
 
-    required = set(BACKEND_V1_EXPERIENCE_TYPES[experience_type])
+    required = set(CLAIM_TYPES[claim_type])
     present_set = set(present)
     missing_set = set(missing)
     if present_set & missing_set or present_set | missing_set != required:
@@ -244,7 +250,7 @@ def _validate_expected_finding(
             raise ValueError("verdict does not match element partition")
 
     return {
-        "experience_type": experience_type,
+        "claim_type": claim_type,
         "claim_quote": claim_quote,
         "verdict": verdict,
         "present_elements": present,
@@ -305,11 +311,32 @@ def _rate(numerator: int | float, denominator: int) -> dict[str, int | float | N
 
 
 def _expected_key(finding: Mapping[str, Any]) -> tuple[str, str]:
-    return (finding["experience_type"], finding["claim_quote"])
+    return (finding["claim_type"], finding["claim_quote"])
 
 
 def _actual_key(finding: Mapping[str, Any]) -> tuple[str, str]:
-    return (finding["experience_type"], finding["claim"]["quote"])
+    return (finding["claim_type"], finding["claim"]["quote"])
+
+
+def _validate_position_context(value: Any) -> dict[str, Any]:
+    context = _mapping(value, "position_context")
+    _exact_fields(context, POSITION_CONTEXT_FIELDS, "position_context")
+    position_name = _text(context["position_name"], "position_name")
+    if len(position_name) > 200:
+        raise ValueError("position_name is too long")
+    priorities = _list(context["priority_requirements"], "priority_requirements")
+    if len(priorities) > 20:
+        raise ValueError("priority_requirements contains too many items")
+    validated_priorities = []
+    for priority in priorities:
+        normalized = _text(priority, "priority requirement")
+        if len(normalized) > 500:
+            raise ValueError("priority requirement is too long")
+        validated_priorities.append(normalized)
+    return {
+        "position_name": position_name,
+        "priority_requirements": validated_priorities,
+    }
 
 
 def _mapping(value: Any, context: str) -> Mapping[str, Any]:

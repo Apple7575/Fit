@@ -29,7 +29,7 @@ FastAPI의 연동이 배포되지 않았고, 현재 프로젝트의 공개 API�
 - JD 내부 API도 `/jd/internal/...` 아래에서 리소스형 이름만 사용한다.
 - `/jd/internal/jd/analyze`는 `/jd/internal/analyses`로 변경하고 호환 경로를 남기지 않는다.
 - URL에는 버전을 넣지 않는다.
-- `position-analysis-v1.json`, `backend-v1`, `prompt_version`처럼 데이터 계약, 직무 프로필,
+- `position-analysis-v2.json`, `experience-depth-v1`, `prompt_version`처럼 데이터 계약, 분석 루브릭,
   프롬프트 버전은 계속 명시한다.
 
 ## 이유
@@ -49,3 +49,5 @@ FastAPI의 연동이 배포되지 않았고, 현재 프로젝트의 공개 API�
 - [[architecture/agent-api-path-convention]]
 - [[product/jd-api-boundary]]
 - [[docs/superpowers/specs/2026-09-15-position-prompt-agent-design]]
+- [[docs/superpowers/specs/2026-09-15-position-agent-generalization-design]]
+- [[Decisions/product/position-analysis-generalization]]

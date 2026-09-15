@@ -1,5 +1,9 @@
 # 포지션 코칭 canonical-v1 사람 검수 가이드
 
+> 역사 자료: `canonical-v1` 사례와 `evaluation-policy-v1.json`은 병합된 백엔드 전용
+> 계약의 기록이다. 범용 v2 평가기 입력으로 사용하지 않는다. 현재 회귀 검증 후보는
+> `cases-v2/draft`와 `evaluation-policy-v2.json`을 사용한다.
+
 ## 상태와 사용 제한
 
 이 평가셋의 60개 사례는 모두 `DRAFT`다. 자동 검증 통과 여부와 무관하게 공식 지표 계산에 사용할 수 없다. 각 사례를 실제로 읽고 승인한 사람만 해당 사례의 `label_status`를 `HUMAN_APPROVED`로 변경할 수 있다. 이 문서는 사람 검수를 대신하거나 작성자를 사람 검수자로 선언하지 않는다.

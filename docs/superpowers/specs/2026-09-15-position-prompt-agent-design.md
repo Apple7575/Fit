@@ -1,5 +1,8 @@
 # 포지션 프롬프트 에이전트 설계
 
+> 상태: `backend-v1` 초기 구현 기록이다. 범용화 후속 설계는
+> [[docs/superpowers/specs/2026-09-15-position-agent-generalization-design]]에서 대체한다.
+
 > 구현 범위 변경: 현재 브랜치에는 FastAPI 포지션 분석 기능만 포함한다. 이 문서의 Spring
 > 연동 내용은 향후 백엔드 담당자가 검토할 목표 구조이며 구현 완료 상태를 뜻하지 않는다.
 

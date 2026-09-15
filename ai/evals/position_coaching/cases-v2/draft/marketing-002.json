@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "marketing-002", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "마케팅 매니저", "priority_requirements": ["콘텐츠 운영"]},
+  "question": "업무 경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "트렌드에 민감하며 창의적인 마케터가 되겠습니다."}],
+  "expected_findings": [{"claim_type": "EXECUTION", "claim_quote": "트렌드에 민감하며 창의적인 마케터가 되겠습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["SITUATION", "ROLE", "ACTION", "PROCESS", "RESULT"]}],
+  "forbidden_output_substrings": ["합격", "캠페인을 운영"]
+}

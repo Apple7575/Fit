@@ -6,17 +6,17 @@ from typing import Any
 
 from ai.jd_coaching.baseline import call_qwen
 from ai.position_coaching.contracts import (
-    load_position_profile,
-    validate_analysis_output,
+    load_experience_rubric,
     validate_documents,
+    validate_experience_analysis_output,
 )
 from ai.position_coaching.prompt import build_position_messages
 
 
 RESOURCE_ROOT = Path(__file__).parent / "resources"
-PROFILE_PATH = RESOURCE_ROOT / "profiles" / "backend-v1.json"
-SCHEMA_PATH = RESOURCE_ROOT / "schemas" / "position-analysis-v1.json"
-PROMPT_VERSION = "position-depth-v1"
+RUBRIC_PATH = RESOURCE_ROOT / "rubrics" / "experience-depth-v1.json"
+SCHEMA_PATH = RESOURCE_ROOT / "schemas" / "position-analysis-v2.json"
+PROMPT_VERSION = "experience-depth-v1"
 QWEN_TIMEOUT_SECONDS = 25
 
 QwenCaller = Callable[..., dict[str, Any]]
@@ -33,17 +33,23 @@ class PositionAnalysisService:
 
     def analyze(
         self,
-        position_profile_id: str,
+        rubric_id: str,
+        position_context: Mapping[str, Any],
         documents: Sequence[Mapping[str, Any]],
         conversation: Sequence[Mapping[str, Any]],
     ) -> dict[str, Any]:
-        if position_profile_id != "backend-v1":
-            raise ValueError("unsupported position_profile_id")
+        if rubric_id != "experience-depth-v1":
+            raise ValueError("unsupported rubric_id")
 
         validated_documents = validate_documents(documents)
-        profile = load_position_profile(PROFILE_PATH)
+        rubric = load_experience_rubric(RUBRIC_PATH)
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-        messages = build_position_messages(profile, validated_documents, conversation)
+        messages = build_position_messages(
+            rubric,
+            position_context,
+            validated_documents,
+            conversation,
+        )
 
         for attempt in range(2):
             try:
@@ -52,7 +58,7 @@ class PositionAnalysisService:
                     messages,
                     timeout_seconds=QWEN_TIMEOUT_SECONDS,
                     schema=schema,
-                    schema_name="position_analysis_v1",
+                    schema_name="position_analysis_v2",
                 )
                 output = copy.deepcopy(response["output"])
                 output["model_metadata"] = {
@@ -62,7 +68,11 @@ class PositionAnalysisService:
                     "training_dataset": None,
                     "prompt_version": PROMPT_VERSION,
                 }
-                return validate_analysis_output(output, validated_documents, profile)
+                return validate_experience_analysis_output(
+                    output,
+                    validated_documents,
+                    rubric,
+                )
             except (KeyError, TypeError, ValueError) as error:
                 if attempt == 1:
                     raise RuntimeError("position analysis validation failed") from error

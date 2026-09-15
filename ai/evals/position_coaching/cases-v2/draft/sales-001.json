@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "sales-001", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "기업 영업 담당", "priority_requirements": ["고객 조율"]},
+  "question": "협업 경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "계약 일정이 충돌했을 때 고객과 납품팀 사이 조율을 맡아 양측 조건을 표로 정리하고 주간 회의에서 순서를 합의해 납기를 지켰습니다."}],
+  "expected_findings": [{"claim_type": "COLLABORATION", "claim_quote": "계약 일정이 충돌했을 때 고객과 납품팀 사이 조율을 맡아 양측 조건을 표로 정리하고 주간 회의에서 순서를 합의해 납기를 지켰습니다.", "verdict": "SUFFICIENT", "present_elements": ["SITUATION", "ROLE", "ACTION", "PROCESS", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["합격", "매출 증가"]
+}

@@ -14,16 +14,20 @@ DOCUMENTS = [{
     "document_type": "SELF_INTRO",
     "text": "Redis를 활용해 서비스 성능을 개선했습니다.",
 }]
+POSITION_CONTEXT = {
+    "position_name": "마케팅 매니저",
+    "priority_requirements": ["성과 지표 분석"],
+}
 
 
 def valid_output():
     quote = DOCUMENTS[0]["text"]
     return {
         "analysis_status": "COMPLETED",
-        "position_profile": {"id": "backend-v1", "version": 1},
+        "rubric": {"id": "experience-depth-v1", "version": 1},
         "findings": [{
             "finding_id": "position-finding-001",
-            "experience_type": "CACHE_PERFORMANCE",
+            "claim_type": "ACHIEVEMENT",
             "claim": {
                 "quote": quote,
                 "document_id": "essay-1",
@@ -31,7 +35,7 @@ def valid_output():
                 "end_offset": len(quote),
             },
             "present_elements": [{"element": "ACTION", "quote": "Redis를 활용해"}],
-            "missing_elements": ["PROBLEM", "MECHANISM", "VERIFICATION", "RESULT"],
+            "missing_elements": ["SITUATION", "ROLE", "VERIFICATION", "RESULT"],
             "verdict": "PARTIAL",
             "reason": "사용 기술은 확인되지만 적용 방식과 검증 결과가 없습니다.",
             "follow_up_questions": ["어떤 성능 문제가 발생했나요?"],
@@ -62,7 +66,9 @@ class PositionAnalysisServiceTest(unittest.TestCase):
         qwen = FakeQwen([valid_output()])
         service = PositionAnalysisService(config=CONFIG, qwen_caller=qwen)
 
-        result = service.analyze("backend-v1", DOCUMENTS, [])
+        result = service.analyze(
+            "experience-depth-v1", POSITION_CONTEXT, DOCUMENTS, []
+        )
 
         self.assertEqual(result["analysis_status"], "COMPLETED")
         self.assertEqual(result["model_metadata"], {
@@ -70,10 +76,11 @@ class PositionAnalysisServiceTest(unittest.TestCase):
             "base_revision": "deployment-alias-unresolved",
             "adapter": None,
             "training_dataset": None,
-            "prompt_version": "position-depth-v1",
+            "prompt_version": "experience-depth-v1",
         })
+        self.assertEqual(result["rubric"], {"id": "experience-depth-v1", "version": 1})
         self.assertEqual(len(qwen.calls), 1)
-        self.assertEqual(qwen.calls[0]["schema_name"], "position_analysis_v1")
+        self.assertEqual(qwen.calls[0]["schema_name"], "position_analysis_v2")
         self.assertEqual(qwen.calls[0]["timeout_seconds"], 25)
 
     def test_retries_once_when_evidence_does_not_match_source(self):
@@ -82,7 +89,9 @@ class PositionAnalysisServiceTest(unittest.TestCase):
         qwen = FakeQwen([invalid, valid_output()])
         service = PositionAnalysisService(config=CONFIG, qwen_caller=qwen)
 
-        result = service.analyze("backend-v1", DOCUMENTS, [])
+        result = service.analyze(
+            "experience-depth-v1", POSITION_CONTEXT, DOCUMENTS, []
+        )
 
         self.assertEqual(result["analysis_status"], "COMPLETED")
         self.assertEqual(len(qwen.calls), 2)
@@ -95,16 +104,16 @@ class PositionAnalysisServiceTest(unittest.TestCase):
         service = PositionAnalysisService(config=CONFIG, qwen_caller=qwen)
 
         with self.assertRaisesRegex(RuntimeError, "validation failed"):
-            service.analyze("backend-v1", DOCUMENTS, [])
+            service.analyze("experience-depth-v1", POSITION_CONTEXT, DOCUMENTS, [])
 
         self.assertEqual(len(qwen.calls), 2)
 
-    def test_rejects_unsupported_profile_before_calling_model(self):
+    def test_rejects_unsupported_rubric_before_calling_model(self):
         qwen = FakeQwen([valid_output()])
         service = PositionAnalysisService(config=CONFIG, qwen_caller=qwen)
 
-        with self.assertRaisesRegex(ValueError, "unsupported position_profile_id"):
-            service.analyze("frontend-v1", DOCUMENTS, [])
+        with self.assertRaisesRegex(ValueError, "unsupported rubric_id"):
+            service.analyze("backend-v1", POSITION_CONTEXT, DOCUMENTS, [])
 
         self.assertEqual(qwen.calls, [])
 

@@ -46,13 +46,30 @@ class PositionMessageRendererTest(unittest.TestCase):
             "\"동시성 문제를 재현하고 해결했습니다.\" 경험은 필요한 연결고리가 모두 확인됩니다.",
         )
 
-    def test_explains_when_no_technical_claim_exists(self):
+    def test_renders_universal_element_labels(self):
         message = render_position_message({
-            "analysis_status": "NO_TECHNICAL_CLAIM",
+            "analysis_status": "COMPLETED",
+            "findings": [{
+                "claim": {"quote": "교육 프로그램을 운영했습니다."},
+                "verdict": "CLAIM_ONLY",
+                "missing_elements": ["SITUATION", "PROCESS", "LEARNING"],
+                "reason": "무시할 모델 문장",
+                "follow_up_questions": [],
+            }],
+        })
+
+        self.assertIn("상황", message)
+        self.assertIn("수행 과정", message)
+        self.assertIn("학습", message)
+
+    def test_explains_when_no_experience_claim_exists(self):
+        message = render_position_message({
+            "analysis_status": "NO_EXPERIENCE_CLAIM",
             "findings": [],
         })
 
-        self.assertIn("기술 경험을 찾지 못했습니다", message)
+        self.assertIn("구체화할 경험", message)
+        self.assertNotIn("기술 경험", message)
         self.assertIn("직접 수행한 행동", message)
 
 
