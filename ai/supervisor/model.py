@@ -137,4 +137,3 @@ class QwenSupervisorModel:
         if not isinstance(message, str) or not message.strip():
             raise ValueError("aggregate message must not be blank")
         return message.strip()
-

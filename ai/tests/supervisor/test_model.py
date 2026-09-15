@@ -40,4 +40,3 @@ class QwenSupervisorModelTest(unittest.TestCase):
         self.assertEqual(message, "JD 기준으로 보완이 필요합니다.")
         self.assertEqual(qwen.calls[0]["schema_name"], "supervisor_plan_v1")
         self.assertEqual(qwen.calls[1]["schema_name"], "supervisor_aggregate_v1")
-
