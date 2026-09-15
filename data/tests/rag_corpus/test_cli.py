@@ -90,6 +90,27 @@ def result(corp_code):
 
 
 class BuildRagCorpusCliTest(unittest.TestCase):
+    def test_run_merges_selected_external_provider_records_into_each_company(self):
+        factory = ConnectionFactory([FIRST])
+        provider_record = object()
+
+        class Provider:
+            def records(self, corp_code):
+                self.corp_code = corp_code
+                return [provider_record]
+
+            def inventory(self):
+                return {"documents": 1}
+
+        provider = Provider()
+        with patch.object(build_rag_corpus, "load_company_source_rows", side_effect=lambda _, code: rows(code)), \
+             patch.object(build_rag_corpus, "build_company_records", side_effect=lambda source, *, external_records: result(source.profile["corp_code"])) as build:
+            summary = build_rag_corpus.run(factory, [FIRST], dry_run=True, external_providers=[provider])
+
+        self.assertEqual(provider.corp_code, FIRST)
+        self.assertEqual(build.call_args.kwargs["external_records"], [provider_record])
+        self.assertEqual(summary["external_sources"], [{"provider": "Provider", "inventory": {"documents": 1}}])
+
     # 이 테스트가 막는 결함: 전체 재구축에서 DB 반환 순서대로 처리해 결과가 비결정적이 되는 경우.
     def test_run_selects_every_company_in_sorted_order(self):
         factory = ConnectionFactory([SECOND, FIRST])

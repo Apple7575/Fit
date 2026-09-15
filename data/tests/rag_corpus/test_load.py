@@ -10,9 +10,9 @@ CORP_CODE = "00126380"
 
 
 def record(corp_code=CORP_CODE, source_identity="company:00126380", *, evidence_id="company-1",
-           content_hash="0" * 64):
+           content_hash="0" * 64, source_type="COMPANY_PROFILE"):
     return EvidenceRecord(
-        evidence_id=evidence_id, corp_code=corp_code, source_type="COMPANY_PROFILE",
+        evidence_id=evidence_id, corp_code=corp_code, source_type=source_type,
         source_identity=source_identity, title="삼성전자 기업 기본 정보", content="본문",
         reference_period=None, published_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
         source_url=None, quality="PRIMARY", metadata={}, content_hash=content_hash,
@@ -54,6 +54,24 @@ class FakeConnection:
 
 
 class BuildCompanyRecordsTest(unittest.TestCase):
+    def test_adds_same_company_external_evidence_and_rejects_cross_company_input(self):
+        rows = CompanySourceRows(
+            profile={"corp_code": CORP_CODE, "corp_name": "삼성전자", "dart_modify_date": "20260913"},
+            metrics=[], texts=[], segments=[], activities=[],
+        )
+        external = record(
+            source_identity="dart_business_report:00126380:20250318000001:1:text:0",
+            evidence_id="dart-business-report-1",
+            source_type="DART_BUSINESS_REPORT",
+        )
+
+        result = build_company_records(rows, external_records=[external])
+
+        self.assertEqual(result.input_counts["external:DART_BUSINESS_REPORT"], 1)
+        self.assertIn(external, result.records)
+        with self.assertRaisesRegex(ValueError, "다른 기업"):
+            build_company_records(rows, external_records=[record("00164779", "dart:other")])
+
     def test_builds_sorted_records_and_counts_generated_rejected_and_blank_inputs(self):
         rows = CompanySourceRows(
             profile={"corp_code": CORP_CODE, "corp_name": "삼성전자", "dart_modify_date": "20260913"},

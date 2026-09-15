@@ -15,7 +15,9 @@ class BuildResult:
     excluded_counts: dict[str, int]
 
 
-def build_company_records(rows: CompanySourceRows) -> BuildResult:
+def build_company_records(
+    rows: CompanySourceRows, *, external_records: Iterable[EvidenceRecord] = ()
+) -> BuildResult:
     """정본 행을 RAG 레코드로 바꾸고 제외 사유를 함께 남긴다."""
     input_counts = {
         "profile": 1 if rows.profile is not None else 0,
@@ -61,6 +63,17 @@ def build_company_records(rows: CompanySourceRows) -> BuildResult:
             _exclude(excluded_counts, "blank_content")
         else:
             records.append(activity_record(row))
+
+    company_code = str((rows.profile or {}).get("corp_code") or "").strip()
+    for item in external_records:
+        key = f"external:{item.source_type}"
+        input_counts[key] = input_counts.get(key, 0) + 1
+        if item.corp_code != company_code:
+            raise ValueError("다른 기업의 외부 근거는 함께 구축할 수 없습니다")
+        if _blank(item.content):
+            _exclude(excluded_counts, "blank_external_content")
+            continue
+        records.append(item)
 
     records, duplicate_count = _deduplicate_source_identities(records)
     if duplicate_count:

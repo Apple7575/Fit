@@ -6,21 +6,31 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 import json
 import sys
 import time
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, ContextManager, Iterable
+from typing import Callable, ContextManager, Iterable, Protocol
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pipeline.rag_corpus.load import BuildResult, build_company_records, replace_company  # noqa: E402
 from pipeline.rag_corpus.source import load_company_source_rows  # noqa: E402
+from pipeline.rag_corpus.models import EvidenceRecord  # noqa: E402
+from pipeline.raw_sources.business_report import BusinessReportSource  # noqa: E402
+from pipeline.raw_sources.dart_archive import DartArchive  # noqa: E402
 
 
 ConnectionFactory = Callable[[], ContextManager[object]]
+
+
+class ExternalEvidenceProvider(Protocol):
+    def records(self, corp_code: str) -> list[EvidenceRecord]: ...
+
+    def inventory(self) -> dict[str, object]: ...
 
 
 def connect():
@@ -79,31 +89,47 @@ def resolve_company_codes(conn_factory: ConnectionFactory, corp_codes: list[str]
     return selected
 
 
-def run(conn_factory: ConnectionFactory, corp_codes: list[str] | None, *, dry_run: bool) -> dict[str, object]:
+def run(
+    conn_factory: ConnectionFactory, corp_codes: list[str] | None, *, dry_run: bool,
+    external_providers: Iterable[ExternalEvidenceProvider] = (),
+) -> dict[str, object]:
     """기업별 독립 트랜잭션으로 코퍼스를 교체하고 요약값을 반환한다."""
     selected = resolve_company_codes(conn_factory, corp_codes)
+    providers = list(external_providers)
     summary = BuildSummary()
     for corp_code in selected:
         with conn_factory() as conn:
             rows = load_company_source_rows(conn, corp_code)
-            result = build_company_records(rows)
+            external = [record for provider in providers for record in provider.records(corp_code)]
+            result = build_company_records(rows, external_records=external) if providers else build_company_records(rows)
             if not dry_run:
                 replace_company(conn, corp_code, result.records)
             summary.add(corp_code, result)
-    return summary.as_dict()
+    result = summary.as_dict()
+    result["external_sources"] = [
+        {"provider": provider.__class__.__name__, "inventory": provider.inventory()}
+        for provider in providers
+    ]
+    return result
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="기업별 RAG 코퍼스 재구축")
     parser.add_argument("--corp-code", action="append", help="재구축할 8자리 기업 코드 (여러 번 지정 가능)")
     parser.add_argument("--dry-run", action="store_true", help="삭제·삽입 없이 입력과 변환 결과만 집계")
+    parser.add_argument("--dart-archive", type=Path, help="사업보고서 XML과 manifest가 든 ZIP")
     return parser.parse_args(argv)
 
 
 def main() -> int:
     args = parse_args()
     try:
-        summary = run(connect, args.corp_code, dry_run=args.dry_run)
+        with ExitStack() as stack:
+            providers: list[ExternalEvidenceProvider] = []
+            if args.dart_archive:
+                archive = stack.enter_context(DartArchive(args.dart_archive))
+                providers.append(BusinessReportSource(archive))
+            summary = run(connect, args.corp_code, dry_run=args.dry_run, external_providers=providers)
     except Exception as error:
         print(json.dumps({"status": "failed", "error": str(error)}, ensure_ascii=False))
         return 1

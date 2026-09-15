@@ -1,168 +1,188 @@
-"""사업보고서 XML 한 건에 대한 읽기 계층.
-
-`pipeline/normalize/rnd.py` 가 표만 필요해서 만든 `collect_tables` 를 확대한 것이다.
-company_text 는 표가 아니라 **문단**에서 나오므로 둘을 같은 순서로 들고 있어야 한다.
-
-rnd.py 와 나눠 둔 이유
----------------------
-rnd.py 는 검증까지 끝난 코드다(50건 3경로 교차검증). 거기에 문단 수집을 끼워 넣으면
-회귀 기준선(tests/fixtures/normalize)을 다시 만들어야 한다. XML 로딩·격자 변환처럼
-검증된 부분은 **가져다 쓰고** 새로 필요한 것만 여기서 더한다.
-
-한 문서가 8MB · 표 2,000개다. 파싱은 문서당 한 번만 하고 결과를 재사용한다.
-"""
+"""사업보고서 XML 한 건을 본문과 표의 원문 계보로 읽는다."""
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..patterns import Patterns, patterns as default_patterns
-from ..normalize.rnd import load_xml, matrix, parse_xml_bytes
+from ..normalize.rnd import load_xml, parse_xml_bytes, matrix
 from ..normalize.text import squash
+from ..patterns import Patterns, patterns as default_patterns
 
-# 본문 문단으로 볼 태그. rnd.collect_tables 의 캡션 수집과 같은 집합이다.
+
 TEXT_TAGS = ("P", "SPAN", "TU")
-
-# '단위' 표기 바로 뒤 구간만 잘라낸다. 괄호·대괄호가 닫히거나 20자를 넘으면 끊는다.
 _UNIT_SCOPE = re.compile(r"단위\s*[)\]]?\s*[::]?\s*([^)\]|]{0,20})")
 
 
+def _is_in_table(element) -> bool:
+    parent = element.getparent()
+    while parent is not None:
+        if isinstance(parent.tag, str) and parent.tag.upper() == "TABLE":
+            return True
+        parent = parent.getparent()
+    return False
+
+
 def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
-    """'단위' 표기 **바로 뒤**에서만 단위를 찾는다.
-
-    문자열 전체에서 찾으면 본문 서술에 걸린다. 삼성전자 2024 시설투자표의 캡션이
-    "(시설투자 현황) 2024년 ... 53.6조원의 시설투자가 이루어졌습니다" 이고 표의
-    단위는 '억원' 인데, 전체 검색은 앞의 '조원' 을 먼저 집어 값이 1만 배가 됐다.
-
-    units 는 긴 표기가 앞이어야 한다 ('십억원' 이 '억원' 보다 먼저).
-    """
-    for m in _UNIT_SCOPE.finditer(blob):
-        scope = m.group(1)
-        for name, mult in units:
-            if name in scope:
-                return name, mult
+    for match in _UNIT_SCOPE.finditer(blob):
+        for name, multiplier in units:
+            if name in match.group(1):
+                return name, multiplier
     return None
 
 
 @dataclass
 class Table:
-    idx: int                       # 문서 전체 표 순번. 증거로 남긴다
-    title: str                     # 직전 TITLE (= 섹션 제목)
-    caption: str                   # 직전 문단 3개
-    m: list[list[str]]             # ROWSPAN/COLSPAN 을 펼친 격자
+    idx: int
+    title: str
+    caption: str
+    m: list[list[str]]
+    excluded_reason: str | None = None
 
     @property
     def rows(self) -> int:
         return len(self.m)
 
     def head(self, n: int = 3) -> str:
-        return " ".join(" ".join(r) for r in self.m[:n])
+        return " ".join(" ".join(row) for row in self.m[:n])
+
+
+@dataclass(frozen=True)
+class ParagraphEntry:
+    index: int
+    text: str
 
 
 @dataclass
 class Section:
-    """TITLE 하나와 그 아래 본문·표.
-
-    사업보고서의 TITLE 은 계층이 아니라 평면이다. '2. 주요 제품 및 서비스' 다음
-    TITLE 이 나올 때까지가 그 섹션이며, 같은 제목이 여러 번 나올 수 있다
-    (연결/별도 주석이 같은 이름을 쓴다). 그래서 제목으로 찾을 때는 **전부** 본다.
-    """
     title: str
     paragraphs: list[str] = field(default_factory=list)
+    paragraph_entries: list[ParagraphEntry] = field(default_factory=list)
     tables: list[Table] = field(default_factory=list)
 
     def text(self, limit: int | None = None) -> str:
-        t = "\n".join(self.paragraphs)
-        return t[:limit] if limit else t
+        value = "\n".join(self.paragraphs)
+        return value[:limit] if limit else value
+
+
+def _positive_span(value: str | None) -> int:
+    try:
+        return max(1, int(float(value or "1")))
+    except (ValueError, OverflowError):
+        return 1
+
+
+def _estimated_cells(table) -> int:
+    total = 0
+    for row in table.iter():
+        if not isinstance(row.tag, str) or row.tag.upper() != "TR":
+            continue
+        for cell in row:
+            if isinstance(cell.tag, str) and cell.tag.upper() in {"TD", "TH"}:
+                total += _positive_span(cell.get("ROWSPAN") or cell.get("rowspan")) * _positive_span(
+                    cell.get("COLSPAN") or cell.get("colspan")
+                )
+    return total
 
 
 class Document:
-    """사업보고서 한 건. 생성 시점에 한 번 훑고 그 뒤로는 메모리에서 본다."""
+    """사업보고서 하나를 한 번 순회해 섹션, 문단, 표를 만든다."""
 
-    def __init__(self, source: Path | str | bytes, p: Patterns | None = None,
-                 rcept_no: str | None = None):
-        """파일 경로 또는 XML 바이트를 받는다.
-
-        바이트를 받는 것은 Spark 태스크가 HDFS 에서 읽은 내용을 임시 파일로
-        떨구지 않고 그대로 넘기기 위해서다 (S15P21A504-73 0차). 어느 쪽이든
-        parse_xml_bytes 를 지나므로 로컬과 분산의 해석이 갈리지 않는다.
-        """
-        if isinstance(source, (bytes, bytearray)):
-            self.path = None
-            self.rcept_no = rcept_no or ""
-            root, self.encoding = parse_xml_bytes(bytes(source), rcept_no or "<bytes>")
-        else:
-            self.path = Path(source)
-            self.rcept_no = rcept_no or self.path.stem.replace("document_", "")
-            root, self.encoding = load_xml(self.path)
+    def __init__(
+        self, path: Path | str, p: Patterns | None = None, max_table_cells: int = 200_000
+    ):
+        self.path = Path(path)
+        self.rcept_no = self.path.stem.replace("document_", "")
         self.p = p or default_patterns()
+        self.max_table_cells = max_table_cells
+        self._excluded_table_counts: Counter[str] = Counter()
+        root, self.encoding = load_xml(self.path)
         self.sections: list[Section] = []
         self.tables: list[Table] = []
         self._walk(root)
 
+    @classmethod
+    def from_bytes(
+        cls, payload: bytes, *, rcept_no: str, p: Patterns | None = None,
+        max_table_cells: int = 200_000,
+    ) -> "Document":
+        instance = cls.__new__(cls)
+        instance.path = None
+        instance.rcept_no = rcept_no
+        instance.p = p or default_patterns()
+        instance.max_table_cells = max_table_cells
+        instance._excluded_table_counts = Counter()
+        root, instance.encoding = parse_xml_bytes(payload, f"document_{rcept_no}.xml")
+        instance.sections = []
+        instance.tables = []
+        instance._walk(root)
+        return instance
+
     def _walk(self, root) -> None:
-        """문서를 한 번만 훑어 섹션·표를 동시에 만든다.
-
-        표의 caption 은 rnd.collect_tables 와 같은 규칙(직전 문단 3개)을 유지한다.
-        R&D 파서가 단위를 그 문자열에서 찾고 있어 규칙이 갈리면 안 된다.
-        """
-        cur = Section(title="")
-        self.sections.append(cur)
+        current = Section(title="")
+        self.sections.append(current)
         recent: list[str] = []
-        idx = 0
-        for el in root.iter():
-            tag = el.tag.upper() if isinstance(el.tag, str) else ""
+        paragraph_index = 0
+        table_index = 0
+        for element in root.iter():
+            tag = element.tag.upper() if isinstance(element.tag, str) else ""
             if tag == "TITLE":
-                cur = Section(title=squash("".join(el.itertext())))
-                self.sections.append(cur)
+                current = Section(title=squash("".join(element.itertext())))
+                self.sections.append(current)
                 recent = []
+                paragraph_index = 0
             elif tag in TEXT_TAGS:
-                t = squash("".join(el.itertext()))
-                if t:
-                    cur.paragraphs.append(t)
-                    recent = (recent + [t])[-4:]
+                if _is_in_table(element):
+                    continue
+                text = squash("".join(element.itertext()))
+                current.paragraph_entries.append(ParagraphEntry(paragraph_index, text))
+                paragraph_index += 1
+                if text:
+                    current.paragraphs.append(text)
+                    recent = (recent + [text])[-4:]
             elif tag == "TABLE":
-                tb = Table(idx=idx, title=cur.title,
-                           caption=" | ".join(recent[-3:]), m=matrix(el, self.p))
-                self.tables.append(tb)
-                cur.tables.append(tb)
-                idx += 1
+                excluded_reason = None
+                if _estimated_cells(element) > self.max_table_cells:
+                    excluded_reason = "table_too_large"
+                    self._excluded_table_counts[excluded_reason] += 1
+                    table_matrix: list[list[str]] = []
+                else:
+                    table_matrix = matrix(element, self.p)
+                table = Table(
+                    idx=table_index,
+                    title=current.title,
+                    caption=" | ".join(recent[-3:]),
+                    m=table_matrix,
+                    excluded_reason=excluded_reason,
+                )
+                self.tables.append(table)
+                current.tables.append(table)
+                table_index += 1
                 recent = []
 
-    # ------------------------------------------------------------------ 조회
+    @property
+    def excluded_table_counts(self) -> dict[str, int]:
+        return dict(self._excluded_table_counts)
 
     def sections_matching(self, rx) -> list[Section]:
-        """제목이 정규식에 걸리는 섹션 전부. 같은 제목이 여러 번 나올 수 있다."""
-        return [s for s in self.sections if s.title and rx.search(s.title)]
+        return [section for section in self.sections if section.title and rx.search(section.title)]
 
     def tables_matching(self, rx, *, in_title=None) -> list[Table]:
-        """제목·캡션·머리 3행 중 어디든 걸리는 표.
-
-        머리 행까지 보는 이유는 캡션이 비어 있는 표가 흔하기 때문이다 —
-        삼성전자 부문별 매출표(idx=65)가 캡션 없이 헤더에 '부 문' 만 있다.
-        """
-        out = []
-        for t in self.tables:
-            if in_title is not None and not in_title.search(t.title):
+        result = []
+        for table in self.tables:
+            if in_title is not None and not in_title.search(table.title):
                 continue
-            if rx.search(t.title) or rx.search(t.caption) or rx.search(t.head()):
-                out.append(t)
-        return out
+            if rx.search(table.title) or rx.search(table.caption) or rx.search(table.head()):
+                result.append(table)
+        return result
 
     def unit(self, table: Table) -> tuple[str | None, int | None, str | None]:
-        """표의 금액 단위 → (표기, 원 환산 배수, 어디서 찾았나).
-
-        단위 표기는 표 앞 문장이 아니라 **직전의 1행 1열 표**에 있다 (rnd.py 실측:
-        50건 중 44건). 그래서 자기 표부터 직전 N개까지 거슬러 오른다. 규칙과 배수
-        목록을 rnd 쪽 patterns 에서 그대로 가져와 두 파서가 갈리지 않게 한다.
-        """
-        rp = self.p.rnd
-        i = table.idx
-        for k in range(i, max(-1, i - rp.unit_lookback_tables - 1), -1):
-            t = self.tables[k]
-            found = unit_from_blob(t.caption + " " + t.head(3), rp.units)
+        rules = self.p.rnd
+        for index in range(table.idx, max(-1, table.idx - rules.unit_lookback_tables - 1), -1):
+            candidate = self.tables[index]
+            found = unit_from_blob(candidate.caption + " " + candidate.head(3), rules.units)
             if found:
-                name, mult = found
-                return name, mult, "자기표" if k == i else f"직전표-{i - k}"
+                name, multiplier = found
+                return name, multiplier, "자기표" if index == table.idx else f"직전표-{table.idx - index}"
         return None, None, None
