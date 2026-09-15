@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { SiteHeader } from '../../components/layout/SiteHeader';
 import { searchCompanies } from '../../features/company-search/api';
 import { CompanySearchForm } from '../../features/company-search/CompanySearchForm';
 import {
@@ -9,7 +10,6 @@ import {
 import type { Company } from '../../types/company';
 import { FinalSearchScene } from './FinalSearchScene';
 import { HeroScene } from './HeroScene';
-import { LandingHeader } from './LandingHeader';
 import { ProblemStory } from './ProblemStory';
 import { ProductStory } from './ProductStory';
 import { TakeawayScene } from './TakeawayScene';
@@ -74,7 +74,7 @@ export function HomePage() {
 
   return (
     <div className="landing bg-slate-50">
-      <LandingHeader onSearchClick={focusSearch} />
+      <SiteHeader showSearch={false} />
 
       <main>
         <HeroScene
