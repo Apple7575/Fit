@@ -31,9 +31,10 @@ MIGRATION_DIR = (
 # 사전(data_fields.csv)을 갱신하라는 신호가 된다.
 _SIZED_TYPES = ("VARCHAR", "NUMERIC", "CHAR", "DECIMAL")
 _PLAIN_TYPES = (
-    "BIGINT", "INTEGER", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
+    "BIGINT", "INTEGER", "INT", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
     "JSONB", "JSON", "DATE", "TIMESTAMPTZ", "TIMESTAMP", "UUID",
 )
+_TYPE_ALIASES = {"INT": "INTEGER"}
 _CONSTRAINT_STARTS = ("CONSTRAINT", "PRIMARY KEY", "UNIQUE", "CHECK", "FOREIGN KEY", "EXCLUDE")
 
 
@@ -184,7 +185,7 @@ def _parse_type(definition: str) -> tuple[str, str]:
             return name + size, text[m.end():].strip()
     for name in _PLAIN_TYPES:
         if upper.startswith(name):
-            return name, text[len(name):].strip()
+            return _TYPE_ALIASES.get(name, name), text[len(name):].strip()
     raise ValueError(f"모르는 컬럼 타입: {definition!r}")
 
 
