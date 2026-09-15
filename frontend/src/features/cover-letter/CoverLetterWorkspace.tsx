@@ -337,8 +337,9 @@ function JobPostingBar({
     try {
       const result = await parseJobPosting(target);
       onParsed(result.companyName, result.positions);
+      // 잘 됐다는 말은 하지 않는다. 회사·직무 칸이 채워진 것으로 이미 보인다.
       setStatus('done');
-      setMessage(summarize(result.companyName, result.positions));
+      setMessage('');
     } catch (error) {
       setStatus('error');
       setMessage(
@@ -383,11 +384,7 @@ function JobPostingBar({
       <p
         className={[
           'mt-2 text-[12.5px]',
-          status === 'error'
-            ? 'text-amber-700'
-            : status === 'done'
-              ? 'text-emerald-700'
-              : 'text-slate-400',
+          status === 'error' ? 'text-amber-700' : 'text-slate-400',
         ].join(' ')}
         role={status === 'error' ? 'alert' : 'status'}
       >
@@ -395,17 +392,6 @@ function JobPostingBar({
       </p>
     </div>
   );
-}
-
-function summarize(companyName: string | null, positions: string[]): string {
-  const company = companyName ?? '회사명 미확인';
-  if (positions.length > 1) {
-    return `${company} · 직무 ${positions.length}개를 찾았어요. 아래에서 골라 주세요.`;
-  }
-  if (positions.length === 1) {
-    return `${company} · ${positions[0]}(으)로 채웠어요.`;
-  }
-  return `${company} · 직무는 찾지 못했어요. 직접 입력해 주세요.`;
 }
 
 /** 목록에 없는 직무를 쓰겠다는 뜻. 실제 직무명과 겹치지 않게 빈 값 쪽에 둔다. */
