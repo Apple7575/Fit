@@ -1758,7 +1758,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00118026,2021,main_business,0,"당사와 종속회사는 원양어업, 수산물 가공 및 판매, 물류업 등을 영위하고 있습니다. 수산사업부문에서는 참치 등 수산물을 어획 및 판매하고, 유통사업부문에서는 수산물 가공 및 판매를, 물류사업부문에서는 냉장보관 및 3자 물류사업을 운영하고 있습니다.",2026-09-09T01:11:05+00:00
 00118026,2021,main_product,0,참치원어 외,
 00118026,2021,main_product,1,참치횟감,
-00118026,2021,main_product,2,캔 외,
+00118026,2021,main_product,2,캔외,
 00118026,2021,main_product,3,보관,
 00118026,2021,main_product,4,배송,
 00118026,2021,main_product,5,임대,
@@ -2650,9 +2650,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00124540,2021,main_product,4,상가,
 00124540,2021,main_product,5,공공공사,
 00124540,2021,main_product,6,석유화학,
-00124540,2021,main_product,7,발 전,
+00124540,2021,main_product,7,발전,
 00124540,2021,main_product,8,그 외 플랜트 부문 매출,
-00124540,2021,main_product,9,신 사 업,
+00124540,2021,main_product,9,신사업,
 00124540,2021,main_product,10,기타 매출,
 00124540,2022,business_keyword,0,토목,2026-09-09T01:18:33+00:00
 00124540,2022,business_keyword,1,주택건축,2026-09-09T01:18:33+00:00
@@ -4356,7 +4356,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00145880,2021,business_keyword,7,자동차부품,2026-09-09T00:46:13+00:00
 00145880,2021,main_business,0,"당사는 전기로와 고로 제강을 통해 철근, H형강, 강관, 자동차부품, 열연, 냉연코일 및 후판 등을 생산하여 건설, 자동차 및 조선산업 등에 판매하고 있습니다. 또한, 고로 제강을 통해 판재류 수급 개선 및 철강산업의 발전에 기여하고 있습니다.",2026-09-09T00:46:13+00:00
 00145880,2021,main_product,0,봉형강,
-00145880,2021,main_product,1,판 재,
+00145880,2021,main_product,1,판재,
 00145880,2021,main_product,2,산업용,
 00145880,2021,main_product,3,조선용,
 00145880,2021,main_product,4,건설기계,
@@ -4592,7 +4592,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00148364,2025,main_product,2,사료 외,
 00148364,2025,main_product,3,병아리,
 00148364,2025,main_product,4,생물자산,
-00148364,2025,main_product,5,성 계 외,
+00148364,2025,main_product,5,성계외,
 00148364,2025,rd_field,0,양돈 Modeling을 통한 최적사료 설계기술,2026-09-09T01:04:03+00:00
 00148364,2025,rd_field,1,축우 고섬유소성 프로그램,2026-09-09T01:04:03+00:00
 00148364,2025,rd_field,2,MS공법,2026-09-09T01:04:03+00:00
@@ -5203,7 +5203,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2021,business_keyword,4,전력설비,2026-09-09T00:23:55+00:00
 00159193,2021,business_keyword,5,원자력발전,2026-09-09T00:23:55+00:00
 00159193,2021,main_business,0,"당사는 6개의 발전회사와 민간발전회사, 구역전기사업자가 생산한 전력을 전력거래소에서 구입하여 일반 고객에게 판매하고 있습니다. 구역전기사업자 판매지역을 제외하고 국내 전역에 소비되는 전력량의 대부분을 판매하고 있습니다.",2026-09-09T00:23:55+00:00
-00159193,2021,main_product,0,전 기,
+00159193,2021,main_product,0,전기,
 00159193,2021,main_product,1,4.7,
 00159193,2021,main_product,2,전 기전력설비원전연료ICT해외수익,
 00159193,2021,main_product,3,차감 : 중단사업 매출,
@@ -5225,7 +5225,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2022,business_keyword,6,전력ICT서비스,2026-09-09T00:24:15+00:00
 00159193,2022,business_keyword,7,해외전력사업,2026-09-09T00:24:15+00:00
 00159193,2022,main_business,0,"당사는 6개의 발전회사와 민간발전회사, 구역전기사업자가 생산한 전력을 전력거래소에서 구입하여 일반 고객에게 판매하고 있으며, 네 개의 사업부문으로 구성되어 운영되고 있습니다.",2026-09-09T00:24:15+00:00
-00159193,2022,main_product,0,전 기,
+00159193,2022,main_product,0,전기,
 00159193,2022,main_product,1,5.4,
 00159193,2022,main_product,2,전 기전력설비원전연료ICT해외수익,
 00159193,2022,main_product,3,차감 : 중단사업 매출,
@@ -5247,7 +5247,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2023,business_keyword,6,원자력연료가공,2026-09-09T00:24:24+00:00
 00159193,2023,business_keyword,7,해외전력사업,2026-09-09T00:24:24+00:00
 00159193,2023,main_business,0,"당사는 발전자회사와 민간발전회사, 구역전기사업자가 생산한 전력을 전력거래소에서 구입하여 일반 고객에게 판매하고 있으며, 네 개의 사업부문으로 구성되어 운영되고 있다.",2026-09-09T00:24:24+00:00
-00159193,2023,main_product,0,전 기,
+00159193,2023,main_product,0,전기,
 00159193,2023,main_product,1,4.1,
 00159193,2023,main_product,2,전 기전력설비원전연료ICT해외수익,
 00159193,2023,main_product,3,차감 : 중단사업 매출,
@@ -5269,7 +5269,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2024,business_keyword,6,원자력연료가공,2026-09-09T00:24:39+00:00
 00159193,2024,business_keyword,7,해외전력사업,2026-09-09T00:24:39+00:00
 00159193,2024,main_business,0,"당사는 발전자회사와 민간발전회사, 구역전기사업자가 생산한 전력을 전력거래소에서 구입하여 일반 고객에게 판매하고 있으며, 네 개의 사업부문(전기판매, 원자력발전, 화력발전, 기타사업)으로 구성되어 운영되고 있다.",2026-09-09T00:24:39+00:00
-00159193,2024,main_product,0,전 기,
+00159193,2024,main_product,0,전기,
 00159193,2024,main_product,1,3.7,
 00159193,2024,main_product,2,전 기전력설비원전연료ICT해외수익,
 00159193,2024,main_product,3,차감 : 중단사업 매출,
@@ -5291,7 +5291,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00159193,2025,business_keyword,6,전력ICT서비스,2026-09-09T00:24:54+00:00
 00159193,2025,business_keyword,7,해외전력사업,2026-09-09T00:24:54+00:00
 00159193,2025,main_business,0,"당사는 발전자회사와 민간발전회사, 구역전기사업자가 생산한 전력을 전력거래소에서 구입하여 일반 고객에게 판매하고 있습니다. 주요 사업은 전기판매, 원자력발전, 화력발전, 기타사업(발전소설계, 전력설비정비, 원자력연료가공, 전력ICT서비스, 해외전력사업 등)으로 구성되어 있습니다.",2026-09-09T00:24:54+00:00
-00159193,2025,main_product,0,전 기,
+00159193,2025,main_product,0,전기,
 00159193,2025,main_product,1,3.4,
 00159193,2025,main_product,2,전 기전력설비원전연료ICT해외수익,
 00159193,2025,main_product,3,차감 : 중단사업 매출,
@@ -6990,8 +6990,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00165583,2021,business_keyword,5,도시가스,2026-09-09T01:09:40+00:00
 00165583,2021,main_business,0,당사는 LPG 유통회사로서 LPG만을 단일 상품으로 하여 외국으로부터 LPG를 구매 후 수출 또는 내수를 통해 판매하고 있습니다. LPG는 Liquefied Petroleum Gas의 약칭으로 액화 석유 가스라고 합니다.,2026-09-09T01:09:40+00:00
 00165583,2021,main_product,0,LPG,
-00165583,2021,main_product,1,매 출,
-00165583,2021,main_product,2,기타 매출,
+00165583,2021,main_product,1,기타 매출,
 00165583,2021,rd_field,0,LPDi 엔진,2026-09-09T01:09:40+00:00
 00165583,2021,rd_field,1,디젤-LPG 혼소차량,2026-09-09T01:09:40+00:00
 00165583,2021,rd_field,2,수소-LPG 연소,2026-09-09T01:09:40+00:00
@@ -7010,8 +7009,8 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00165583,2022,business_keyword,7,저장탱크,2026-09-09T01:09:45+00:00
 00165583,2022,main_business,0,"당사는 LPG 유통회사로서 LPG를 주 상품으로 하여 외국으로부터 LPG를 구매 후 수출 또는 내수를 통해 판매하고 있습니다. 판매는 수출 판매와 내수 판매로 나뉘며, 내수 판매는 민수용과 석화용으로 구분됩니다.",2026-09-09T01:09:45+00:00
 00165583,2022,main_product,0,LPG,
-00165583,2022,main_product,1,국 내,
-00165583,2022,main_product,2,수 소,
+00165583,2022,main_product,1,국내,
+00165583,2022,main_product,2,수소,
 00165583,2023,business_keyword,0,LPG,2026-09-09T01:09:53+00:00
 00165583,2023,business_keyword,1,수출,2026-09-09T01:09:53+00:00
 00165583,2023,business_keyword,2,내수,2026-09-09T01:09:53+00:00
@@ -7022,9 +7021,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00165583,2023,business_keyword,7,Paper Trading,2026-09-09T01:09:53+00:00
 00165583,2023,main_business,0,"당사는 LPG 유통회사로서 LPG를 주 상품으로 하여 외국으로부터 LPG를 구매 후 수출 또는 내수를 통해 판매하고 있습니다. LPG의 수출입, 저장, 운송, 판매 및 부동산 임대업 등을 영위하고 있습니다.",2026-09-09T01:09:53+00:00
 00165583,2023,main_product,0,LPG,
-00165583,2023,main_product,1,매 출,
-00165583,2023,main_product,2,수 소,
-00165583,2023,main_product,3,기 타,
+00165583,2023,main_product,1,수소,
 00165583,2023,rd_field,0,LPDi 엔진,2026-09-09T01:09:53+00:00
 00165583,2023,rd_field,1,디젤-LPG 혼소차량 개조기술,2026-09-09T01:09:53+00:00
 00165583,2023,rd_field,2,수소-LPG 연소,2026-09-09T01:09:53+00:00
@@ -7042,9 +7039,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00165583,2024,business_keyword,6,글로벌 네트워크,2026-09-09T01:10:04+00:00
 00165583,2024,main_business,0,"회사는 액화 석유 가스(LPG) 유통회사로서 LPG의 수출입, 저장, 운송, 판매 및 부동산 임대업 등을 영위하고 있습니다. 국내·외 주요 거점별로 10개 판매거점을 구축하여 글로벌 시장 공략을 위한 네트워크를 확보하고 있습니다.",2026-09-09T01:10:04+00:00
 00165583,2024,main_product,0,LPG,
-00165583,2024,main_product,1,매 출,
-00165583,2024,main_product,2,수 소,
-00165583,2024,main_product,3,기 타,
+00165583,2024,main_product,1,수소,
 00165583,2024,rd_field,0,LPDi 엔진,2026-09-09T01:10:04+00:00
 00165583,2024,rd_field,1,디젤-LPG 혼소차량 개조기술,2026-09-09T01:10:04+00:00
 00165583,2024,rd_field,2,수소-LPG 연소,2026-09-09T01:10:04+00:00
@@ -7064,9 +7059,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00165583,2025,business_keyword,7,금융상품,2026-09-09T01:10:15+00:00
 00165583,2025,main_business,0,"이 회사는 액화 석유 가스(LPG) 유통회사로서 LPG의 수출입, 저장, 운송, 판매 및 부동산 임대업 등을 영위하고 있습니다. 국내·외 주요 거점별로 10개 판매거점을 구축하여 글로벌 시장 공략을 위한 네트워크를 확보하고 있습니다.",2026-09-09T01:10:15+00:00
 00165583,2025,main_product,0,LPG,
-00165583,2025,main_product,1,매 출,
-00165583,2025,main_product,2,수 소,
-00165583,2025,main_product,3,기 타,
+00165583,2025,main_product,1,수소,
 00165583,2025,rd_field,0,LPDi 엔진,2026-09-09T01:10:15+00:00
 00165583,2025,rd_field,1,디젤-LPG 혼소차량 개조기술,2026-09-09T01:10:15+00:00
 00165583,2025,rd_field,2,수소-LPG 연소,2026-09-09T01:10:15+00:00
@@ -8309,15 +8302,41 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00356361,2021,business_keyword,6,친환경소재,2026-09-09T00:30:14+00:00
 00356361,2021,business_keyword,7,생분해성소재,2026-09-09T00:30:14+00:00
 00356361,2021,main_business,0,"석유화학, 첨단소재, 생명과학, LG에너지솔루션, 작물보호 및 종자 사업을 영위하는 기업이다. 주요 제품으로는 PE, PVC, ABS, SAP, 합성고무, 전지소재, 의약품, 작물보호제, 종자 등이 있다.",2026-09-09T00:30:14+00:00
-00356361,2021,main_product,0,PVC,
-00356361,2021,main_product,1,PE(LDPE),
-00356361,2021,main_product,2,알코올(2EH),
-00356361,2021,main_product,3,아크릴,
-00356361,2021,main_product,4,ABS,
-00356361,2021,main_product,5,PS,
-00356361,2021,main_product,6,합성고무(SBR),
-00356361,2021,main_product,7,310천,
-00356361,2021,main_product,8,톤,
+00356361,2021,main_product,0,에틸렌,
+00356361,2021,main_product,1,프로필렌,
+00356361,2021,main_product,2,PE,
+00356361,2021,main_product,3,PP,
+00356361,2021,main_product,4,PVC,
+00356361,2021,main_product,5,PC,
+00356361,2021,main_product,6,AB S,
+00356361,2021,main_product,7,아크릴,
+00356361,2021,main_product,8,알코올,
+00356361,2021,main_product,9,SAP,
+00356361,2021,main_product,10,합성고무,
+00356361,2021,main_product,11,특수수지(NBL 등),
+00356361,2021,main_product,12,EPC,
+00356361,2021,main_product,13,양극재,
+00356361,2021,main_product,14,분리막,
+00356361,2021,main_product,15,편광판 소재,
+00356361,2021,main_product,16,수처리 RO필터,
+00356361,2021,main_product,17,OLED 재료,
+00356361,2021,main_product,18,기타 전지소재(CNT,
+00356361,2021,main_product,19,음극바인더,
+00356361,2021,main_product,20,방열접착제,
+00356361,2021,main_product,21,BAS(Battery Assembly Solution),
+00356361,2021,main_product,22,당뇨치료제,
+00356361,2021,main_product,23,미용필러,
+00356361,2021,main_product,24,성장호르몬제,
+00356361,2021,main_product,25,백신,
+00356361,2021,main_product,26,EV용 배터리,
+00356361,2021,main_product,27,ESS용 배터리,
+00356361,2021,main_product,28,소형 Application용 배터리,
+00356361,2021,main_product,29,작물보호제,
+00356361,2021,main_product,30,종자,
+00356361,2021,main_product,31,비료,
+00356361,2021,main_product,32,전사 사업부문에 대한 공통 관리,
+00356361,2021,main_product,33,영업,
+00356361,2021,main_product,34,연구개발 활동 수행,
 00356361,2021,rd_field,0,고분자 합성,2026-09-09T00:30:14+00:00
 00356361,2021,rd_field,1,공정,2026-09-09T00:30:14+00:00
 00356361,2021,rd_field,2,촉매,2026-09-09T00:30:14+00:00
@@ -8335,15 +8354,41 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00356361,2022,business_keyword,6,PBAT,2026-09-09T00:30:25+00:00
 00356361,2022,business_keyword,7,PLA,2026-09-09T00:30:25+00:00
 00356361,2022,main_business,0,"당사는 석유화학, 첨단소재, 생명과학, LG에너지솔루션, 작물보호 및 종자 사업을 영위하는 기업이다. 주요 제품으로는 PE, PVC, ABS, SAP, 전지, 의약품, 작물보호제 등이 포함된다.",2026-09-09T00:30:25+00:00
-00356361,2022,main_product,0,PVC,
-00356361,2022,main_product,1,PE(LDPE),
-00356361,2022,main_product,2,알코올(2EH),
-00356361,2022,main_product,3,아크릴,
-00356361,2022,main_product,4,ABS,
-00356361,2022,main_product,5,PS,
-00356361,2022,main_product,6,합성고무(SBR),
-00356361,2022,main_product,7,401천,
-00356361,2022,main_product,8,톤,
+00356361,2022,main_product,0,에틸렌,
+00356361,2022,main_product,1,프로필렌,
+00356361,2022,main_product,2,PE,
+00356361,2022,main_product,3,PP,
+00356361,2022,main_product,4,PVC,
+00356361,2022,main_product,5,PC,
+00356361,2022,main_product,6,ABS,
+00356361,2022,main_product,7,아크릴,
+00356361,2022,main_product,8,알코올,
+00356361,2022,main_product,9,SAP,
+00356361,2022,main_product,10,합성고무,
+00356361,2022,main_product,11,특수수지(NBL 등),
+00356361,2022,main_product,12,CNT,
+00356361,2022,main_product,13,양극재,
+00356361,2022,main_product,14,분리막,
+00356361,2022,main_product,15,EPC,
+00356361,2022,main_product,16,편광판 소재,
+00356361,2022,main_product,17,수처리 RO필터,
+00356361,2022,main_product,18,OLED 재료,
+00356361,2022,main_product,19,기타 전지소재(음극바인더,
+00356361,2022,main_product,20,방열접착제,
+00356361,2022,main_product,21,BAS(Battery Assembly Solution),
+00356361,2022,main_product,22,당뇨치료제,
+00356361,2022,main_product,23,미용필러,
+00356361,2022,main_product,24,성장호르몬제,
+00356361,2022,main_product,25,백신,
+00356361,2022,main_product,26,EV용 배터리,
+00356361,2022,main_product,27,ESS용 배터리,
+00356361,2022,main_product,28,소형 Application용 배터리,
+00356361,2022,main_product,29,작물보호제,
+00356361,2022,main_product,30,종자,
+00356361,2022,main_product,31,비료,
+00356361,2022,main_product,32,전사 사업부문에 대한 공통 관리,
+00356361,2022,main_product,33,영업,
+00356361,2022,main_product,34,연구개발 활동 수행,
 00356361,2022,rd_field,0,고분자 합성,2026-09-09T00:30:25+00:00
 00356361,2022,rd_field,1,공정,2026-09-09T00:30:25+00:00
 00356361,2022,rd_field,2,촉매,2026-09-09T00:30:25+00:00
@@ -8360,15 +8405,35 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00356361,2023,business_keyword,5,Nexolution,2026-09-09T00:30:45+00:00
 00356361,2023,business_keyword,6,에너지솔루션,2026-09-09T00:30:45+00:00
 00356361,2023,main_business,0,"당사는 석유화학, 첨단소재, 생명과학, LG에너지솔루션 등의 사업을 영위하며, 특히 EV 배터리, 친환경 소재, 의약품 등 다양한 분야에서 연구, 제조, 판매를 하고 있습니다.",2026-09-09T00:30:45+00:00
-00356361,2023,main_product,0,PVC,
-00356361,2023,main_product,1,PE(LDPE),
-00356361,2023,main_product,2,알코올(2EH),
-00356361,2023,main_product,3,아크릴,
-00356361,2023,main_product,4,ABS,
-00356361,2023,main_product,5,PS,
-00356361,2023,main_product,6,합성고무(SBR),
-00356361,2023,main_product,7,661천,
-00356361,2023,main_product,8,톤,
+00356361,2023,main_product,0,에틸렌,
+00356361,2023,main_product,1,프로필렌,
+00356361,2023,main_product,2,PE,
+00356361,2023,main_product,3,PP,
+00356361,2023,main_product,4,PVC,
+00356361,2023,main_product,5,PC,
+00356361,2023,main_product,6,ABS,
+00356361,2023,main_product,7,아크릴,
+00356361,2023,main_product,8,알코올,
+00356361,2023,main_product,9,SAP,
+00356361,2023,main_product,10,합성고무,
+00356361,2023,main_product,11,특수수지(NBL 등),
+00356361,2023,main_product,12,CNT,
+00356361,2023,main_product,13,양극재,
+00356361,2023,main_product,14,분리막,
+00356361,2023,main_product,15,EPC,
+00356361,2023,main_product,16,수처리 RO필터,
+00356361,2023,main_product,17,기타 전지소재,
+00356361,2023,main_product,18,OLED재료,
+00356361,2023,main_product,19,항암치료제,
+00356361,2023,main_product,20,당뇨치료제,
+00356361,2023,main_product,21,성장호르몬제,
+00356361,2023,main_product,22,백신,
+00356361,2023,main_product,23,EV용 배터리,
+00356361,2023,main_product,24,ESS용 배터리,
+00356361,2023,main_product,25,소형 Application용 배터리,
+00356361,2023,main_product,26,작물보호제,
+00356361,2023,main_product,27,종자,
+00356361,2023,main_product,28,비료,
 00356361,2023,rd_field,0,고분자 합성,2026-09-09T00:30:45+00:00
 00356361,2023,rd_field,1,공정,2026-09-09T00:30:45+00:00
 00356361,2023,rd_field,2,촉매,2026-09-09T00:30:45+00:00
@@ -8387,15 +8452,35 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00356361,2024,business_keyword,6,PCR,2026-09-09T00:30:55+00:00
 00356361,2024,business_keyword,7,Bio-SAP,2026-09-09T00:30:55+00:00
 00356361,2024,main_business,0,"당사는 석유화학, 첨단소재, 생명과학, LG에너지솔루션, 작물보호제, 종자, 비료 등의 사업을 영위하고 있으며, 특히 석유화학 제품과 배터리 솔루션, 의약품, 친환경 소재 등을 제조 및 판매하는 기업이다.",2026-09-09T00:30:55+00:00
-00356361,2024,main_product,0,PVC,
-00356361,2024,main_product,1,PE(LDPE),
-00356361,2024,main_product,2,알코올(2EH),
-00356361,2024,main_product,3,아크릴,
-00356361,2024,main_product,4,ABS,
-00356361,2024,main_product,5,PS,
-00356361,2024,main_product,6,합성고무(SBR),
-00356361,2024,main_product,7,757천,
-00356361,2024,main_product,8,톤,
+00356361,2024,main_product,0,에틸렌,
+00356361,2024,main_product,1,프로필렌,
+00356361,2024,main_product,2,PE,
+00356361,2024,main_product,3,PP,
+00356361,2024,main_product,4,PVC,
+00356361,2024,main_product,5,PC,
+00356361,2024,main_product,6,ABS,
+00356361,2024,main_product,7,아크릴,
+00356361,2024,main_product,8,알코올,
+00356361,2024,main_product,9,SAP,
+00356361,2024,main_product,10,합성고무,
+00356361,2024,main_product,11,특수수지(NBL 등),
+00356361,2024,main_product,12,CNT,
+00356361,2024,main_product,13,양극재,
+00356361,2024,main_product,14,분리막,
+00356361,2024,main_product,15,기타 전지소재,
+00356361,2024,main_product,16,EPC,
+00356361,2024,main_product,17,수처리 RO필터,
+00356361,2024,main_product,18,OLED재료,
+00356361,2024,main_product,19,항암치료제,
+00356361,2024,main_product,20,당뇨치료제,
+00356361,2024,main_product,21,성장호르몬제,
+00356361,2024,main_product,22,백신,
+00356361,2024,main_product,23,EV용 배터리,
+00356361,2024,main_product,24,ESS용 배터리,
+00356361,2024,main_product,25,소형 Application용 배터리,
+00356361,2024,main_product,26,작물보호제,
+00356361,2024,main_product,27,종자,
+00356361,2024,main_product,28,비료,
 00356361,2024,rd_field,0,고분자 합성,2026-09-09T00:30:55+00:00
 00356361,2024,rd_field,1,공정,2026-09-09T00:30:55+00:00
 00356361,2024,rd_field,2,촉매,2026-09-09T00:30:55+00:00
@@ -8414,15 +8499,35 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00356361,2025,business_keyword,6,Bio-SAP,2026-09-09T00:31:07+00:00
 00356361,2025,business_keyword,7,유전자원,2026-09-09T00:31:07+00:00
 00356361,2025,main_business,0,"당사는 석유화학, 첨단소재, 생명과학, LG에너지솔루션 사업을 영위하며, 작물보호제, 종자 및 비료 등을 제조, 판매하는 (주)팜한농 사업도 운영하고 있습니다.",2026-09-09T00:31:07+00:00
-00356361,2025,main_product,0,PVC,
-00356361,2025,main_product,1,PE(LDPE),
-00356361,2025,main_product,2,알코올(2EH),
-00356361,2025,main_product,3,아크릴,
-00356361,2025,main_product,4,ABS,
-00356361,2025,main_product,5,PS,
-00356361,2025,main_product,6,합성고무(BR),
-00356361,2025,main_product,7,646천,
-00356361,2025,main_product,8,톤,
+00356361,2025,main_product,0,에틸렌,
+00356361,2025,main_product,1,프로필렌,
+00356361,2025,main_product,2,PE,
+00356361,2025,main_product,3,PP,
+00356361,2025,main_product,4,PVC,
+00356361,2025,main_product,5,PC,
+00356361,2025,main_product,6,ABS,
+00356361,2025,main_product,7,아크릴,
+00356361,2025,main_product,8,알코올,
+00356361,2025,main_product,9,SAP,
+00356361,2025,main_product,10,합성고무,
+00356361,2025,main_product,11,특수수지(NBL 등),
+00356361,2025,main_product,12,CNT,
+00356361,2025,main_product,13,양극재,
+00356361,2025,main_product,14,분리막,
+00356361,2025,main_product,15,기타 전지소재,
+00356361,2025,main_product,16,EPC,
+00356361,2025,main_product,17,OLED재료,
+00356361,2025,main_product,18,반도체소재,
+00356361,2025,main_product,19,항암치료제,
+00356361,2025,main_product,20,당뇨치료제,
+00356361,2025,main_product,21,성장호르몬제,
+00356361,2025,main_product,22,백신,
+00356361,2025,main_product,23,EV용 배터리,
+00356361,2025,main_product,24,ESS용 배터리,
+00356361,2025,main_product,25,소형 Application용 배터리,
+00356361,2025,main_product,26,작물보호제,
+00356361,2025,main_product,27,종자,
+00356361,2025,main_product,28,비료,
 00356361,2025,rd_field,0,고분자 합성,2026-09-09T00:31:07+00:00
 00356361,2025,rd_field,1,공정,2026-09-09T00:31:07+00:00
 00356361,2025,rd_field,2,촉매,2026-09-09T00:31:07+00:00
@@ -8757,8 +8862,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00369657,2021,main_product,0,LEENOPIN 류,
 00369657,2021,main_product,1,반도체(메모리,
 00369657,2021,main_product,2,비메모리) 테스트PACKAGE용 장비의 소모성 부품,
-00369657,2021,main_product,3,기 타,
-00369657,2021,main_product,4,의료기기부품류,
+00369657,2021,main_product,3,의료기기부품류,
 00369657,2021,rd_field,0,저저항/저하중스프링핀개발,2026-09-09T00:20:36+00:00
 00369657,2021,rd_field,1,Logic device용 WLC Probe Card개발,2026-09-09T00:20:36+00:00
 00369657,2021,rd_field,2,80㎛ Pitch 대응 LEENO PIN 개발,2026-09-09T00:20:36+00:00
@@ -8778,8 +8882,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00369657,2022,main_product,0,LEENOPIN 류,
 00369657,2022,main_product,1,반도체(메모리,
 00369657,2022,main_product,2,비메모리) 테스트PACKAGE용 장비의 소모성 부품,
-00369657,2022,main_product,3,기 타,
-00369657,2022,main_product,4,의료기기부품류,
+00369657,2022,main_product,3,의료기기부품류,
 00369657,2022,rd_field,0,LEENO PIN,2026-09-09T00:20:46+00:00
 00369657,2022,rd_field,1,TEST SOCKET,2026-09-09T00:20:46+00:00
 00369657,2022,rd_field,2,WLC Probe Card,2026-09-09T00:20:46+00:00
@@ -8799,8 +8902,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00369657,2023,main_product,0,LEENOPIN 류,
 00369657,2023,main_product,1,반도체(메모리,
 00369657,2023,main_product,2,비메모리) 테스트PACKAGE용 장비의 소모성 부품,
-00369657,2023,main_product,3,기 타,
-00369657,2023,main_product,4,의료기기부품류,
+00369657,2023,main_product,3,의료기기부품류,
 00369657,2023,rd_field,0,LEENO PIN,2026-09-09T00:20:55+00:00
 00369657,2023,rd_field,1,TEST SOCKET,2026-09-09T00:20:55+00:00
 00369657,2023,rd_field,2,WLC Probe Card,2026-09-09T00:20:55+00:00
@@ -8820,8 +8922,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00369657,2024,main_product,0,LEENOPIN 류,
 00369657,2024,main_product,1,반도체(메모리,
 00369657,2024,main_product,2,비메모리) 테스트PACKAGE용 장비의 소모성 부품,
-00369657,2024,main_product,3,기 타,
-00369657,2024,main_product,4,의료기기부품류,
+00369657,2024,main_product,3,의료기기부품류,
 00369657,2024,rd_field,0,LEENO PIN,2026-09-09T00:21:05+00:00
 00369657,2024,rd_field,1,TEST SOCKET,2026-09-09T00:21:05+00:00
 00369657,2024,rd_field,2,WLC Probe Card,2026-09-09T00:21:05+00:00
@@ -8841,8 +8942,7 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00369657,2025,main_product,0,LEENOPIN 류,
 00369657,2025,main_product,1,반도체(메모리,
 00369657,2025,main_product,2,비메모리) 테스트PACKAGE용 장비의 소모성 부품,
-00369657,2025,main_product,3,기 타,
-00369657,2025,main_product,4,의료기기부품류,
+00369657,2025,main_product,3,의료기기부품류,
 00369657,2025,rd_field,0,저저항/저하중스프링핀개발,2026-09-09T00:21:15+00:00
 00369657,2025,rd_field,1,Logic device용 WLC Probe Card개발,2026-09-09T00:21:15+00:00
 00369657,2025,rd_field,2,80㎛ Pitch 대응 LEENO PIN 개발,2026-09-09T00:21:15+00:00
@@ -9975,14 +10075,13 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00983271,2021,business_keyword,6,코미코,2026-09-08T08:48:40+00:00
 00983271,2021,business_keyword,7,벅스,2026-09-08T08:48:40+00:00
 00983271,2021,main_business,0,"엔에이치엔㈜는 온라인/모바일게임 사업, PG 및 VAN 서비스, 간편결제 서비스(PAYCO), 온라인 쇼핑몰 호스팅을 포함한 커머스 사업, 웹툰 '코미코', 음원유통 '벅스', 클라우드 기반 기술 서비스 등을 영위하고 있다.",2026-09-08T08:48:40+00:00
-00983271,2021,main_product,0,비율(%),
-00983271,2021,main_product,1,온라인게임모바일게임,
-00983271,2021,main_product,2,페이코사업PG,
-00983271,2021,main_product,3,VAN 서비스,
-00983271,2021,main_product,4,웹툰 (코미코),
-00983271,2021,main_product,5,음원 (벅스),
-00983271,2021,main_product,6,커머스,
-00983271,2021,main_product,7,클라우드,
+00983271,2021,main_product,0,온라인게임모바일게임,
+00983271,2021,main_product,1,페이코사업PG,
+00983271,2021,main_product,2,VAN 서비스,
+00983271,2021,main_product,3,웹툰 (코미코),
+00983271,2021,main_product,4,음원 (벅스),
+00983271,2021,main_product,5,커머스,
+00983271,2021,main_product,6,클라우드,
 00983271,2021,rd_field,0,원개발,2026-09-08T08:48:40+00:00
 00983271,2021,rd_field,1,Cloud서비스,2026-09-08T08:48:40+00:00
 00983271,2021,rd_field,2,기술전략,2026-09-08T08:48:40+00:00
@@ -9998,14 +10097,13 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00983271,2022,business_keyword,6,음원유통,2026-09-08T08:48:45+00:00
 00983271,2022,business_keyword,7,클라우드,2026-09-08T08:48:45+00:00
 00983271,2022,main_business,0,"엔에이치엔㈜는 온라인/모바일게임 사업, PG 및 VAN 서비스, 간편결제(PAYCO) 사업, 커머스 사업, 웹툰(코미코), 음원유통(벅스), 클라우드 기술 서비스 등을 영위하고 있다.",2026-09-08T08:48:45+00:00
-00983271,2022,main_product,0,비율(%),
-00983271,2022,main_product,1,온라인게임모바일게임,
-00983271,2022,main_product,2,페이코사업PG,
-00983271,2022,main_product,3,VAN 서비스,
-00983271,2022,main_product,4,웹툰 (코미코),
-00983271,2022,main_product,5,음원 (벅스),
-00983271,2022,main_product,6,커머스,
-00983271,2022,main_product,7,클라우드,
+00983271,2022,main_product,0,온라인게임모바일게임,
+00983271,2022,main_product,1,페이코사업PG,
+00983271,2022,main_product,2,VAN 서비스,
+00983271,2022,main_product,3,웹툰 (코미코),
+00983271,2022,main_product,4,음원 (벅스),
+00983271,2022,main_product,5,커머스,
+00983271,2022,main_product,6,클라우드,
 00983271,2022,rd_field,0,게임,2026-09-08T08:48:45+00:00
 00983271,2022,rd_field,1,데이터 기술,2026-09-08T08:48:45+00:00
 00983271,2022,rd_field,2,클라우드,2026-09-08T08:48:45+00:00
@@ -10018,14 +10116,13 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00983271,2023,business_keyword,5,음원유통,2026-09-08T08:48:53+00:00
 00983271,2023,business_keyword,6,클라우드,2026-09-08T08:48:53+00:00
 00983271,2023,main_business,0,"엔에이치엔㈜을 포함한 연결실체는 온라인/모바일게임 사업, PG 및 VAN 서비스와 'PAYCO'를 포함한 간편결제 사업, 온라인 쇼핑몰 호스팅을 포함한 커머스 사업을 영위하며, 웹툰 '코미코'와 음원유통 '벅스' 등 컨텐츠 서비스, 클라우드 (CSP, MSP 등)를 포함한 기술 서비스 등을 제공하고 있습니다.",2026-09-08T08:48:53+00:00
-00983271,2023,main_product,0,비율(%),
-00983271,2023,main_product,1,온라인게임모바일게임,
-00983271,2023,main_product,2,페이코사업PG,
-00983271,2023,main_product,3,VAN 서비스,
-00983271,2023,main_product,4,웹툰 (코미코),
-00983271,2023,main_product,5,음원 (벅스),
-00983271,2023,main_product,6,커머스,
-00983271,2023,main_product,7,클라우드,
+00983271,2023,main_product,0,온라인게임모바일게임,
+00983271,2023,main_product,1,페이코사업PG,
+00983271,2023,main_product,2,VAN 서비스,
+00983271,2023,main_product,3,웹툰 (코미코),
+00983271,2023,main_product,4,음원 (벅스),
+00983271,2023,main_product,5,커머스,
+00983271,2023,main_product,6,클라우드,
 00983271,2023,rd_field,0,게임,2026-09-08T08:48:53+00:00
 00983271,2023,rd_field,1,결제/광고,2026-09-08T08:48:53+00:00
 00983271,2023,rd_field,2,데이터 기술,2026-09-08T08:48:53+00:00
@@ -10039,16 +10136,15 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00983271,2024,business_keyword,5,커머스,2026-09-08T08:49:01+00:00
 00983271,2024,business_keyword,6,웹툰,2026-09-08T08:49:01+00:00
 00983271,2024,main_business,0,"엔에이치엔㈜을 포함한 연결실체는 온라인/모바일게임 사업, PG 및 VAN 서비스와 'PAYCO'를 포함한 간편결제 사업, 클라우드 (CSP, MSP 등)를 포함한 기술 서비스, 온라인 쇼핑몰 호스팅을 포함한 커머스 사업를 영위하고 있으며, 웹툰 '코미코', 티켓판매업 '티켓링크' 등의 컨텐츠 서비스 등을 제공하고 있습니다.",2026-09-08T08:49:01+00:00
-00983271,2024,main_product,0,비율(%),
-00983271,2024,main_product,1,온라인게임,
-00983271,2024,main_product,2,모바일게임,
-00983271,2024,main_product,3,페이코사업,
-00983271,2024,main_product,4,PG,
-00983271,2024,main_product,5,VAN 서비스,
-00983271,2024,main_product,6,클라우드,
-00983271,2024,main_product,7,커머스,
-00983271,2024,main_product,8,웹툰,
-00983271,2024,main_product,9,음원,
+00983271,2024,main_product,0,온라인게임,
+00983271,2024,main_product,1,모바일게임,
+00983271,2024,main_product,2,페이코사업,
+00983271,2024,main_product,3,PG,
+00983271,2024,main_product,4,VAN 서비스,
+00983271,2024,main_product,5,클라우드,
+00983271,2024,main_product,6,커머스,
+00983271,2024,main_product,7,웹툰,
+00983271,2024,main_product,8,음원,
 00983271,2024,rd_field,0,게임,2026-09-08T08:49:01+00:00
 00983271,2024,rd_field,1,결제/광고,2026-09-08T08:49:01+00:00
 00983271,2024,rd_field,2,데이터 기술,2026-09-08T08:49:01+00:00
@@ -10061,15 +10157,14 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 00983271,2025,business_keyword,4,티켓판매,2026-09-08T08:49:08+00:00
 00983271,2025,business_keyword,5,커머스,2026-09-08T08:49:08+00:00
 00983271,2025,main_business,0,"엔에이치엔㈜을 포함한 연결실체의 주요 사업으로는 온라인/모바일 게임 사업, PG 및 VAN 서비스와 PAYCO 간편결제사업, CSP/MSP 등의 클라우드 기술사업이 있습니다. 이외에도 티켓판매, 커머스, 웹툰 등의 기타 사업을 영위하고 있습니다.",2026-09-08T08:49:08+00:00
-00983271,2025,main_product,0,비율(%),
-00983271,2025,main_product,1,온라인게임,
-00983271,2025,main_product,2,모바일게임,
-00983271,2025,main_product,3,페이코사업,
-00983271,2025,main_product,4,PG,
-00983271,2025,main_product,5,VAN 서비스,
-00983271,2025,main_product,6,클라우드,
-00983271,2025,main_product,7,커머스,
-00983271,2025,main_product,8,티켓판매,
+00983271,2025,main_product,0,온라인게임,
+00983271,2025,main_product,1,모바일게임,
+00983271,2025,main_product,2,페이코사업,
+00983271,2025,main_product,3,PG,
+00983271,2025,main_product,4,VAN 서비스,
+00983271,2025,main_product,5,클라우드,
+00983271,2025,main_product,6,커머스,
+00983271,2025,main_product,7,티켓판매,
 00983271,2025,rd_field,0,게임,2026-09-08T08:49:08+00:00
 00983271,2025,rd_field,1,결제/광고,2026-09-08T08:49:08+00:00
 00983271,2025,rd_field,2,"클라우드, 인공지능(AI)",2026-09-08T08:49:08+00:00
@@ -10895,7 +10990,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01515323,2021,business_keyword,6,배터리,2026-09-09T00:45:28+00:00
 01515323,2021,business_keyword,7,에너지솔루션,2026-09-09T00:45:28+00:00
 01515323,2021,main_business,0,"당사는 EV, ESS, IT기기, 전동공구, LEV 등에 적용되는 전지 관련 제품의 연구, 개발, 제조, 판매를 하고 있으며, 에너지솔루션 단일 사업부문으로 구성되어 있습니다.",2026-09-09T00:45:28+00:00
-01515323,2021,main_product,0,전동공구용 배터리,
+01515323,2021,main_product,0,EV용 배터리,
+01515323,2021,main_product,1,ESS용 배터리,
+01515323,2021,main_product,2,소형 Application용 배터리,
 01515323,2021,new_business,0,배터리 Recycle/Reuse,2026-09-09T00:45:28+00:00
 01515323,2021,new_business,1,BaaS,2026-09-09T00:45:28+00:00
 01515323,2021,new_business,2,ESS 시스템 통합,2026-09-09T00:45:28+00:00
@@ -10916,7 +11013,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01515323,2022,business_keyword,6,배터리 제조,2026-09-09T00:45:36+00:00
 01515323,2022,business_keyword,7,에너지솔루션,2026-09-09T00:45:36+00:00
 01515323,2022,main_business,0,"당사는 EV, ESS, IT기기, 전동공구, LEV 등에 적용되는 전지 관련 제품의 연구, 개발, 제조, 판매를 영위하고 있으며, 에너지솔루션 단일 사업부문으로 구성되어 있습니다.",2026-09-09T00:45:36+00:00
-01515323,2022,main_product,0,전동공구용 배터리,
+01515323,2022,main_product,0,EV용 배터리,
+01515323,2022,main_product,1,ESS용 배터리,
+01515323,2022,main_product,2,소형 Application용 배터리,
 01515323,2022,new_business,0,BaaS,2026-09-09T00:45:36+00:00
 01515323,2022,new_business,1,EaaS,2026-09-09T00:45:36+00:00
 01515323,2022,new_business,2,배터리 Recycle/Reuse,2026-09-09T00:45:36+00:00
@@ -10938,7 +11037,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01515323,2023,business_keyword,6,배터리,2026-09-09T00:45:47+00:00
 01515323,2023,business_keyword,7,에너지솔루션,2026-09-09T00:45:47+00:00
 01515323,2023,main_business,0,"당사는 EV, ESS, IT기기, 전동공구, LEV 등에 적용되는 전지 관련 제품의 연구, 개발, 제조, 판매하는 사업을 영위하고 있으며, 에너지솔루션 단일 사업부문으로 구성되어 있습니다. 국내는 물론 미국, 폴란드, 중국 등 세계 주요 거점에 생산, 판매, R&D 네트워크를 구축하고 있습니다.",2026-09-09T00:45:47+00:00
-01515323,2023,main_product,0,전동공구용 배터리,
+01515323,2023,main_product,0,EV용 배터리,
+01515323,2023,main_product,1,ESS용 배터리,
+01515323,2023,main_product,2,소형 Application용 배터리,
 01515323,2023,new_business,0,BaaS,2026-09-09T00:45:47+00:00
 01515323,2023,new_business,1,EaaS,2026-09-09T00:45:47+00:00
 01515323,2023,new_business,2,배터리 Recycle/Reuse,2026-09-09T00:45:47+00:00
@@ -10960,7 +11061,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01515323,2024,business_keyword,6,에너지솔루션,2026-09-09T00:45:55+00:00
 01515323,2024,business_keyword,7,시스템 통합,2026-09-09T00:45:55+00:00
 01515323,2024,main_business,0,"당사는 EV, ESS, IT기기, 전동공구, LEV 등에 적용되는 전지 관련 제품의 연구, 개발, 제조, 판매하는 사업을 영위하고 있으며, 에너지솔루션 단일 사업부문으로 구성되어 있습니다. 국내 및 해외 거점에 생산, 판매, R&D 네트워크를 구축하고 글로벌 사업을 전개하고 있습니다.",2026-09-09T00:45:55+00:00
-01515323,2024,main_product,0,전동공구용 배터리,
+01515323,2024,main_product,0,EV용 배터리,
+01515323,2024,main_product,1,ESS용 배터리,
+01515323,2024,main_product,2,소형 Application용 배터리,
 01515323,2024,new_business,0,BaaS,2026-09-09T00:45:55+00:00
 01515323,2024,new_business,1,EaaS,2026-09-09T00:45:55+00:00
 01515323,2024,new_business,2,배터리 Recycle/Reuse,2026-09-09T00:45:55+00:00
@@ -10980,7 +11083,9 @@ corp_code,fiscal_year,attr_key,seq,value_text,generated_at
 01515323,2025,business_keyword,5,배터리,2026-09-09T00:46:02+00:00
 01515323,2025,business_keyword,6,에너지솔루션,2026-09-09T00:46:02+00:00
 01515323,2025,main_business,0,"당사는 EV, ESS, IT기기, 전동공구, LEV 등에 적용되는 전지 관련 제품의 연구, 개발, 제조, 판매하는 사업을 영위하고 있으며, 에너지솔루션 단일 사업부문으로 구성되어 있습니다. 국내 및 해외 거점에 생산, 판매, R&D 네트워크를 구축하고 글로벌 사업을 전개하고 있습니다.",2026-09-09T00:46:02+00:00
-01515323,2025,main_product,0,소형 Application 배터리,
+01515323,2025,main_product,0,EV용 배터리,
+01515323,2025,main_product,1,ESS용 배터리,
+01515323,2025,main_product,2,소형 Application용 배터리,
 01515323,2025,new_business,0,BaaS,2026-09-09T00:46:02+00:00
 01515323,2025,new_business,1,EaaS,2026-09-09T00:46:02+00:00
 01515323,2025,new_business,2,배터리 Recycle/Reuse,2026-09-09T00:46:02+00:00

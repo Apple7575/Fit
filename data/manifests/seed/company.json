@@ -1,6 +1,6 @@
 {
   "table": "company",
-  "generated_at": "2026-09-08T05:01:59.516112+00:00",
+  "generated_at": "2026-09-15T04:41:36.441728+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -37,7 +37,14 @@
     "V13__erd_alignment.sql",
     "V14__users.sql",
     "V15__email_verification.sql",
-    "V16__news_article_drop_ai_columns.sql"
+    "V16__news_article_drop_ai_columns.sql",
+    "V17__erd_alignment_followup.sql",
+    "V18__cover_letter.sql",
+    "V19__interview.sql",
+    "V20__jd_ai_analysis.sql",
+    "V21__jd_ai_conversation.sql",
+    "V22__agent_room.sql",
+    "V23__agent_message.sql"
   ],
   "source": "config/company_universe.csv + 기업개황(company.json)",
   "seed_rows": 2703,

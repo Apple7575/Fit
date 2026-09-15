@@ -1,6 +1,6 @@
 {
   "table": "company_metric",
-  "generated_at": "2026-09-08T08:43:58.619999+00:00",
+  "generated_at": "2026-09-15T04:41:37.884891+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -28,7 +28,14 @@
     "V13__erd_alignment.sql",
     "V14__users.sql",
     "V15__email_verification.sql",
-    "V16__news_article_drop_ai_columns.sql"
+    "V16__news_article_drop_ai_columns.sql",
+    "V17__erd_alignment_followup.sql",
+    "V18__cover_letter.sql",
+    "V19__interview.sql",
+    "V20__jd_ai_analysis.sql",
+    "V21__jd_ai_conversation.sql",
+    "V22__agent_room.sql",
+    "V23__agent_message.sql"
   ],
   "source": "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
   "seed_rows": 58646,
