@@ -264,6 +264,25 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertEqual(batch.records, [])
         self.assertEqual(batch.failures[0]["reason"], "xml_parse_error")
 
+    def test_recovers_closed_document_with_nonstandard_entities_for_rag(self):
+        payload = (
+            b"<DOCUMENT><TITLE>Overview &amp; Notes</TITLE>"
+            b"<P>R&amp;D &unknown; & raw data</P></DOCUMENT>"
+        )
+
+        batch = build_batch(payload)
+
+        self.assertEqual(batch.failures, ())
+        self.assertTrue(any("R&D" in record.content for record in batch.records))
+
+    def test_allows_whitespace_after_closed_document_with_recoverable_markup(self):
+        payload = b"<DOCUMENT><P>R&amp;D &unknown; data</P></DOCUMENT> \r\n\t"
+
+        batch = build_batch(payload)
+
+        self.assertEqual(batch.failures, ())
+        self.assertTrue(any("R&D" in record.content for record in batch.records))
+
     def test_rejects_large_merged_cell_text_before_matrix_expansion(self):
         payload = ("<DOCUMENT><TABLE><TR><TD COLSPAN='100000'>" + "가" * 10_000 +
                    "</TD></TR></TABLE></DOCUMENT>").encode()

@@ -81,6 +81,14 @@ class ParseOneTest(unittest.TestCase):
         self.assertEqual(r.segments, [])
         self.assertIsNone(r.rnd)
 
+    def test_복구_파서는_닫힌_비표준_문서를_계속_받는다(self):
+        r = ex.parse_one(
+            b"<DOCUMENT><P>R&amp;D &unknown; data</P></DOCUMENT>",
+            corp_code="00000000", fiscal_year=2024, rcept_no="00000000000000",
+        )
+
+        self.assertFalse(r.failed)
+
     def test_헤더_상수가_실제_행의_키와_맞는다(self):
         """부르는 쪽이 이 상수로 CSV·Parquet 를 쓴다. 어긋나면 열이 빈다."""
         corp, year, rcept = SAMPLES[0]

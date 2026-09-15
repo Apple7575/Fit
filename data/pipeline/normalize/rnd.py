@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 
 from lxml import etree
 
@@ -77,7 +78,7 @@ def parse_xml_bytes(raw: bytes, name: str = "<bytes>"):
 
 
 def parse_xml_bytes_strict(raw: bytes, name: str = "<bytes>"):
-    """복구된 부분 문서를 근거로 쓰지 않는 RAG 경로 전용 엄격 XML 파서다."""
+    """RAG 경로에서 복구하되, 원문이 복구한 루트까지 닫혔는지 확인한다."""
     for enc in ("utf-8", "cp949", "euc-kr"):
         try:
             text = raw.decode(enc)
@@ -85,11 +86,21 @@ def parse_xml_bytes_strict(raw: bytes, name: str = "<bytes>"):
             continue
         if text.lstrip().startswith("<?xml"):
             text = text.split("?>", 1)[-1]
-        parser = etree.XMLParser(recover=False, huge_tree=True, resolve_entities=False)
+        parser = etree.XMLParser(recover=True, huge_tree=True, resolve_entities=False)
         root = etree.fromstring(text.encode("utf-8"), parser)
-        if root is not None:
-            return root, enc
+        if root is None:
+            raise etree.XMLSyntaxError("XML root could not be recovered", 0, 0, 0)
+        if not _ends_with_root_closing_tag(text, root):
+            raise etree.XMLSyntaxError("XML payload is missing its root closing tag", 0, 0, 0)
+        return root, enc
     raise RuntimeError(f"디코딩 실패: {name}")
+
+
+def _ends_with_root_closing_tag(text: str, root) -> bool:
+    """recover가 잘린 입력에 덧붙인 가상 종료 태그를 근거로 쓰지 않는다."""
+    local_name = root.tag.rsplit("}", 1)[-1] if isinstance(root.tag, str) else ""
+    tag = f"{root.prefix}:{local_name}" if root.prefix else local_name
+    return bool(tag and re.search(rf"</{re.escape(tag)}\s*>\s*$", text))
 
 
 def load_xml(path: Path):
