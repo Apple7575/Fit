@@ -36,6 +36,15 @@ def build_batch(payload: bytes, *, max_chars: int = 1500):
 
 
 class BusinessReportSourceTest(unittest.TestCase):
+    def test_document_constructor_accepts_existing_bytes_and_receipt_contract(self):
+        from pipeline.business_report.extract import parse_one
+
+        payload = "<DOCUMENT><TITLE>II</TITLE><P>본문</P></DOCUMENT>".encode()
+        result = parse_one(payload, corp_code="00000001", fiscal_year=2024, rcept_no="20250318000001")
+
+        self.assertFalse(result.failed)
+        self.assertEqual(result.summary["rcept_no"], "20250318000001")
+
     def test_chunks_all_meaningful_sections_and_separates_tables(self):
         payload = """<DOCUMENT>
           <TITLE>I. 회사의 개요</TITLE><P>전자제품을 제조합니다.</P>
@@ -105,6 +114,57 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertEqual(document.tables[0].m, [])
         self.assertEqual(document.tables[0].excluded_reason, "table_too_large")
         self.assertEqual(document.excluded_table_counts, {"table_too_large": 1})
+
+    def test_skips_ragged_table_when_rectangular_grid_exceeds_limit(self):
+        payload = (
+            "<DOCUMENT><TABLE><TR><TD COLSPAN='100'>header</TD></TR><TR></TR>"
+            "</TABLE></DOCUMENT>"
+        ).encode()
+
+        document = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=100)
+
+        self.assertEqual(document.tables[0].excluded_reason, "table_too_large")
+        self.assertEqual(document.tables[0].m, [])
+
+    def test_invalid_span_is_excluded_instead_of_reaching_matrix_conversion(self):
+        payload = b"<DOCUMENT><TABLE><TR><TD COLSPAN='abc'>header</TD></TR></TABLE></DOCUMENT>"
+
+        document = Document.from_bytes(payload, rcept_no="20250318000001")
+
+        self.assertEqual(document.tables[0].excluded_reason, "table_invalid_span")
+        self.assertEqual(document.excluded_table_counts, {"table_invalid_span": 1})
+
+    def test_preserves_a_long_single_row_header_in_table_parts(self):
+        header = "가" * 1700
+        payload = f"<DOCUMENT><TABLE><TR><TD>{header}</TD></TR></TABLE></DOCUMENT>".encode()
+
+        batch = build_batch(payload)
+        tables = [row for row in batch.records if row.metadata["content_type"] == "TABLE"]
+        ordered = sorted(tables, key=lambda row: row.metadata.get("row_part_index", -1))
+
+        self.assertTrue(all(len(row.content) <= 1500 for row in tables))
+        self.assertEqual("".join(row.content for row in ordered), f"표 캡션: \n표 머리글: {header}")
+        self.assertTrue(all(row.metadata["row_start"] == 0 for row in tables))
+
+    def test_keeps_identical_paragraphs_when_their_section_coordinates_differ(self):
+        payload = (
+            "<DOCUMENT><TITLE>첫 섹션</TITLE><P>같은 문장</P>"
+            "<TITLE>둘째 섹션</TITLE><P>같은 문장</P></DOCUMENT>"
+        ).encode()
+
+        batch = build_batch(payload)
+        texts = [row for row in batch.records if row.metadata["content_type"] == "TEXT"]
+
+        self.assertEqual(len(texts), 2)
+        self.assertEqual({row.metadata["section_title"] for row in texts}, {"첫 섹션", "둘째 섹션"})
+
+    def test_rejects_character_limits_above_the_report_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive_path = Path(directory) / "dart.zip"
+            make_archive(archive_path, [(2024, "20250318000001", b"<DOCUMENT/>")])
+            with DartArchive(archive_path) as archive:
+                with self.assertRaisesRegex(ValueError, "1500 이하"):
+                    business_report_batch(archive, "00000001", max_chars=1501)
 
     def test_keeps_valid_report_when_another_archive_member_is_broken(self):
         valid = "<DOCUMENT><TITLE>II. 사업의 내용</TITLE><P>정상 보고서</P></DOCUMENT>".encode()

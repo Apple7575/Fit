@@ -15,6 +15,7 @@ sys.path.insert(0, str(SCRIPTS))
 import build_rag_corpus
 from pipeline.rag_corpus.load import BuildResult
 from pipeline.rag_corpus.source import CompanySourceRows
+from pipeline.raw_sources.models import EvidenceBatch
 
 
 FIRST = "00126380"
@@ -95,9 +96,9 @@ class BuildRagCorpusCliTest(unittest.TestCase):
         provider_record = object()
 
         class Provider:
-            def records(self, corp_code):
+            def batch(self, corp_code):
                 self.corp_code = corp_code
-                return [provider_record]
+                return EvidenceBatch([provider_record], {}, {})
 
             def inventory(self):
                 return {"documents": 1}
@@ -110,6 +111,25 @@ class BuildRagCorpusCliTest(unittest.TestCase):
         self.assertEqual(provider.corp_code, FIRST)
         self.assertEqual(build.call_args.kwargs["external_records"], [provider_record])
         self.assertEqual(summary["external_sources"], [{"provider": "Provider", "inventory": {"documents": 1}}])
+
+    def test_run_does_not_replace_company_when_external_source_has_partial_failure(self):
+        factory = ConnectionFactory([FIRST])
+
+        class Provider:
+            def batch(self, corp_code):
+                return EvidenceBatch([], {}, {}, failures=({"rcept_no": "20250318000001", "reason": "xml_parse_error"},))
+
+            def inventory(self):
+                return {"documents": 1}
+
+        with patch.object(build_rag_corpus, "load_company_source_rows", side_effect=lambda _, code: rows(code)), \
+             patch.object(build_rag_corpus, "build_company_records", side_effect=lambda source, *, external_records: result(source.profile["corp_code"])), \
+             patch.object(build_rag_corpus, "replace_company") as replace:
+            summary = build_rag_corpus.run(factory, [FIRST], dry_run=False, external_providers=[Provider()])
+
+        self.assertFalse(replace.called)
+        self.assertEqual(summary["companies"][FIRST]["write_status"], "skipped_due_to_source_failure")
+        self.assertEqual(summary["failures"][0]["corp_code"], FIRST)
 
     # 이 테스트가 막는 결함: 전체 재구축에서 DB 반환 순서대로 처리해 결과가 비결정적이 되는 경우.
     def test_run_selects_every_company_in_sorted_order(self):

@@ -36,7 +36,10 @@ class BusinessReportSource:
         self.years = years
 
     def records(self, corp_code: str) -> list[EvidenceRecord]:
-        return business_report_batch(self.archive, corp_code, years=self.years).records
+        return self.batch(corp_code).records
+
+    def batch(self, corp_code: str) -> EvidenceBatch:
+        return business_report_batch(self.archive, corp_code, years=self.years)
 
     def inventory(self) -> dict[str, object]:
         inventory = self.archive.inventory()
@@ -59,8 +62,8 @@ def business_report_records(
 def business_report_batch(
     archive: DartArchive, corp_code: str, *, years: set[int] | None = None, max_chars: int = 1500,
 ) -> EvidenceBatch:
-    if max_chars < 200:
-        raise ValueError("max_chars는 200 이상이어야 합니다")
+    if not 200 <= max_chars <= 1500:
+        raise ValueError("max_chars는 200 이상 1500 이하이어야 합니다")
     records: list[EvidenceRecord] = []
     inputs: Counter[str] = Counter()
     excluded: Counter[str] = Counter()
@@ -97,7 +100,6 @@ def _document_records(document: Document, ref: DartDocumentRef, *, max_chars: in
         "tables": len(document.tables),
     })
     excluded: Counter[str] = Counter(document.excluded_table_counts)
-    seen_paragraphs: set[str] = set()
     for section_index, section in enumerate(document.sections):
         title = squash(section.title)
         skip_reason = _excluded_section_reason(title)
@@ -106,6 +108,7 @@ def _document_records(document: Document, ref: DartDocumentRef, *, max_chars: in
             continue
 
         paragraphs: list[tuple[int, str]] = []
+        seen_paragraphs: set[str] = set()
         for entry in section.paragraph_entries:
             if not entry.text:
                 excluded["blank_content"] += 1
@@ -203,7 +206,9 @@ def _table_chunks(caption: str, matrix: list[list[str]], *, max_chars: int) -> l
     if not indexed:
         return []
     header_index, header = indexed[0]
-    prefix = _table_prefix(squash(caption), " | ".join(header), max_chars)
+    prefix = f"표 캡션: {squash(caption)}\n표 머리글: {' | '.join(header)}"
+    if len(prefix) > max_chars - 2:
+        return _long_context_table_chunks(prefix, header_index, indexed[1:], max_chars=max_chars)
     if len(indexed) == 1:
         return [_TableChunk(prefix, header_index, header_index)]
     chunks: list[_TableChunk] = []
@@ -223,14 +228,21 @@ def _table_chunks(caption: str, matrix: list[list[str]], *, max_chars: int) -> l
     return chunks
 
 
-def _table_prefix(caption: str, header: str, max_chars: int) -> str:
-    prefix = f"표 캡션: {caption}\n표 머리글: {header}"
-    if len(prefix) <= max_chars - 2:
-        return prefix
-    labels = "표 캡션: \n표 머리글: "
-    available = max(2, max_chars - 2 - len(labels))
-    caption_limit = available // 2
-    return f"표 캡션: {caption[:caption_limit]}\n표 머리글: {header[:available - caption_limit]}"
+def _long_context_table_chunks(
+    context: str, header_index: int, rows: list[tuple[int, list[str]]], *, max_chars: int,
+) -> list[_TableChunk]:
+    """반복 문맥을 잘라 원문을 잃는 대신 문맥 자체를 좌표 있는 part로 남긴다."""
+    chunks = [
+        _TableChunk(context[offset:offset + max_chars], header_index, header_index, index, (len(context) + max_chars - 1) // max_chars)
+        for index, offset in enumerate(range(0, len(context), max_chars))
+    ]
+    for row_index, cells in rows:
+        parts = _cell_parts(cells, max_chars)
+        chunks.extend(
+            _TableChunk(part, row_index, row_index, index, len(parts))
+            for index, part in enumerate(parts)
+        )
+    return chunks
 
 
 def _split_table_row(prefix: str, row_start: int, row_end: int, cells: list[str], *, max_chars: int) -> list[_TableChunk]:

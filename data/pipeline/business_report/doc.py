@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import math
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -66,58 +67,71 @@ class Section:
         return value[:limit] if limit else value
 
 
-def _positive_span(value: str | None) -> int:
+def _normalized_span(value: str | None) -> int | None:
     try:
-        return max(1, int(float(value or "1")))
-    except (ValueError, OverflowError):
-        return 1
+        numeric = float(value or "1")
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(numeric):
+        return None
+    return max(1, int(numeric))
 
 
-def _estimated_cells(table) -> int:
-    total = 0
-    for row in table.iter():
-        if not isinstance(row.tag, str) or row.tag.upper() != "TR":
-            continue
+def _table_shape(table, cell_tags: set[str]) -> tuple[int, int] | None:
+    """`matrix`와 같은 span 규칙으로 행과 열의 곱을 계산하되 격자는 만들지 않는다."""
+    pending: dict[int, int] = {}
+    row_count = 0
+    width = 0
+    for row in table.iter("TR"):
+        row_count += 1
+        column = 0
         for cell in row:
-            if isinstance(cell.tag, str) and cell.tag.upper() in {"TD", "TH"}:
-                total += _positive_span(cell.get("ROWSPAN") or cell.get("rowspan")) * _positive_span(
-                    cell.get("COLSPAN") or cell.get("colspan")
-                )
-    return total
+            tag = cell.tag.upper() if isinstance(cell.tag, str) else ""
+            if tag not in cell_tags:
+                continue
+            colspan = _normalized_span(cell.get("COLSPAN") or cell.get("colspan"))
+            rowspan = _normalized_span(cell.get("ROWSPAN") or cell.get("rowspan"))
+            if colspan is None or rowspan is None:
+                return None
+            while column in pending:
+                column += 1
+            for offset in range(colspan):
+                if rowspan > 1:
+                    pending[column + offset] = rowspan - 1
+            column += colspan
+        width = max(width, column, max(pending, default=-1) + 1)
+        pending = {index: remaining - 1 for index, remaining in pending.items() if remaining > 1}
+    return row_count, width
 
 
 class Document:
     """사업보고서 하나를 한 번 순회해 섹션, 문단, 표를 만든다."""
 
     def __init__(
-        self, path: Path | str, p: Patterns | None = None, max_table_cells: int = 200_000
+        self, source: Path | str | bytes | bytearray, p: Patterns | None = None, *, rcept_no: str | None = None,
+        max_table_cells: int = 200_000,
     ):
-        self.path = Path(path)
-        self.rcept_no = self.path.stem.replace("document_", "")
         self.p = p or default_patterns()
         self.max_table_cells = max_table_cells
         self._excluded_table_counts: Counter[str] = Counter()
-        root, self.encoding = load_xml(self.path)
+        if isinstance(source, (bytes, bytearray)):
+            self.path = None
+            self.rcept_no = rcept_no or ""
+            root, self.encoding = parse_xml_bytes(bytes(source), f"document_{self.rcept_no}.xml")
+        else:
+            self.path = Path(source)
+            self.rcept_no = rcept_no or self.path.stem.replace("document_", "")
+            root, self.encoding = load_xml(self.path)
         self.sections: list[Section] = []
         self.tables: list[Table] = []
         self._walk(root)
 
     @classmethod
     def from_bytes(
-        cls, payload: bytes, *, rcept_no: str, p: Patterns | None = None,
+        cls, payload: bytes | bytearray, *, rcept_no: str, p: Patterns | None = None,
         max_table_cells: int = 200_000,
     ) -> "Document":
-        instance = cls.__new__(cls)
-        instance.path = None
-        instance.rcept_no = rcept_no
-        instance.p = p or default_patterns()
-        instance.max_table_cells = max_table_cells
-        instance._excluded_table_counts = Counter()
-        root, instance.encoding = parse_xml_bytes(payload, f"document_{rcept_no}.xml")
-        instance.sections = []
-        instance.tables = []
-        instance._walk(root)
-        return instance
+        return cls(payload, p, rcept_no=rcept_no, max_table_cells=max_table_cells)
 
     def _walk(self, root) -> None:
         current = Section(title="")
@@ -143,7 +157,12 @@ class Document:
                     recent = (recent + [text])[-4:]
             elif tag == "TABLE":
                 excluded_reason = None
-                if _estimated_cells(element) > self.max_table_cells:
+                shape = _table_shape(element, self.p.rnd.cell_tags)
+                if shape is None:
+                    excluded_reason = "table_invalid_span"
+                    self._excluded_table_counts[excluded_reason] += 1
+                    table_matrix = []
+                elif shape[0] * shape[1] > self.max_table_cells:
                     excluded_reason = "table_too_large"
                     self._excluded_table_counts[excluded_reason] += 1
                     table_matrix: list[list[str]] = []

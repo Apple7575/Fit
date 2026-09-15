@@ -22,13 +22,14 @@ from pipeline.rag_corpus.source import load_company_source_rows  # noqa: E402
 from pipeline.rag_corpus.models import EvidenceRecord  # noqa: E402
 from pipeline.raw_sources.business_report import BusinessReportSource  # noqa: E402
 from pipeline.raw_sources.dart_archive import DartArchive  # noqa: E402
+from pipeline.raw_sources.models import EvidenceBatch  # noqa: E402
 
 
 ConnectionFactory = Callable[[], ContextManager[object]]
 
 
 class ExternalEvidenceProvider(Protocol):
-    def records(self, corp_code: str) -> list[EvidenceRecord]: ...
+    def batch(self, corp_code: str) -> EvidenceBatch: ...
 
     def inventory(self) -> dict[str, object]: ...
 
@@ -49,14 +50,21 @@ class BuildSummary:
     input_counts: Counter[str] = field(default_factory=Counter)
     excluded_counts: Counter[str] = field(default_factory=Counter)
     record_count: int = 0
+    failures: list[dict[str, object]] = field(default_factory=list)
 
-    def add(self, corp_code: str, result: BuildResult) -> None:
+    def add(
+        self, corp_code: str, result: BuildResult, *, failures: list[dict[str, object]], write_status: str,
+    ) -> None:
         records = len(result.records)
         self.companies[corp_code] = {
             "record_count": records,
             "input_counts": dict(sorted(result.input_counts.items())),
             "excluded_counts": dict(sorted(result.excluded_counts.items())),
+            "write_status": write_status,
         }
+        if failures:
+            self.companies[corp_code]["failures"] = failures
+            self.failures.extend(failures)
         self.input_counts.update(result.input_counts)
         self.excluded_counts.update(result.excluded_counts)
         self.record_count += records
@@ -68,6 +76,7 @@ class BuildSummary:
             "input_counts": dict(sorted(self.input_counts.items())),
             "excluded_counts": dict(sorted(self.excluded_counts.items())),
             "companies": dict(sorted(self.companies.items())),
+            "failures": self.failures,
             "elapsed_ms": int((time.monotonic() - self.started_at) * 1000),
         }
 
@@ -100,11 +109,19 @@ def run(
     for corp_code in selected:
         with conn_factory() as conn:
             rows = load_company_source_rows(conn, corp_code)
-            external = [record for provider in providers for record in provider.records(corp_code)]
+            batches = [(provider.__class__.__name__, provider.batch(corp_code)) for provider in providers]
+            external = [record for _, batch in batches for record in batch.records]
+            failures = [
+                {**failure, "corp_code": corp_code, "provider": provider}
+                for provider, batch in batches for failure in batch.failures
+            ]
             result = build_company_records(rows, external_records=external) if providers else build_company_records(rows)
-            if not dry_run:
+            if not dry_run and not failures:
                 replace_company(conn, corp_code, result.records)
-            summary.add(corp_code, result)
+            summary.add(
+                corp_code, result, failures=failures,
+                write_status="dry_run" if dry_run else "skipped_due_to_source_failure" if failures else "replaced",
+            )
     result = summary.as_dict()
     result["external_sources"] = [
         {"provider": provider.__class__.__name__, "inventory": provider.inventory()}
@@ -133,8 +150,9 @@ def main() -> int:
     except Exception as error:
         print(json.dumps({"status": "failed", "error": str(error)}, ensure_ascii=False))
         return 1
-    print(json.dumps({"status": "success", **summary}, ensure_ascii=False, sort_keys=True))
-    return 0
+    partial = bool(summary["failures"])
+    print(json.dumps({"status": "partial" if partial else "success", **summary}, ensure_ascii=False, sort_keys=True))
+    return 1 if partial else 0
 
 
 if __name__ == "__main__":
