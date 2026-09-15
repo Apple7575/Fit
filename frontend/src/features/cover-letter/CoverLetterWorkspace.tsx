@@ -43,6 +43,8 @@ export function CoverLetterWorkspace({
   const [position, setPosition] = useState(initial.targetPosition ?? '');
   // 공고에 직무가 여럿이면 여기 담아 두고 고르게 한다. 하나뿐이면 바로 채우고 비워 둔다.
   const [positionChoices, setPositionChoices] = useState<string[]>([]);
+  // 목록에 없는 직무를 쓰려는 경우. 고른 목록을 버리지 않고 입력칸만 바꿔 준다.
+  const [typingPosition, setTypingPosition] = useState(false);
   const [items, setItems] = useState<WorkItem[]>(() => initial.items.map(toWorkItem));
   const [dirty, setDirty] = useState(false);
   const [savedOnce, setSavedOnce] = useState(alreadySaved ?? false);
@@ -70,11 +72,15 @@ export function CoverLetterWorkspace({
   // 공고에서 읽어 온 값은 저장되지 않는다. 입력칸을 채울 뿐이라 여기서도 미저장 표시를 켠다.
   const applyPosting = (companyName: string | null, positions: string[]) => {
     if (companyName) setCompany(companyName);
+    setTypingPosition(false);
     if (positions.length === 1) {
+      // 한 직무만 뽑는 공고면 고를 것이 없다. 회사처럼 바로 채운다.
       setPosition(positions[0]);
       setPositionChoices([]);
     } else {
+      // 여럿이면 고르기 전까지 비워 둔다. 첫 직무를 멋대로 넣으면 고른 줄 안다.
       setPositionChoices(positions);
+      if (positions.length > 1) setPosition('');
     }
     touch();
   };
@@ -169,25 +175,42 @@ export function CoverLetterWorkspace({
           <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor="cl-position">
             지원 직무 (선택)
           </label>
-          <input
-            id="cl-position"
-            value={position}
-            onChange={(event) => {
-              setPosition(event.target.value);
-              touch();
-            }}
-            placeholder="예: 백엔드 개발"
-            className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-          />
-          {positionChoices.length > 1 && (
-            <PositionChoices
+          {positionChoices.length > 1 && !typingPosition ? (
+            <PositionSelect
               choices={positionChoices}
               selected={position}
               onSelect={(next) => {
                 setPosition(next);
                 touch();
               }}
+              onTypeInstead={() => {
+                setTypingPosition(true);
+                setPosition('');
+                touch();
+              }}
             />
+          ) : (
+            <>
+              <input
+                id="cl-position"
+                value={position}
+                onChange={(event) => {
+                  setPosition(event.target.value);
+                  touch();
+                }}
+                placeholder="예: 백엔드 개발"
+                className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              />
+              {typingPosition && (
+                <button
+                  onClick={() => setTypingPosition(false)}
+                  className="mt-1 text-[12px] font-medium text-blue-600 hover:text-blue-700"
+                  type="button"
+                >
+                  공고에서 찾은 직무로 고르기
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -385,36 +408,45 @@ function summarize(companyName: string | null, positions: string[]): string {
   return `${company} · 직무는 찾지 못했어요. 직접 입력해 주세요.`;
 }
 
-function PositionChoices({
+/** 목록에 없는 직무를 쓰겠다는 뜻. 실제 직무명과 겹치지 않게 빈 값 쪽에 둔다. */
+const TYPE_INSTEAD = '__type__';
+
+/** 공고에서 직무를 여럿 뽑았을 때. 고르기 전까지는 빈 값이다. */
+function PositionSelect({
   choices,
   selected,
   onSelect,
+  onTypeInstead,
 }: {
   choices: string[];
   selected: string;
   onSelect: (value: string) => void;
+  onTypeInstead: () => void;
 }) {
   return (
-    <div className="mt-2">
-      <p className="mb-1.5 text-[12px] text-slate-500">공고에서 찾은 직무</p>
-      <div className="flex flex-wrap gap-1.5">
+    <>
+      <select
+        id="cl-position"
+        value={selected}
+        onChange={(event) => {
+          if (event.target.value === TYPE_INSTEAD) {
+            onTypeInstead();
+            return;
+          }
+          onSelect(event.target.value);
+        }}
+        className="h-[42px] w-full rounded-lg border border-slate-200 bg-white px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+      >
+        <option value="">직무를 고르세요</option>
         {choices.map((choice) => (
-          <button
-            key={choice}
-            onClick={() => onSelect(choice)}
-            className={[
-              'rounded-full border px-3 py-1 text-[12.5px] font-medium transition',
-              choice === selected
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
-            ].join(' ')}
-            type="button"
-          >
+          <option key={choice} value={choice}>
             {choice}
-          </button>
+          </option>
         ))}
-      </div>
-    </div>
+        <option value={TYPE_INSTEAD}>직접 입력</option>
+      </select>
+      <p className="mt-1 text-[12px] text-slate-400">공고에서 직무 {choices.length}개를 찾았어요.</p>
+    </>
   );
 }
 
