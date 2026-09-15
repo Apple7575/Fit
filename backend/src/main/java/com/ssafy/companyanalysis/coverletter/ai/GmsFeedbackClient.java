@@ -2,6 +2,7 @@ package com.ssafy.companyanalysis.coverletter.ai;
 
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
+import com.ssafy.companyanalysis.global.text.PlainText;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -25,6 +26,9 @@ public class GmsFeedbackClient {
             - category 는 [직무적합성, 구체성, 논리성, 가독성, 맞춤법] 중 하나.
             - severity 는 WARNING(개선 필요), SUGGESTION(제안), INFO(참고) 중 하나.
             - summary 는 2~3문장 총평. 코멘트는 최대 6개, 답변 본문에 나타나는 순서대로.
+            - summary, message, suggestion 에 마크다운을 쓰지 않는다. 별표(**), 우물정(#), 백틱(`)
+              같은 기호 없이 줄글로만 쓴다. 화면이 그대로 뿌리기 때문에 기호가 글에 섞여 보인다.
+              단 quote 는 답변에서 그대로 떼어 온 글이므로 손대지 않는다.
             """;
 
     private final RestClient gmsRestClient;
@@ -109,9 +113,28 @@ public class GmsFeedbackClient {
             throw new BusinessException(ErrorCode.AI_FEEDBACK_FAILED);
         }
         try {
-            return objectMapper.readValue(textNode.asString(), AiFeedback.class);
+            return toPlainText(objectMapper.readValue(textNode.asString(), AiFeedback.class));
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.AI_FEEDBACK_FAILED);
         }
+    }
+
+    /**
+     * 사람이 읽는 칸에서만 마크다운 기호를 벗긴다.
+     *
+     * <p><b>quote 는 건드리지 않는다.</b> 답변 본문에서 그 문자열을 찾아 하이라이트 구간을
+     * 잡기 때문에(CoverLetterService 의 indexOf), 한 글자만 달라져도 위치를 못 찾는다.
+     */
+    private static AiFeedback toPlainText(AiFeedback feedback) {
+        List<AiFeedback.AiComment> comments = feedback.comments() == null ? List.of()
+                : feedback.comments().stream()
+                        .map(c -> new AiFeedback.AiComment(
+                                c.quote(),
+                                c.category(),
+                                c.severity(),
+                                PlainText.of(c.message()),
+                                PlainText.of(c.suggestion())))
+                        .toList();
+        return new AiFeedback(PlainText.of(feedback.summary()), comments);
     }
 }
