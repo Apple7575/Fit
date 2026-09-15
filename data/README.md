@@ -82,7 +82,9 @@ python scripts/build_rag_corpus.py \
 ```
 
 결과 JSON은 전체와 `companies[corp_code]`별 `company_count`, `record_count`, 정본
-`input_counts`, `excluded_counts`, `elapsed_ms`를 반환한다. 사업보고서 배치의
+`input_counts`, `excluded_counts`, `elapsed_ms`를 반환한다. 기업별 `elapsed_ms`는 해당
+기업의 DB context 시작부터 종료까지, 전체 `elapsed_ms`는 전수 구축 시작부터 JSON 생성까지
+측정한다. 사업보고서 배치의
 `documents`, `sections`, `paragraphs`, `tables`는 원본 입력 수이고,
 `business_report_text_chunks`, `business_report_table_chunks`는 출력 청크 수다.
 기업별 `external_input_counts`, `external_excluded_counts`는 사업보고서 소계다.

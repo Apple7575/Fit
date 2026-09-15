@@ -54,13 +54,16 @@ class BuildSummary:
 
     def add(
         self, corp_code: str, result: BuildResult, *, failures: list[dict[str, object]], write_status: str,
+        elapsed_ms: int,
     ) -> None:
         records = len(result.records)
         self.companies[corp_code] = {
+            "company_count": 1,
             "record_count": records,
             "input_counts": dict(sorted(result.input_counts.items())),
             "excluded_counts": dict(sorted(result.excluded_counts.items())),
             "write_status": write_status,
+            "elapsed_ms": elapsed_ms,
         }
         if failures:
             self.companies[corp_code]["failures"] = failures
@@ -143,6 +146,7 @@ def run(
     providers = list(external_providers)
     summary = BuildSummary()
     for corp_code in selected:
+        company_started_at = time.monotonic()
         with conn_factory() as conn:
             rows = load_company_source_rows(conn, corp_code)
             batches = [(provider.__class__.__name__, provider.batch(corp_code)) for provider in providers]
@@ -154,12 +158,14 @@ def run(
             result = build_company_records(rows, external_records=external) if providers else build_company_records(rows)
             if not dry_run and not failures:
                 replace_company(conn, corp_code, result.records)
-            summary.add(
-                corp_code, result, failures=failures,
-                write_status="dry_run" if dry_run else "skipped_due_to_source_failure" if failures else "replaced",
-            )
-            for _, batch in batches:
-                summary.add_external(corp_code, batch)
+        company_elapsed_ms = int((time.monotonic() - company_started_at) * 1000)
+        summary.add(
+            corp_code, result, failures=failures,
+            write_status="dry_run" if dry_run else "skipped_due_to_source_failure" if failures else "replaced",
+            elapsed_ms=company_elapsed_ms,
+        )
+        for _, batch in batches:
+            summary.add_external(corp_code, batch)
     result = summary.as_dict()
     result["companies"] = {
         code: add_embedding_estimate(company, embedding_dimension)

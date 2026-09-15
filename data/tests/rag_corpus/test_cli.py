@@ -176,6 +176,26 @@ class BuildRagCorpusCliTest(unittest.TestCase):
         })
         self.assertEqual(summary["companies"][SECOND]["external_excluded_counts"], {"table_too_large": 1})
 
+    # 이 테스트가 막는 결함: 전체 실행 시간만 출력하고 기업별 처리 시간·기업 수를 누락하는 경우.
+    def test_run_measures_each_company_through_its_database_context(self):
+        factory = ConnectionFactory([FIRST, SECOND])
+
+        class DeterministicBuildSummary(build_rag_corpus.BuildSummary):
+            def __init__(self):
+                super().__init__(started_at=build_rag_corpus.time.monotonic())
+
+        with patch.object(build_rag_corpus, "load_company_source_rows", side_effect=lambda _, code: rows(code)), \
+             patch.object(build_rag_corpus, "BuildSummary", DeterministicBuildSummary), \
+             patch.object(build_rag_corpus.time, "monotonic", side_effect=[100.0, 101.0, 104.0, 110.0, 117.0, 120.0]):
+            summary = build_rag_corpus.run(factory, None, dry_run=True)
+
+        first = summary["companies"][FIRST]
+        second = summary["companies"][SECOND]
+        self.assertEqual((first["company_count"], second["company_count"]), (1, 1))
+        self.assertEqual((first["elapsed_ms"], second["elapsed_ms"]), (3000, 7000))
+        self.assertIsInstance(first["elapsed_ms"], int)
+        self.assertEqual(summary["elapsed_ms"], 20000)
+
     def test_embedding_dimension_must_be_positive_before_opening_the_database(self):
         factory = ConnectionFactory([FIRST])
 
