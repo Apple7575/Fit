@@ -82,9 +82,12 @@ class EndToEndTest(unittest.TestCase):
         self.assertEqual(result.summary["rejected_rows"], 2)
         self.assertEqual(result.summary["corp_map_reasons"], {})
 
-        # 시드는 URL 이 있는 2건 + Google 링크뿐인 1건 = 3건
+        # 시드는 언론사 주소가 있는 2건 + Google 링크로 채운 1건 = 3건.
+        # 셋 다 화면에서 클릭할 수 있어야 하므로 빈 URL 은 없다 (팀장 판단 2026-09-15).
         self.assertEqual(curated.summary["seed_rows"], 3)
-        self.assertEqual(curated.summary["original_url_null_rows"], 1)
+        self.assertEqual(curated.summary["original_url_null_rows"], 0)
+        self.assertEqual(curated.summary["url_publisher_rows"], 2)
+        self.assertEqual(curated.summary["url_google_news_rows"], 1)
         self.assertEqual(curated.summary["distinct_corp_codes"], 1)
         self.assertTrue((self.seed / f"{SEED_TABLE}.csv").exists())
 

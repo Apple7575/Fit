@@ -85,9 +85,27 @@ class CurateTest(unittest.TestCase):
 
     def test_URL_이_없으면_중복으로_막지_않는다(self):
         # DB 의 부분 UNIQUE 인덱스도 original_url IS NOT NULL 일 때만 걸린다.
-        result = self.build([staged(article_key="k1", original_url=""),
-                             staged(article_key="k2", original_url="")])
+        # 언론사 주소가 없으면 구글 뉴스 링크로 채우므로, "URL 이 없다" 를 만들려면
+        # rss_link·google_url 까지 비워야 한다.
+        result = self.build([staged(article_key="k1", original_url="", rss_link="", google_url=""),
+                             staged(article_key="k2", original_url="", rss_link="", google_url="")])
         self.assertEqual(len(result.rows), 2)
+
+    def test_언론사_주소가_없으면_구글_링크를_쓴다(self):
+        # 팀장 판단 2026-09-15. RSS 가 언론사 주소를 주지 않아 화면에서 기사로
+        # 보낼 방법이 없었다. 구글 링크도 클릭하면 기사로 간다.
+        result = self.build([staged(original_url="", rss_link="https://news.google.com/rss/articles/AAA")])
+        self.assertEqual(len(result.rows), 1)
+        self.assertEqual(result.rows[0]["original_url"], "https://news.google.com/rss/articles/AAA")
+        self.assertEqual(result.summary["url_publisher_rows"], 0)
+        self.assertEqual(result.summary["url_google_news_rows"], 1)
+
+    def test_언론사_주소가_있으면_그것을_쓴다(self):
+        result = self.build([staged(original_url="https://example.com/news/1",
+                                    rss_link="https://news.google.com/rss/articles/AAA")])
+        self.assertEqual(result.rows[0]["original_url"], "https://example.com/news/1")
+        self.assertEqual(result.summary["url_publisher_rows"], 1)
+        self.assertEqual(result.summary["url_google_news_rows"], 0)
 
     def test_길이_위반은_자르지_않고_뺀다(self):
         result = self.build([staged(title="가" * 501)])
