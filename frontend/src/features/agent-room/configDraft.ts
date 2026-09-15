@@ -13,7 +13,6 @@ export function toDraft(agent: RoomAgent): ConfigDraft {
   if (agent.config.companies) draft.corpCodes = agent.config.companies;
   if (agent.config.jobRole !== undefined) draft.jobRole = agent.config.jobRole;
   if (agent.config.jdUrl !== undefined) draft.jdUrl = agent.config.jdUrl;
-  if (agent.config.months !== undefined) draft.months = agent.config.months;
   return draft;
 }
 

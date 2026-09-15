@@ -64,13 +64,12 @@ class AgentCatalogServiceTest {
     }
 
     @Test
-    @DisplayName("뉴스 담당의 months 는 선택 항목이고 corpCodes 다음에 온다")
-    void newsMonthsIsOptionalAndOrdered() {
+    @DisplayName("뉴스 담당이 받는 설정은 기업뿐이다. 기간은 고르게 하지 않는다")
+    void newsTakesCompaniesOnly() {
         AgentCatalogResponse.Agent news = service().listAgents().agents().stream()
                 .filter(a -> a.agentKey().equals("news")).findFirst().orElseThrow();
 
-        assertThat(news.configSchema().keySet()).containsExactly("corpCodes", "months");
-        assertThat(news.configSchema().get("months").required()).isFalse();
+        assertThat(news.configSchema().keySet()).containsExactly("corpCodes");
     }
 
     @Test

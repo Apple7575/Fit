@@ -19,9 +19,13 @@ import java.util.stream.Collectors;
 @Component
 public class CompanyNewsDigest {
 
-    private static final int DEFAULT_MONTHS = 6;
+    /**
+     * 얼마나 거슬러 올라가 볼지. 사용자가 고르게 하지 않는다 — 자소서에 얹을 이슈를 찾는 것이
+     * 목적이라 기간을 좁힐 이유가 없고, 늘려 봐야 오래된 기사가 딸려 와 도움이 안 된다.
+     */
+    private static final int MONTHS = 6;
     private static final int PER_COMPANY = 10;
-    private static final int DAYS_PER_MONTH = 30;
+    private static final int DAYS = MONTHS * 30;
 
     private final CompanyNewsService companyNewsService;
 
@@ -30,21 +34,18 @@ public class CompanyNewsDigest {
     }
 
     /**
-     * @param config 에이전트 설정. corpCodes 와 months 를 읽는다
+     * @param config 에이전트 설정. corpCodes 를 읽는다
      * @return 회사별 최근 기사 제목 목록. 한 건도 없으면 예외
      */
     public String digest(Map<String, Object> config) {
-        List<String> corpCodes = corpCodes(config);
-        int days = months(config) * DAYS_PER_MONTH;
-
-        String text = corpCodes.stream()
-                .map(corpCode -> section(corpCode, days))
+        String text = corpCodes(config).stream()
+                .map(corpCode -> section(corpCode, DAYS))
                 .filter(section -> !section.isBlank())
                 .collect(Collectors.joining("\n\n"));
 
         if (text.isBlank()) {
             throw new BusinessException(ErrorCode.AGENT_SOURCE_UNAVAILABLE,
-                    "최근 " + months(config) + "개월 안에 수집된 뉴스가 없습니다.");
+                    "최근 " + MONTHS + "개월 안에 수집된 뉴스가 없습니다.");
         }
         return text;
     }
@@ -67,13 +68,5 @@ public class CompanyNewsDigest {
             throw new BusinessException(ErrorCode.AGENT_SOURCE_UNAVAILABLE, "볼 기업이 지정되지 않았습니다.");
         }
         return raw.stream().map(String::valueOf).toList();
-    }
-
-    private static int months(Map<String, Object> config) {
-        Object value = config.get("months");
-        if (value instanceof Number number && number.intValue() > 0) {
-            return number.intValue();
-        }
-        return DEFAULT_MONTHS;
     }
 }
