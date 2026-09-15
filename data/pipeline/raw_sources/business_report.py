@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import json
 import re
 
 from lxml import etree
@@ -28,6 +29,7 @@ class _TableChunk:
     row_end: int
     row_part_index: int | None = None
     row_part_count: int | None = None
+    row_format: str | None = None
 
 
 class BusinessReportSource:
@@ -146,6 +148,8 @@ def _document_records(document: Document, ref: DartDocumentRef, *, max_chars: in
                     identity += f":part:{chunk.row_part_index}"
                     metadata["row_part_index"] = chunk.row_part_index
                     metadata["row_part_count"] = chunk.row_part_count
+                if chunk.row_format is not None:
+                    metadata["row_format"] = chunk.row_format
                 records.append(_record(ref, published_at, section.title, identity, chunk.content, metadata))
     return EvidenceBatch(records, dict(sorted(inputs.items())), dict(sorted(excluded.items())))
 
@@ -237,9 +241,9 @@ def _long_context_table_chunks(
         for index, offset in enumerate(range(0, len(context), max_chars))
     ]
     for row_index, cells in rows:
-        parts = _cell_parts(cells, max_chars)
+        parts = _serialized_row_parts(cells, max_chars)
         chunks.extend(
-            _TableChunk(part, row_index, row_index, index, len(parts))
+            _TableChunk(part, row_index, row_index, index, len(parts), "JSON_CELLS_V1")
             for index, part in enumerate(parts)
         )
     return chunks
@@ -272,6 +276,12 @@ def _cell_parts(cells: list[str], max_chars: int) -> list[str]:
     if current:
         parts.append(current)
     return parts
+
+
+def _serialized_row_parts(cells: list[str], max_chars: int) -> list[str]:
+    """긴 문맥 표에서는 빈 셀과 열 순서를 보존할 수 있는 배열 표현을 쓴다."""
+    serialized = json.dumps(cells, ensure_ascii=False, separators=(",", ":"))
+    return [serialized[offset:offset + max_chars] for offset in range(0, len(serialized), max_chars)]
 
 
 def _record(

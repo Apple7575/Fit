@@ -1,8 +1,10 @@
 import csv
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from pipeline.business_report.doc import Document
@@ -126,6 +128,24 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertEqual(document.tables[0].excluded_reason, "table_too_large")
         self.assertEqual(document.tables[0].m, [])
 
+    def test_rejects_finite_huge_span_before_range_or_pending_expansion(self):
+        payload = (
+            "<DOCUMENT><TABLE><TR><TD COLSPAN='1000000000' ROWSPAN='2'>header</TD>"
+            "</TR><TR></TR></TABLE></DOCUMENT>"
+        ).encode()
+        real_range = range
+
+        def guarded_range(*args):
+            if max(args) > 10_000:
+                raise AssertionError("거대 span을 반복하면 안 됩니다")
+            return real_range(*args)
+
+        with patch("pipeline.business_report.doc.range", guarded_range, create=True):
+            document = Document.from_bytes(payload, rcept_no="20250318000001")
+
+        self.assertEqual(document.tables[0].excluded_reason, "table_too_large")
+        self.assertEqual(document.tables[0].m, [])
+
     def test_invalid_span_is_excluded_instead_of_reaching_matrix_conversion(self):
         payload = b"<DOCUMENT><TABLE><TR><TD COLSPAN='abc'>header</TD></TR></TABLE></DOCUMENT>"
 
@@ -145,6 +165,28 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertTrue(all(len(row.content) <= 1500 for row in tables))
         self.assertEqual("".join(row.content for row in ordered), f"표 캡션: \n표 머리글: {header}")
         self.assertTrue(all(row.metadata["row_start"] == 0 for row in tables))
+
+    def test_long_context_rows_preserve_empty_cells_and_part_boundaries(self):
+        header = "H" * 1500
+        middle = "가" * 1600
+        cells = ["", "100", "", middle, "200", ""]
+        payload = (
+            f"<DOCUMENT><TABLE><TR><TD>{header}</TD></TR><TR>"
+            f"<TD></TD><TD>100</TD><TD></TD><TD>{middle}</TD><TD>200</TD><TD></TD>"
+            "</TR></TABLE></DOCUMENT>"
+        ).encode()
+
+        batch = build_batch(payload)
+        parts = sorted(
+            [row for row in batch.records if row.metadata["content_type"] == "TABLE" and row.metadata["row_start"] == 1],
+            key=lambda row: row.metadata["row_part_index"],
+        )
+
+        self.assertGreater(len(parts), 1)
+        self.assertTrue(all(row.metadata["row_format"] == "JSON_CELLS_V1" for row in parts))
+        self.assertEqual(json.loads("".join(row.content for row in parts)), cells)
+        self.assertEqual([row.metadata["row_part_index"] for row in parts], list(range(len(parts))))
+        self.assertTrue(all(row.metadata["row_part_count"] == len(parts) for row in parts))
 
     def test_keeps_identical_paragraphs_when_their_section_coordinates_differ(self):
         payload = (

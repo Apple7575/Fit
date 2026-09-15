@@ -77,14 +77,20 @@ def _normalized_span(value: str | None) -> int | None:
     return max(1, int(numeric))
 
 
-def _table_shape(table, cell_tags: set[str]) -> tuple[int, int] | None:
+def _table_shape(table, cell_tags: set[str], *, max_table_cells: int) -> tuple[int, int] | None:
     """`matrix`와 같은 span 규칙으로 행과 열의 곱을 계산하되 격자는 만들지 않는다."""
-    pending: dict[int, int] = {}
+    pending: list[tuple[int, int, int]] = []
     row_count = 0
     width = 0
     for row in table.iter("TR"):
         row_count += 1
         column = 0
+        active = sorted((start, end) for start, end, _ in pending)
+        if active:
+            width = max(width, active[-1][1])
+            if row_count * width > max_table_cells:
+                return row_count, width
+        next_pending = [(start, end, remaining - 1) for start, end, remaining in pending if remaining > 1]
         for cell in row:
             tag = cell.tag.upper() if isinstance(cell.tag, str) else ""
             if tag not in cell_tags:
@@ -93,14 +99,19 @@ def _table_shape(table, cell_tags: set[str]) -> tuple[int, int] | None:
             rowspan = _normalized_span(cell.get("ROWSPAN") or cell.get("rowspan"))
             if colspan is None or rowspan is None:
                 return None
-            while column in pending:
-                column += 1
-            for offset in range(colspan):
-                if rowspan > 1:
-                    pending[column + offset] = rowspan - 1
-            column += colspan
-        width = max(width, column, max(pending, default=-1) + 1)
-        pending = {index: remaining - 1 for index, remaining in pending.items() if remaining > 1}
+            for start, end in active:
+                if column < start:
+                    break
+                if column < end:
+                    column = end
+            end = column + colspan
+            width = max(width, end)
+            if row_count * width > max_table_cells:
+                return row_count, width
+            if rowspan > 1:
+                next_pending.append((column, end, rowspan - 1))
+            column = end
+        pending = next_pending
     return row_count, width
 
 
@@ -157,7 +168,7 @@ class Document:
                     recent = (recent + [text])[-4:]
             elif tag == "TABLE":
                 excluded_reason = None
-                shape = _table_shape(element, self.p.rnd.cell_tags)
+                shape = _table_shape(element, self.p.rnd.cell_tags, max_table_cells=self.max_table_cells)
                 if shape is None:
                     excluded_reason = "table_invalid_span"
                     self._excluded_table_counts[excluded_reason] += 1
