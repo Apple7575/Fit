@@ -146,6 +146,36 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertEqual(document.tables[0].excluded_reason, "table_too_large")
         self.assertEqual(document.tables[0].m, [])
 
+    def test_matches_matrix_rowspan_lifetime_at_rectangular_limit(self):
+        payload = (
+            "<DOCUMENT><TABLE>"
+            "<TR><TD COLSPAN='30000' ROWSPAN='2'>A</TD></TR>"
+            "<TR><TD COLSPAN='30000' ROWSPAN='4'>B</TD></TR>"
+            "<TR><TD COLSPAN='45000' ROWSPAN='1'>C</TD></TR>"
+            "</TABLE></DOCUMENT>"
+        ).encode()
+
+        rejected = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=224_999)
+        accepted = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=225_000)
+
+        self.assertEqual(rejected.tables[0].excluded_reason, "table_too_large")
+        self.assertIsNone(accepted.tables[0].excluded_reason)
+        self.assertEqual((len(accepted.tables[0].m), len(accepted.tables[0].m[0])), (3, 75_000))
+
+    def test_matches_matrix_when_new_rowspan_overwrites_later_pending_interval(self):
+        payload = (
+            "<DOCUMENT><TABLE>"
+            "<TR><TD COLSPAN='2'>A</TD><TD COLSPAN='2' ROWSPAN='4'>B</TD></TR>"
+            "<TR><TD COLSPAN='4' ROWSPAN='2'>C</TD></TR>"
+            "<TR><TD>D</TD></TR>"
+            "</TABLE></DOCUMENT>"
+        ).encode()
+
+        document = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=12)
+
+        self.assertIsNone(document.tables[0].excluded_reason)
+        self.assertEqual(document.tables[0].m[2], ["D", "", "", ""])
+
     def test_invalid_span_is_excluded_instead_of_reaching_matrix_conversion(self):
         payload = b"<DOCUMENT><TABLE><TR><TD COLSPAN='abc'>header</TD></TR></TABLE></DOCUMENT>"
 

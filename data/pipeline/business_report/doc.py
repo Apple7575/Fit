@@ -85,12 +85,9 @@ def _table_shape(table, cell_tags: set[str], *, max_table_cells: int) -> tuple[i
     for row in table.iter("TR"):
         row_count += 1
         column = 0
-        active = sorted((start, end) for start, end, _ in pending)
-        if active:
-            width = max(width, active[-1][1])
-            if row_count * width > max_table_cells:
-                return row_count, width
-        next_pending = [(start, end, remaining - 1) for start, end, remaining in pending if remaining > 1]
+        row_width = max((end for _, end, _ in pending), default=0)
+        if row_count * max(width, row_width) > max_table_cells:
+            return row_count, max(width, row_width)
         for cell in row:
             tag = cell.tag.upper() if isinstance(cell.tag, str) else ""
             if tag not in cell_tags:
@@ -99,20 +96,59 @@ def _table_shape(table, cell_tags: set[str], *, max_table_cells: int) -> tuple[i
             rowspan = _normalized_span(cell.get("ROWSPAN") or cell.get("rowspan"))
             if colspan is None or rowspan is None:
                 return None
-            for start, end in active:
-                if column < start:
-                    break
-                if column < end:
-                    column = end
+            column = _next_free_column(column, pending)
             end = column + colspan
-            width = max(width, end)
+            row_width = max(row_width, end)
+            width = max(width, row_width)
             if row_count * width > max_table_cells:
                 return row_count, width
             if rowspan > 1:
-                next_pending.append((column, end, rowspan - 1))
+                pending = _overlay_pending(pending, column, end, rowspan - 1)
             column = end
-        pending = next_pending
+        pending = _decrement_pending(pending)
     return row_count, width
+
+
+def _next_free_column(column: int, pending: list[tuple[int, int, int]]) -> int:
+    for start, end, _ in pending:
+        if column < start:
+            break
+        if column < end:
+            return end
+    return column
+
+
+def _overlay_pending(
+    pending: list[tuple[int, int, int]], start: int, end: int, remaining: int,
+) -> list[tuple[int, int, int]]:
+    """행 안에서 새 rowspan이 기존 pending 열을 덮어쓰는 matrix 규칙을 구간으로 재현한다."""
+    intervals: list[tuple[int, int, int]] = []
+    for current_start, current_end, current_remaining in pending:
+        if current_end <= start or end <= current_start:
+            intervals.append((current_start, current_end, current_remaining))
+            continue
+        if current_start < start:
+            intervals.append((current_start, start, current_remaining))
+        if end < current_end:
+            intervals.append((end, current_end, current_remaining))
+    intervals.append((start, end, remaining))
+    intervals.sort()
+    merged: list[tuple[int, int, int]] = []
+    for interval in intervals:
+        if merged and merged[-1][1] == interval[0] and merged[-1][2] == interval[2]:
+            previous = merged.pop()
+            merged.append((previous[0], interval[1], previous[2]))
+        else:
+            merged.append(interval)
+    return merged
+
+
+def _decrement_pending(pending: list[tuple[int, int, int]]) -> list[tuple[int, int, int]]:
+    return [
+        (start, end, remaining - 1)
+        for start, end, remaining in pending
+        if remaining - 1 > 0
+    ]
 
 
 class Document:
