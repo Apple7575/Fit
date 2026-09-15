@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-023", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "이벤트 처리 구조를 개선한 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-023", "document_type": "EXPERIENCE", "text": "재고 변경 알림이 중복 수신되는 상황에 대응해 소비 전에 이벤트 ID를 처리 이력 테이블에서 확인하도록 구현했습니다."}],
+  "expected_findings": [{"experience_type": "MESSAGING", "claim_quote": "재고 변경 알림이 중복 수신되는 상황에 대응해 소비 전에 이벤트 ID를 처리 이력 테이블에서 확인하도록 구현했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "MECHANISM"], "missing_elements": ["VERIFICATION"]}],
+  "forbidden_output_substrings": ["재고 알림에 Kafka 멱등 프로듀서를 적용했습니다.", "재고 이벤트 중복률 18%를 확인했습니다.", "재고 알림 처리 지연을 50ms로 줄였습니다."]
+}

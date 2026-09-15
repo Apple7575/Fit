@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-005", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "캐시나 성능 최적화 경험을 구체적으로 작성해 주세요.",
+  "documents": [{"document_id": "doc-005", "document_type": "RESUME", "text": "상품 상세 조회가 행사 시작 직후 데이터베이스에 집중되는 문제를 해결하려고 읽기 경로에 Redis 캐시를 적용했습니다. 상품 변경 이벤트로 키를 무효화하는 방식을 구현하고 부하 테스트로 원본 DB 조회 비율을 비교한 결과, 초당 조회 800건에서 DB 호출이 68% 감소했습니다."}],
+  "expected_findings": [{"experience_type": "CACHE_PERFORMANCE", "claim_quote": "상품 상세 조회가 행사 시작 직후 데이터베이스에 집중되는 문제를 해결하려고 읽기 경로에 Redis 캐시를 적용했습니다. 상품 변경 이벤트로 키를 무효화하는 방식을 구현하고 부하 테스트로 원본 DB 조회 비율을 비교한 결과, 초당 조회 800건에서 DB 호출이 68% 감소했습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["상품 조회 캐시에 Memcached를 사용했습니다.", "상품 상세 응답 시간 20ms를 달성했습니다.", "데이터베이스 비용을 90% 절감했습니다."]
+}

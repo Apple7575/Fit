@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-004", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "동시 요청의 정합성을 지킨 구현 경험을 소개해 주세요.",
+  "documents": [{"document_id": "doc-004", "document_type": "PORTFOLIO", "text": "좌석 예약과 결제가 겹칠 때 같은 좌석이 중복 확정되는 현상을 재현했습니다. 예약 테이블에 유일 제약을 두고 충돌 시 결제 승인을 취소하는 보상 처리를 구현했으며, 두 클라이언트의 동시 예약 통합 테스트로 하나의 예약만 남는 것을 검증했습니다."}],
+  "expected_findings": [{"experience_type": "CONCURRENCY", "claim_quote": "좌석 예약과 결제가 겹칠 때 같은 좌석이 중복 확정되는 현상을 재현했습니다. 예약 테이블에 유일 제약을 두고 충돌 시 결제 승인을 취소하는 보상 처리를 구현했으며, 두 클라이언트의 동시 예약 통합 테스트로 하나의 예약만 남는 것을 검증했습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"], "missing_elements": []}],
+  "forbidden_output_substrings": ["ZooKeeper 잠금으로 좌석을 선점했습니다.", "좌석 예약 성공률 99.99%를 달성했습니다.", "Kafka Exactly Once로 결제를 처리했습니다."]
+}

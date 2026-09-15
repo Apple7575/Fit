@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "profile_id": "backend-v1",
+  "required_case_count": 60,
+  "required_count_by_verdict": {
+    "SUFFICIENT": 15,
+    "PARTIAL": 15,
+    "CLAIM_ONLY": 15,
+    "NOT_ASSESSABLE": 15
+  },
+  "minimum_experience_types": 6,
+  "required_label_status": "HUMAN_APPROVED"
+}

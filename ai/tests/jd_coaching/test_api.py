@@ -1,3 +1,4 @@
+import json
 import unittest
 import tempfile
 from pathlib import Path
@@ -97,6 +98,14 @@ class FakeSourceIngestor:
 
 
 class ApiTest(unittest.TestCase):
+    def test_committed_openapi_uses_current_sync_analysis_path(self):
+        committed = json.loads(
+            Path("ai/docs/jd-coaching-openapi.json").read_text(encoding="utf-8")
+        )
+
+        self.assertIn("/internal/analyses", committed["paths"])
+        self.assertNotIn("/internal/jd/analyze", committed["paths"])
+
     def setUp(self):
         self.analysis_store = InMemoryAnalysisStore()
         app.dependency_overrides[get_analysis_service] = lambda: FakeService()
@@ -153,7 +162,7 @@ class ApiTest(unittest.TestCase):
 
     def test_analyzes_user_supplied_jd(self):
         response = self.client.post(
-            "/internal/jd/analyze",
+            "/internal/analyses",
             json={
                 "company_name": "다른기업",
                 "position_name": "백엔드 개발자",
@@ -164,6 +173,19 @@ class ApiTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["company_name"], "다른기업")
+
+    def test_does_not_expose_legacy_sync_analysis_path(self):
+        response = self.client.post(
+            "/internal/jd/analyze",
+            json={
+                "company_name": "다른기업",
+                "position_name": "백엔드 개발자",
+                "jd_text": "Python 기반 API 개발 경험을 요구합니다.",
+                "applicant_text": "Python으로 API를 개발했습니다.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_creates_and_reads_job_context(self):
         created = self.client.post(
@@ -294,7 +316,7 @@ class ApiTest(unittest.TestCase):
 
     def test_rejects_blank_applicant_text(self):
         response = self.client.post(
-            "/internal/jd/analyze",
+            "/internal/analyses",
             json={
                 "company_name": "다른기업",
                 "position_name": "백엔드 개발자",

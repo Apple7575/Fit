@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-011", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "관측 가능성을 개선한 사례를 구체적으로 설명해 주세요.",
+  "documents": [{"document_id": "doc-011", "document_type": "EXPERIENCE", "text": "간헐적인 결제 실패를 요청별로 추적할 수 없어 원인 확인이 늦었습니다. 게이트웨이부터 결제 어댑터까지 상관관계 ID를 전달하고 구조화 로그에 기록하도록 바꿨습니다. 이후 장애 훈련에서 한 요청의 경로를 8분 안에 찾아 이전 평균 45분이던 원인 식별 시간을 단축했습니다."}],
+  "expected_findings": [{"experience_type": "OBSERVABILITY", "claim_quote": "간헐적인 결제 실패를 요청별로 추적할 수 없어 원인 확인이 늦었습니다. 게이트웨이부터 결제 어댑터까지 상관관계 ID를 전달하고 구조화 로그에 기록하도록 바꿨습니다. 이후 장애 훈련에서 한 요청의 경로를 8분 안에 찾아 이전 평균 45분이던 원인 식별 시간을 단축했습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "MECHANISM", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["결제 경로를 Datadog APM으로 추적했습니다.", "결제 오류율 0%를 달성했습니다.", "분산 추적 샘플링 비율을 100%로 설정했습니다."]
+}

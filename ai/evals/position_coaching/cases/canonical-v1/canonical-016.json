@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-016", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "API 설계 경험에서 본인이 한 일을 설명해 주세요.",
+  "documents": [{"document_id": "doc-016", "document_type": "PORTFOLIO", "text": "모바일 앱의 프로필 수정 API에서 선택 필드와 필수 필드를 구분해 요청 DTO와 오류 응답 형식을 정리했습니다."}],
+  "expected_findings": [{"experience_type": "API_DESIGN", "claim_quote": "모바일 앱의 프로필 수정 API에서 선택 필드와 필수 필드를 구분해 요청 DTO와 오류 응답 형식을 정리했습니다.", "verdict": "PARTIAL", "present_elements": ["ACTION"], "missing_elements": ["PROBLEM", "ROLE", "REASONING", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["요청 DTO를 프론트엔드 팀과 합의했습니다.", "프로필 API 계약 테스트 120개를 작성했습니다.", "프로필 수정 오류 문의를 35% 감소시켰습니다."]
+}

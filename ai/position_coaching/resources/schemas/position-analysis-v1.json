@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "position-analysis-v1.json",
+  "title": "Position Analysis v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["analysis_status", "position_profile", "findings", "model_metadata"],
+  "properties": {
+    "analysis_status": {"type": "string", "enum": ["COMPLETED", "NO_TECHNICAL_CLAIM"]},
+    "position_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "version": {"type": "integer", "minimum": 1}
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding_id", "experience_type", "claim", "present_elements", "missing_elements", "verdict", "reason", "follow_up_questions"],
+        "properties": {
+          "finding_id": {"type": "string", "minLength": 1},
+          "experience_type": {"type": "string", "minLength": 1},
+          "claim": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["quote", "document_id", "start_offset", "end_offset"],
+            "properties": {
+              "quote": {"type": "string", "minLength": 1},
+              "document_id": {"type": "string", "minLength": 1},
+              "start_offset": {"type": "integer", "minimum": 0},
+              "end_offset": {"type": "integer", "minimum": 0}
+            }
+          },
+          "present_elements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["element", "quote"],
+              "properties": {
+                "element": {"type": "string", "enum": ["PROBLEM", "ROLE", "ACTION", "REASONING", "MECHANISM", "VERIFICATION", "RESULT"]},
+                "quote": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "missing_elements": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["PROBLEM", "ROLE", "ACTION", "REASONING", "MECHANISM", "VERIFICATION", "RESULT"]}
+          },
+          "verdict": {"type": "string", "enum": ["SUFFICIENT", "PARTIAL", "CLAIM_ONLY", "NOT_ASSESSABLE"]},
+          "reason": {"type": "string", "minLength": 1},
+          "follow_up_questions": {"type": "array", "maxItems": 2, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "model_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_model", "base_revision", "adapter", "training_dataset", "prompt_version"],
+      "properties": {
+        "base_model": {"type": "string", "minLength": 1},
+        "base_revision": {"type": "string", "minLength": 1},
+        "adapter": {"type": ["string", "null"], "minLength": 1},
+        "training_dataset": {"type": ["string", "null"], "minLength": 1},
+        "prompt_version": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

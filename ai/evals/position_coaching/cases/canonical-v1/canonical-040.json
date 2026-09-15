@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-040", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "신뢰성 문제를 개선한 사례를 작성해 주세요.",
+  "documents": [{"document_id": "doc-040", "document_type": "PORTFOLIO", "text": "야간 정산 작업이 중간에 실패하면 처음부터 다시 실행해야 하는 문제가 있었습니다."}],
+  "expected_findings": [{"experience_type": "RELIABILITY", "claim_quote": "야간 정산 작업이 중간에 실패하면 처음부터 다시 실행해야 하는 문제가 있었습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "REASONING", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["정산 단계마다 체크포인트를 저장했습니다.", "정산 재처리 건수를 70% 감소시켰습니다.", "야간 정산을 Spring Batch로 구현했습니다."]
+}

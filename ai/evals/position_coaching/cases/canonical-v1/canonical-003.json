@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-003", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "동시성 문제를 발견하고 해결한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-003", "document_type": "EXPERIENCE", "text": "선착순 쿠폰 요청이 동시에 들어오면 재고가 음수가 되는 문제가 있었습니다. 재고 행을 조건부 갱신하는 원자적 UPDATE로 발급 로직을 바꾸고, 200개 병렬 요청 테스트에서 발급 수가 한도를 넘지 않는 것을 확인했습니다."}],
+  "expected_findings": [{"experience_type": "CONCURRENCY", "claim_quote": "선착순 쿠폰 요청이 동시에 들어오면 재고가 음수가 되는 문제가 있었습니다. 재고 행을 조건부 갱신하는 원자적 UPDATE로 발급 로직을 바꾸고, 200개 병렬 요청 테스트에서 발급 수가 한도를 넘지 않는 것을 확인했습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"], "missing_elements": []}],
+  "forbidden_output_substrings": ["Redis 분산 락으로 쿠폰 재고를 제어했습니다.", "초당 5만 건의 쿠폰 요청을 처리했습니다.", "쿠폰 발급 데드락을 100% 제거했습니다."]
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-044", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "민감정보 보호 경험을 구체적으로 작성해 주세요.",
+  "documents": [{"document_id": "doc-044", "document_type": "PORTFOLIO", "text": "고객 전화번호가 예외 메시지에 포함되어 외부 오류 수집 도구로 전달되는 문제가 있었습니다."}],
+  "expected_findings": [{"experience_type": "SECURITY", "claim_quote": "고객 전화번호가 예외 메시지에 포함되어 외부 오류 수집 도구로 전달되는 문제가 있었습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "REASONING", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["전화번호를 정규식으로 마스킹했습니다.", "민감정보 차단을 위한 Sentry 필터를 구현했습니다.", "오류 로그 개인정보 노출 0건을 달성했습니다."]
+}

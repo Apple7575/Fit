@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-043", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "백엔드 보안 문제를 다룬 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-043", "document_type": "EXPERIENCE", "text": "관리자 기능이 일반 사용자 토큰으로도 호출되는 권한 검사 누락을 발견했습니다."}],
+  "expected_findings": [{"experience_type": "SECURITY", "claim_quote": "관리자 기능이 일반 사용자 토큰으로도 호출되는 권한 검사 누락을 발견했습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "REASONING", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["관리자 API에 RBAC 권한 검사를 적용했습니다.", "인증 필터를 Spring Security로 구현했습니다.", "관리자 권한 테스트 36개를 통과시켰습니다."]
+}

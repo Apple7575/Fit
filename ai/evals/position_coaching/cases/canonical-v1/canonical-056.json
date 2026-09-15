@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-056", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "서비스 장애를 예방하거나 복구한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-056", "document_type": "PORTFOLIO", "text": "안정적인 서비스를 만드는 개발자가 목표이지만 장애 대응 절차를 설계하거나 검증한 경험은 없습니다."}],
+  "expected_findings": [{"experience_type": "RELIABILITY", "claim_quote": "안정적인 서비스를 만드는 개발자가 목표이지만 장애 대응 절차를 설계하거나 검증한 경험은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["주문 서비스에 카오스 테스트를 수행했습니다.", "주문 장애 복구 시간을 3분으로 줄였습니다.", "외부 결제 호출에 서킷 브레이커를 적용했습니다."]
+}

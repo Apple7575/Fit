@@ -647,7 +647,7 @@ def _chat_message_response(message: ChatMessage) -> dict[str, Any]:
 
 
 @app.post(
-    "/internal/jd/analyze",
+    "/internal/analyses",
     response_model=AnalyzeResponse,
     tags=["internal"],
 )
