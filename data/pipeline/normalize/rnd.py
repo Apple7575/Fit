@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-import re
 
 from lxml import etree
 
@@ -97,10 +96,104 @@ def parse_xml_bytes_strict(raw: bytes, name: str = "<bytes>"):
 
 
 def _ends_with_root_closing_tag(text: str, root) -> bool:
-    """recover가 잘린 입력에 덧붙인 가상 종료 태그를 근거로 쓰지 않는다."""
+    """실제 markup의 root 종료 태그만 허용한다.
+
+    `recover=True`는 잘린 comment나 CDATA도 root 아래로 복구한다. 원문을
+    lexical하게 훑어 그 내부와 attribute quote의 문자열을 종료 태그로 오인하지 않는다.
+    """
     local_name = root.tag.rsplit("}", 1)[-1] if isinstance(root.tag, str) else ""
     tag = f"{root.prefix}:{local_name}" if root.prefix else local_name
-    return bool(tag and re.search(rf"</{re.escape(tag)}\s*>\s*$", text))
+    if not tag:
+        return False
+
+    index = 0
+    while index < len(text):
+        if text[index] != "<":
+            index += 1
+            continue
+        if text.startswith("<!--", index):
+            end = text.find("-->", index + 4)
+            if end < 0:
+                return False
+            index = end + 3
+            continue
+        if text.startswith("<![CDATA[", index):
+            end = text.find("]]>", index + 9)
+            if end < 0:
+                return False
+            index = end + 3
+            continue
+        if text.startswith("<?", index):
+            end = text.find("?>", index + 2)
+            if end < 0:
+                return False
+            index = end + 2
+            continue
+
+        root_close_end = _root_closing_tag_end(text, index, tag)
+        if root_close_end is not None:
+            return not text[root_close_end:].strip()
+
+        if text.startswith("<!", index):
+            end = _declaration_end(text, index)
+        else:
+            end = _markup_end(text, index)
+        if end is None:
+            return False
+        if end < 0:
+            index = -end
+        else:
+            index = end
+    return False
+
+
+def _root_closing_tag_end(text: str, index: int, tag: str) -> int | None:
+    prefix = f"</{tag}"
+    if not text.startswith(prefix, index):
+        return None
+    index += len(prefix)
+    while index < len(text) and text[index].isspace():
+        index += 1
+    return index + 1 if index < len(text) and text[index] == ">" else None
+
+
+def _markup_end(text: str, start: int) -> int | None:
+    quote = None
+    index = start + 1
+    while index < len(text):
+        char = text[index]
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        elif char == "<":
+            return -index
+        elif char == ">":
+            return index + 1
+        index += 1
+    return None
+
+
+def _declaration_end(text: str, start: int) -> int | None:
+    quote = None
+    brackets = 0
+    index = start + 2
+    while index < len(text):
+        char = text[index]
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        elif char == "[":
+            brackets += 1
+        elif char == "]" and brackets:
+            brackets -= 1
+        elif char == ">" and not brackets:
+            return index + 1
+        index += 1
+    return None
 
 
 def load_xml(path: Path):

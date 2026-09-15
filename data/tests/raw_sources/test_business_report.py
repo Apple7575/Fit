@@ -264,6 +264,42 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertEqual(batch.records, [])
         self.assertEqual(batch.failures[0]["reason"], "xml_parse_error")
 
+    def test_rejects_fake_document_closing_tag_inside_unclosed_comment(self):
+        batch = build_batch(b"<DOCUMENT><P>body</P><!-- </DOCUMENT>")
+
+        self.assertEqual(batch.records, [])
+        self.assertEqual(batch.failures[0]["reason"], "xml_parse_error")
+
+    def test_rejects_fake_document_closing_tag_inside_unclosed_cdata(self):
+        batch = build_batch(b"<DOCUMENT><P>body</P><![CDATA[ </DOCUMENT>")
+
+        self.assertEqual(batch.records, [])
+        self.assertEqual(batch.failures[0]["reason"], "xml_parse_error")
+
+    def test_rejects_fake_document_closing_tag_inside_processing_instruction(self):
+        batch = build_batch(b"<DOCUMENT><P>body</P><?parser </DOCUMENT>")
+
+        self.assertEqual(batch.records, [])
+        self.assertEqual(batch.failures[0]["reason"], "xml_parse_error")
+
+    def test_rejects_fake_document_closing_tag_inside_unclosed_attribute_quote(self):
+        batch = build_batch(b'<DOCUMENT><P marker="</DOCUMENT>')
+
+        self.assertEqual(batch.records, [])
+        self.assertTrue(batch.failures)
+        self.assertEqual(batch.failures[0]["reason"], "xml_parse_error")
+
+    def test_accepts_actual_document_closing_tag_after_lexical_constructs(self):
+        payload = (
+            b'<DOCUMENT><P marker="value">body</P><!-- note -->'
+            b'<![CDATA[data]]><?parser done?></DOCUMENT>'
+        )
+
+        batch = build_batch(payload)
+
+        self.assertEqual(batch.failures, ())
+        self.assertTrue(any(record.content == "body" for record in batch.records))
+
     def test_recovers_closed_document_with_nonstandard_entities_for_rag(self):
         payload = (
             b"<DOCUMENT><TITLE>Overview &amp; Notes</TITLE>"
