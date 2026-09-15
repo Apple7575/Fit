@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "profile_id": "backend-v1",
+  "position": "BACKEND",
+  "version": 1,
+  "experience_types": [
+    {"code": "API_DESIGN", "required_elements": ["PROBLEM", "ROLE", "ACTION", "REASONING", "VERIFICATION"]},
+    {"code": "DATABASE", "required_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]},
+    {"code": "CONCURRENCY", "required_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]},
+    {"code": "CACHE_PERFORMANCE", "required_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION", "RESULT"]},
+    {"code": "MESSAGING", "required_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]},
+    {"code": "RELIABILITY", "required_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION", "RESULT"]},
+    {"code": "OBSERVABILITY", "required_elements": ["PROBLEM", "ACTION", "MECHANISM", "RESULT"]},
+    {"code": "SECURITY", "required_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION"]},
+    {"code": "OTHER_BACKEND", "required_elements": ["PROBLEM", "ROLE", "ACTION", "RESULT"]}
+  ]
+}

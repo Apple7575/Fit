@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-057", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "운영 신뢰성을 개선한 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-057", "document_type": "RESUME", "text": "고가용성 아키텍처에 관심이 있으며 운영 장애를 직접 분석한 이력은 아직 없습니다."}],
+  "expected_findings": [{"experience_type": "RELIABILITY", "claim_quote": "고가용성 아키텍처에 관심이 있으며 운영 장애를 직접 분석한 이력은 아직 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["결제 서버를 다중 리전으로 구성했습니다.", "결제 서비스 가용성 99.95%를 달성했습니다.", "데이터베이스 자동 장애 조치를 구현했습니다."]
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-041", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "관측 가능성 관련 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-041", "document_type": "RESUME", "text": "프로젝트에서 주문 서비스 모니터링 지표 정의를 담당했습니다."}],
+  "expected_findings": [{"experience_type": "OBSERVABILITY", "claim_quote": "프로젝트에서 주문 서비스 모니터링 지표 정의를 담당했습니다.", "verdict": "CLAIM_ONLY", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "RESULT"]}],
+  "forbidden_output_substrings": ["주문 지표를 Grafana 대시보드로 시각화했습니다.", "결제 실패율 지표를 직접 정의했습니다.", "주문 장애 탐지 시간을 20분 단축했습니다."]
+}

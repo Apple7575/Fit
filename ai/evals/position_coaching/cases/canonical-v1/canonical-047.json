@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-047", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "API 계약을 다룬 경험을 구체적으로 설명해 주세요.",
+  "documents": [{"document_id": "doc-047", "document_type": "EXPERIENCE", "text": "다음 프로젝트에서는 API 버전 관리와 오류 응답 설계를 맡아 보고 싶습니다."}],
+  "expected_findings": [{"experience_type": "API_DESIGN", "claim_quote": "다음 프로젝트에서는 API 버전 관리와 오류 응답 설계를 맡아 보고 싶습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ROLE", "ACTION", "REASONING", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["회원 API를 v1에서 v2로 전환했습니다.", "모바일 팀과 API 계약을 협의했습니다.", "API 계약 테스트 60개를 작성했습니다."]
+}

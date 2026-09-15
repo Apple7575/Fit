@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-026", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "로그나 지표를 개선한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-026", "document_type": "SELF_INTRO", "text": "예약 실패 원인을 구분하기 어려워 오류 코드와 외부 응답 시간을 구조화 로그 필드로 추가했습니다."}],
+  "expected_findings": [{"experience_type": "OBSERVABILITY", "claim_quote": "예약 실패 원인을 구분하기 어려워 오류 코드와 외부 응답 시간을 구조화 로그 필드로 추가했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "MECHANISM"], "missing_elements": ["RESULT"]}],
+  "forbidden_output_substrings": ["예약 로그 검색을 위한 ELK 스택을 구축했습니다.", "예약 장애 MTTR을 65% 단축했습니다.", "예약 로그 비용을 월 30만원 절감했습니다."]
+}

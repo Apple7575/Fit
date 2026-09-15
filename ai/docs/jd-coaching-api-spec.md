@@ -505,7 +505,7 @@ Spring에서 지원 세션이나 채팅방을 삭제할 때 호출한다.
 ### 6.13 단일 호출 호환 API
 
 ```http
-POST /internal/jd/analyze
+POST /internal/analyses
 Content-Type: application/json
 ```
 

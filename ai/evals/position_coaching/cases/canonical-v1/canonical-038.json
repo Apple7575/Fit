@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-038", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "처리 성능을 높인 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-038", "document_type": "SELF_INTRO", "text": "일별 리포트 생성 시간이 길어 운영팀의 오전 업무가 지연되었습니다."}],
+  "expected_findings": [{"experience_type": "CACHE_PERFORMANCE", "claim_quote": "일별 리포트 생성 시간이 길어 운영팀의 오전 업무가 지연되었습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "MECHANISM", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["리포트 집계를 병렬 스트림으로 처리했습니다.", "리포트 생성 시간을 40분에서 4분으로 줄였습니다.", "완성된 리포트 결과를 캐시했습니다."]
+}

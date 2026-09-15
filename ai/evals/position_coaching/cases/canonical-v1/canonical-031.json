@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-031", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "API 설계 역량을 보여 주는 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-031", "document_type": "EXPERIENCE", "text": "사내 도서 대여 프로젝트에서 검색 API 설계를 담당했습니다."}],
+  "expected_findings": [{"experience_type": "API_DESIGN", "claim_quote": "사내 도서 대여 프로젝트에서 검색 API 설계를 담당했습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["ROLE"], "missing_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["검색 API에 커서 페이지네이션을 구현했습니다.", "도서 검색 응답 시간 120ms를 달성했습니다.", "Postman으로 검색 API 테스트 48개를 작성했습니다."]
+}

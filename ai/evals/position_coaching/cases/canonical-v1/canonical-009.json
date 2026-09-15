@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-009", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "서비스 신뢰성을 높인 경험과 판단 근거를 설명해 주세요.",
+  "documents": [{"document_id": "doc-009", "document_type": "RESUME", "text": "외부 배송사 API의 일시 오류가 전체 주문 처리를 실패시키는 문제가 있었습니다. 무제한 재시도가 장애를 키울 수 있어 지수 백오프와 최대 시도 횟수를 적용하고, 실패 주문은 재처리 목록에 남겼습니다. 장애 응답을 주입한 테스트 후 영구 실패 요청이 격리되어 주문 성공률이 96.1%에서 99.2%로 올랐습니다."}],
+  "expected_findings": [{"experience_type": "RELIABILITY", "claim_quote": "외부 배송사 API의 일시 오류가 전체 주문 처리를 실패시키는 문제가 있었습니다. 무제한 재시도가 장애를 키울 수 있어 지수 백오프와 최대 시도 횟수를 적용하고, 실패 주문은 재처리 목록에 남겼습니다. 장애 응답을 주입한 테스트 후 영구 실패 요청이 격리되어 주문 성공률이 96.1%에서 99.2%로 올랐습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["배송사 호출에 서킷 브레이커를 적용했습니다.", "주문 서비스 가용성 99.999%를 달성했습니다.", "Kubernetes 오토스케일링으로 장애를 해소했습니다."]
+}

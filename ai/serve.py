@@ -2,6 +2,7 @@
 
     /health            전체 상태
     /jd/...            jd_coaching — JD 기반 자소서 코칭 (/jd/internal/..., /jd/docs)
+    /position/...      position_coaching — 직무 경험 구체화 (/position/internal/...)
 
 프록시가 /ai/ 를 떼고 넘기므로 외부 주소는 /ai/jd/... 가 된다. 앱이 늘면 여기서
 같은 방식으로 mount 한다(예: /rag). AI_ROOT_PATH(=/ai) 를 uvicorn root_path 로 넣어
@@ -21,6 +22,7 @@ LOGGER = logging.getLogger("ai.serve")
 
 def build_app() -> FastAPI:
     from ai.jd_coaching.api import app as jd_app
+    from ai.position_coaching.api import app as position_app
 
     # Starlette 의 mount 는 하위 앱의 lifespan 을 실행하지 않는다. 직접 열어 준다.
     @asynccontextmanager
@@ -38,9 +40,13 @@ def build_app() -> FastAPI:
 
     @root.get("/health")
     def health() -> dict[str, object]:
-        return {"status": "ok", "services": {"jd": "/jd"}}
+        return {
+            "status": "ok",
+            "services": {"jd": "/jd", "position": "/position"},
+        }
 
     root.mount("/jd", jd_app)
+    root.mount("/position", position_app)
     return root
 
 

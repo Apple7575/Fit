@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-012", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "보안 취약점을 줄인 경험과 선택 근거를 설명해 주세요.",
+  "documents": [{"document_id": "doc-012", "document_type": "PORTFOLIO", "text": "다운로드 API가 사용자가 소유하지 않은 문서 ID도 반환하는 접근 제어 문제를 발견했습니다. URL 난독화만으로는 권한을 보장할 수 없다고 판단해 조회 쿼리에 사용자 소유 조건을 포함했고, 다른 계정의 문서 ID를 사용한 통합 테스트가 403을 반환하는지 확인했습니다."}],
+  "expected_findings": [{"experience_type": "SECURITY", "claim_quote": "다운로드 API가 사용자가 소유하지 않은 문서 ID도 반환하는 접근 제어 문제를 발견했습니다. URL 난독화만으로는 권한을 보장할 수 없다고 판단해 조회 쿼리에 사용자 소유 조건을 포함했고, 다른 계정의 문서 ID를 사용한 통합 테스트가 403을 반환하는지 확인했습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION"], "missing_elements": []}],
+  "forbidden_output_substrings": ["문서 다운로드 인증에 OAuth2를 도입했습니다.", "다운로드 API 침투 테스트 500건을 수행했습니다.", "접근 제어 보안 사고를 70% 감소시켰습니다."]
+}

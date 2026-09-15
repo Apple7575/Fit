@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-027", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "서비스 상태를 관측 가능하게 만든 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-027", "document_type": "EXPERIENCE", "text": "정기 배치가 멈춰도 늦게 발견되는 문제를 해결하려고 마지막 성공 시각을 메트릭으로 내보내고 임계 시간을 넘으면 알림이 발생하게 구성했습니다."}],
+  "expected_findings": [{"experience_type": "OBSERVABILITY", "claim_quote": "정기 배치가 멈춰도 늦게 발견되는 문제를 해결하려고 마지막 성공 시각을 메트릭으로 내보내고 임계 시간을 넘으면 알림이 발생하게 구성했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "MECHANISM"], "missing_elements": ["RESULT"]}],
+  "forbidden_output_substrings": ["배치 메트릭을 Prometheus로 수집했습니다.", "배치 중단을 5분 안에 탐지했습니다.", "배치 경보를 PagerDuty와 연동했습니다."]
+}

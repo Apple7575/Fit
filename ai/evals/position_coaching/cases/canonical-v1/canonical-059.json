@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-059", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "백엔드 보안을 강화한 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-059", "document_type": "EXPERIENCE", "text": "웹 보안 체크리스트를 읽어 보았으나 인증이나 권한 취약점을 수정한 경험은 없습니다."}],
+  "expected_findings": [{"experience_type": "SECURITY", "claim_quote": "웹 보안 체크리스트를 읽어 보았으나 인증이나 권한 취약점을 수정한 경험은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["인증에 JWT 갱신 토큰을 구현했습니다.", "OWASP 체크리스트 30항목을 점검했습니다.", "출시 후 취약점 신고 0건을 달성했습니다."]
+}

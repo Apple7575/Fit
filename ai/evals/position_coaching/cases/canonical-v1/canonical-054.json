@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-054", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "메시지 브로커를 활용한 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-054", "document_type": "SELF_INTRO", "text": "메시지 큐의 장점을 기술 블로그로 공부했지만 프로젝트에 브로커를 도입한 적은 없습니다."}],
+  "expected_findings": [{"experience_type": "MESSAGING", "claim_quote": "메시지 큐의 장점을 기술 블로그로 공부했지만 프로젝트에 브로커를 도입한 적은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["회원 가입 이벤트에 RabbitMQ를 적용했습니다.", "문자 발송 실패를 위한 재시도 큐를 구성했습니다.", "브로커 중단 시 이벤트 유실 테스트를 수행했습니다."]
+}

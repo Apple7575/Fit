@@ -526,13 +526,13 @@
         }
       }
     },
-    "/internal/jd/analyze": {
+    "/internal/analyses": {
       "post": {
         "tags": [
           "internal"
         ],
         "summary": "Analyze Jd",
-        "operationId": "analyze_jd_internal_jd_analyze_post",
+        "operationId": "analyze_jd_internal_analyses_post",
         "requestBody": {
           "content": {
             "application/json": {

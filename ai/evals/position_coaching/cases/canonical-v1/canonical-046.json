@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-046", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "API 설계 실무 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-046", "document_type": "SELF_INTRO", "text": "REST API 설계 원칙을 강의로 학습했지만 프로젝트에서 API를 설계한 경험은 아직 없습니다."}],
+  "expected_findings": [{"experience_type": "API_DESIGN", "claim_quote": "REST API 설계 원칙을 강의로 학습했지만 프로젝트에서 API를 설계한 경험은 아직 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ROLE", "ACTION", "REASONING", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["주문 조회 API를 직접 구현했습니다.", "주문 API의 OpenAPI 명세를 작성했습니다.", "구형 앱 호환성 테스트를 통과시켰습니다."]
+}
