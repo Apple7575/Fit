@@ -3,3 +3,4 @@ uvicorn[standard]>=0.30,<1
 pypdf>=6.1,<7
 python-multipart>=0.0.9,<1
 psycopg[binary]>=3.2,<4
+langgraph>=1.2,<1.3
