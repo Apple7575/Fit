@@ -7,12 +7,13 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..normalize.rnd import load_xml, parse_xml_bytes, matrix
+from ..normalize.rnd import load_xml, parse_xml_bytes, parse_xml_bytes_strict, matrix
 from ..normalize.text import squash
 from ..patterns import Patterns, patterns as default_patterns
 
 
 TEXT_TAGS = ("P", "SPAN", "TU")
+MAX_TABLE_EXPANDED_CHARS = 8_000_000
 _UNIT_SCOPE = re.compile(r"단위\s*[)\]]?\s*[::]?\s*([^)\]|]{0,20})")
 
 
@@ -77,17 +78,24 @@ def _normalized_span(value: str | None) -> int | None:
     return max(1, int(numeric))
 
 
-def _table_shape(table, cell_tags: set[str], *, max_table_cells: int) -> tuple[int, int] | None:
+def _cell_text_length(cell) -> int:
+    return sum(len(value) for value in cell.itertext() if value)
+
+
+def _table_shape(
+    table, cell_tags: set[str], *, max_table_cells: int, max_table_expanded_chars: int,
+) -> tuple[int, int, int] | None:
     """`matrix`와 같은 span 규칙으로 행과 열의 곱을 계산하되 격자는 만들지 않는다."""
     pending: list[tuple[int, int, int]] = []
     row_count = 0
     width = 0
+    expanded_chars = 0
     for row in table.iter("TR"):
         row_count += 1
         column = 0
         row_width = max((end for _, end, _ in pending), default=0)
         if row_count * max(width, row_width) > max_table_cells:
-            return row_count, max(width, row_width)
+            return row_count, max(width, row_width), expanded_chars
         for cell in row:
             tag = cell.tag.upper() if isinstance(cell.tag, str) else ""
             if tag not in cell_tags:
@@ -100,13 +108,16 @@ def _table_shape(table, cell_tags: set[str], *, max_table_cells: int) -> tuple[i
             end = column + colspan
             row_width = max(row_width, end)
             width = max(width, row_width)
+            expanded_chars += _cell_text_length(cell) * colspan * rowspan
+            if expanded_chars > max_table_expanded_chars:
+                return row_count, width, expanded_chars
             if row_count * width > max_table_cells:
-                return row_count, width
+                return row_count, width, expanded_chars
             if rowspan > 1:
                 pending = _overlay_pending(pending, column, end, rowspan - 1)
             column = end
         pending = _decrement_pending(pending)
-    return row_count, width
+    return row_count, width, expanded_chars
 
 
 def _next_free_column(column: int, pending: list[tuple[int, int, int]]) -> int:
@@ -159,15 +170,20 @@ class Document:
 
     def __init__(
         self, source: Path | str | bytes | bytearray, p: Patterns | None = None, *, rcept_no: str | None = None,
-        max_table_cells: int = 200_000,
+        max_table_cells: int = 200_000, max_table_expanded_chars: int = MAX_TABLE_EXPANDED_CHARS,
+        _strict_bytes: bool = False,
     ):
         self.p = p or default_patterns()
         self.max_table_cells = max_table_cells
+        if max_table_expanded_chars < 1:
+            raise ValueError("max_table_expanded_chars는 1 이상이어야 합니다")
+        self.max_table_expanded_chars = max_table_expanded_chars
         self._excluded_table_counts: Counter[str] = Counter()
         if isinstance(source, (bytes, bytearray)):
             self.path = None
             self.rcept_no = rcept_no or ""
-            root, self.encoding = parse_xml_bytes(bytes(source), f"document_{self.rcept_no}.xml")
+            parse = parse_xml_bytes_strict if _strict_bytes else parse_xml_bytes
+            root, self.encoding = parse(bytes(source), f"document_{self.rcept_no}.xml")
         else:
             self.path = Path(source)
             self.rcept_no = rcept_no or self.path.stem.replace("document_", "")
@@ -179,9 +195,12 @@ class Document:
     @classmethod
     def from_bytes(
         cls, payload: bytes | bytearray, *, rcept_no: str, p: Patterns | None = None,
-        max_table_cells: int = 200_000,
+        max_table_cells: int = 200_000, max_table_expanded_chars: int = MAX_TABLE_EXPANDED_CHARS,
     ) -> "Document":
-        return cls(payload, p, rcept_no=rcept_no, max_table_cells=max_table_cells)
+        return cls(
+            payload, p, rcept_no=rcept_no, max_table_cells=max_table_cells,
+            max_table_expanded_chars=max_table_expanded_chars, _strict_bytes=True,
+        )
 
     def _walk(self, root) -> None:
         current = Section(title="")
@@ -207,12 +226,15 @@ class Document:
                     recent = (recent + [text])[-4:]
             elif tag == "TABLE":
                 excluded_reason = None
-                shape = _table_shape(element, self.p.rnd.cell_tags, max_table_cells=self.max_table_cells)
+                shape = _table_shape(
+                    element, self.p.rnd.cell_tags, max_table_cells=self.max_table_cells,
+                    max_table_expanded_chars=self.max_table_expanded_chars,
+                )
                 if shape is None:
                     excluded_reason = "table_invalid_span"
                     self._excluded_table_counts[excluded_reason] += 1
                     table_matrix = []
-                elif shape[0] * shape[1] > self.max_table_cells:
+                elif shape[0] * shape[1] > self.max_table_cells or shape[2] > self.max_table_expanded_chars:
                     excluded_reason = "table_too_large"
                     self._excluded_table_counts[excluded_reason] += 1
                     table_matrix: list[list[str]] = []

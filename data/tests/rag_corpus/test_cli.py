@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import csv
 import io
 import json
 import sys
+import tempfile
 import unittest
+import zipfile
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import replace
 from pathlib import Path
@@ -18,6 +21,8 @@ from pipeline.rag_corpus.load import BuildResult
 from pipeline.rag_corpus.source import CompanySourceRows
 from pipeline.rag_corpus.transform import profile_record
 from pipeline.raw_sources.models import EvidenceBatch
+from pipeline.raw_sources.business_report import BusinessReportSource
+from pipeline.raw_sources.dart_archive import DartArchive
 
 
 FIRST = "00126380"
@@ -133,6 +138,39 @@ class BuildRagCorpusCliTest(unittest.TestCase):
         self.assertFalse(replace.called)
         self.assertEqual(summary["companies"][FIRST]["write_status"], "skipped_due_to_source_failure")
         self.assertEqual(summary["failures"][0]["corp_code"], FIRST)
+
+    def test_run_preserves_existing_corpus_when_manifest_xml_is_missing(self):
+        factory = ConnectionFactory([FIRST])
+        with tempfile.TemporaryDirectory() as directory:
+            archive_path = Path(directory) / "dart.zip"
+            output = io.StringIO(newline="")
+            writer = csv.DictWriter(
+                output,
+                fieldnames=["corp_name", "corp_code", "year", "rcept_no", "rcept_dt", "report_nm", "file"],
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            writer.writerow({
+                "corp_name": "테스트기업", "corp_code": FIRST, "year": 2024,
+                "rcept_no": "20250318000001", "rcept_dt": "20250318", "report_nm": "사업보고서",
+                "file": "document_20250318000001.xml",
+            })
+            with zipfile.ZipFile(archive_path, "w") as archive_file:
+                archive_file.writestr("dart_local/company_reports.csv", output.getvalue())
+            with DartArchive(archive_path) as archive:
+                provider = BusinessReportSource(archive)
+                with patch.object(build_rag_corpus, "load_company_source_rows", side_effect=lambda _, code: rows(code)), \
+                     patch.object(build_rag_corpus, "build_company_records", side_effect=lambda source, *, external_records: result(source.profile["corp_code"])), \
+                     patch.object(build_rag_corpus, "replace_company") as replace:
+                    summary = build_rag_corpus.run(factory, [FIRST], dry_run=False, external_providers=[provider])
+
+        self.assertFalse(replace.called)
+        self.assertEqual(summary["companies"][FIRST]["write_status"], "skipped_due_to_source_failure")
+        self.assertEqual(summary["failures"], [{
+            "corp_code": FIRST, "rcept_no": "20250318000001",
+            "document_file": "document_20250318000001.xml", "reason": "manifest_missing_xml",
+            "provider": "BusinessReportSource",
+        }])
 
     def test_run_aggregates_business_report_counts_and_float32_capacity_per_company_and_total(self):
         factory = ConnectionFactory([FIRST, SECOND])

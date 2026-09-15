@@ -76,6 +76,22 @@ def parse_xml_bytes(raw: bytes, name: str = "<bytes>"):
     raise RuntimeError(f"디코딩 실패: {name}")
 
 
+def parse_xml_bytes_strict(raw: bytes, name: str = "<bytes>"):
+    """복구된 부분 문서를 근거로 쓰지 않는 RAG 경로 전용 엄격 XML 파서다."""
+    for enc in ("utf-8", "cp949", "euc-kr"):
+        try:
+            text = raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+        if text.lstrip().startswith("<?xml"):
+            text = text.split("?>", 1)[-1]
+        parser = etree.XMLParser(recover=False, huge_tree=True, resolve_entities=False)
+        root = etree.fromstring(text.encode("utf-8"), parser)
+        if root is not None:
+            return root, enc
+    raise RuntimeError(f"디코딩 실패: {name}")
+
+
 def load_xml(path: Path):
     """사업보고서 XML 파일 → (root, 인코딩). 해석은 parse_xml_bytes 가 한다."""
     path = Path(path)

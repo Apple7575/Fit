@@ -101,9 +101,14 @@ class BusinessReportSourceTest(unittest.TestCase):
             [(row.source_identity, row.evidence_id, row.content_hash) for row in first.records],
             [(row.source_identity, row.evidence_id, row.content_hash) for row in second.records],
         )
-        self.assertEqual([row.metadata["row_part_index"] for row in tables], [0, 1])
-        self.assertTrue(all(row.metadata["row_part_count"] == 2 for row in tables))
-        self.assertTrue(all("표 캡션: 표 설명" in row.content for row in tables))
+        parts = sorted(
+            [row for row in tables if row.metadata["row_start"] == 1],
+            key=lambda row: row.metadata["row_part_index"],
+        )
+        self.assertEqual([row.metadata["row_part_index"] for row in parts], [0, 1])
+        self.assertTrue(all(row.metadata["row_part_count"] == 2 for row in parts))
+        self.assertTrue(all(row.metadata["row_format"] == "JSON_CELLS_V1" for row in parts))
+        self.assertEqual(json.loads("".join(row.content for row in parts)), ["제품", "나" * 800, "다" * 800])
 
     def test_skips_expansion_when_rowspan_or_colspan_exceeds_limit(self):
         payload = (
@@ -231,6 +236,54 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertEqual(json.loads("".join(row.content for row in parts)), cells)
         self.assertEqual([row.metadata["row_part_index"] for row in parts], list(range(len(parts))))
         self.assertTrue(all(row.metadata["row_part_count"] == len(parts) for row in parts))
+
+    def test_short_context_long_row_preserves_empty_cells_and_column_positions(self):
+        middle = "가" * 1600
+        cells = ["", middle, "100", ""]
+        payload = (
+            "<DOCUMENT><TABLE><TR><TD>구분</TD><TD>값</TD></TR><TR>"
+            f"<TD></TD><TD>{middle}</TD><TD>100</TD><TD></TD>"
+            "</TR></TABLE></DOCUMENT>"
+        ).encode()
+
+        batch = build_batch(payload)
+        parts = sorted(
+            [row for row in batch.records if row.metadata["content_type"] == "TABLE" and row.metadata["row_start"] == 1],
+            key=lambda row: row.metadata["row_part_index"],
+        )
+
+        self.assertGreater(len(parts), 1)
+        self.assertTrue(all(row.metadata["row_format"] == "JSON_CELLS_V1" for row in parts))
+        self.assertEqual(json.loads("".join(row.content for row in parts)), cells)
+        self.assertEqual([row.metadata["row_part_index"] for row in parts], list(range(len(parts))))
+        self.assertTrue(all(row.metadata["row_part_count"] == len(parts) for row in parts))
+
+    def test_reports_truncated_xml_as_source_failure_instead_of_recovering_partial_content(self):
+        batch = build_batch("<DOCUMENT><TITLE>사업</TITLE><P>남아 있는 본문</P>".encode())
+
+        self.assertEqual(batch.records, [])
+        self.assertEqual(batch.failures[0]["reason"], "xml_parse_error")
+
+    def test_rejects_large_merged_cell_text_before_matrix_expansion(self):
+        payload = ("<DOCUMENT><TABLE><TR><TD COLSPAN='100000'>" + "가" * 10_000 +
+                   "</TD></TR></TABLE></DOCUMENT>").encode()
+
+        with patch("pipeline.business_report.doc.matrix", side_effect=AssertionError("matrix must not run")):
+            document = Document.from_bytes(payload, rcept_no="20250318000001")
+
+        self.assertEqual(document.tables[0].excluded_reason, "table_too_large")
+        self.assertEqual(document.tables[0].m, [])
+
+    def test_allows_merged_cell_at_character_budget_boundary(self):
+        payload = ("<DOCUMENT><TABLE><TR><TD COLSPAN='100'>" + "가" * 100 +
+                   "</TD></TR></TABLE></DOCUMENT>").encode()
+
+        document = Document.from_bytes(
+            payload, rcept_no="20250318000001", max_table_cells=100, max_table_expanded_chars=10_000,
+        )
+
+        self.assertIsNone(document.tables[0].excluded_reason)
+        self.assertEqual(document.tables[0].m, [["가" * 100] * 100])
 
     def test_keeps_identical_paragraphs_when_their_section_coordinates_differ(self):
         payload = (

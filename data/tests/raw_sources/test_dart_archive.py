@@ -42,6 +42,23 @@ class DartArchiveTest(unittest.TestCase):
         self.assertEqual(payload, b"<DOCUMENT/>")
         self.assertEqual(inventory["excluded"], {"manifest_missing_xml": 1})
 
+    def test_keeps_missing_manifest_xml_as_company_failure_lineage(self):
+        rows = [{
+            "corp_name": "회사1", "corp_code": "00000001", "year": 2024,
+            "rcept_no": "20250318000001", "rcept_dt": "20250318", "report_nm": "사업보고서",
+            "file": "document_20250318000001.xml",
+        }]
+        with tempfile.TemporaryDirectory() as directory:
+            archive_path = Path(directory) / "dart.zip"
+            make_archive(archive_path, rows, {})
+            with DartArchive(archive_path) as archive:
+                failures = archive.failures("00000001", years={2024})
+
+        self.assertEqual(failures, ({
+            "corp_code": "00000001", "rcept_no": "20250318000001",
+            "document_file": "document_20250318000001.xml", "reason": "manifest_missing_xml",
+        },))
+
 
 if __name__ == "__main__":
     unittest.main()

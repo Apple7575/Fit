@@ -69,7 +69,8 @@ def business_report_batch(
     records: list[EvidenceRecord] = []
     inputs: Counter[str] = Counter()
     excluded: Counter[str] = Counter()
-    failures: list[dict[str, str]] = []
+    failures = list(archive.failures(corp_code, years=years))
+    excluded.update(failure["reason"] for failure in failures)
     for ref in archive.documents(corp_code, years=years):
         inputs["documents"] += 1
         try:
@@ -250,9 +251,9 @@ def _long_context_table_chunks(
 
 
 def _split_table_row(prefix: str, row_start: int, row_end: int, cells: list[str], *, max_chars: int) -> list[_TableChunk]:
-    parts = _cell_parts(cells, max(1, max_chars - len(prefix) - 1))
-    return [
-        _TableChunk(f"{prefix}\n{part}", row_start, row_end, index, len(parts))
+    parts = _serialized_row_parts(cells, max_chars)
+    return [_TableChunk(prefix, row_start, row_start)] + [
+        _TableChunk(part, row_end, row_end, index, len(parts), "JSON_CELLS_V1")
         for index, part in enumerate(parts)
     ]
 

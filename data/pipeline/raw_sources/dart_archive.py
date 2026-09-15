@@ -32,6 +32,7 @@ class DartArchive:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self._excluded: Counter[str] = Counter()
+        self._failures: list[tuple[str, int, str, str]] = []
         self._manifest_rows = 0
         self._zip = zipfile.ZipFile(self.path)
         try:
@@ -56,7 +57,17 @@ class DartArchive:
         )
 
     def companies(self) -> tuple[str, ...]:
-        return tuple(sorted({ref.corp_code for ref in self._documents}))
+        return tuple(sorted({ref.corp_code for ref in self._documents} | {corp_code for corp_code, *_ in self._failures}))
+
+    def failures(self, corp_code: str | None = None, *, years: set[int] | None = None) -> tuple[dict[str, str], ...]:
+        return tuple(
+            {
+                "corp_code": failed_corp_code, "rcept_no": rcept_no,
+                "document_file": filename, "reason": "manifest_missing_xml",
+            }
+            for failed_corp_code, year, rcept_no, filename in sorted(self._failures)
+            if (corp_code is None or failed_corp_code == corp_code) and (years is None or year in years)
+        )
 
     def read(self, ref: DartDocumentRef) -> bytes:
         return self._zip.read(ref.entry_name)
@@ -99,6 +110,7 @@ class DartArchive:
             matches = entries_by_name.get(filename, [])
             if not matches:
                 self._excluded["manifest_missing_xml"] += 1
+                self._failures.append((corp_code, year, receipt, filename))
                 continue
             if len(matches) != 1:
                 raise ValueError(f"manifest XML 연결이 유일하지 않습니다: {filename} ({len(matches)}건)")
