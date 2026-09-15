@@ -32,6 +32,7 @@ SECOND = "00164779"
 class Cursor:
     def __init__(self, conn):
         self.conn = conn
+        self.rowcount = 1
 
     def execute(self, query, params=None):
         self.conn.queries.append((query, params))
@@ -99,6 +100,154 @@ def result(corp_code):
 
 
 class BuildRagCorpusCliTest(unittest.TestCase):
+    # 이 테스트가 막는 결함: 전용 모드를 선언해도 DART archive를 전달할 수 없는 경우.
+    def test_parse_args_accepts_business_report_only_with_dart_archive(self):
+        args = build_rag_corpus.parse_args([
+            "--business-report-only", "--dart-archive", "dart-reports.zip",
+        ])
+
+        self.assertTrue(args.business_report_only)
+        self.assertEqual(args.dart_archive, Path("dart-reports.zip"))
+
+    # 이 테스트가 막는 결함: 전용 모드의 잘못된 옵션 조합이 DB 접속 뒤에 발견되는 경우.
+    def test_main_rejects_business_report_only_without_archive_before_database_connection(self):
+        with patch.object(build_rag_corpus, "connect") as connect, \
+             patch.object(sys, "argv", ["build_rag_corpus.py", "--business-report-only"]), \
+             redirect_stderr(io.StringIO()), \
+             self.assertRaises(SystemExit):
+            build_rag_corpus.main()
+
+        self.assertFalse(connect.called)
+
+    # 이 테스트가 막는 결함: 전용 스키마에 없는 정본 테이블을 사업보고서 전용 모드가 읽는 경우.
+    def test_business_report_only_uses_only_dart_records_without_loading_master_sources(self):
+        factory = ConnectionFactory([FIRST])
+        report = replace(
+            profile_record({"corp_code": FIRST, "corp_name": "테스트기업", "dart_modify_date": "20260913"}),
+            evidence_id="dart-1", source_identity="dart_business_report:00126380:2025:1",
+            source_type="DART_BUSINESS_REPORT", metadata={"content_type": "TEXT"},
+        )
+
+        class Provider:
+            def batch(self, corp_code):
+                return EvidenceBatch([report], {"documents": 1}, {})
+
+            def inventory(self):
+                return {"documents": 1}
+
+        with patch.object(build_rag_corpus, "load_company_source_rows", side_effect=AssertionError("master loader called")):
+            summary = build_rag_corpus.run(
+                factory, [FIRST], dry_run=True, external_providers=[Provider()], business_report_only=True,
+            )
+
+        self.assertEqual(summary["record_count"], 1)
+        self.assertEqual(summary["companies"][FIRST]["write_status"], "dry_run")
+        self.assertEqual(factory.connections[1].queries, [])
+
+    # 이 테스트가 막는 결함: 실제 전용 동기화가 사업보고서 외 근거까지 지우는 경우.
+    def test_business_report_only_actual_sync_scopes_delete_to_dart_source_type(self):
+        factory = ConnectionFactory([FIRST])
+        report = replace(
+            profile_record({"corp_code": FIRST, "corp_name": "테스트기업", "dart_modify_date": "20260913"}),
+            evidence_id="dart-1", source_identity="dart_business_report:00126380:2025:1",
+            source_type="DART_BUSINESS_REPORT", metadata={"content_type": "TEXT"},
+        )
+
+        class Provider:
+            def batch(self, corp_code):
+                return EvidenceBatch([report], {"documents": 1}, {})
+
+            def inventory(self):
+                return {"documents": 1}
+
+        summary = build_rag_corpus.run(
+            factory, [FIRST], dry_run=False, external_providers=[Provider()], business_report_only=True,
+        )
+
+        self.assertEqual(summary["companies"][FIRST]["write_status"], "replaced")
+        _, delete_params = factory.connections[1].queries[-1]
+        self.assertEqual(delete_params, (FIRST, "DART_BUSINESS_REPORT", ["dart-1"]))
+
+    # 이 테스트가 막는 결함: 선택 기업의 사업보고서가 없을 때 기존 사업보고서 근거를 지우는 경우.
+    def test_business_report_only_preserves_existing_records_when_no_source_documents_exist(self):
+        factory = ConnectionFactory([FIRST])
+
+        class Provider:
+            def batch(self, corp_code):
+                return EvidenceBatch([], {"documents": 0}, {})
+
+            def inventory(self):
+                return {"documents": 0}
+
+        summary = build_rag_corpus.run(
+            factory, [FIRST], dry_run=False, external_providers=[Provider()], business_report_only=True,
+        )
+
+        self.assertEqual(summary["companies"][FIRST]["write_status"], "skipped_due_to_source_failure")
+        self.assertEqual(summary["failures"], [{
+            "corp_code": FIRST, "provider": "Provider", "reason": "no_source_documents",
+        }])
+        self.assertEqual(factory.connections[1].queries, [])
+
+    # 이 테스트가 막는 결함: XML 파싱 실패가 있어도 전용 동기화가 기존 근거를 교체하는 경우.
+    def test_business_report_only_defers_load_when_source_has_failure(self):
+        factory = ConnectionFactory([FIRST])
+
+        class Provider:
+            def batch(self, corp_code):
+                return EvidenceBatch([], {"documents": 1}, {}, failures=({"reason": "xml_parse_error"},))
+
+            def inventory(self):
+                return {"documents": 1}
+
+        summary = build_rag_corpus.run(
+            factory, [FIRST], dry_run=False, external_providers=[Provider()], business_report_only=True,
+        )
+
+        self.assertEqual(summary["companies"][FIRST]["write_status"], "skipped_due_to_source_failure")
+        self.assertEqual(factory.connections[1].queries, [])
+
+    # 이 테스트가 막는 결함: CLI가 파싱한 전용 모드 플래그를 실행 경로에 전달하지 않는 경우.
+    def test_main_forwards_business_report_only_flag_to_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive_path = Path(directory) / "dart.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive_file:
+                archive_file.writestr(
+                    "dart_local/company_reports.csv",
+                    "corp_name,corp_code,year,rcept_no,rcept_dt,file\n",
+                )
+            with patch.object(build_rag_corpus, "run", return_value={"failures": []}) as run, \
+                 patch.object(sys, "argv", [
+                     "build_rag_corpus.py", "--business-report-only", "--dart-archive", str(archive_path),
+                 ]), \
+                 redirect_stdout(io.StringIO()):
+                exit_code = build_rag_corpus.main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(run.call_args.kwargs["business_report_only"])
+
+    # 이 테스트가 막는 결함: 플래그 없는 기존 모드에서 정본 조회·외부 원천의 처리 순서가 바뀌는 경우.
+    def test_default_mode_keeps_loading_master_sources_before_external_provider(self):
+        factory = ConnectionFactory([FIRST])
+        events = []
+
+        class Provider:
+            def batch(self, corp_code):
+                events.append("provider")
+                return EvidenceBatch([], {}, {})
+
+            def inventory(self):
+                return {}
+
+        def load_master(conn, corp_code):
+            events.append("master")
+            return rows(corp_code)
+
+        with patch.object(build_rag_corpus, "load_company_source_rows", side_effect=load_master):
+            build_rag_corpus.run(factory, [FIRST], dry_run=True, external_providers=[Provider()])
+
+        self.assertEqual(events, ["master", "provider"])
+
     def test_run_merges_selected_external_provider_records_into_each_company(self):
         factory = ConnectionFactory([FIRST])
         provider_record = object()

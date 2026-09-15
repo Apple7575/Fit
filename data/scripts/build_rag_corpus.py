@@ -17,7 +17,13 @@ from typing import Callable, ContextManager, Iterable, Protocol
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pipeline.rag_corpus.load import BuildResult, build_company_records, replace_company  # noqa: E402
+from pipeline.rag_corpus.load import (  # noqa: E402
+    BuildResult,
+    build_business_report_records,
+    build_company_records,
+    replace_business_reports,
+    replace_company,
+)
 from pipeline.rag_corpus.source import load_company_source_rows  # noqa: E402
 from pipeline.rag_corpus.models import EvidenceRecord  # noqa: E402
 from pipeline.raw_sources.business_report import BusinessReportSource  # noqa: E402
@@ -138,6 +144,7 @@ def run(
     conn_factory: ConnectionFactory, corp_codes: list[str] | None, *, dry_run: bool,
     external_providers: Iterable[ExternalEvidenceProvider] = (),
     embedding_dimension: int = 1024,
+    business_report_only: bool = False,
 ) -> dict[str, object]:
     """기업별 독립 트랜잭션으로 코퍼스를 교체하고 요약값을 반환한다."""
     if embedding_dimension <= 0:
@@ -148,16 +155,30 @@ def run(
     for corp_code in selected:
         company_started_at = time.monotonic()
         with conn_factory() as conn:
-            rows = load_company_source_rows(conn, corp_code)
+            rows = None if business_report_only else load_company_source_rows(conn, corp_code)
             batches = [(provider.__class__.__name__, provider.batch(corp_code)) for provider in providers]
             external = [record for _, batch in batches for record in batch.records]
             failures = [
                 {**failure, "corp_code": corp_code, "provider": provider}
                 for provider, batch in batches for failure in batch.failures
             ]
-            result = build_company_records(rows, external_records=external) if providers else build_company_records(rows)
+            if business_report_only and not failures and sum(
+                batch.input_counts.get("documents", 0) for _, batch in batches
+            ) == 0:
+                failures.append({
+                    "corp_code": corp_code,
+                    "provider": batches[0][0] if batches else "BusinessReportSource",
+                    "reason": "no_source_documents",
+                })
+            if business_report_only:
+                result = build_business_report_records(corp_code, external)
+            else:
+                result = build_company_records(rows, external_records=external) if providers else build_company_records(rows)
             if not dry_run and not failures:
-                replace_company(conn, corp_code, result.records)
+                if business_report_only:
+                    replace_business_reports(conn, corp_code, result.records)
+                else:
+                    replace_company(conn, corp_code, result.records)
         company_elapsed_ms = int((time.monotonic() - company_started_at) * 1000)
         summary.add(
             corp_code, result, failures=failures,
@@ -183,11 +204,14 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--corp-code", action="append", help="재구축할 8자리 기업 코드 (여러 번 지정 가능)")
     parser.add_argument("--dry-run", action="store_true", help="삭제·삽입 없이 입력과 변환 결과만 집계")
     parser.add_argument("--dart-archive", type=Path, help="사업보고서 XML과 manifest가 든 ZIP")
+    parser.add_argument("--business-report-only", action="store_true", help="DART 사업보고서 근거만 동기화")
     parser.add_argument("--embedding-dimension", type=int, default=1024,
                         help="float32 벡터 저장량 추정에 쓸 차원 (기본: 1024)")
     args = parser.parse_args(argv)
     if args.embedding_dimension <= 0:
         parser.error("--embedding-dimension은 양수여야 합니다")
+    if args.business_report_only and args.dart_archive is None:
+        parser.error("--business-report-only는 --dart-archive와 함께 사용해야 합니다")
     return args
 
 
@@ -201,7 +225,7 @@ def main() -> int:
                 providers.append(BusinessReportSource(archive))
             summary = run(
                 connect, args.corp_code, dry_run=args.dry_run, external_providers=providers,
-                embedding_dimension=args.embedding_dimension,
+                embedding_dimension=args.embedding_dimension, business_report_only=args.business_report_only,
             )
     except Exception as error:
         print(json.dumps({"status": "failed", "error": str(error)}, ensure_ascii=False))

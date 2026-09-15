@@ -2,7 +2,12 @@ from dataclasses import replace
 from datetime import datetime, timezone
 import unittest
 
-from pipeline.rag_corpus.load import build_company_records, replace_company
+from pipeline.rag_corpus.load import (
+    build_business_report_records,
+    build_company_records,
+    replace_business_reports,
+    replace_company,
+)
 from pipeline.rag_corpus.models import EvidenceRecord
 from pipeline.rag_corpus.source import CompanySourceRows
 
@@ -80,6 +85,45 @@ class FakeConnection:
 
 
 class BuildCompanyRecordsTest(unittest.TestCase):
+    # 이 테스트가 막는 결함: 사업보고서 전용 적재에 다른 source type 근거가 섞이는 경우.
+    def test_business_report_only_rejects_non_business_report_source_type(self):
+        with self.assertRaisesRegex(ValueError, "DART_BUSINESS_REPORT"):
+            build_business_report_records(CORP_CODE, [record(source_type="NEWS")])
+
+    # 이 테스트가 막는 결함: 다른 기업 사업보고서가 대상 기업 근거로 저장되는 경우.
+    def test_business_report_only_rejects_cross_company_record(self):
+        report = record("00164779", "dart_business_report:00164779:2025:1", source_type="DART_BUSINESS_REPORT")
+
+        with self.assertRaisesRegex(ValueError, "다른 기업"):
+            build_business_report_records(CORP_CODE, [report])
+
+    # 이 테스트가 막는 결함: 내용 없는 사업보고서가 기존 유효 근거를 지우는 경우.
+    def test_business_report_only_rejects_blank_content(self):
+        report = replace(
+            record(source_identity="dart_business_report:00126380:2025:1", source_type="DART_BUSINESS_REPORT"),
+            content=" ",
+        )
+
+        with self.assertRaisesRegex(ValueError, "빈 내용"):
+            build_business_report_records(CORP_CODE, [report])
+
+    # 이 테스트가 막는 결함: 같은 원문 좌표가 입력 순서에 따라 중복 저장되는 경우.
+    def test_business_report_only_deduplicates_identical_source_identity(self):
+        report = record(source_identity="dart_business_report:00126380:2025:1", source_type="DART_BUSINESS_REPORT")
+
+        built = build_business_report_records(CORP_CODE, [replace(report, evidence_id="second"), report])
+
+        self.assertEqual([item.evidence_id for item in built.records], ["company-1"])
+        self.assertEqual(built.input_counts, {"external:DART_BUSINESS_REPORT": 2})
+        self.assertEqual(built.excluded_counts, {"duplicate_source_identity": 1})
+
+    # 이 테스트가 막는 결함: 같은 원문 좌표의 서로 다른 내용 중 하나를 임의로 저장하는 경우.
+    def test_business_report_only_rejects_conflicting_source_identity(self):
+        report = record(source_identity="dart_business_report:00126380:2025:1", source_type="DART_BUSINESS_REPORT")
+
+        with self.assertRaisesRegex(ValueError, "source_identity.*content_hash"):
+            build_business_report_records(CORP_CODE, [report, replace(report, content_hash="1" * 64)])
+
     def test_adds_same_company_external_evidence_and_rejects_cross_company_input(self):
         rows = CompanySourceRows(
             profile={"corp_code": CORP_CODE, "corp_name": "삼성전자", "dart_modify_date": "20260913"},
@@ -221,6 +265,24 @@ class ReplaceCompanyTest(unittest.TestCase):
             ])
 
         self.assertFalse(conn.executed)
+
+
+class ReplaceBusinessReportsTest(unittest.TestCase):
+    # 이 테스트가 막는 결함: 사업보고서 동기화가 COMPANY·NEWS 근거까지 삭제하는 경우.
+    def test_replaces_only_business_reports_for_the_selected_company(self):
+        conn = FakeConnection()
+        report = record(
+            source_identity="dart_business_report:00126380:2025:1",
+            evidence_id="dart-report-1",
+            source_type="DART_BUSINESS_REPORT",
+        )
+
+        replaced = replace_business_reports(conn, CORP_CODE, [report])
+
+        self.assertEqual(replaced, 1)
+        delete_sql, delete_params = conn.executed[-1]
+        self.assertIn("source_type = %s", " ".join(delete_sql.split()))
+        self.assertEqual(delete_params, (CORP_CODE, "DART_BUSINESS_REPORT", ["dart-report-1"]))
 
 
 if __name__ == "__main__":

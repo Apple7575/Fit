@@ -15,6 +15,24 @@ class BuildResult:
     excluded_counts: dict[str, int]
 
 
+def build_business_report_records(corp_code: str, records: Iterable[EvidenceRecord]) -> BuildResult:
+    """사업보고서 전용 동기화에 허용되는 근거만 준비한다."""
+    selected = list(records)
+    input_count = len(selected)
+    if any(item.source_type != "DART_BUSINESS_REPORT" for item in selected):
+        raise ValueError("사업보고서 전용 적재에는 DART_BUSINESS_REPORT만 허용됩니다")
+    if any(item.corp_code != corp_code for item in selected):
+        raise ValueError("다른 기업의 사업보고서 근거는 함께 적재할 수 없습니다")
+    if any(_blank(item.content) for item in selected):
+        raise ValueError("빈 내용의 사업보고서 근거는 적재할 수 없습니다")
+    selected, duplicate_count = _deduplicate_source_identities(selected)
+    return BuildResult(
+        records=selected,
+        input_counts={"external:DART_BUSINESS_REPORT": input_count},
+        excluded_counts={"duplicate_source_identity": duplicate_count} if duplicate_count else {},
+    )
+
+
 def build_company_records(
     rows: CompanySourceRows, *, external_records: Iterable[EvidenceRecord] = ()
 ) -> BuildResult:
@@ -132,6 +150,48 @@ def replace_company(conn: Any, corp_code: str, records: Iterable[EvidenceRecord]
             )
         else:
             cur.execute("DELETE FROM rag_evidence WHERE corp_code = %s", (corp_code,))
+    return len(replacement)
+
+
+def replace_business_reports(conn: Any, corp_code: str, records: Iterable[EvidenceRecord]) -> int:
+    """한 기업의 DART 사업보고서 근거만 동기화한다."""
+    replacement = build_business_report_records(corp_code, records).records
+    columns = (
+        "evidence_id", "corp_code", "source_type", "source_identity", "title", "content",
+        "reference_period", "published_at", "source_url", "quality", "metadata", "content_hash",
+        "source_updated_at",
+    )
+    with conn.cursor() as cur:
+        for item in replacement:
+            row = item.as_db_row()
+            cur.execute("""
+                INSERT INTO rag_evidence (
+                    evidence_id, corp_code, source_type, source_identity, title, content,
+                    reference_period, published_at, source_url, quality, metadata, content_hash,
+                    source_updated_at
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                )
+                ON CONFLICT (evidence_id) DO UPDATE SET
+                    source_identity = EXCLUDED.source_identity,
+                    title = EXCLUDED.title,
+                    content = EXCLUDED.content,
+                    reference_period = EXCLUDED.reference_period,
+                    published_at = EXCLUDED.published_at,
+                    source_url = EXCLUDED.source_url,
+                    quality = EXCLUDED.quality,
+                    metadata = EXCLUDED.metadata,
+                    content_hash = EXCLUDED.content_hash,
+                    source_updated_at = EXCLUDED.source_updated_at,
+                    updated_at = now()
+                WHERE rag_evidence.corp_code = EXCLUDED.corp_code
+            """, tuple(row[column] for column in columns))
+            if cur.rowcount == 0:
+                raise ValueError(f"다른 기업의 evidence_id와 충돌했습니다: {item.evidence_id}")
+        cur.execute(
+            "DELETE FROM rag_evidence WHERE corp_code = %s AND source_type = %s AND evidence_id <> ALL(%s)",
+            (corp_code, "DART_BUSINESS_REPORT", [item.evidence_id for item in replacement]),
+        )
     return len(replacement)
 
 
