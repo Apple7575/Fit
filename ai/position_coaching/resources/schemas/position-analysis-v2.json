@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "position-analysis-v1.json",
-  "title": "Position Analysis v1",
+  "$id": "position-analysis-v2.json",
+  "title": "Position Analysis v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["analysis_status", "position_profile", "findings", "model_metadata"],
+  "required": ["analysis_status", "rubric", "findings", "model_metadata"],
   "properties": {
-    "analysis_status": {"type": "string", "enum": ["COMPLETED", "NO_TECHNICAL_CLAIM"]},
-    "position_profile": {
+    "analysis_status": {"type": "string", "enum": ["COMPLETED", "NO_EXPERIENCE_CLAIM"]},
+    "rubric": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "version"],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "version": {"type": "integer", "minimum": 1}
+        "id": {"type": "string", "const": "experience-depth-v1"},
+        "version": {"type": "integer", "const": 1}
       }
     },
     "findings": {
@@ -21,10 +21,10 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["finding_id", "experience_type", "claim", "present_elements", "missing_elements", "verdict", "reason", "follow_up_questions"],
+        "required": ["finding_id", "claim_type", "claim", "present_elements", "missing_elements", "verdict", "reason", "follow_up_questions"],
         "properties": {
           "finding_id": {"type": "string", "minLength": 1},
-          "experience_type": {"type": "string", "minLength": 1},
+          "claim_type": {"type": "string", "enum": ["PROBLEM_SOLVING", "ACHIEVEMENT", "DECISION", "EXECUTION", "COLLABORATION", "GROWTH", "OTHER"]},
           "claim": {
             "type": "object",
             "additionalProperties": false,
@@ -43,14 +43,14 @@
               "additionalProperties": false,
               "required": ["element", "quote"],
               "properties": {
-                "element": {"type": "string", "enum": ["PROBLEM", "ROLE", "ACTION", "REASONING", "MECHANISM", "VERIFICATION", "RESULT"]},
+                "element": {"type": "string", "enum": ["SITUATION", "PROBLEM", "ROLE", "ACTION", "REASONING", "PROCESS", "VERIFICATION", "RESULT", "LEARNING"]},
                 "quote": {"type": "string", "minLength": 1}
               }
             }
           },
           "missing_elements": {
             "type": "array",
-            "items": {"type": "string", "enum": ["PROBLEM", "ROLE", "ACTION", "REASONING", "MECHANISM", "VERIFICATION", "RESULT"]}
+            "items": {"type": "string", "enum": ["SITUATION", "PROBLEM", "ROLE", "ACTION", "REASONING", "PROCESS", "VERIFICATION", "RESULT", "LEARNING"]}
           },
           "verdict": {"type": "string", "enum": ["SUFFICIENT", "PARTIAL", "CLAIM_ONLY", "NOT_ASSESSABLE"]},
           "reason": {"type": "string", "minLength": 1},

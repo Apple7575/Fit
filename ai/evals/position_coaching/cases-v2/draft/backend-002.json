@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "backend-002", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "백엔드 개발자", "priority_requirements": ["API 운영"]},
+  "question": "업무 수행 경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "주문 API 로그를 분류하고 오류 응답을 정리했습니다."}],
+  "expected_findings": [{"claim_type": "EXECUTION", "claim_quote": "주문 API 로그를 분류하고 오류 응답을 정리했습니다.", "verdict": "PARTIAL", "present_elements": ["ACTION"], "missing_elements": ["SITUATION", "ROLE", "PROCESS", "RESULT"]}],
+  "forbidden_output_substrings": ["합격", "처리량 30%"]
+}
