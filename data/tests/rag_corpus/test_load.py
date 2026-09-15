@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timezone
 import unittest
 
@@ -23,6 +24,7 @@ def record(corp_code=CORP_CODE, source_identity="company:00126380", *, evidence_
 class RecordingCursor:
     def __init__(self, conn):
         self.conn = conn
+        self.rowcount = -1
 
     def execute(self, query, params):
         self.conn.executed.append((query, params))
@@ -31,6 +33,16 @@ class RecordingCursor:
             self.conn.deleted_company = params[0]
         elif normalized.startswith("insert"):
             self.conn.inserted_companies.append(params[1])
+            existing = self.conn.stored_evidence.get(params[0])
+            guarded = "where rag_evidence.corp_code = excluded.corp_code" in normalized
+            if existing and existing["corp_code"] != params[1] and guarded:
+                self.rowcount = 0
+            else:
+                self.conn.stored_evidence[params[0]] = {
+                    "corp_code": existing["corp_code"] if existing else params[1],
+                    "source_identity": params[3], "content": params[5],
+                }
+                self.rowcount = 1
 
     def __enter__(self):
         return self
@@ -45,12 +57,26 @@ class FakeConnection:
         self.inserted_companies = []
         self.executed = []
         self.committed = False
+        self.rolled_back = False
+        self.stored_evidence = {}
 
     def cursor(self):
         return RecordingCursor(self)
 
     def commit(self):
         self.committed = True
+
+    def __enter__(self):
+        self.before = self.stored_evidence.copy()
+        return self
+
+    def __exit__(self, exc_type, *_):
+        if exc_type is not None:
+            self.stored_evidence = self.before
+            self.rolled_back = True
+        else:
+            self.commit()
+        return False
 
 
 class BuildCompanyRecordsTest(unittest.TestCase):
@@ -136,6 +162,36 @@ class BuildCompanyRecordsTest(unittest.TestCase):
 
 
 class ReplaceCompanyTest(unittest.TestCase):
+    def test_cross_company_evidence_id_collision_rolls_back_before_obsolete_rows_are_deleted(self):
+        conn = FakeConnection()
+        conn.stored_evidence = {
+            "company-1": {"corp_code": "00164779", "source_identity": "company:00164779", "content": "다른 기업"},
+            "old-a": {"corp_code": CORP_CODE, "source_identity": "company:00126380:old", "content": "기존 근거"},
+        }
+        original = conn.stored_evidence.copy()
+        new_record = replace(record(), evidence_id="new-a", source_identity="company:00126380:new")
+
+        with self.assertRaisesRegex(ValueError, "다른 기업.*evidence_id"):
+            with conn:
+                replace_company(conn, CORP_CODE, [new_record, record()])
+
+        self.assertEqual(conn.stored_evidence, original)
+        self.assertTrue(conn.rolled_back)
+        self.assertIsNone(conn.deleted_company)
+
+    def test_upserts_same_company_records_then_deletes_only_missing_evidence(self):
+        conn = FakeConnection()
+        conn.stored_evidence = {
+            "old-a": {"corp_code": CORP_CODE, "source_identity": "company:00126380:old", "content": "기존 근거"},
+        }
+
+        replace_company(conn, CORP_CODE, [record()])
+
+        queries = [" ".join(sql.split()) for sql, _ in conn.executed]
+        self.assertIn("ON CONFLICT (evidence_id) DO UPDATE", queries[0])
+        self.assertIn("WHERE rag_evidence.corp_code = EXCLUDED.corp_code", queries[0])
+        self.assertIn("evidence_id <> ALL", queries[-1])
+        self.assertEqual(conn.executed[-1][1], (CORP_CODE, ["company-1"]))
     def test_delete_and_insert_use_the_same_company(self):
         conn = FakeConnection()
 
@@ -145,7 +201,7 @@ class ReplaceCompanyTest(unittest.TestCase):
         self.assertEqual(conn.deleted_company, CORP_CODE)
         self.assertEqual(conn.inserted_companies, [CORP_CODE])
         self.assertFalse(conn.committed)
-        self.assertEqual(conn.executed[0][1], (CORP_CODE,))
+        self.assertEqual(conn.executed[-1][1], (CORP_CODE, ["company-1"]))
 
     def test_rejects_cross_company_records_before_delete(self):
         conn = FakeConnection()

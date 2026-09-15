@@ -53,7 +53,9 @@ python scripts/verify_normalize.py  # 기준선 150건 회귀 검증
 
 `DATABASE_URL`이 설정되어 있어야 한다. `--dry-run`은 정본을 읽고 변환·제외 건수만
 집계하며 `rag_evidence`를 삭제하거나 삽입하지 않는다. 실제 구축은 기업 하나씩 독립
-트랜잭션으로 교체하므로 종료 코드 `1`이 나오면 실패한 기업의 기존 코퍼스는 보존된다.
+트랜잭션으로 동기화한다. 원본 파싱 실패 또는 다른 기업과 `evidence_id` 충돌한 기업은
+종료 코드 `1`과 함께 기존 코퍼스를 보존한다. 같은 기업의 ID는 갱신하고, 이번 입력에 없는
+같은 기업 근거만 삭제한다.
 
 ```bash
 # 전체 기업을 정렬된 코드 순서로 검사만 한다
@@ -67,7 +69,27 @@ python scripts/build_rag_corpus.py --corp-code 00126380 --corp-code 00164779
 
 # 전체 기업 코퍼스 재구축
 python scripts/build_rag_corpus.py
+
+# 로컬 사업보고서 ZIP만 포함해 DB를 바꾸지 않고 전수 계측한다
+python scripts/build_rag_corpus.py --dry-run \
+  --dart-archive C:/Users/SSAFY/Downloads/dart_local.zip \
+  --embedding-dimension 1024
+
+# 재현 가능한 순서로 지정 기업의 사업보고서 코퍼스만 구축한다
+python scripts/build_rag_corpus.py \
+  --corp-code 00126380 --corp-code 00164779 \
+  --dart-archive C:/Users/SSAFY/Downloads/dart_local.zip
 ```
+
+결과 JSON은 전체와 `companies[corp_code]`별 `company_count`, `record_count`, 정본
+`input_counts`, `excluded_counts`, `elapsed_ms`를 반환한다. 사업보고서 배치의
+`documents`, `sections`, `paragraphs`, `tables`는 원본 입력 수이고,
+`business_report_text_chunks`, `business_report_table_chunks`는 출력 청크 수다.
+기업별 `external_input_counts`, `external_excluded_counts`는 사업보고서 소계다.
+파싱 실패는 `failures`에 기업 코드·provider·원본 실패 계보를 남기며 해당 기업은
+`write_status=skipped_due_to_source_failure`가 된다. `estimated_embedding_bytes`는
+`record_count × embedding_dimension × 4`로 계산한 float32 벡터 본문 예상 바이트다.
+차원은 양수만 허용하며 기본값은 `1024`; 테이블·인덱스·메타데이터 저장량은 포함하지 않는다.
 
 뉴스는 별도 흐름이다. 수집기는 `news_poc/pipeline/collect.py` 이고, 그 원본을 표준 구조로
 정제·적재본으로 만드는 것은 아래 네 CLI 다. 네트워크를 호출하지 않는다.

@@ -4,7 +4,8 @@ import io
 import json
 import sys
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +16,7 @@ sys.path.insert(0, str(SCRIPTS))
 import build_rag_corpus
 from pipeline.rag_corpus.load import BuildResult
 from pipeline.rag_corpus.source import CompanySourceRows
+from pipeline.rag_corpus.transform import profile_record
 from pipeline.raw_sources.models import EvidenceBatch
 
 
@@ -79,7 +81,8 @@ class Transaction:
 
 def rows(corp_code):
     return CompanySourceRows(
-        profile={"corp_code": corp_code}, metrics=[], texts=[], segments=[], activities=[])
+        profile={"corp_code": corp_code, "corp_name": "테스트기업", "dart_modify_date": "20260913"},
+        metrics=[], texts=[], segments=[], activities=[])
 
 
 def result(corp_code):
@@ -130,6 +133,62 @@ class BuildRagCorpusCliTest(unittest.TestCase):
         self.assertFalse(replace.called)
         self.assertEqual(summary["companies"][FIRST]["write_status"], "skipped_due_to_source_failure")
         self.assertEqual(summary["failures"][0]["corp_code"], FIRST)
+
+    def test_run_aggregates_business_report_counts_and_float32_capacity_per_company_and_total(self):
+        factory = ConnectionFactory([FIRST, SECOND])
+        base = profile_record({"corp_code": FIRST, "corp_name": "테스트기업", "dart_modify_date": "20260913"})
+
+        class Provider:
+            def batch(self, corp_code):
+                records = [
+                    replace(base, corp_code=corp_code, evidence_id=f"{corp_code}-{kind}",
+                            source_identity=f"dart:{corp_code}:{kind}", source_type="DART_BUSINESS_REPORT",
+                            metadata={"content_type": kind})
+                    for kind in ("TEXT", "TABLE")
+                ]
+                return EvidenceBatch(
+                    records, {"documents": 1, "sections": 2, "paragraphs": 3, "tables": 1},
+                    {"table_too_large": 1},
+                )
+
+            def inventory(self):
+                return {"documents": 2}
+
+        with patch.object(build_rag_corpus, "load_company_source_rows", side_effect=lambda _, code: rows(code)):
+            summary = build_rag_corpus.run(
+                factory, None, dry_run=True, external_providers=[Provider()], embedding_dimension=512,
+            )
+
+        self.assertEqual(summary["company_count"], 2)
+        self.assertEqual(summary["record_count"], 6)
+        self.assertEqual(summary["input_counts"], {
+            "activities": 0, "documents": 2, "metrics": 0, "paragraphs": 6,
+            "profile": 2, "sections": 4, "segments": 0, "tables": 2, "texts": 0,
+            "external:DART_BUSINESS_REPORT": 4,
+            "business_report_text_chunks": 2, "business_report_table_chunks": 2,
+        })
+        self.assertEqual(summary["excluded_counts"], {"table_too_large": 2})
+        self.assertEqual(summary["estimated_embedding_bytes"], 6 * 512 * 4)
+        self.assertEqual(summary["companies"][FIRST]["estimated_embedding_bytes"], 3 * 512 * 4)
+        self.assertEqual(summary["companies"][FIRST]["external_input_counts"], {
+            "business_report_text_chunks": 1, "business_report_table_chunks": 1,
+            "documents": 1, "paragraphs": 3, "sections": 2, "tables": 1,
+        })
+        self.assertEqual(summary["companies"][SECOND]["external_excluded_counts"], {"table_too_large": 1})
+
+    def test_embedding_dimension_must_be_positive_before_opening_the_database(self):
+        factory = ConnectionFactory([FIRST])
+
+        self.assertEqual(build_rag_corpus.parse_args([]).embedding_dimension, 1024)
+
+        with self.assertRaisesRegex(ValueError, "embedding_dimension"):
+            build_rag_corpus.run(factory, None, dry_run=True, embedding_dimension=0)
+
+        self.assertEqual(factory.connections, [])
+        for dimension in ("0", "-1"):
+            with self.subTest(dimension=dimension), self.assertRaises(SystemExit):
+                with redirect_stderr(io.StringIO()):
+                    build_rag_corpus.parse_args(["--embedding-dimension", dimension])
 
     # 이 테스트가 막는 결함: 전체 재구축에서 DB 반환 순서대로 처리해 결과가 비결정적이 되는 경우.
     def test_run_selects_every_company_in_sorted_order(self):

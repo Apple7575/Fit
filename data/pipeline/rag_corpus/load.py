@@ -87,7 +87,7 @@ def build_company_records(
 
 
 def replace_company(conn: Any, corp_code: str, records: Iterable[EvidenceRecord]) -> int:
-    """호출자가 소유한 트랜잭션 안에서 한 기업의 RAG 레코드를 완전히 교체한다."""
+    """호출자가 소유한 트랜잭션에서 한 기업 근거를 안전하게 동기화한다."""
     replacement = list(records)
     if any(item.corp_code != corp_code for item in replacement):
         raise ValueError("다른 기업 레코드는 함께 교체할 수 없습니다")
@@ -99,7 +99,6 @@ def replace_company(conn: Any, corp_code: str, records: Iterable[EvidenceRecord]
         "source_updated_at",
     )
     with conn.cursor() as cur:
-        cur.execute("DELETE FROM rag_evidence WHERE corp_code = %s", (corp_code,))
         for item in replacement:
             row = item.as_db_row()
             cur.execute("""
@@ -110,7 +109,29 @@ def replace_company(conn: Any, corp_code: str, records: Iterable[EvidenceRecord]
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )
+                ON CONFLICT (evidence_id) DO UPDATE SET
+                    source_identity = EXCLUDED.source_identity,
+                    title = EXCLUDED.title,
+                    content = EXCLUDED.content,
+                    reference_period = EXCLUDED.reference_period,
+                    published_at = EXCLUDED.published_at,
+                    source_url = EXCLUDED.source_url,
+                    quality = EXCLUDED.quality,
+                    metadata = EXCLUDED.metadata,
+                    content_hash = EXCLUDED.content_hash,
+                    source_updated_at = EXCLUDED.source_updated_at,
+                    updated_at = now()
+                WHERE rag_evidence.corp_code = EXCLUDED.corp_code
             """, tuple(row[column] for column in columns))
+            if cur.rowcount == 0:
+                raise ValueError(f"다른 기업의 evidence_id와 충돌했습니다: {item.evidence_id}")
+        if replacement:
+            cur.execute(
+                "DELETE FROM rag_evidence WHERE corp_code = %s AND evidence_id <> ALL(%s)",
+                (corp_code, [item.evidence_id for item in replacement]),
+            )
+        else:
+            cur.execute("DELETE FROM rag_evidence WHERE corp_code = %s", (corp_code,))
     return len(replacement)
 
 
