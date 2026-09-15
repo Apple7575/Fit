@@ -62,8 +62,12 @@ def build_company_records(rows: CompanySourceRows) -> BuildResult:
         else:
             records.append(activity_record(row))
 
+    records, duplicate_count = _deduplicate_source_identities(records)
+    if duplicate_count:
+        _exclude(excluded_counts, "duplicate_source_identity", duplicate_count)
+
     return BuildResult(
-        records=sorted(records, key=lambda item: (item.source_identity, item.evidence_id)),
+        records=records,
         input_counts=input_counts,
         excluded_counts=dict(sorted(excluded_counts.items())),
     )
@@ -74,6 +78,7 @@ def replace_company(conn: Any, corp_code: str, records: Iterable[EvidenceRecord]
     replacement = list(records)
     if any(item.corp_code != corp_code for item in replacement):
         raise ValueError("다른 기업 레코드는 함께 교체할 수 없습니다")
+    replacement, _ = _deduplicate_source_identities(replacement)
 
     columns = (
         "evidence_id", "corp_code", "source_type", "source_identity", "title", "content",
@@ -96,8 +101,45 @@ def replace_company(conn: Any, corp_code: str, records: Iterable[EvidenceRecord]
     return len(replacement)
 
 
-def _exclude(counts: dict[str, int], reason: str) -> None:
-    counts[reason] = counts.get(reason, 0) + 1
+def _deduplicate_source_identities(records: Iterable[EvidenceRecord]) -> tuple[list[EvidenceRecord], int]:
+    """source_identity 충돌은 내용이 같을 때만 결정적으로 하나로 줄인다."""
+    grouped: dict[str, list[EvidenceRecord]] = {}
+    for item in records:
+        grouped.setdefault(item.source_identity, []).append(item)
+
+    kept: list[EvidenceRecord] = []
+    duplicate_count = 0
+    for source_identity, candidates in grouped.items():
+        hashes = {item.content_hash for item in candidates}
+        if len(hashes) != 1:
+            raise ValueError(
+                f"같은 source_identity에 서로 다른 content_hash가 있습니다: {source_identity}")
+        ordered = sorted(candidates, key=_record_sort_key)
+        kept.append(ordered[0])
+        duplicate_count += len(ordered) - 1
+
+    return sorted(kept, key=lambda item: (item.source_identity, item.evidence_id)), duplicate_count
+
+
+def _record_sort_key(item: EvidenceRecord) -> tuple[str, ...]:
+    """동일 content hash 레코드 중 남길 한 행을 입력 순서와 무관하게 고른다."""
+    return (
+        item.source_identity,
+        item.content_hash,
+        item.evidence_id,
+        item.title,
+        item.content,
+        item.reference_period or "",
+        item.published_at.isoformat(),
+        item.source_url or "",
+        item.quality,
+        repr(item.metadata),
+        item.source_updated_at.isoformat() if item.source_updated_at else "",
+    )
+
+
+def _exclude(counts: dict[str, int], reason: str, count: int = 1) -> None:
+    counts[reason] = counts.get(reason, 0) + count
 
 
 def _blank(value: object) -> bool:

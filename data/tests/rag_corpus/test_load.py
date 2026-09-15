@@ -9,12 +9,13 @@ from pipeline.rag_corpus.source import CompanySourceRows
 CORP_CODE = "00126380"
 
 
-def record(corp_code=CORP_CODE, source_identity="company:00126380"):
+def record(corp_code=CORP_CODE, source_identity="company:00126380", *, evidence_id="company-1",
+           content_hash="0" * 64):
     return EvidenceRecord(
-        evidence_id="company-1", corp_code=corp_code, source_type="COMPANY_PROFILE",
+        evidence_id=evidence_id, corp_code=corp_code, source_type="COMPANY_PROFILE",
         source_identity=source_identity, title="삼성전자 기업 기본 정보", content="본문",
         reference_period=None, published_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        source_url=None, quality="PRIMARY", metadata={}, content_hash="0" * 64,
+        source_url=None, quality="PRIMARY", metadata={}, content_hash=content_hash,
         source_updated_at=None,
     )
 
@@ -83,6 +84,38 @@ class BuildCompanyRecordsTest(unittest.TestCase):
             "company:00126380", "company_metric:00126380:2025:revenue", "company_text:00126380:2025:main_product",
         ])
 
+    def test_keeps_one_of_identical_activity_records_and_counts_duplicate_source_identity(self):
+        activity = {
+            "corp_code": CORP_CODE, "corp_name": "삼성전자", "fiscal_year": 2025,
+            "activity_type": "facility", "field_name": "반도체", "purpose": "증설",
+            "amount": "10", "counterparty": "협력사", "rcept_no": "20260310002820",
+        }
+        rows = CompanySourceRows(
+            profile=None, metrics=[], texts=[], segments=[],
+            activities=[{**activity, "id": 1}, {**activity, "id": 2}],
+        )
+
+        result = build_company_records(rows)
+
+        self.assertEqual(len(result.records), 1)
+        self.assertEqual(result.excluded_counts, {"duplicate_source_identity": 1})
+
+    def test_rejects_same_activity_identity_with_different_content_hash(self):
+        activity = {
+            "corp_code": CORP_CODE, "fiscal_year": 2025, "activity_type": "facility",
+            "field_name": "반도체", "purpose": "증설", "amount": "10",
+            "counterparty": "협력사", "rcept_no": "20260310002820",
+        }
+        rows = CompanySourceRows(
+            profile=None, metrics=[], texts=[], segments=[], activities=[
+                {**activity, "corp_name": "삼성전자"},
+                {**activity, "corp_name": "삼성전자전자"},
+            ],
+        )
+
+        with self.assertRaisesRegex(ValueError, "source_identity.*content_hash"):
+            build_company_records(rows)
+
 
 class ReplaceCompanyTest(unittest.TestCase):
     def test_delete_and_insert_use_the_same_company(self):
@@ -101,6 +134,17 @@ class ReplaceCompanyTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "다른 기업"):
             replace_company(conn, CORP_CODE, [record("00164779", "company:00164779")])
+
+        self.assertFalse(conn.executed)
+
+    def test_rejects_conflicting_source_identity_before_delete(self):
+        conn = FakeConnection()
+
+        with self.assertRaisesRegex(ValueError, "source_identity.*content_hash"):
+            replace_company(conn, CORP_CODE, [
+                record(evidence_id="company-1", content_hash="0" * 64),
+                record(evidence_id="company-2", content_hash="1" * 64),
+            ])
 
         self.assertFalse(conn.executed)
 
