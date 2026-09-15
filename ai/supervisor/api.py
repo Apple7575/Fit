@@ -35,6 +35,14 @@ def get_supervisor_service() -> SupervisorService:
             status_code=503,
             detail="supervisor Qwen configuration unavailable",
         ) from error
+    jd_env_file = Path(os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env")))
+    try:
+        load_qwen_config(jd_env_file)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="JD Qwen configuration unavailable",
+        ) from error
     model = QwenSupervisorModel(config)
     registry = AgentRegistry(
         [

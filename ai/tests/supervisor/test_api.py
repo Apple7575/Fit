@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from ai.supervisor.api import app, get_supervisor_service
+from ai.supervisor.api import app, get_analysis_service, get_supervisor_service
 from ai.supervisor.contracts import (
     AgentResult,
     AllAgentsFailedError,
@@ -120,6 +120,7 @@ class SupervisorApiTest(unittest.TestCase):
 class SupervisorConfigurationApiTest(unittest.TestCase):
     def tearDown(self):
         get_supervisor_service.cache_clear()
+        get_analysis_service.cache_clear()
         app.dependency_overrides.clear()
 
     def test_missing_supervisor_qwen_configuration_returns_503(self):
@@ -141,6 +142,34 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
         self.assertEqual(
             response.json()["detail"],
             "supervisor Qwen configuration unavailable",
+        )
+
+    def test_missing_jd_qwen_configuration_returns_503(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            supervisor_env = temporary_root / "supervisor.env"
+            supervisor_env.write_text(
+                "QWEN_BASE_URL=http://qwen.test\n"
+                "QWEN_MODEL=qwen-test\n"
+                "QWEN_API_KEY=test-key\n",
+                encoding="utf-8",
+            )
+            missing_jd_env = temporary_root / "missing-jd.env"
+            environment = {
+                "SUPERVISOR_QWEN_ENV_FILE": str(supervisor_env),
+                "JD_QWEN_ENV_FILE": str(missing_jd_env),
+            }
+            with patch.dict(os.environ, environment, clear=True):
+                get_supervisor_service.cache_clear()
+                get_analysis_service.cache_clear()
+                response = TestClient(app, raise_server_exceptions=False).post(
+                    "/internal/runs", json=VALID_REQUEST
+                )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json()["detail"],
+            "JD Qwen configuration unavailable",
         )
 
 
