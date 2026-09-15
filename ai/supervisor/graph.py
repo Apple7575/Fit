@@ -9,7 +9,7 @@ from langgraph.types import Send
 
 from ai.supervisor.adapters import AgentRegistry
 from ai.supervisor.contracts import AgentResult, NoAvailableAgentError, SupervisorPlan
-from ai.supervisor.model import SupervisorModel
+from ai.supervisor.model import PlanOutputError, SupervisorModel
 
 
 class SupervisorState(TypedDict, total=False):
@@ -71,6 +71,10 @@ def build_supervisor_graph(model: SupervisorModel, registry: AgentRegistry):
                     available_agents=state["available_agents"],
                     validation_error=validation_error,
                 )
+            except PlanOutputError as error:
+                validation_error = str(error)
+                continue
+            try:
                 return {
                     "plan": validate_selected_agents(
                         candidate, state["available_agents"]

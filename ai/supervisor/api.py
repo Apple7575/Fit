@@ -1,4 +1,5 @@
 import os
+from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
@@ -53,6 +54,10 @@ def get_supervisor_service() -> SupervisorService:
     return SupervisorService(build_supervisor_graph(model, registry))
 
 
+def get_supervisor_service_provider() -> Callable[[], SupervisorService]:
+    return get_supervisor_service
+
+
 app = FastAPI(title="Supervisor API")
 
 
@@ -64,10 +69,14 @@ def health() -> dict[str, str]:
 @app.post("/internal/runs", response_model=SupervisorRunResponse)
 def create_run(
     request: SupervisorRunRequest,
-    service: Annotated[SupervisorService, Depends(get_supervisor_service)],
+    service_provider: Annotated[
+        Callable[[], SupervisorService], Depends(get_supervisor_service_provider)
+    ],
 ) -> SupervisorRunResponse:
     try:
-        return service.run(request)
+        if request.agent_contexts.jd is None and request.agent_contexts.position is None:
+            raise NoAvailableAgentError("no agent context was provided")
+        return service_provider().run(request)
     except NoAvailableAgentError as error:
         raise HTTPException(
             status_code=422,

@@ -30,6 +30,10 @@ AGGREGATE_SCHEMA = {
 }
 
 
+class PlanOutputError(ValueError):
+    """The model returned output that does not satisfy the plan contract."""
+
+
 class SupervisorModel(Protocol):
     def create_plan(
         self,
@@ -86,21 +90,34 @@ class QwenSupervisorModel:
         }
         if validation_error is not None:
             payload["previous_validation_error"] = validation_error
-        response = self._qwen_caller(
-            self._config,
-            [
-                {
-                    "role": "system",
-                    "content": "사용 가능한 에이전트 안에서 요청 해결에 필요한 최소 집합을 선택하라.",
-                },
-                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-            ],
-            max_tokens=600,
-            timeout_seconds=30,
-            schema=PLAN_SCHEMA,
-            schema_name="supervisor_plan_v1",
-        )
-        return SupervisorPlan.model_validate(response["output"])
+        try:
+            response = self._qwen_caller(
+                self._config,
+                [
+                    {
+                        "role": "system",
+                        "content": "사용 가능한 에이전트 안에서 요청 해결에 필요한 최소 집합을 선택하라.",
+                    },
+                    {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                ],
+                max_tokens=600,
+                timeout_seconds=30,
+                schema=PLAN_SCHEMA,
+                schema_name="supervisor_plan_v1",
+            )
+        except json.JSONDecodeError as error:
+            raise PlanOutputError(str(error)) from error
+        except ValueError as error:
+            # The shared JD caller wraps content parsing errors in this legacy error.
+            if str(error) == "Qwen response does not contain valid JSON" and isinstance(
+                error.__cause__, (KeyError, IndexError, TypeError, json.JSONDecodeError)
+            ):
+                raise PlanOutputError(str(error)) from error
+            raise
+        try:
+            return SupervisorPlan.model_validate(response["output"])
+        except (ValueError, TypeError, KeyError) as error:
+            raise PlanOutputError(str(error)) from error
 
     def aggregate(
         self,

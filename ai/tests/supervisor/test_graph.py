@@ -2,6 +2,7 @@ import json
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
 from ai.supervisor.adapters import AgentRegistry
 from ai.supervisor.contracts import NoAvailableAgentError, SupervisorPlan
@@ -223,6 +224,54 @@ class SupervisorGraphTest(unittest.TestCase):
             invoke_graph(model, registry, {"jd": {"job_context_id": "jctx"}})
 
         self.assertEqual(len(caller.plan_calls), 1)
+
+    def test_invalid_qwen_url_propagates_without_worker_calls(self):
+        model = QwenSupervisorModel(
+            {"base_url": "invalid-url", "model": "qwen", "api_key": "test"}
+        )
+        worker = RecordingAdapter("jd", threading.Barrier(1))
+
+        with self.assertRaisesRegex(ValueError, "unknown url type"):
+            invoke_graph(
+                model, AgentRegistry([worker]), {"jd": {"job_context_id": "jctx"}}
+            )
+
+        self.assertEqual(worker.threads, [])
+
+    def test_operational_value_type_and_key_errors_propagate_without_workers(self):
+        for error in (
+            ValueError("bad config"), TypeError("bad request"), KeyError("model")
+        ):
+            with self.subTest(error=type(error).__name__):
+                caller = FakeQwenCaller([error, error])
+                worker = RecordingAdapter("jd", threading.Barrier(1))
+                with self.assertRaises(type(error)) as caught:
+                    invoke_graph(
+                        QwenSupervisorModel({}, qwen_caller=caller),
+                        AgentRegistry([worker]),
+                        {"jd": {"job_context_id": "jctx"}},
+                    )
+                self.assertIs(caught.exception, error)
+                self.assertEqual(worker.threads, [])
+                self.assertEqual(len(caller.plan_calls), 1)
+
+    def test_real_caller_invalid_json_retries_then_falls_back(self):
+        model = QwenSupervisorModel(
+            {"base_url": "http://qwen.test", "model": "qwen", "api_key": "test"}
+        )
+        worker = RecordingAdapter("jd", threading.Barrier(1))
+        with patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = (
+                b'{"choices": [{"message": {"content": "not JSON"}}]}'
+            )
+            result = invoke_graph(
+                model, AgentRegistry([worker]), {"jd": {"job_context_id": "jctx"}}
+            )
+
+        self.assertIn("fallback", result["plan"].reason)
+        self.assertEqual(len(worker.threads), 1)
+        # Two plan attempts plus one aggregation attempt after the worker succeeds.
+        self.assertEqual(urlopen.call_count, 3)
 
     def test_worker_failure_does_not_cancel_other_worker(self):
         model = FakeModel(
