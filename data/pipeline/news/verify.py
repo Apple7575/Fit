@@ -320,6 +320,29 @@ def check_12_inventory_row_counts() -> Check:
                   "problems": problems})
 
 
+def _seed_build_options() -> dict:
+    """시드를 만들 때 쓴 선택을 manifest 에서 읽는다.
+
+    `curate.build` 의 기본값이 아닌 선택(예: `--per-company 5`)으로 만든 시드를
+    기본값으로 다시 만들면 당연히 달라진다. 그것은 결정성 문제가 아니라 **다른
+    명령을 돌린 것**이라, 재실행 대조는 같은 선택으로 해야 뜻이 있다.
+    manifest 가 없거나 키가 없으면 기본값으로 둔다.
+    """
+    path = curate.SEED_MANIFEST_DIR / f"{SEED_TABLE}.json"
+    if not path.exists():
+        return {}
+    try:
+        saved = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    options: dict = {}
+    if saved.get("per_company_limit"):
+        options["per_company"] = int(saved["per_company_limit"])
+    if saved.get("source_column_maps_to"):
+        options["source_column"] = saved["source_column_maps_to"]
+    return options
+
+
 def check_13_determinism() -> Check:
     """같은 원본으로 다시 정제·시드 생성해 바이트가 같은지 본다."""
     runs = rawstore.list_runs()
@@ -343,7 +366,11 @@ def check_13_determinism() -> Check:
                 problems.append(f"{run_id}: articles.csv 가 재실행 결과와 다르다")
         seed_path = SEED_DIR / f"{SEED_TABLE}.csv"
         if seed_path.exists():
-            rebuilt = curate.build(_staged_rows())
+            # 시드를 만들 때 준 선택(기업별 상한·source 컬럼)을 manifest 에서 읽어
+            # 그대로 다시 준다. 기본값으로 다시 만들면 "재실행하면 달라진다"가
+            # 아니라 "다른 명령을 돌렸다"를 잡게 된다.
+            options = _seed_build_options()
+            rebuilt = curate.build(_staged_rows(), **options)
             copy = scratch / "seed"
             copy.mkdir(parents=True, exist_ok=True)
             from pipeline.news.csvio import write_csv

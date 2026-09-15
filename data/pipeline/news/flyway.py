@@ -30,8 +30,10 @@ MIGRATION_DIR = (
 # 이 스키마에 실제로 쓰인 타입만 허용한다. 새 타입이 들어오면 여기서 걸려
 # 사전(data_fields.csv)을 갱신하라는 신호가 된다.
 _SIZED_TYPES = ("VARCHAR", "NUMERIC", "CHAR", "DECIMAL")
+# 앞에서부터 startswith 로 맞춰 보므로 **긴 이름을 먼저** 둔다. "INT" 가 "INTEGER"
+# 앞에 오면 INTEGER 가 INT 로 잘리고 "EGER" 가 남는다.
 _PLAIN_TYPES = (
-    "BIGINT", "INTEGER", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
+    "BIGINT", "INTEGER", "INT", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
     "JSONB", "JSON", "DATE", "TIMESTAMPTZ", "TIMESTAMP", "UUID",
 )
 _CONSTRAINT_STARTS = ("CONSTRAINT", "PRIMARY KEY", "UNIQUE", "CHECK", "FOREIGN KEY", "EXCLUDE")
