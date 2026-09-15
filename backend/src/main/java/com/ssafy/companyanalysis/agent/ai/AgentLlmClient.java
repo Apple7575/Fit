@@ -53,7 +53,7 @@ public class AgentLlmClient {
 
     private String generate(String systemInstruction, String userText, Map<String, Object> generationConfig) {
         if (!properties.hasKey()) {
-            throw new BusinessException(ErrorCode.AI_FEEDBACK_UNAVAILABLE);
+            throw new BusinessException(ErrorCode.AI_UNAVAILABLE);
         }
 
         JsonNode response;
@@ -70,12 +70,12 @@ public class AgentLlmClient {
                     .retrieve()
                     .body(JsonNode.class);
         } catch (RestClientException e) {
-            throw new BusinessException(ErrorCode.AI_FEEDBACK_FAILED);
+            throw new BusinessException(ErrorCode.AI_FAILED);
         }
 
         String text = extractText(response);
         if (text == null || text.isBlank()) {
-            throw new BusinessException(ErrorCode.AI_FEEDBACK_FAILED, "모델이 빈 응답을 돌려줬습니다.");
+            throw new BusinessException(ErrorCode.AI_FAILED, "모델이 빈 응답을 돌려줬습니다.");
         }
         // 화면이 평문으로 뿌리므로 마크다운 기호가 그대로 보인다. 프롬프트로 이르지만 자주 어긴다.
         return PlainText.of(text);

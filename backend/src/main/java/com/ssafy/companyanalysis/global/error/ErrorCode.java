@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
  * EMAIL_ALREADY_EXISTS · INVALID_CREDENTIALS · UNAUTHENTICATED · ACCESS_DENIED 는 인증 도입으로 신설했다.
  * ROOM_* · AGENT_* · TURN_IN_PROGRESS 는 자소서 멀티에이전트(S15P21A504-127)에서 신설했다.
  * JOB_POSTING_* 은 공고 URL 확인(S15P21A504-138)에서 신설했다.
+ * AI_UNAVAILABLE · AI_FAILED 는 자소서 피드백 전용이던 AI_FEEDBACK_* 을 고친 것이다 —
+ * 피드백이 사라진 뒤 에이전트와 공고 확인이 함께 쓴다.
  */
 public enum ErrorCode {
 
@@ -23,8 +25,8 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다."),
     VERIFICATION_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "인증 링크가 유효하지 않거나 만료되었습니다."),
     COVER_LETTER_NOT_FOUND(HttpStatus.NOT_FOUND, "자소서를 찾을 수 없습니다."),
-    AI_FEEDBACK_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI 피드백을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."),
-    AI_FEEDBACK_FAILED(HttpStatus.BAD_GATEWAY, "AI 피드백에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 AI 기능을 쓸 수 없습니다. 잠시 후 다시 시도해 주세요."),
+    AI_FAILED(HttpStatus.BAD_GATEWAY, "AI 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요."),
     FEEDBACK_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 많습니다. 잠시 후 다시 시도해 주세요."),
     INTERVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "면접 기록을 찾을 수 없습니다."),
     INTERVIEW_AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "면접 AI를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."),
