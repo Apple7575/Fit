@@ -3,6 +3,7 @@
 ## Active
 
 - [[product/jd-coaching-product-roadmap]]
+- [[product/position-analysis-generalization]]
 - [[architecture/agent-api-path-convention-without-url-version]]
 
 ## Superseded

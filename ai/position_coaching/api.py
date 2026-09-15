@@ -44,10 +44,34 @@ class ConversationMessageRequest(BaseModel):
         return value
 
 
+class PositionContextRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    position_name: str = Field(min_length=1, max_length=200)
+    priority_requirements: list[
+        Annotated[str, Field(min_length=1, max_length=500)]
+    ] = Field(default_factory=list, max_length=20)
+
+    @field_validator("position_name")
+    @classmethod
+    def reject_blank_position_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be blank")
+        return value
+
+    @field_validator("priority_requirements")
+    @classmethod
+    def reject_blank_priorities(cls, values: list[str]) -> list[str]:
+        if any(not value.strip() for value in values):
+            raise ValueError("priority requirement must not be blank")
+        return values
+
+
 class PositionAnalysisRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    position_profile_id: str = Field(min_length=1, max_length=100)
+    rubric_id: Literal["experience-depth-v1"]
+    position_context: PositionContextRequest
     documents: list[PositionDocumentRequest] = Field(min_length=1, max_length=21)
     conversation: list[ConversationMessageRequest] = Field(default_factory=list, max_length=20)
 
@@ -89,7 +113,8 @@ def create_analysis(
 ) -> dict[str, object]:
     try:
         analysis = service.analyze(
-            request.position_profile_id,
+            request.rubric_id,
+            request.position_context.model_dump(),
             [document.model_dump() for document in request.documents],
             [message.model_dump() for message in request.conversation],
         )

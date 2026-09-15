@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "data-002", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "데이터 분석가", "priority_requirements": ["데이터 품질"]},
+  "question": "문제 해결 경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "누락된 설문 응답을 유형별로 분리해 분석 대상에서 제외했습니다."}],
+  "expected_findings": [{"claim_type": "PROBLEM_SOLVING", "claim_quote": "누락된 설문 응답을 유형별로 분리해 분석 대상에서 제외했습니다.", "verdict": "PARTIAL", "present_elements": ["ACTION"], "missing_elements": ["PROBLEM", "ROLE", "REASONING", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["합격", "정확도 95%"]
+}

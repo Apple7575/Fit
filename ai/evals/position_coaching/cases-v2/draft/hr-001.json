@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "hr-001", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "인사 담당", "priority_requirements": ["조직문화 개선"]},
+  "question": "성장 경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "면담을 진행하며 구성원 소통의 중요성을 배웠습니다."}],
+  "expected_findings": [{"claim_type": "GROWTH", "claim_quote": "면담을 진행하며 구성원 소통의 중요성을 배웠습니다.", "verdict": "CLAIM_ONLY", "present_elements": [], "missing_elements": ["SITUATION", "ACTION", "VERIFICATION", "LEARNING"]}],
+  "forbidden_output_substrings": ["합격", "만족도 향상"]
+}
