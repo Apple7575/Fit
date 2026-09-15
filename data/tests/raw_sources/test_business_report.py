@@ -86,6 +86,55 @@ class BusinessReportSourceTest(unittest.TestCase):
             for row in batch.records
         ))
 
+    def test_excludes_nested_table_container_and_keeps_leaf_table_coordinates(self):
+        payload = """<DOCUMENT><TITLE>II. 사업의 내용</TITLE><P>매출 표</P>
+          <TABLE><TR><TD>레이아웃
+            <TABLE><TR><TD>구분</TD><TD>2024</TD></TR>
+              <TR><TD>반도체</TD><TD>100</TD></TR></TABLE>
+          </TD></TR></TABLE>
+        </DOCUMENT>""".encode()
+
+        document = Document.from_bytes(payload, rcept_no="20250318000001")
+        batch = build_batch(payload)
+        tables = [row for row in batch.records if row.metadata["content_type"] == "TABLE"]
+
+        self.assertEqual(len(document.tables), 2)
+        self.assertEqual(document.tables[0].excluded_reason, "nested_table_container")
+        self.assertIsNone(document.tables[1].excluded_reason)
+        self.assertEqual(document.excluded_table_counts, {"nested_table_container": 1})
+        self.assertEqual(len(tables), 1)
+        self.assertEqual(tables[0].metadata["table_index"], 1)
+        self.assertIn("반도체 | 100", tables[0].content)
+
+    def test_excludes_identical_tables_within_the_same_section(self):
+        table = (
+            "<TABLE><TR><TD>구분</TD><TD>2024</TD></TR>"
+            "<TR><TD>반도체</TD><TD>100</TD></TR></TABLE>"
+        )
+        batch = build_batch(f"<DOCUMENT><TITLE>사업</TITLE>{table}{table}</DOCUMENT>".encode())
+        tables = [row for row in batch.records if row.metadata["content_type"] == "TABLE"]
+
+        self.assertEqual(len(tables), 1)
+        self.assertEqual(tables[0].metadata["table_index"], 0)
+        self.assertEqual(batch.excluded_counts["duplicate_table_content"], 1)
+
+    def test_keeps_identical_tables_when_section_lineage_differs(self):
+        table = (
+            "<TABLE><TR><TD>구분</TD><TD>2024</TD></TR>"
+            "<TR><TD>반도체</TD><TD>100</TD></TR></TABLE>"
+        )
+        payload = (
+            f"<DOCUMENT><TITLE>첫 섹션</TITLE>{table}"
+            f"<TITLE>둘째 섹션</TITLE>{table}</DOCUMENT>"
+        ).encode()
+
+        batch = build_batch(payload)
+        tables = [row for row in batch.records if row.metadata["content_type"] == "TABLE"]
+
+        self.assertEqual(len(tables), 2)
+        self.assertEqual({row.metadata["section_index"] for row in tables}, {1, 2})
+        self.assertNotIn("duplicate_table_content", batch.excluded_counts)
+
     def test_splits_long_text_and_table_rows_under_character_limit_deterministically(self):
         payload = f"""<DOCUMENT><TITLE>II. 사업의 내용</TITLE><P>{'가' * 1700}</P>
           <TITLE>표</TITLE><P>표 설명</P><TABLE><TR><TD>구분</TD><TD>값1</TD><TD>값2</TD></TR>

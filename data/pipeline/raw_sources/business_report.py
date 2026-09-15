@@ -132,10 +132,20 @@ def _document_records(document: Document, ref: DartDocumentRef, *, max_chars: in
             )
             records.append(_record(ref, published_at, section.title, identity, content, metadata))
 
+        seen_tables: set[str] = set()
         for table in section.tables:
             if table.excluded_reason:
                 continue
             unit, _, _ = document.unit(table)
+            table_key = content_hash({
+                "caption": squash(table.caption),
+                "rows": [[squash(cell) for cell in row] for row in table.m],
+                "unit": unit,
+            })
+            if table_key in seen_tables:
+                excluded["duplicate_table_content"] += 1
+                continue
+            seen_tables.add(table_key)
             for chunk in _table_chunks(table.caption, table.m, max_chars=max_chars):
                 identity = (
                     f"dart_business_report:{ref.corp_code}:{ref.rcept_no}:{section_index}:"

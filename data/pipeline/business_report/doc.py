@@ -26,6 +26,13 @@ def _is_in_table(element) -> bool:
     return False
 
 
+def _has_nested_table(element) -> bool:
+    return any(
+        isinstance(descendant.tag, str) and descendant.tag.upper() == "TABLE"
+        for descendant in element.iterdescendants()
+    )
+
+
 def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
     for match in _UNIT_SCOPE.finditer(blob):
         for name, multiplier in units:
@@ -225,21 +232,26 @@ class Document:
                     current.paragraphs.append(text)
                     recent = (recent + [text])[-4:]
             elif tag == "TABLE":
-                excluded_reason = None
-                shape = _table_shape(
-                    element, self.p.rnd.cell_tags, max_table_cells=self.max_table_cells,
-                    max_table_expanded_chars=self.max_table_expanded_chars,
-                )
-                if shape is None:
-                    excluded_reason = "table_invalid_span"
+                if _has_nested_table(element):
+                    excluded_reason = "nested_table_container"
                     self._excluded_table_counts[excluded_reason] += 1
                     table_matrix = []
-                elif shape[0] * shape[1] > self.max_table_cells or shape[2] > self.max_table_expanded_chars:
-                    excluded_reason = "table_too_large"
-                    self._excluded_table_counts[excluded_reason] += 1
-                    table_matrix: list[list[str]] = []
                 else:
-                    table_matrix = matrix(element, self.p)
+                    excluded_reason = None
+                    shape = _table_shape(
+                        element, self.p.rnd.cell_tags, max_table_cells=self.max_table_cells,
+                        max_table_expanded_chars=self.max_table_expanded_chars,
+                    )
+                    if shape is None:
+                        excluded_reason = "table_invalid_span"
+                        self._excluded_table_counts[excluded_reason] += 1
+                        table_matrix = []
+                    elif shape[0] * shape[1] > self.max_table_cells or shape[2] > self.max_table_expanded_chars:
+                        excluded_reason = "table_too_large"
+                        self._excluded_table_counts[excluded_reason] += 1
+                        table_matrix = []
+                    else:
+                        table_matrix = matrix(element, self.p)
                 table = Table(
                     idx=table_index,
                     title=current.title,
