@@ -16,6 +16,16 @@ class AiServeTest(unittest.TestCase):
         self.assertEqual(health.json()["services"]["position"], "/position")
         self.assertEqual(position_health.status_code, 200)
 
+    def test_mounts_supervisor_service(self):
+        client = TestClient(build_app())
+
+        health = client.get("/health")
+        supervisor_health = client.get("/supervisor/health")
+
+        self.assertEqual(health.status_code, 200)
+        self.assertEqual(health.json()["services"]["supervisor"], "/supervisor")
+        self.assertEqual(supervisor_health.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()
