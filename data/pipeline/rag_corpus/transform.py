@@ -328,13 +328,16 @@ def _group_quality(rows: Iterable[Mapping[str, object]]) -> str:
 
 
 def _activity_identity(row: Mapping[str, object], corp_code: str, fiscal_year: int, activity_type: str) -> str:
-    identifier = _present(row.get("id"))
-    if identifier is not None:
-        return f"company_activity:{corp_code}:{identifier}"
-    natural_key = ":".join(str(_present(row.get(key)) or "-") for key in (
-        "rcept_no", "field_name", "purpose", "amount", "counterparty"
-    ))
-    return f"company_activity:{corp_code}:{fiscal_year}:{activity_type}:{natural_key}"
+    source_fields = {
+        "fiscal_year": fiscal_year,
+        "activity_type": activity_type,
+        "rcept_no": _present(row.get("rcept_no")),
+        "field_name": _present(row.get("field_name")),
+        "purpose": _present(row.get("purpose")),
+        "amount": _present(row.get("amount")),
+        "counterparty": _present(row.get("counterparty")),
+    }
+    return f"company_activity:{corp_code}:{content_hash(source_fields)[:32]}"
 
 
 def _year(row: Mapping[str, object]) -> int:

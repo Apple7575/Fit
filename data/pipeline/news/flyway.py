@@ -31,7 +31,7 @@ MIGRATION_DIR = (
 # 사전(data_fields.csv)을 갱신하라는 신호가 된다.
 _SIZED_TYPES = ("VARCHAR", "NUMERIC", "CHAR", "DECIMAL")
 _PLAIN_TYPES = (
-    "BIGINT", "INTEGER", "INT", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
+    "BIGINT[]", "BIGINT", "INTEGER", "INT", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
     "JSONB", "JSON", "DATE", "TIMESTAMPTZ", "TIMESTAMP", "UUID",
 )
 _TYPE_ALIASES = {"INT": "INTEGER"}
@@ -179,12 +179,12 @@ def _parse_type(definition: str) -> tuple[str, str]:
     text = definition.strip()
     upper = text.upper()
     for name in _SIZED_TYPES:
-        if upper.startswith(name):
+        if re.match(rf"{name}(?=\s|\(|$)", upper):
             m = re.match(rf"{name}\s*(\(\s*\d+\s*(?:,\s*\d+\s*)?\))?", text, re.IGNORECASE)
             size = (m.group(1) or "").replace(" ", "")
             return name + size, text[m.end():].strip()
     for name in _PLAIN_TYPES:
-        if upper.startswith(name):
+        if re.match(rf"{re.escape(name)}(?=\s|$)", upper):
             return _TYPE_ALIASES.get(name, name), text[len(name):].strip()
     raise ValueError(f"모르는 컬럼 타입: {definition!r}")
 

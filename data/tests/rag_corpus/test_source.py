@@ -73,7 +73,9 @@ class CompanySourceReaderTest(unittest.TestCase):
             self.assertEqual(params, (CORP_CODE,))
         self.assertIn("order by ct.fiscal_year, ct.attr_key, ct.seq", " ".join(conn.cursor_instance.executed[2][0].lower().split()))
         self.assertIn("order by sm.fiscal_year, sm.segment_name, sm.metric_code", " ".join(conn.cursor_instance.executed[3][0].lower().split()))
-        self.assertIn("order by ca.fiscal_year, ca.activity_type, ca.id", " ".join(conn.cursor_instance.executed[4][0].lower().split()))
+        activity_query = " ".join(conn.cursor_instance.executed[4][0].lower().split())
+        self.assertIn("order by ca.fiscal_year, ca.activity_type, ca.rcept_no, ca.field_name, ca.purpose, ca.amount, ca.counterparty", activity_query)
+        self.assertNotIn("ca.id", activity_query)
 
     def test_metric_query_joins_catalog_and_evidence_on_full_company_year_metric_key(self):
         conn = RecordingConnection([[{"corp_code": CORP_CODE, "corp_name": "삼성전자"}], [], [], [], []])

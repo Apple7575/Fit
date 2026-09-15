@@ -72,13 +72,14 @@ def load_company_source_rows(conn: Any, corp_code: str) -> CompanySourceRows:
         segments = _fetch_all(cur)
 
         cur.execute("""
-            SELECT ca.id, ca.corp_code, c.corp_name, ca.fiscal_year, ca.activity_type,
+            SELECT ca.corp_code, c.corp_name, ca.fiscal_year, ca.activity_type,
                    ca.field_name, ca.purpose, ca.amount, ca.counterparty, ca.rcept_no,
                    ca.updated_at AS source_updated_at
               FROM company_activity ca
               JOIN company c ON c.corp_code = ca.corp_code
              WHERE ca.corp_code = %s
-             ORDER BY ca.fiscal_year, ca.activity_type, ca.id
+             ORDER BY ca.fiscal_year, ca.activity_type, ca.rcept_no, ca.field_name,
+                      ca.purpose, ca.amount, ca.counterparty
         """, (corp_code,))
         activities = _fetch_all(cur)
 

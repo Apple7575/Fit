@@ -130,6 +130,15 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEqual(schema.table("t").columns["id"].data_type, "INTEGER")
 
+    def test_INTERVAL을_INT로_오인하지_않는다(self):
+        with self.assertRaisesRegex(ValueError, "모르는 컬럼 타입"):
+            flyway._parse_type("INTERVAL NOT NULL")
+
+    def test_BIGINT_배열을_명시적으로_읽는다(self):
+        data_type, _ = flyway._parse_type("BIGINT[] NOT NULL DEFAULT '{}'")
+
+        self.assertEqual(data_type, "BIGINT[]")
+
     def test_sql_로_시드되는_테이블을_기록한다(self):
         self.assertEqual(self.schema.seeded_tables, {"industry", "metric"})
 

@@ -143,6 +143,24 @@ class RagCorpusTransformTest(unittest.TestCase):
         self.assertEqual(record.content, "삼성전자의 2025년 facility 활동은 반도체, 금액 10입니다.")
         self.assertNotIn("None", record.content)
 
+    def test_activity_identity_uses_meaningful_source_fields_not_database_id(self):
+        source = {
+            "corp_code": "00126380", "corp_name": "삼성전자", "fiscal_year": 2025,
+            "activity_type": "facility", "field_name": "반도체", "purpose": "증설",
+            "amount": Decimal("10"), "counterparty": "협력사", "rcept_no": "20260310002820",
+            "source_updated_at": "2026-03-10T00:00:00+00:00",
+        }
+        first = activity_record({**source, "id": 1})
+        same_source = activity_record({**source, "id": 999})
+        changed_source = activity_record({**source, "id": 1, "purpose": "유지보수"})
+
+        self.assertEqual(first.source_identity, same_source.source_identity)
+        self.assertEqual(first.evidence_id, same_source.evidence_id)
+        self.assertEqual(first.content_hash, same_source.content_hash)
+        self.assertNotEqual(first.source_identity, changed_source.source_identity)
+        self.assertNotEqual(first.evidence_id, changed_source.evidence_id)
+        self.assertNotEqual(first.content_hash, changed_source.content_hash)
+
     def test_profile_uses_dart_date_before_updated_at(self):
         record = profile_record({
             "corp_code": "00126380", "corp_name": "삼성전자", "corp_cls": "Y",
