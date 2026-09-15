@@ -72,7 +72,13 @@ class SupervisorContractsTest(unittest.TestCase):
             "conversation": [],
             "agent_contexts": {
                 "jd": {"job_context_id": "jctx_1"},
-                "position": {"position_profile_id": "backend-v1"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": ["Spring 기반 API 개발"],
+                    },
+                },
             },
         })
 
@@ -101,7 +107,7 @@ Expected: `ModuleNotFoundError: No module named 'ai.supervisor'`.
 ```python
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -147,15 +153,30 @@ class JdAgentContext(StrictModel):
         return value
 
 
-class PositionAgentContext(StrictModel):
-    position_profile_id: str = Field(min_length=1, max_length=100)
+class PositionContext(StrictModel):
+    position_name: str = Field(min_length=1, max_length=200)
+    priority_requirements: list[
+        Annotated[str, Field(min_length=1, max_length=500)]
+    ] = Field(default_factory=list, max_length=20)
 
-    @field_validator("position_profile_id")
+    @field_validator("position_name")
     @classmethod
-    def reject_blank(cls, value: str) -> str:
+    def reject_blank_position_name(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("must not be blank")
         return value
+
+    @field_validator("priority_requirements")
+    @classmethod
+    def reject_blank_priorities(cls, values: list[str]) -> list[str]:
+        if any(not value.strip() for value in values):
+            raise ValueError("priority requirement must not be blank")
+        return values
+
+
+class PositionAgentContext(StrictModel):
+    rubric_id: Literal["experience-depth-v1"]
+    position_context: PositionContext
 
 
 class AgentContexts(StrictModel):
@@ -453,7 +474,7 @@ git commit -m "feat: add supervisor model port"
 - Create: `ai/tests/supervisor/test_adapters.py`
 
 **Interfaces:**
-- Consumes: `JdAnalysisService.analyze_documents(context_id, documents)`, `PositionAnalysisService.analyze(profile_id, documents, conversation)`.
+- Consumes: `JdAnalysisService.analyze_documents(context_id, documents)`, `PositionAnalysisService.analyze(rubric_id, position_context, documents, conversation)`.
 - Produces: `SupervisorAgentAdapter`, `JdAgentAdapter`, `PositionAgentAdapter`, `AgentRegistry.available_names(contexts)`, `AgentRegistry.execute(name, instruction, documents, conversation, context)`.
 
 - [ ] **Step 1: 가용성 판정과 직접 서비스 호출 실패 테스트 작성**
@@ -477,9 +498,9 @@ class FakePositionService:
     def __init__(self):
         self.calls = []
 
-    def analyze(self, profile_id, documents, conversation):
-        self.calls.append((profile_id, documents, conversation))
-        return {"position_profile": {"id": profile_id}}
+    def analyze(self, rubric_id, position_context, documents, conversation):
+        self.calls.append((rubric_id, position_context, documents, conversation))
+        return {"rubric": {"id": rubric_id}}
 
 
 class AgentRegistryTest(unittest.TestCase):
@@ -489,7 +510,13 @@ class AgentRegistryTest(unittest.TestCase):
         registry = AgentRegistry([JdAgentAdapter(jd), PositionAgentAdapter(position)])
         contexts = {
             "jd": {"job_context_id": "jctx_1"},
-            "position": {"position_profile_id": "backend-v1"},
+            "position": {
+                "rubric_id": "experience-depth-v1",
+                "position_context": {
+                    "position_name": "백엔드 개발자",
+                    "priority_requirements": [],
+                },
+            },
         }
         documents = [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "내용"}]
 
@@ -498,7 +525,7 @@ class AgentRegistryTest(unittest.TestCase):
         registry.execute("position", "검토", documents, [], contexts["position"])
 
         self.assertEqual(jd.calls[0][0], "jctx_1")
-        self.assertEqual(position.calls[0][0], "backend-v1")
+        self.assertEqual(position.calls[0][0], "experience-depth-v1")
 ```
 
 - [ ] **Step 2: 테스트가 어댑터 모듈 부재로 실패하는지 확인**
@@ -543,16 +570,29 @@ class JdAgentAdapter:
 
 class PositionAgentAdapter:
     name = "position"
+    supported_document_types = {"SELF_INTRO", "EXPERIENCE"}
 
     def __init__(self, service: Any) -> None:
         self._service = service
 
     def is_available(self, context: Mapping[str, Any] | None) -> bool:
-        return bool(context and context.get("position_profile_id"))
+        return bool(context and context.get("rubric_id") and context.get("position_context"))
 
     def execute(self, instruction, documents, conversation, context):
+        supported_documents = [
+            document
+            for document in documents
+            if document.get("document_type") in self.supported_document_types
+        ]
+        if not supported_documents:
+            raise ValueError(
+                "position agent requires SELF_INTRO or EXPERIENCE document"
+            )
         return self._service.analyze(
-            context["position_profile_id"], list(documents), list(conversation)
+            context["rubric_id"],
+            context["position_context"],
+            supported_documents,
+            list(conversation),
         )
 
 
@@ -691,7 +731,16 @@ class SupervisorGraphTest(unittest.TestCase):
             "instruction": "둘 다 검토",
             "documents": [{"document_id": "essay", "document_type": "SELF_INTRO", "text": "내용"}],
             "conversation": [],
-            "agent_contexts": {"jd": {"job_context_id": "jctx"}, "position": {"position_profile_id": "backend-v1"}},
+            "agent_contexts": {
+                "jd": {"job_context_id": "jctx"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": [],
+                    },
+                },
+            },
             "agent_results": [],
         })
 

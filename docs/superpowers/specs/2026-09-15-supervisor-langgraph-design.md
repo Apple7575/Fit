@@ -19,7 +19,7 @@ V1에서 실제 실행하는 에이전트는 `jd`, `position` 두 종류다. 기
 
 Spring 백엔드, 프런트엔드, 기존 JD·직무 분석 서비스 로직은 이번 작업에서 수정하지 않는다. 따라서 V1 API는 향후 Spring 연동을 위한 계약을 먼저 제공한다.
 
-총괄 에이전트가 채팅 내용만 보고 JD나 직무 데이터의 존재를 추측하게 하지 않는다. 호출자가 `agent_contexts`에 사용할 수 있는 컨텍스트 식별자를 명시해야 한다. 동적 선택은 전달된 컨텍스트 범위 안에서만 이루어진다.
+총괄 에이전트가 채팅 내용만 보고 JD나 직무 데이터의 존재를 추측하게 하지 않는다. 호출자가 `agent_contexts`에 JD 컨텍스트 식별자와 포지션 분석 문맥을 명시해야 한다. 동적 선택은 전달된 컨텍스트 범위 안에서만 이루어진다.
 
 ## 3. API 계약
 
@@ -40,12 +40,20 @@ Spring 백엔드, 프런트엔드, 기존 JD·직무 분석 서비스 로직은 
   "conversation": [],
   "agent_contexts": {
     "jd": { "job_context_id": "jctx_abc123" },
-    "position": { "position_profile_id": "backend-v1" }
+    "position": {
+      "rubric_id": "experience-depth-v1",
+      "position_context": {
+        "position_name": "백엔드 개발자",
+        "priority_requirements": ["Spring 기반 API 개발", "데이터베이스 설계"]
+      }
+    }
   }
 }
 ```
 
-`documents[].document_type`은 `RESUME`, `SELF_INTRO`, `EXPERIENCE`, `PORTFOLIO`를 허용한다. 각 어댑터는 자신이 지원하는 문서만 골라 기존 서비스 입력으로 변환한다.
+`documents[].document_type`은 `RESUME`, `SELF_INTRO`, `EXPERIENCE`, `PORTFOLIO`를 허용한다. 각 어댑터는 자신이 지원하는 문서만 골라 기존 서비스 입력으로 변환한다. 포지션 어댑터는 `SELF_INTRO`, `EXPERIENCE`만 전달하며 둘 중 하나도 없으면 해당 worker를 `FAILED`로 처리한다.
+
+`position_profile_id`와 직무별 프로필은 사용하지 않는다. 포지션 에이전트는 고정된 `experience-depth-v1` 루브릭으로 경험의 구체성을 분석하며, `position_context`는 분석 우선순위와 질문 용어를 조정하는 문맥으로만 사용한다. `position_context` 자체는 사용자 경험의 사실 근거가 아니다.
 
 응답 예시는 다음과 같다.
 
@@ -152,6 +160,7 @@ V1은 동기식·무상태 실행으로 간다.
 
 - 잘못된 요청 스키마가 HTTP 422를 반환하는가
 - 전달된 컨텍스트에 따라 `available_agents`가 정확히 계산되는가
+- 구형 `position_profile_id` 입력이 거부되고 최신 포지션 서비스 호출 계약이 유지되는가
 - JD와 position이 모두 선택됐을 때 두 분기가 실행되고 결과가 합쳐지는가
 - 중복, 알 수 없는 이름, 실행 불가능한 에이전트를 포함한 계획이 거부되는가
 - 계획 출력 오류 시 한 번 재시도하고 이후 fallback 계획을 사용하는가

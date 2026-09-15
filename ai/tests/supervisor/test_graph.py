@@ -153,7 +153,13 @@ class SupervisorGraphTest(unittest.TestCase):
             registry,
             {
                 "jd": {"job_context_id": "jctx"},
-                "position": {"position_profile_id": "backend-v1"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": [],
+                    },
+                },
             },
         )
 
@@ -206,7 +212,13 @@ class SupervisorGraphTest(unittest.TestCase):
             registry,
             {
                 "jd": {"job_context_id": "jctx"},
-                "position": {"position_profile_id": "backend-v1"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": [],
+                    },
+                },
             },
         )
 
@@ -290,7 +302,13 @@ class SupervisorGraphTest(unittest.TestCase):
             registry,
             {
                 "jd": {"job_context_id": "jctx"},
-                "position": {"position_profile_id": "backend-v1"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": [],
+                    },
+                },
             },
         )
 
@@ -314,7 +332,13 @@ class SupervisorGraphTest(unittest.TestCase):
             registry,
             {
                 "jd": {"job_context_id": "jctx"},
-                "position": {"position_profile_id": "backend-v1"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": [],
+                    },
+                },
             },
         )
 
@@ -348,7 +372,13 @@ class SupervisorGraphTest(unittest.TestCase):
             registry,
             {
                 "jd": {"job_context_id": "jctx"},
-                "position": {"position_profile_id": "backend-v1"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": [],
+                    },
+                },
             },
         )
 

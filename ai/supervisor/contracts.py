@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -46,15 +46,30 @@ class JdAgentContext(StrictModel):
         return value
 
 
-class PositionAgentContext(StrictModel):
-    position_profile_id: str = Field(min_length=1, max_length=100)
+class PositionContext(StrictModel):
+    position_name: str = Field(min_length=1, max_length=200)
+    priority_requirements: list[
+        Annotated[str, Field(min_length=1, max_length=500)]
+    ] = Field(default_factory=list, max_length=20)
 
-    @field_validator("position_profile_id")
+    @field_validator("position_name")
     @classmethod
-    def reject_blank(cls, value: str) -> str:
+    def reject_blank_position_name(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("must not be blank")
         return value
+
+    @field_validator("priority_requirements")
+    @classmethod
+    def reject_blank_priorities(cls, values: list[str]) -> list[str]:
+        if any(not value.strip() for value in values):
+            raise ValueError("priority requirement must not be blank")
+        return values
+
+
+class PositionAgentContext(StrictModel):
+    rubric_id: Literal["experience-depth-v1"]
+    position_context: PositionContext
 
 
 class AgentContexts(StrictModel):

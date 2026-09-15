@@ -16,9 +16,9 @@ class FakePositionService:
     def __init__(self):
         self.calls = []
 
-    def analyze(self, profile_id, documents, conversation):
-        self.calls.append((profile_id, documents, conversation))
-        return {"position_profile": {"id": profile_id}}
+    def analyze(self, rubric_id, position_context, documents, conversation):
+        self.calls.append((rubric_id, position_context, documents, conversation))
+        return {"rubric": {"id": rubric_id}, "position_context": position_context}
 
 
 class AgentRegistryTest(unittest.TestCase):
@@ -28,16 +28,59 @@ class AgentRegistryTest(unittest.TestCase):
         registry = AgentRegistry([JdAgentAdapter(jd), PositionAgentAdapter(position)])
         contexts = {
             "jd": {"job_context_id": "jctx_1"},
-            "position": {"position_profile_id": "backend-v1"},
+            "position": {
+                "rubric_id": "experience-depth-v1",
+                "position_context": {
+                    "position_name": "백엔드 개발자",
+                    "priority_requirements": ["Spring 기반 API 개발"],
+                },
+            },
         }
-        documents = [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "내용"}]
+        documents = [
+            {"document_id": "resume-1", "document_type": "RESUME", "text": "이력"},
+            {"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "자소서"},
+            {"document_id": "experience-1", "document_type": "EXPERIENCE", "text": "경험"},
+            {"document_id": "portfolio-1", "document_type": "PORTFOLIO", "text": "포트폴리오"},
+        ]
+        position_documents = [documents[1], documents[2]]
 
         self.assertEqual(registry.available_names(contexts), ["jd", "position"])
         registry.execute("jd", "검토", documents, [], contexts["jd"])
         registry.execute("position", "검토", documents, [], contexts["position"])
 
         self.assertEqual(jd.calls[0][0], "jctx_1")
-        self.assertEqual(position.calls[0][0], "backend-v1")
+        self.assertEqual(position.calls, [(
+            "experience-depth-v1",
+            {
+                "position_name": "백엔드 개발자",
+                "priority_requirements": ["Spring 기반 API 개발"],
+            },
+            position_documents,
+            [],
+        )])
+
+    def test_position_rejects_request_without_supported_documents(self):
+        position = FakePositionService()
+        adapter = PositionAgentAdapter(position)
+        context = {
+            "rubric_id": "experience-depth-v1",
+            "position_context": {
+                "position_name": "백엔드 개발자",
+                "priority_requirements": [],
+            },
+        }
+
+        with self.assertRaisesRegex(
+            ValueError, "position agent requires SELF_INTRO or EXPERIENCE document"
+        ):
+            adapter.execute(
+                "검토",
+                [{"document_id": "resume-1", "document_type": "RESUME", "text": "이력"}],
+                [],
+                context,
+            )
+
+        self.assertEqual(position.calls, [])
 
 
 if __name__ == "__main__":

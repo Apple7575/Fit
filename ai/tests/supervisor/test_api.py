@@ -144,7 +144,13 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
             ],
             "agent_contexts": {
                 "jd": {"job_context_id": "jctx"},
-                "position": {"position_profile_id": "backend-v1"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": ["Spring 기반 API 개발"],
+                    },
+                },
             },
         }
         with (
@@ -175,12 +181,24 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
             },
             {
                 "agent": "position", "status": "SUCCESS",
-                "result": {"position_profile": {"id": "backend-v1"}}, "error": None,
+                "result": {
+                    "rubric": {"id": "experience-depth-v1"},
+                    "position_context": {
+                        "position_name": "백엔드 개발자",
+                        "priority_requirements": ["Spring 기반 API 개발"],
+                    },
+                },
+                "error": None,
             },
         ])
         self.assertEqual(jd.calls, [("jctx", request["documents"])])
         self.assertEqual(position.calls, [
-            ("backend-v1", request["documents"], request["conversation"])
+            (
+                "experience-depth-v1",
+                request["agent_contexts"]["position"]["position_context"],
+                request["documents"],
+                request["conversation"],
+            )
         ])
 
     def test_malformed_body_is_422_before_unavailable_configuration(self):
