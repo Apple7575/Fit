@@ -11,11 +11,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 발화 한 번에 LLM 을 다섯 번 부르므로 비용 방어가 필요하다.
  *
- * <p>{@code FeedbackRateLimiter} 를 재사용하지 않는다. 그쪽은 게스트(IP)와 로그인을 나누고
- * FEEDBACK_RATE_LIMITED 를 던지도록 박혀 있는데, 검토 방은 로그인 전용이고 명세가 다른
- * 에러코드를 쓴다.
+ * <p>검토 방은 로그인 전용이고 명세가 ANALYSIS_RATE_LIMITED 를 쓰므로 면접 쪽
+ * 레이트리미터와 따로 둔다.
  *
- * <p>인메모리라 인스턴스가 늘면 공유 저장소로 옮겨야 한다 — 기존 레이트리미터와 같은 한계다.
+ * <p>인메모리라 인스턴스가 늘면 공유 저장소로 옮겨야 한다.
  */
 @Component
 public class AnalysisRateLimiter {

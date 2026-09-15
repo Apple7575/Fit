@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
  * INTERNAL_ERROR 는 명세가 5xx의 존재만 언급하고 코드를 정하지 않아 여기서 신설했다.
  * EMAIL_ALREADY_EXISTS · INVALID_CREDENTIALS · UNAUTHENTICATED · ACCESS_DENIED 는 인증 도입으로 신설했다.
  * ROOM_* · AGENT_* · TURN_IN_PROGRESS 는 자소서 멀티에이전트(S15P21A504-127)에서 신설했다.
+ * JOB_POSTING_* 은 공고 URL 확인(S15P21A504-138)에서 신설했다.
  */
 public enum ErrorCode {
 
@@ -38,6 +39,9 @@ public enum ErrorCode {
     TURN_NOT_FOUND(HttpStatus.NOT_FOUND, "요청 기록을 찾을 수 없습니다."),
     AGENT_SOURCE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "이 에이전트가 볼 자료가 아직 준비되지 않았습니다."),
     ANALYSIS_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 많습니다. 잠시 후 다시 시도해 주세요."),
+    JOB_POSTING_PARSE_FAILED(HttpStatus.BAD_REQUEST,
+            "공고에서 회사명과 직무를 찾지 못했습니다. 공고 주소를 확인하거나 직접 입력해 주세요."),
+    JOB_POSTING_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 많습니다. 잠시 후 다시 시도해 주세요."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;

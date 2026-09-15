@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { ApiError } from '../../api/client';
-import { AnnotatedAnswer } from './AnnotatedAnswer';
-import { CommentCard } from './CommentCard';
 import { CompanyPicker } from './CompanyPicker';
-import { requestFeedback } from './api';
-import type { CoverLetterInput, FeedbackComment } from './types';
+import { parseJobPosting } from './api';
+import type { CoverLetterInput } from './types';
 
 interface CoverLetterWorkspaceProps {
   initial: CoverLetterInput;
@@ -14,19 +12,11 @@ interface CoverLetterWorkspaceProps {
   onBack?: () => void;
 }
 
-type Status = 'idle' | 'running' | 'done' | 'error';
-
 interface WorkItem {
   key: string;
   question: string;
   answer: string;
   charLimit: number;
-  editing: boolean;
-  status: Status;
-  stale: boolean;
-  errorMessage?: string;
-  summary?: string;
-  comments: FeedbackComment[];
 }
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
@@ -36,11 +26,6 @@ const toWorkItem = (item: CoverLetterInput['items'][number]): WorkItem => ({
   question: item.question,
   answer: item.answer,
   charLimit: item.charLimit,
-  editing: item.question.trim() === '',
-  status: item.feedback ? 'done' : 'idle',
-  stale: false,
-  summary: item.feedback?.summary,
-  comments: item.feedback?.comments ?? [],
 });
 
 export function CoverLetterWorkspace({
@@ -53,45 +38,22 @@ export function CoverLetterWorkspace({
   const [title, setTitle] = useState(initial.title);
   const [company, setCompany] = useState(initial.targetCompany ?? '');
   const [position, setPosition] = useState(initial.targetPosition ?? '');
+  // 공고에 직무가 여럿이면 여기 담아 두고 고르게 한다. 하나뿐이면 바로 채우고 비워 둔다.
+  const [positionChoices, setPositionChoices] = useState<string[]>([]);
   const [items, setItems] = useState<WorkItem[]>(() => initial.items.map(toWorkItem));
-  const [activeKey, setActiveKey] = useState<string | null>(null);
-
-  // 본문 quote 클릭 시에만 해당 코멘트로 이동한다(hover 로는 강조만).
-  const scrollToComment = (key: string) => {
-    setActiveKey(key);
-    document.getElementById(`cl-comment-${key}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  };
   const [dirty, setDirty] = useState(false);
   const [savedOnce, setSavedOnce] = useState(alreadySaved ?? false);
   const [saving, setSaving] = useState(false);
 
   const touch = () => setDirty(true);
-  const patch = (key: string, next: Partial<WorkItem>) =>
-    setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...next } : item)));
 
   const editItem = (key: string, next: Partial<WorkItem>) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.key === key ? { ...item, ...next, stale: item.status === 'done' ? true : item.stale } : item,
-      ),
-    );
+    setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...next } : item)));
     touch();
   };
 
   const addItem = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        key: uid(),
-        question: '',
-        answer: '',
-        charLimit: 500,
-        editing: true,
-        status: 'idle',
-        stale: false,
-        comments: [],
-      },
-    ]);
+    setItems((prev) => [...prev, { key: uid(), question: '', answer: '', charLimit: 500 }]);
     touch();
   };
 
@@ -101,28 +63,16 @@ export function CoverLetterWorkspace({
     touch();
   };
 
-  const runFeedback = async (item: WorkItem) => {
-    patch(item.key, { status: 'running', editing: false, errorMessage: undefined });
-    try {
-      const feedback = await requestFeedback({
-        question: item.question,
-        answer: item.answer,
-        charLimit: item.charLimit,
-        targetPosition: position.trim() || null,
-      });
-      patch(item.key, {
-        status: 'done',
-        stale: false,
-        summary: feedback.summary,
-        comments: feedback.comments,
-      });
-      touch();
-    } catch (error) {
-      patch(item.key, {
-        status: 'error',
-        errorMessage: error instanceof ApiError ? error.message : 'AI 피드백에 실패했습니다.',
-      });
+  // 공고에서 읽어 온 값은 저장되지 않는다. 입력칸을 채울 뿐이라 여기서도 미저장 표시를 켠다.
+  const applyPosting = (companyName: string | null, positions: string[]) => {
+    if (companyName) setCompany(companyName);
+    if (positions.length === 1) {
+      setPosition(positions[0]);
+      setPositionChoices([]);
+    } else {
+      setPositionChoices(positions);
     }
+    touch();
   };
 
   const buildInput = (): CoverLetterInput => ({
@@ -133,10 +83,6 @@ export function CoverLetterWorkspace({
       question: item.question,
       answer: item.answer,
       charLimit: item.charLimit,
-      feedback:
-        item.status === 'done'
-          ? { summary: item.summary ?? '', model: 'gemini-2.5-flash', comments: item.comments }
-          : null,
     })),
   });
 
@@ -152,7 +98,7 @@ export function CoverLetterWorkspace({
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="mx-auto max-w-4xl px-6 py-8">
       {onBack && (
         <button onClick={onBack} className="mb-4 text-sm text-slate-500 hover:text-slate-800" type="button">
           ← 목록으로
@@ -163,9 +109,7 @@ export function CoverLetterWorkspace({
         <div className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-[13px] text-slate-600">
           <span aria-hidden>✨</span>
           <span>
-            <b className="font-semibold text-slate-800">로그인 없이</b> 자기소개서 AI 피드백을 받아볼 수
-            있어요. 작성한 자소서와 피드백을 <b className="font-semibold text-slate-800">저장</b>하려면
-            로그인하세요.
+            작성한 자기소개서를 <b className="font-semibold text-slate-800">저장</b>하려면 로그인하세요.
           </span>
         </div>
       )}
@@ -181,9 +125,7 @@ export function CoverLetterWorkspace({
             placeholder="제목을 입력하세요 (예: 2026 상반기 백엔드 신입 지원)"
             className="w-full rounded-lg border border-transparent bg-transparent text-2xl font-bold tracking-tight text-slate-950 placeholder:text-slate-300 focus:border-slate-300 focus:bg-white focus:px-3 focus:py-1 focus:outline-none"
           />
-          <p className="mt-1 text-sm text-slate-500">
-            문항을 추가·삭제하고 답변을 수정한 뒤, 각 문항에서 AI 피드백을 받아보세요.
-          </p>
+          <p className="mt-1 text-sm text-slate-500">문항을 추가·삭제하고 답변을 수정한 뒤 저장하세요.</p>
         </div>
         <SaveArea
           isLoggedIn={isLoggedIn}
@@ -193,6 +135,8 @@ export function CoverLetterWorkspace({
           onSave={save}
         />
       </div>
+
+      <JobPostingBar onParsed={applyPosting} />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <div>
@@ -206,8 +150,11 @@ export function CoverLetterWorkspace({
           />
         </div>
         <div>
-          <label className="mb-1 block text-[12px] font-medium text-slate-500">지원 직무 (선택)</label>
+          <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor="cl-position">
+            지원 직무 (선택)
+          </label>
           <input
+            id="cl-position"
             value={position}
             onChange={(event) => {
               setPosition(event.target.value);
@@ -216,6 +163,16 @@ export function CoverLetterWorkspace({
             placeholder="예: 백엔드 개발"
             className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
+          {positionChoices.length > 1 && (
+            <PositionChoices
+              choices={positionChoices}
+              selected={position}
+              onSelect={(next) => {
+                setPosition(next);
+                touch();
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -229,96 +186,60 @@ export function CoverLetterWorkspace({
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[12px] font-semibold text-white">
                 {index + 1}
               </span>
-              <span className="text-[14px] font-medium text-slate-700">
-                {item.editing ? `문항 ${index + 1} 편집` : item.question || '(질문 미입력)'}
-              </span>
+              <span className="text-[14px] font-medium text-slate-700">문항 {index + 1}</span>
 
-              <div className="ml-auto flex items-center gap-2">
+              {items.length > 1 && (
                 <button
-                  onClick={() => patch(item.key, { editing: !item.editing })}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:bg-slate-100"
+                  onClick={() => removeItem(item.key)}
+                  className="ml-auto rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600"
                   type="button"
                 >
-                  {item.editing ? '완료' : '수정'}
+                  삭제
                 </button>
-                {items.length > 1 && (
-                  <button
-                    onClick={() => removeItem(item.key)}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                    type="button"
-                  >
-                    삭제
-                  </button>
-                )}
-                <FeedbackButton status={item.status} stale={item.stale} onClick={() => runFeedback(item)} />
-              </div>
+              )}
             </div>
 
-            <div className="grid gap-0 lg:grid-cols-[1.4fr_1fr]">
-              <div className="border-slate-100 p-5 lg:border-r">
-                {item.editing ? (
-                  <div className="space-y-3">
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <div className="flex-1">
-                        <label className="mb-1 block text-[12px] font-medium text-slate-500">질문</label>
-                        <input
-                          value={item.question}
-                          onChange={(event) => editItem(item.key, { question: event.target.value })}
-                          placeholder="예: 지원 동기와 입사 후 포부를 기술하시오."
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[14px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                        />
-                      </div>
-                      <div className="sm:w-32">
-                        <label className="mb-1 block text-[12px] font-medium text-slate-500">글자 수 제한</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={4000}
-                          value={item.charLimit}
-                          onChange={(event) =>
-                            editItem(item.key, { charLimit: Math.min(4000, Number(event.target.value) || 0) })
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[14px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-[12px] font-medium text-slate-500">답변</label>
-                      <textarea
-                        value={item.answer}
-                        onChange={(event) => editItem(item.key, { answer: event.target.value })}
-                        rows={5}
-                        maxLength={item.charLimit || 4000}
-                        placeholder="답변을 붙여넣거나 입력하세요."
-                        className="w-full resize-y rounded-lg border border-slate-200 p-3 text-[15px] leading-7 text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                      />
-                      <div className="mt-1.5 text-right text-[12px] text-slate-400">
-                        <span className={item.answer.length > item.charLimit ? 'text-rose-500' : ''}>
-                          {item.answer.length}
-                        </span>{' '}
-                        / {item.charLimit}자
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <AnnotatedAnswer
-                    itemKey={item.key}
-                    answer={item.answer}
-                    comments={item.status === 'done' ? item.comments : []}
-                    activeKey={activeKey}
-                    onHover={setActiveKey}
-                    onSelect={scrollToComment}
+            <div className="space-y-3 p-5">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex-1">
+                  <label className="mb-1 block text-[12px] font-medium text-slate-500">질문</label>
+                  <input
+                    value={item.question}
+                    onChange={(event) => editItem(item.key, { question: event.target.value })}
+                    placeholder="예: 지원 동기와 입사 후 포부를 기술하시오."
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[14px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
-                )}
+                </div>
+                <div className="sm:w-32">
+                  <label className="mb-1 block text-[12px] font-medium text-slate-500">글자 수 제한</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={4000}
+                    value={item.charLimit}
+                    onChange={(event) =>
+                      editItem(item.key, { charLimit: Math.min(4000, Number(event.target.value) || 0) })
+                    }
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[14px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
               </div>
-
-              <div className="space-y-3 bg-slate-50/50 p-4">
-                <CommentColumn
-                  item={item}
-                  activeKey={activeKey}
-                  onHover={setActiveKey}
-                  onRetry={() => runFeedback(item)}
+              <div>
+                <label className="mb-1 block text-[12px] font-medium text-slate-500">답변</label>
+                <textarea
+                  value={item.answer}
+                  onChange={(event) => editItem(item.key, { answer: event.target.value })}
+                  rows={8}
+                  maxLength={item.charLimit || 4000}
+                  placeholder="답변을 붙여넣거나 입력하세요."
+                  className="w-full resize-y rounded-lg border border-slate-200 p-3 text-[15px] leading-7 text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
+                <div className="mt-1.5 text-right text-[12px] text-slate-400">
+                  <span className={item.answer.length > item.charLimit ? 'text-rose-500' : ''}>
+                    {item.answer.length}
+                  </span>{' '}
+                  / {item.charLimit}자
+                </div>
               </div>
             </div>
           </section>
@@ -332,6 +253,133 @@ export function CoverLetterWorkspace({
       >
         + 문항 추가
       </button>
+    </div>
+  );
+}
+
+type PostingStatus = 'idle' | 'loading' | 'done' | 'error';
+
+/**
+ * 채용공고 URL 을 넣고 확인하면 지원 회사와 직무를 대신 채워 준다.
+ * 공고 내용은 저장하지 않는다 — 입력칸을 채우고 나면 버린다.
+ */
+function JobPostingBar({
+  onParsed,
+}: {
+  onParsed: (companyName: string | null, positions: string[]) => void;
+}) {
+  const [url, setUrl] = useState('');
+  const [status, setStatus] = useState<PostingStatus>('idle');
+  const [message, setMessage] = useState('');
+
+  const confirm = async () => {
+    const target = url.trim();
+    if (!target) return;
+    setStatus('loading');
+    setMessage('');
+    try {
+      const result = await parseJobPosting(target);
+      onParsed(result.companyName, result.positions);
+      setStatus('done');
+      setMessage(summarize(result.companyName, result.positions));
+    } catch (error) {
+      setStatus('error');
+      setMessage(
+        error instanceof ApiError
+          ? error.message
+          : '공고를 확인하지 못했습니다. 주소를 다시 확인해 주세요.',
+      );
+    }
+  };
+
+  return (
+    <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+      <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor="cl-posting-url">
+        채용공고 URL (선택)
+      </label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          id="cl-posting-url"
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              confirm();
+            }
+          }}
+          type="url"
+          inputMode="url"
+          placeholder="공고 주소를 붙여넣으세요"
+          className="h-[42px] min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        />
+        <button
+          onClick={confirm}
+          disabled={status === 'loading' || url.trim() === ''}
+          className="h-[42px] shrink-0 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          type="button"
+        >
+          {status === 'loading' ? '확인 중…' : '확인'}
+        </button>
+      </div>
+
+      <p
+        className={[
+          'mt-2 text-[12.5px]',
+          status === 'error'
+            ? 'text-amber-700'
+            : status === 'done'
+              ? 'text-emerald-700'
+              : 'text-slate-400',
+        ].join(' ')}
+        role={status === 'error' ? 'alert' : 'status'}
+      >
+        {message || '공고 주소를 넣고 확인하면 지원 회사와 직무를 대신 채워 드려요.'}
+      </p>
+    </div>
+  );
+}
+
+function summarize(companyName: string | null, positions: string[]): string {
+  const company = companyName ?? '회사명 미확인';
+  if (positions.length > 1) {
+    return `${company} · 직무 ${positions.length}개를 찾았어요. 아래에서 골라 주세요.`;
+  }
+  if (positions.length === 1) {
+    return `${company} · ${positions[0]}(으)로 채웠어요.`;
+  }
+  return `${company} · 직무는 찾지 못했어요. 직접 입력해 주세요.`;
+}
+
+function PositionChoices({
+  choices,
+  selected,
+  onSelect,
+}: {
+  choices: string[];
+  selected: string;
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <div className="mt-2">
+      <p className="mb-1.5 text-[12px] text-slate-500">공고에서 찾은 직무</p>
+      <div className="flex flex-wrap gap-1.5">
+        {choices.map((choice) => (
+          <button
+            key={choice}
+            onClick={() => onSelect(choice)}
+            className={[
+              'rounded-full border px-3 py-1 text-[12.5px] font-medium transition',
+              choice === selected
+                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+            ].join(' ')}
+            type="button"
+          >
+            {choice}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -377,127 +425,5 @@ function SaveArea({
         {saving ? '저장 중…' : '저장'}
       </button>
     </div>
-  );
-}
-
-function FeedbackButton({
-  status,
-  stale,
-  onClick,
-}: {
-  status: Status;
-  stale: boolean;
-  onClick: () => void;
-}) {
-  if (status === 'running') {
-    return (
-      <span className="flex items-center gap-2 rounded-lg bg-blue-100 px-3 py-1.5 text-[13px] font-medium text-blue-500">
-        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
-        분석 중…
-      </span>
-    );
-  }
-  if (status === 'done') {
-    return (
-      <button
-        onClick={onClick}
-        className={[
-          'rounded-lg border px-3 py-1.5 text-[13px] font-medium',
-          stale
-            ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
-            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100',
-        ].join(' ')}
-        type="button"
-      >
-        ↻ 다시 받기
-      </button>
-    );
-  }
-  return (
-    <button
-      onClick={onClick}
-      className="rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-blue-700"
-      type="button"
-    >
-      ✨ AI 피드백
-    </button>
-  );
-}
-
-function CommentColumn({
-  item,
-  activeKey,
-  onHover,
-  onRetry,
-}: {
-  item: WorkItem;
-  activeKey: string | null;
-  onHover: (key: string | null) => void;
-  onRetry: () => void;
-}) {
-  if (item.status === 'running') {
-    return (
-      <div className="flex flex-col items-center justify-center py-10 text-center">
-        <div className="mb-3 h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
-        <p className="text-[13px] text-slate-500">이 문항을 분석하고 있어요…</p>
-      </div>
-    );
-  }
-
-  if (item.status === 'error') {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 py-10 text-center">
-        <p className="text-[13px] text-amber-700">{item.errorMessage}</p>
-        <button
-          onClick={onRetry}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 hover:bg-slate-100"
-          type="button"
-        >
-          다시 시도
-        </button>
-      </div>
-    );
-  }
-
-  if (item.status === 'idle') {
-    return (
-      <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-        <p className="text-[13px] text-slate-400">아직 피드백이 없습니다.</p>
-        <p className="mt-0.5 text-[13px] text-slate-400">
-          위 <span className="font-medium text-blue-500">AI 피드백</span> 버튼을 눌러 피드백을 받아보세요.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {item.stale && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[12.5px] text-amber-700">
-          내용이 수정되었습니다. <b>다시 받기</b>로 최신 피드백을 받아보세요.
-        </div>
-      )}
-      {item.summary && (
-        <p className="rounded-lg bg-white px-3 py-2 text-[13px] leading-6 text-slate-600 shadow-sm">
-          {item.summary}
-        </p>
-      )}
-      {item.comments.length === 0 ? (
-        <p className="py-6 text-center text-[13px] text-slate-400">특별한 지적 없이 잘 작성되었습니다. 👍</p>
-      ) : (
-        item.comments.map((comment, index) => {
-          const key = `${item.key}#${index}`;
-          return (
-            <CommentCard
-              key={key}
-              commentKey={key}
-              comment={comment}
-              active={activeKey === key}
-              onHover={(active) => onHover(active ? key : null)}
-            />
-          );
-        })
-      )}
-    </>
   );
 }

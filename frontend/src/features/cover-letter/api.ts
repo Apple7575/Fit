@@ -3,13 +3,12 @@ import type {
   CoverLetter,
   CoverLetterInput,
   CoverLetterSummary,
-  FeedbackRequest,
-  ItemFeedback,
+  JobPostingParseResult,
 } from './types';
 
-/** 문항 1개 AI 피드백(무저장, 공개). */
-export const requestFeedback = (request: FeedbackRequest, signal?: AbortSignal) =>
-  apiSend<ItemFeedback>('POST', '/api/cover-letters/feedback', request, { signal });
+/** 채용공고 URL 에서 회사명과 모집 직무를 읽어 온다(무저장, 공개). */
+export const parseJobPosting = (url: string, signal?: AbortSignal) =>
+  apiSend<JobPostingParseResult>('POST', '/api/job-postings/parse', { url }, { signal });
 
 export const fetchCoverLetters = (signal?: AbortSignal) =>
   apiGet<CoverLetterSummary[]>('/api/cover-letters', { signal });
