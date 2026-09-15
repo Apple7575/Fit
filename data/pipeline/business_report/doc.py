@@ -110,12 +110,15 @@ def _table_shape(table, cell_tags: set[str], *, max_table_cells: int) -> tuple[i
 
 
 def _next_free_column(column: int, pending: list[tuple[int, int, int]]) -> int:
-    for start, end, _ in pending:
-        if column < start:
-            break
-        if column < end:
-            return end
-    return column
+    while True:
+        for start, end, _ in pending:
+            if column < start:
+                return column
+            if column < end:
+                column = end
+                break
+        else:
+            return column
 
 
 def _overlay_pending(

@@ -162,6 +162,20 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertIsNone(accepted.tables[0].excluded_reason)
         self.assertEqual((len(accepted.tables[0].m), len(accepted.tables[0].m[0])), (3, 75_000))
 
+    def test_rejects_when_adjacent_pending_spans_require_multiple_skips(self):
+        payload = (
+            "<DOCUMENT><TABLE>"
+            "<TR><TD COLSPAN='40000' ROWSPAN='3'>A</TD>"
+            "<TD COLSPAN='40000' ROWSPAN='4'>B</TD></TR>"
+            "<TR><TD COLSPAN='30000'>C</TD></TR>"
+            "</TABLE></DOCUMENT>"
+        ).encode()
+
+        document = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=200_000)
+
+        self.assertEqual(document.tables[0].excluded_reason, "table_too_large")
+        self.assertEqual(document.tables[0].m, [])
+
     def test_matches_matrix_when_new_rowspan_overwrites_later_pending_interval(self):
         payload = (
             "<DOCUMENT><TABLE>"
