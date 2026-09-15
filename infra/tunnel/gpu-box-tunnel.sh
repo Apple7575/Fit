@@ -14,7 +14,7 @@ set -u
 EC2_HOST="${EC2_HOST:-j15a504.p.ssafy.io}"
 EC2_USER="${EC2_USER:-tunnel}"
 KEY="${KEY:-$HOME/minjae/ca_vllm_tunnel}"     # 배포 전용 키(개인 pem 재사용 금지)
-GATEWAY="${GATEWAY:-172.17.0.1}"              # EC2 docker0 게이트웨이. 다르면 GATEWAY=... 로 override
+GATEWAY="${GATEWAY:-0.0.0.0}"                 # 0.0.0.0 바인드(컨테이너가 닿으려면 필수). 외부 노출은 SG/ufw 로 차단
 BIND_PORT="${BIND_PORT:-18000}"
 VLLM_LOCAL="${VLLM_LOCAL:-127.0.0.1:8000}"    # GPU 박스 자신의 vLLM
 LOG="${LOG:-$HOME/minjae/tunnel.log}"
