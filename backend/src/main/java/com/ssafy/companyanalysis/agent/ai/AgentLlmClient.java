@@ -39,7 +39,7 @@ public class AgentLlmClient {
      * @return 모델이 만든 평문. 비어 있으면 실패로 본다
      */
     public String generate(String systemInstruction, String userText) {
-        return generate(systemInstruction, userText, Map.of("temperature", 0.4));
+        return generate(systemInstruction, userText, Map.of("temperature", 0.4), true);
     }
 
     /**
@@ -48,10 +48,11 @@ public class AgentLlmClient {
      */
     public String generateJson(String systemInstruction, String userText) {
         return generate(systemInstruction, userText,
-                Map.of("temperature", 0.1, "responseMimeType", "application/json"));
+                Map.of("temperature", 0.1, "responseMimeType", "application/json"), false);
     }
 
-    private String generate(String systemInstruction, String userText, Map<String, Object> generationConfig) {
+    private String generate(String systemInstruction, String userText,
+                            Map<String, Object> generationConfig, boolean stripMarkdown) {
         if (!properties.hasKey()) {
             throw new BusinessException(ErrorCode.AI_UNAVAILABLE);
         }
@@ -78,7 +79,8 @@ public class AgentLlmClient {
             throw new BusinessException(ErrorCode.AI_FAILED, "모델이 빈 응답을 돌려줬습니다.");
         }
         // 화면이 평문으로 뿌리므로 마크다운 기호가 그대로 보인다. 프롬프트로 이르지만 자주 어긴다.
-        return PlainText.of(text);
+        // JSON 은 사람이 읽는 글이 아니라 그대로 파싱한다 — 값에 * 나 # 가 있으면 벗겨서 망가진다.
+        return stripMarkdown ? PlainText.of(text) : text;
     }
 
     private static String extractText(JsonNode response) {
