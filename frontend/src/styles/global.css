@@ -1,12 +1,36 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
 @import "tailwindcss";
 
+/* ---------- 디자인 토큰 ----------
+   색: 브랜드 블루는 Tailwind blue 를 그대로 쓰고, 캐릭터(코치) 색만 추가한다.
+   캐릭터 색은 검토 방 에이전트 색과 1:1 로 대응한다 (components/brand/characters.ts). */
+@theme {
+  --font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+
+  --color-fox: #f97316;
+  --color-fox-soft: #ffedd5;
+  --color-chick: #facc15;
+  --color-chick-soft: #fef9c3;
+  --color-hamster: #b45309;
+  --color-hamster-soft: #fde68a;
+  --color-otter: #14b8a6;
+  --color-otter-soft: #ccfbf1;
+  --color-owl: #8b5cf6;
+  --color-owl-soft: #ede9fe;
+
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 32px -12px rgb(15 23 42 / 0.16);
+  --shadow-lift: 0 24px 48px -16px rgb(37 99 235 / 0.28);
+}
+
 :root {
-  font-family:
-    Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #0f172a;
   background: #f8fafc;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
@@ -17,6 +41,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-family: var(--font-sans);
 }
 
 .page-shell {
@@ -32,202 +57,234 @@ body {
   margin-top: 0;
 }
 
-/* ---------- 홈 랜딩 ---------- */
+/* ---------- 타이포 ---------- */
 
-.landing-container {
-  width: min(1200px, calc(100% - 48px));
-  margin: 0 auto;
+/* 한글 제목은 단어 중간에서 끊지 않는다 */
+.display-xl,
+.display-lg {
+  word-break: keep-all;
 }
 
-.landing-section {
-  padding: 120px 0;
+.display-xl {
+  font-size: clamp(38px, 5.6vw, 72px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  font-weight: 800;
 }
 
-@media (min-width: 1024px) {
-  .landing-section {
-    padding: 160px 0;
+.display-lg {
+  font-size: clamp(28px, 3.6vw, 46px);
+  line-height: 1.16;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+
+.body-lg {
+  font-size: clamp(16px, 1.3vw, 19px);
+  line-height: 1.65;
+}
+
+/* ---------- 움직임 ----------
+   전부 클래스로 두고, 모션 축소 설정에서는 맨 아래에서 한꺼번에 끈다. */
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
   }
 }
 
-.landing-card {
-  padding: 28px;
-  border-radius: 24px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+@keyframes blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
 }
 
-.analysis-browser {
-  border-radius: 28px;
-  background: #ffffff;
-  box-shadow:
-    0 32px 80px rgba(25, 31, 40, 0.12),
-    0 4px 16px rgba(25, 31, 40, 0.06);
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
 }
 
-.hero-title {
-  font-size: clamp(40px, 6vw, 84px);
-  line-height: 1.06;
-  letter-spacing: -0.04em;
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  60% {
+    transform: translateY(-2px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.scene-title {
-  font-size: clamp(30px, 4.2vw, 56px);
-  line-height: 1.14;
-  letter-spacing: -0.035em;
-}
-
-.body-large {
-  font-size: clamp(17px, 1.4vw, 21px);
-  line-height: 1.6;
-}
-
-/* 등장 모션: Rise (관찰 전엔 숨김, is-visible 로 표시) */
-.landing-reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.55s ease,
-    transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.landing-reveal.is-visible {
-  opacity: 1;
-  transform: none;
-}
-
-@keyframes landing-rise {
+@keyframes rise {
   from {
     opacity: 0;
     transform: translateY(24px);
   }
   to {
     opacity: 1;
-    transform: none;
-  }
-}
-
-.landing-rise {
-  opacity: 0;
-  animation: landing-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
-}
-
-@keyframes landing-float {
-  0%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.5;
-  }
-  50% {
-    transform: translateY(-14px);
-    opacity: 1;
-  }
-}
-
-.landing-float {
-  animation: landing-float 6s ease-in-out infinite;
-}
-
-@keyframes landing-bounce {
-  0%,
-  100% {
     transform: translateY(0);
   }
-  50% {
-    transform: translateY(4px);
-  }
 }
 
-.landing-bounce {
-  animation: landing-bounce 1.6s ease-in-out infinite;
-}
-
-@keyframes landing-draw {
+@keyframes marquee {
   from {
-    stroke-dashoffset: 600;
+    transform: translateX(0);
   }
   to {
-    stroke-dashoffset: 0;
+    transform: translateX(-50%);
   }
 }
 
-.landing-draw {
-  stroke-dasharray: 600;
-  animation: landing-draw 1.4s ease-out forwards;
-}
-
-/* 제품 스토리: 스테이지 하나만 sticky */
-.product-story {
-  position: relative;
-}
-
-.product-stage {
-  width: min(1200px, calc(100% - 48px));
-  margin: 0 auto;
-}
-
-.story-scene {
-  padding: 96px 0;
-  scroll-margin-top: 72px;
-}
-
-@media (min-width: 1024px) {
-  .product-stage {
-    display: grid;
-    grid-template-columns: minmax(320px, 0.8fr) minmax(560px, 1.2fr);
-    align-items: start;
-    gap: 72px;
+@keyframes stripes {
+  from {
+    background-position: 0 0;
   }
-
-  .story-scene {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .story-stage-frame {
-    position: sticky;
-    top: 0;
-    display: flex;
-    align-items: center;
-    height: 100vh;
+  to {
+    background-position: 56px 0;
   }
 }
 
-.demo-panel {
-  position: absolute;
-  inset: 20px 24px;
+@keyframes blob {
+  0%,
+  100% {
+    border-radius: 46% 54% 52% 48% / 56% 44% 56% 44%;
+  }
+  33% {
+    border-radius: 54% 46% 44% 56% / 48% 56% 44% 52%;
+  }
+  66% {
+    border-radius: 48% 52% 58% 42% / 44% 50% 50% 56%;
+  }
+}
+
+.anim-float {
+  animation: float 5.5s ease-in-out infinite;
+}
+.anim-float-slow {
+  animation: float 8s ease-in-out infinite;
+}
+.anim-blink {
+  transform-origin: center;
+  animation: blink 4.6s ease-in-out infinite;
+}
+.anim-wiggle {
+  animation: wiggle 2.4s ease-in-out infinite;
+}
+.anim-pop {
+  animation: pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.anim-marquee {
+  animation: marquee 36s linear infinite;
+}
+.anim-marquee:hover {
+  animation-play-state: paused;
+}
+.anim-blob {
+  animation: blob 9s ease-in-out infinite;
+}
+
+/* 스크롤 등장. data-inview="true" 가 되면 올라온다. */
+.reveal {
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(24px);
   transition:
-    opacity 0.42s ease,
-    transform 0.42s cubic-bezier(0.2, 0.7, 0.2, 1);
-  pointer-events: none;
+    opacity 0.6s ease,
+    transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
 }
-
-.demo-panel.is-active {
+.reveal[data-inview="true"] {
   opacity: 1;
   transform: none;
-  pointer-events: auto;
+}
+
+/* 영상·이미지 자리 표시. 실제 파일이 들어오면 안 보인다. */
+.media-slot {
+  background-color: #e2e8f0;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.55) 0 14px,
+    transparent 14px 28px
+  );
+  background-size: 56px 56px;
+  animation: stripes 1.6s linear infinite;
+}
+
+/* 마우스 기울기 카드. --rx/--ry 는 JS 가 넣는다. */
+.tilt {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.15s ease;
+  transform-style: preserve-3d;
+}
+
+/* 뒤집히는 카드 */
+.flip {
+  perspective: 1000px;
+}
+.flip-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.flip[data-flipped="true"] .flip-inner {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+}
+.flip-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+
+/* 시차(패럴랙스). --px/--py 는 -1~1, 각 요소가 --depth 만큼 곱해 움직인다. */
+.parallax-item {
+  transform: translate(
+    calc(var(--px, 0) * var(--depth, 10) * 1px),
+    calc(var(--py, 0) * var(--depth, 10) * 1px)
+  );
+  transition: transform 0.25s ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-reveal,
-  .landing-rise {
+  .anim-float,
+  .anim-float-slow,
+  .anim-blink,
+  .anim-wiggle,
+  .anim-pop,
+  .anim-marquee,
+  .anim-blob,
+  .media-slot {
+    animation: none;
+  }
+  .reveal {
     opacity: 1;
     transform: none;
     transition: none;
-    animation: none;
   }
-
-  .landing-float,
-  .landing-bounce,
-  .landing-draw {
-    animation: none;
+  .tilt,
+  .parallax-item {
+    transform: none;
+    transition: none;
   }
-
-  .demo-panel {
+  .flip-inner {
     transition: none;
   }
 }

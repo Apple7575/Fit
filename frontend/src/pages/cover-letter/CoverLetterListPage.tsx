@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
@@ -14,7 +15,7 @@ export function CoverLetterListPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <CoverLetterHeader />
-        <div className="mx-auto max-w-4xl px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</div>
+        <LoadingScreen />
       </div>
     );
   }
@@ -60,8 +61,8 @@ function ListBody() {
       </div>
 
       {state.status === 'loading' && (
-        <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-sm text-slate-400">
-          불러오는 중…
+        <div className="rounded-2xl border border-slate-200 bg-white">
+          <LoadingScreen compact message="자소서를 불러오는 중" />
         </div>
       )}
 

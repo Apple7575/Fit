@@ -7,17 +7,16 @@ import {
   CompanySearchResults,
   type CompanySearchStatus,
 } from '../../features/company-search/CompanySearchResults';
+import { prefersReducedMotion } from '../../hooks/useInView';
 import type { Company } from '../../types/company';
-import { FinalSearchScene } from './FinalSearchScene';
-import { HeroScene } from './HeroScene';
-import { ProblemStory } from './ProblemStory';
-import { ProductStory } from './ProductStory';
-import { TakeawayScene } from './TakeawayScene';
-import { prefersReducedMotion } from './useInView';
+import { CoachTeam } from './CoachTeam';
+import { FinalCta } from './FinalCta';
+import { Hero } from './Hero';
+import { HowItWorks } from './HowItWorks';
 
 /**
- * 홈 = 랜딩. 브랜드 메시지 → 문제 → 다섯 질문 → 5탭 제품 스토리 → 세 가지 요약 → 검색 CTA.
- * 검색 폼은 히어로에 하나만 두고, 헤더·CTA·푸터의 "기업 검색"은 그 폼으로 스크롤·포커스한다.
+ * 홈 = 랜딩. 첫 화면에서 바로 검색하고, 아래로 세 단계 소개 → 코치 소개 → 마지막 CTA.
+ * 검색 폼은 히어로에 하나만 두고, CTA 의 "기업명으로 검색하기"는 그 폼으로 스크롤·포커스한다.
  */
 export function HomePage() {
   const navigate = useNavigate();
@@ -62,10 +61,10 @@ export function HomePage() {
   };
 
   const focusSearch = useCallback(() => {
-    // 히어로 스크롤 구간의 끝(검색창이 완전히 올라온 지점)으로 맞춘다. jsdom 에는 scrollIntoView 가 없다
+    // jsdom 에는 scrollIntoView 가 없다
     heroRef.current?.scrollIntoView?.({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'end',
+      block: 'start',
     });
     const input = heroRef.current?.querySelector<HTMLInputElement>('input[type="search"]');
     // 스크롤이 끝난 뒤 포커스해야 브라우저가 스크롤을 건너뛰지 않는다
@@ -73,11 +72,11 @@ export function HomePage() {
   }, []);
 
   return (
-    <div className="landing bg-slate-50">
+    <div className="bg-slate-50">
       <SiteHeader showSearch={false} />
 
       <main>
-        <HeroScene
+        <Hero
           ref={heroRef}
           search={
             <>
@@ -95,10 +94,9 @@ export function HomePage() {
             </>
           }
         />
-        <ProblemStory />
-        <ProductStory />
-        <TakeawayScene />
-        <FinalSearchScene onSearchClick={focusSearch} />
+        <HowItWorks />
+        <CoachTeam />
+        <FinalCta onSearchClick={focusSearch} />
       </main>
     </div>
   );

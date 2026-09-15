@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
@@ -84,7 +85,7 @@ function ExistingWorkspace({ id }: { id: number }) {
     return (
       <div className="min-h-screen bg-slate-50">
         <CoverLetterHeader />
-        <div className="mx-auto max-w-6xl px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</div>
+        <LoadingScreen />
       </div>
     );
   }
@@ -110,7 +111,7 @@ function ExistingLoaded({ id }: { id: number }) {
       <CoverLetterHeader />
 
       {state.status === 'loading' && (
-        <div className="mx-auto max-w-6xl px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</div>
+        <LoadingScreen />
       )}
 
       {state.status === 'error' && (
