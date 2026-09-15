@@ -29,8 +29,7 @@ public enum AgentType {
 
     NEWS("news", "뉴스/트렌드 담당", "설득력을 높여줄 최근 기업 이슈 및 트렌드를 제안합니다.",
             "최근 뉴스", true,
-            schema("corpCodes", new ConfigField("array", true, "대상 기업의 corpCode 목록"),
-                    "months", new ConfigField("number", false, "몇 개월치를 볼지. 기본 6"))),
+            schema("corpCodes", new ConfigField("array", true, "대상 기업의 corpCode 목록"))),
 
     WRITING("writing", "글쓰기 담당", "가독성, 두괄식 구성, 글자 수 및 중복 표현을 교정합니다.",
             "자소서 원문", true,

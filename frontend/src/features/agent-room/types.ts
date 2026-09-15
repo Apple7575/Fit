@@ -51,7 +51,6 @@ export interface RoomAgent {
     companies?: RoomCompany[];
     jobRole?: string;
     jdUrl?: string;
-    months?: number;
   };
 }
 

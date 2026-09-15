@@ -58,7 +58,7 @@ describe('AgentConfigFields', () => {
   });
 
   it('선택 항목은 (선택) 이라고 표시한다', () => {
-    renderFields({ months: { type: 'number', required: false, description: '몇 개월치' } });
+    renderFields({ limit: { type: 'number', required: false, description: '몇 건까지' } });
 
     expect(screen.getByText('(선택)')).toBeInTheDocument();
   });

@@ -56,18 +56,19 @@ class CompanyNewsDigestTest {
     }
 
     @Test
-    @DisplayName("months 를 주면 그만큼 거슬러 올라간다. 없으면 6개월이다")
-    void monthsBecomeDays() {
+    @DisplayName("기간은 6개월로 고정이다. 설정으로 바꿀 수 없다")
+    void periodIsFixedToSixMonths() {
         given(newsService.getNews(any(), anyInt(), any(), anyInt(), anyInt()))
                 .willReturn(response("기사"));
         ArgumentCaptor<Integer> days = ArgumentCaptor.forClass(Integer.class);
 
         digest.digest(Map.of("corpCodes", List.of("00126380")));
+        // 옛 설정이 남아 있는 방이 있어도 무시한다.
         digest.digest(Map.of("corpCodes", List.of("00126380"), "months", 3));
 
         Mockito.verify(newsService, Mockito.atLeast(2))
                 .getNews(any(), days.capture(), any(), anyInt(), anyInt());
-        assertThat(days.getAllValues()).containsExactly(180, 90);
+        assertThat(days.getAllValues()).containsExactly(180, 180);
     }
 
     @Test

@@ -147,13 +147,13 @@ class RoomAgentValidatorTest {
     }
 
     @Test
-    @DisplayName("선택 항목은 없어도 통과하고 있으면 남는다")
-    void optionalConfigIsKept() {
+    @DisplayName("스키마에 없는 키는 저장하지 않는다 — 옛 설정이 남아 있어도 걸러진다")
+    void unknownKeysAreDropped() {
         RoomAgentValidator validator = validator(Set.of(), Set.of());
 
         assertThat(validator.validateConfig(AgentType.NEWS, Map.of("corpCodes", List.of("00126380"))))
-                .doesNotContainKey("months");
+                .containsOnlyKeys("corpCodes");
         assertThat(validator.validateConfig(AgentType.NEWS, Map.of("corpCodes", List.of("00126380"), "months", 3)))
-                .containsEntry("months", 3);
+                .containsOnlyKeys("corpCodes");
     }
 }
