@@ -300,6 +300,28 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertEqual(batch.failures, ())
         self.assertTrue(any(record.content == "body" for record in batch.records))
 
+    def test_accepts_outer_document_closing_tag_after_nested_document(self):
+        batch = build_batch(b"<DOCUMENT><DOCUMENT><P>body</P></DOCUMENT></DOCUMENT>")
+
+        self.assertEqual(batch.failures, ())
+        self.assertTrue(any(record.content == "body" for record in batch.records))
+
+    def test_accepts_doctype_with_comment_brackets(self):
+        payload = b"<!DOCTYPE DOCUMENT [<!-- [ -->]><DOCUMENT><P>body</P></DOCUMENT>"
+
+        batch = build_batch(payload)
+
+        self.assertEqual(batch.failures, ())
+        self.assertTrue(any(record.content == "body" for record in batch.records))
+
+    def test_accepts_doctype_with_comment_quote(self):
+        payload = b'<!DOCTYPE DOCUMENT [<!-- " -->]><DOCUMENT><P>body</P></DOCUMENT>'
+
+        batch = build_batch(payload)
+
+        self.assertEqual(batch.failures, ())
+        self.assertTrue(any(record.content == "body" for record in batch.records))
+
     def test_recovers_closed_document_with_nonstandard_entities_for_rag(self):
         payload = (
             b"<DOCUMENT><TITLE>Overview &amp; Notes</TITLE>"

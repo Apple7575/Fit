@@ -132,7 +132,10 @@ def _ends_with_root_closing_tag(text: str, root) -> bool:
 
         root_close_end = _root_closing_tag_end(text, index, tag)
         if root_close_end is not None:
-            return not text[root_close_end:].strip()
+            if not text[root_close_end:].strip():
+                return True
+            index = root_close_end
+            continue
 
         if text.startswith("<!", index):
             end = _declaration_end(text, index)
@@ -184,7 +187,21 @@ def _declaration_end(text: str, start: int) -> int | None:
         if quote:
             if char == quote:
                 quote = None
-        elif char in ("'", '"'):
+            index += 1
+            continue
+        if text.startswith("<!--", index):
+            end = text.find("-->", index + 4)
+            if end < 0:
+                return None
+            index = end + 3
+            continue
+        if text.startswith("<?", index):
+            end = text.find("?>", index + 2)
+            if end < 0:
+                return None
+            index = end + 2
+            continue
+        if char in ("'", '"'):
             quote = char
         elif char == "[":
             brackets += 1
