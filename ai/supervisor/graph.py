@@ -63,20 +63,20 @@ def build_supervisor_graph(model: SupervisorModel, registry: AgentRegistry):
     def create_plan(state: SupervisorState) -> dict[str, Any]:
         validation_error = None
         for _ in range(2):
-            candidate = model.create_plan(
-                instruction=state["instruction"],
-                documents=state["documents"],
-                conversation=state["conversation"],
-                available_agents=state["available_agents"],
-                validation_error=validation_error,
-            )
             try:
+                candidate = model.create_plan(
+                    instruction=state["instruction"],
+                    documents=state["documents"],
+                    conversation=state["conversation"],
+                    available_agents=state["available_agents"],
+                    validation_error=validation_error,
+                )
                 return {
                     "plan": validate_selected_agents(
                         candidate, state["available_agents"]
                     )
                 }
-            except (ValueError, TypeError) as error:
+            except (ValueError, TypeError, KeyError) as error:
                 validation_error = str(error)
         return {
             "plan": SupervisorPlan(
