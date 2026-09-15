@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ApiError } from '../../api/client';
@@ -17,9 +18,7 @@ export function AgentRoomListPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <CoverLetterHeader />
-        <p className="mx-auto max-w-4xl px-6 py-16 text-center text-sm text-slate-400" role="status">
-          불러오는 중…
-        </p>
+        <LoadingScreen />
       </div>
     );
   }
