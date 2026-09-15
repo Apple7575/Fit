@@ -9,6 +9,8 @@ interface CoverLetterWorkspaceProps {
   isLoggedIn: boolean;
   alreadySaved?: boolean;
   onSave: (input: CoverLetterInput) => Promise<void>;
+  /** 저장한 뒤 멀티에이전트 검토 화면으로 넘긴다. 방은 저장된 자소서에 붙기 때문이다. */
+  onReview: (input: CoverLetterInput) => Promise<void>;
   onBack?: () => void;
 }
 
@@ -33,6 +35,7 @@ export function CoverLetterWorkspace({
   isLoggedIn,
   alreadySaved,
   onSave,
+  onReview,
   onBack,
 }: CoverLetterWorkspaceProps) {
   const [title, setTitle] = useState(initial.title);
@@ -44,6 +47,7 @@ export function CoverLetterWorkspace({
   const [dirty, setDirty] = useState(false);
   const [savedOnce, setSavedOnce] = useState(alreadySaved ?? false);
   const [saving, setSaving] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   const touch = () => setDirty(true);
 
@@ -96,6 +100,18 @@ export function CoverLetterWorkspace({
       setSaving(false);
     }
   };
+
+  const review = async () => {
+    setReviewing(true);
+    try {
+      await onReview(buildInput());
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  // 질문과 답변이 다 빈 자소서를 검토에 넘기면 에이전트가 볼 것이 없다.
+  const hasWriting = items.some((item) => item.question.trim() !== '' && item.answer.trim() !== '');
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
@@ -253,6 +269,24 @@ export function CoverLetterWorkspace({
       >
         + 문항 추가
       </button>
+
+      <div className="mt-6 flex flex-col items-end gap-1.5">
+        <button
+          onClick={review}
+          disabled={reviewing || !hasWriting}
+          className="rounded-xl bg-slate-900 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          type="button"
+        >
+          {reviewing ? '여는 중…' : 'AI 검토'}
+        </button>
+        <p className="text-[12px] text-slate-400">
+          {!hasWriting
+            ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
+            : isLoggedIn
+              ? '저장한 뒤 에이전트 검토 화면으로 넘어가요.'
+              : '검토를 받으려면 로그인이 필요해요.'}
+        </p>
+      </div>
     </div>
   );
 }
