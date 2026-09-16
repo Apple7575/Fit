@@ -28,6 +28,20 @@ TEXT_TAGS = ("P", "SPAN", "TU")
 _UNIT_SCOPE = re.compile(r"단위\s*[)\]]?\s*[::]?\s*([^)\]|]{0,20})")
 
 
+def foreign_unit_in_blob(blob: str, markers) -> str | None:
+    """'단위' 표기 뒤가 외화이면 그 표기를 돌려준다.
+
+    원화 단위를 못 찾았을 때만 부른다. 외화 단위표를 만나면 **거기서 멈춰야** 한다 —
+    더 거슬러 오르면 남의 표에 붙은 원화 단위를 집는다 (doc.unit 주석 참고).
+    """
+    for m in _UNIT_SCOPE.finditer(blob):
+        scope = m.group(1)
+        for name in markers:
+            if name in scope:
+                return name
+    return None
+
+
 def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
     """'단위' 표기 **바로 뒤**에서만 단위를 찾는다.
 
@@ -161,7 +175,16 @@ class Document:
         i = table.idx
         for k in range(i, max(-1, i - rp.unit_lookback_tables - 1), -1):
             t = self.tables[k]
-            found = unit_from_blob(t.caption + " " + t.head(3), rp.units)
+            blob = t.caption + " " + t.head(3)
+            # 외화가 보이면 원화 표기가 같이 있어도 버린다. 행마다 통화가 다른 표라
+            # 곱할 수를 하나로 정할 수 없다. 계속 거슬러 오르면 남의 표의 원화 단위를
+            # 집어 값이 1억 배가 되고(SJG세종 2021 · 240조원), 표 안에 '원' 이 섞여
+            # 있으면 그대로 원화로 읽혀 자릿수 검증까지 통과한다(같은 회사 2024).
+            # 둘 다 S15P21A504-73 1차 확대에서 실측했다.
+            foreign = foreign_unit_in_blob(blob, rp.foreign_currency_markers)
+            if foreign:
+                return None, None, f"외화표기:{foreign}"
+            found = unit_from_blob(blob, rp.units)
             if found:
                 name, mult = found
                 return name, mult, "자기표" if k == i else f"직전표-{i - k}"

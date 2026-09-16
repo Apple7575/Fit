@@ -47,6 +47,7 @@ class RndPatterns:
     cell_tags: tuple[str, ...]
     units: tuple[tuple[str, int], ...]          # (표기, 배수). 긴 것부터
     unit_lookback_tables: int
+    foreign_currency_markers: tuple[str, ...]   # 이게 보이면 거슬러 오르기를 멈춘다
     consolidated_header: str
     separate_header: str
     header_scan_rows: int
@@ -192,6 +193,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
             cell_tags=tuple(rnd["cell_tags"]),
             units=tuple((u["name"], int(u["multiplier"])) for u in rnd["units"]),
             unit_lookback_tables=int(rnd["unit_lookback_tables"]),
+            foreign_currency_markers=tuple(rnd.get("foreign_currency_markers") or ()),
             consolidated_header=rnd["consolidated_header"],
             separate_header=rnd["separate_header"],
             header_scan_rows=int(rnd["header_scan_rows"]),
