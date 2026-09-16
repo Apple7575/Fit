@@ -2,7 +2,7 @@ import unittest
 
 from pydantic import ValidationError
 
-from ai.supervisor.contracts import SupervisorRunRequest
+from ai.supervisor.contracts import SupervisorPlan, SupervisorRunRequest
 
 
 class SupervisorContractsTest(unittest.TestCase):
@@ -58,3 +58,47 @@ class SupervisorContractsTest(unittest.TestCase):
                 "agent_contexts": {},
                 "unexpected": True,
             })
+
+    def test_accepts_writing_context_and_writing_plan(self):
+        request = SupervisorRunRequest.model_validate({
+            "instruction": "협업 경험을 두괄식으로 첨삭해줘",
+            "documents": [{
+                "document_id": "essay-1",
+                "document_type": "SELF_INTRO",
+                "text": "협업 경험 초안입니다.",
+            }],
+            "agent_contexts": {
+                "writing": {
+                    "question": "협업 경험을 작성해 주세요.",
+                    "char_limit": 700,
+                }
+            },
+        })
+
+        self.assertEqual(request.agent_contexts.writing.question, "협업 경험을 작성해 주세요.")
+        self.assertEqual(request.agent_contexts.writing.char_limit, 700)
+        self.assertEqual(
+            SupervisorPlan(selected_agents=["writing"], reason="첨삭").selected_agents,
+            ["writing"],
+        )
+
+    def test_rejects_invalid_writing_context(self):
+        base = {
+            "instruction": "첨삭해줘",
+            "documents": [{
+                "document_id": "essay-1",
+                "document_type": "SELF_INTRO",
+                "text": "초안",
+            }],
+            "agent_contexts": {"writing": {"question": "협업 경험", "char_limit": 700}},
+        }
+        for value in (" ",):
+            with self.subTest(field="question", value=value), self.assertRaises(ValidationError):
+                SupervisorRunRequest.model_validate({
+                    **base, "agent_contexts": {"writing": {"question": value, "char_limit": 700}}
+                })
+        for value in (True, 0, 50_001):
+            with self.subTest(field="char_limit", value=value), self.assertRaises(ValidationError):
+                SupervisorRunRequest.model_validate({
+                    **base, "agent_contexts": {"writing": {"question": "협업 경험", "char_limit": value}}
+                })

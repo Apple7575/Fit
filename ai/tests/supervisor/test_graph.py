@@ -15,34 +15,56 @@ class FakeModel:
         self.plans = list(plans)
         self.aggregate_error = aggregate_error
         self.plan_errors = []
+        self.aggregate_calls = []
 
     def create_plan(self, **kwargs):
         self.plan_errors.append(kwargs["validation_error"])
         return self.plans.pop(0)
 
     def aggregate(self, **kwargs):
+        self.aggregate_calls.append(kwargs)
         if self.aggregate_error is not None:
             raise self.aggregate_error
         return "종합 결과"
 
 
 class RecordingAdapter:
-    def __init__(self, name, barrier, fail=False):
+    def __init__(
+        self,
+        name,
+        barrier=None,
+        fail=False,
+        result=None,
+        execution_log=None,
+        lifecycle_log=None,
+    ):
         self.name = name
         self.barrier = barrier
         self.fail = fail
+        self.result = result
+        self.execution_log = execution_log
+        self.lifecycle_log = lifecycle_log
         self.threads = []
+        self.prior_agents = []
 
     def is_available(self, context):
         return context is not None
 
-    def execute(self, instruction, documents, conversation, context):
+    def execute(self, instruction, documents, conversation, context, prior_results=()):
         self.threads.append(threading.get_ident())
-        self.barrier.wait(timeout=1)
+        self.prior_agents = [item.agent for item in prior_results]
+        if self.lifecycle_log is not None:
+            self.lifecycle_log.append(f"{self.name}:started")
+        if self.execution_log is not None:
+            self.execution_log.append(self.name)
+        if self.barrier is not None:
+            self.barrier.wait(timeout=1)
         time.sleep(0.01)
         if self.fail:
             raise RuntimeError(f"{self.name} failed")
-        return {"agent": self.name}
+        if self.lifecycle_log is not None:
+            self.lifecycle_log.append(f"{self.name}:finished")
+        return self.result or {"agent": self.name}
 
 
 class FakeQwenCaller:
@@ -76,6 +98,20 @@ def invoke_graph(model, registry, agent_contexts):
             "agent_results": [],
         }
     )
+
+
+def all_contexts():
+    return {
+        "jd": {"job_context_id": "jctx"},
+        "position": {
+            "rubric_id": "experience-depth-v1",
+            "position_context": {
+                "position_name": "백엔드 개발자",
+                "priority_requirements": [],
+            },
+        },
+        "writing": {"question": "협업 경험", "char_limit": 700},
+    }
 
 
 class SupervisorGraphTest(unittest.TestCase):
@@ -317,6 +353,172 @@ class SupervisorGraphTest(unittest.TestCase):
         self.assertEqual(results["jd"].error, "RuntimeError: jd failed")
         self.assertEqual(results["position"].status, "SUCCESS")
         self.assertEqual(result["final_message"], "종합 결과")
+
+    def test_writing_only_skips_analysis_stage(self):
+        execution_log = []
+        jd = RecordingAdapter("jd", execution_log=execution_log)
+        position = RecordingAdapter("position", execution_log=execution_log)
+        writing = RecordingAdapter(
+            "writing",
+            result={
+                "status": "REVISED",
+                "message": "첨삭 결과",
+                "revision": "수정된 자기소개서",
+            },
+            execution_log=execution_log,
+        )
+        registry = AgentRegistry([jd, position, writing])
+        model = FakeModel(
+            [SupervisorPlan(selected_agents=["writing"], reason="첨삭")]
+        )
+
+        result = invoke_graph(
+            model,
+            registry,
+            all_contexts(),
+        )
+
+        self.assertEqual(execution_log, ["writing"])
+        self.assertEqual(result["final_message"], "첨삭 결과")
+        self.assertEqual(model.aggregate_calls, [])
+        self.assertEqual(
+            {item.agent: item.status for item in result["agent_results"]},
+            {"writing": "SUCCESS"},
+        )
+
+    def test_analysis_finishes_before_writing_and_passes_successes(self):
+        analysis_barrier = threading.Barrier(2)
+        lifecycle_log = []
+        jd = RecordingAdapter("jd", analysis_barrier, lifecycle_log=lifecycle_log)
+        position = RecordingAdapter(
+            "position", analysis_barrier, lifecycle_log=lifecycle_log
+        )
+        writing = RecordingAdapter("writing", lifecycle_log=lifecycle_log)
+        registry = AgentRegistry([jd, position, writing])
+
+        invoke_graph(
+            FakeModel(
+                [
+                    SupervisorPlan(
+                        selected_agents=["jd", "position", "writing"],
+                        reason="분석 후 첨삭",
+                    )
+                ]
+            ),
+            registry,
+            all_contexts(),
+        )
+
+        self.assertLess(
+            lifecycle_log.index("jd:finished"),
+            lifecycle_log.index("writing:started"),
+        )
+        self.assertLess(
+            lifecycle_log.index("position:finished"),
+            lifecycle_log.index("writing:started"),
+        )
+        self.assertEqual(writing.prior_agents, ["jd", "position"])
+
+    def test_writing_receives_only_successful_analysis_results(self):
+        analysis_barrier = threading.Barrier(2)
+        jd = RecordingAdapter("jd", analysis_barrier, fail=True)
+        position = RecordingAdapter("position", analysis_barrier)
+        writing = RecordingAdapter("writing")
+        registry = AgentRegistry([jd, position, writing])
+
+        result = invoke_graph(
+            FakeModel(
+                [
+                    SupervisorPlan(
+                        selected_agents=["jd", "position", "writing"],
+                        reason="분석 후 첨삭",
+                    )
+                ]
+            ),
+            registry,
+            all_contexts(),
+        )
+
+        results = {item.agent: item for item in result["agent_results"]}
+        self.assertEqual(results["jd"].status, "FAILED")
+        self.assertEqual(results["position"].status, "SUCCESS")
+        self.assertEqual(results["writing"].status, "SUCCESS")
+        self.assertEqual(writing.prior_agents, ["position"])
+
+    def test_writing_runs_without_prior_results_when_all_analyses_fail(self):
+        analysis_barrier = threading.Barrier(2)
+        jd = RecordingAdapter("jd", analysis_barrier, fail=True)
+        position = RecordingAdapter("position", analysis_barrier, fail=True)
+        writing = RecordingAdapter("writing")
+        registry = AgentRegistry([jd, position, writing])
+
+        result = invoke_graph(
+            FakeModel(
+                [
+                    SupervisorPlan(
+                        selected_agents=["jd", "position", "writing"],
+                        reason="분석 후 첨삭",
+                    )
+                ]
+            ),
+            registry,
+            all_contexts(),
+        )
+
+        results = {item.agent: item for item in result["agent_results"]}
+        self.assertEqual(results["jd"].status, "FAILED")
+        self.assertEqual(results["position"].status, "FAILED")
+        self.assertEqual(results["writing"].status, "SUCCESS")
+        self.assertEqual(writing.prior_agents, [])
+
+    def test_writing_failure_keeps_successful_analysis_results(self):
+        analysis_barrier = threading.Barrier(2)
+        jd = RecordingAdapter("jd", analysis_barrier)
+        position = RecordingAdapter("position", analysis_barrier)
+        writing = RecordingAdapter("writing", fail=True)
+        registry = AgentRegistry([jd, position, writing])
+
+        result = invoke_graph(
+            FakeModel(
+                [
+                    SupervisorPlan(
+                        selected_agents=["jd", "position", "writing"],
+                        reason="분석 후 첨삭",
+                    )
+                ]
+            ),
+            registry,
+            all_contexts(),
+        )
+
+        self.assertEqual(
+            {item.agent: item.status for item in result["agent_results"]},
+            {"jd": "SUCCESS", "position": "SUCCESS", "writing": "FAILED"},
+        )
+        self.assertEqual(result["final_message"], "종합 결과")
+
+    def test_clarification_result_is_forwarded_without_aggregation(self):
+        clarification = "본인이 수행한 행동을 알려주세요."
+        model = FakeModel(
+            [SupervisorPlan(selected_agents=["writing"], reason="추가 정보 필요")]
+        )
+        writing = RecordingAdapter(
+            "writing",
+            result={
+                "status": "CLARIFICATION_REQUIRED",
+                "message": clarification,
+                "revision": None,
+            },
+        )
+
+        result = invoke_graph(
+            model,
+            AgentRegistry([writing]),
+            {"writing": {"question": "협업 경험", "char_limit": 700}},
+        )
+
+        self.assertEqual(result["final_message"], clarification)
+        self.assertEqual(model.aggregate_calls, [])
 
     def test_selected_agents_execute_in_parallel_threads(self):
         model = FakeModel(

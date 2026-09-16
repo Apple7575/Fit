@@ -16,7 +16,7 @@ PLAN_SCHEMA = {
         "selected_agents": {
             "type": "array",
             "minItems": 1,
-            "items": {"type": "string", "enum": ["jd", "position"]},
+            "items": {"type": "string", "enum": ["jd", "position", "writing"]},
         },
         "reason": {"type": "string", "minLength": 1},
     },
@@ -86,6 +86,7 @@ class QwenSupervisorModel:
             "agent_capabilities": {
                 "jd": "채용 공고 요구사항 대비 지원자 근거 검토",
                 "position": "백엔드 경험의 문제·행동·검증·결과 구체성 검토",
+                "writing": "자기소개서 첨삭 또는 작성 방식 설명",
             },
         }
         if validation_error is not None:
@@ -96,7 +97,12 @@ class QwenSupervisorModel:
                 [
                     {
                         "role": "system",
-                        "content": "사용 가능한 에이전트 안에서 요청 해결에 필요한 최소 집합을 선택하라.",
+                        "content": (
+                            "사용 가능한 에이전트 안에서 요청 해결에 필요한 최소 집합을 선택하라. "
+                            "자기소개서 첨삭·수정 또는 작성 방식 설명 요청은 Writing만 선택하라. "
+                            "JD 또는 Position 분석을 첨삭에 반영해 달라고 사용자가 명시한 경우에만 "
+                            "Writing과 해당 분석 에이전트를 함께 선택하라. 사용 불가 에이전트는 선택하지 마라."
+                        ),
                     },
                     {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
                 ],

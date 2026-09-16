@@ -1,6 +1,13 @@
 import unittest
 
-from ai.supervisor.adapters import AgentRegistry, JdAgentAdapter, PositionAgentAdapter
+from ai.supervisor.adapters import (
+    AgentRegistry,
+    JdAgentAdapter,
+    PositionAgentAdapter,
+    WritingAgentAdapter,
+)
+from ai.supervisor.contracts import AgentResult
+from ai.writing_coaching.contracts import WritingMessageResponse
 
 
 class FakeJdService:
@@ -21,11 +28,30 @@ class FakePositionService:
         return {"rubric": {"id": rubric_id}, "position_context": position_context}
 
 
+class FakeWritingService:
+    def __init__(self):
+        self.calls = []
+
+    def respond(self, request):
+        self.calls.append(request)
+        return WritingMessageResponse.model_validate({
+            "status": "REVISED",
+            "message": "수정했습니다.",
+            "revision": {
+                "revision_strength": "BALANCED",
+                "revised_text": "수정된 초안",
+                "char_count": 6,
+                "changes": [],
+                "warnings": [],
+            },
+        })
+
+
 class AgentRegistryTest(unittest.TestCase):
     def test_resolves_context_backed_agents_and_calls_services_directly(self):
         jd = FakeJdService()
         position = FakePositionService()
-        registry = AgentRegistry([JdAgentAdapter(jd), PositionAgentAdapter(position)])
+        registry = AgentRegistry([JdAgentAdapter(lambda: jd), PositionAgentAdapter(lambda: position)])
         contexts = {
             "jd": {"job_context_id": "jctx_1"},
             "position": {
@@ -61,7 +87,7 @@ class AgentRegistryTest(unittest.TestCase):
 
     def test_position_rejects_request_without_supported_documents(self):
         position = FakePositionService()
-        adapter = PositionAgentAdapter(position)
+        adapter = PositionAgentAdapter(lambda: position)
         context = {
             "rubric_id": "experience-depth-v1",
             "position_context": {
@@ -81,6 +107,75 @@ class AgentRegistryTest(unittest.TestCase):
             )
 
         self.assertEqual(position.calls, [])
+
+    def test_writing_adapter_builds_request_from_one_draft_and_prior_feedback(self):
+        writing_service = FakeWritingService()
+        adapter = WritingAgentAdapter(lambda: writing_service)
+        prior_result = AgentResult(agent="jd", status="SUCCESS", result={
+            "requirements": [{
+                "requirement_id": "req-1", "label": "NOT_SUPPORTED",
+                "suggested_actions": ["역할을 추가하세요."],
+            }]
+        })
+
+        result = adapter.execute(
+            "두괄식으로 고쳐줘",
+            [{"document_id": "essay", "document_type": "SELF_INTRO", "text": "초안"}],
+            [],
+            {"question": "협업 경험", "char_limit": 700},
+            prior_results=[prior_result],
+        )
+
+        self.assertEqual(result["status"], "REVISED")
+        self.assertEqual(writing_service.calls[0].feedback[0].source, "jd")
+        self.assertEqual(writing_service.calls[0].draft, "초안")
+
+    def test_writing_adapter_requires_exactly_one_self_intro_document(self):
+        writing_service = FakeWritingService()
+        adapter = WritingAgentAdapter(lambda: writing_service)
+        context = {"question": "협업 경험", "char_limit": 700}
+
+        for documents in (
+            [],
+            [
+                {"document_id": "one", "document_type": "SELF_INTRO", "text": "초안"},
+                {"document_id": "two", "document_type": "SELF_INTRO", "text": "다른 초안"},
+            ],
+        ):
+            with self.subTest(documents=documents), self.assertRaisesRegex(
+                ValueError, "exactly one SELF_INTRO"
+            ):
+                adapter.execute("첨삭", documents, [], context)
+
+        self.assertEqual(writing_service.calls, [])
+
+    def test_availability_does_not_resolve_any_service_provider(self):
+        calls = {"jd": 0, "position": 0, "writing": 0}
+
+        def provider(name, service):
+            def resolve():
+                calls[name] += 1
+                return service
+            return resolve
+
+        registry = AgentRegistry([
+            JdAgentAdapter(provider("jd", FakeJdService())),
+            PositionAgentAdapter(provider("position", FakePositionService())),
+            WritingAgentAdapter(provider("writing", FakeWritingService())),
+        ])
+
+        self.assertEqual(
+            registry.available_names({
+                "jd": {"job_context_id": "jctx"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {"position_name": "백엔드 개발자"},
+                },
+                "writing": {"question": "협업 경험", "char_limit": 700},
+            }),
+            ["jd", "position", "writing"],
+        )
+        self.assertEqual(calls, {"jd": 0, "position": 0, "writing": 0})
 
 
 if __name__ == "__main__":
