@@ -2,18 +2,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AgentConfigFields } from './AgentConfigFields';
-import type { ConfigField, JobRoleOption } from './types';
-
-const jobRoles: JobRoleOption[] = [
-  { key: 'backend', name: '백엔드', ready: true, topics: ['동시성', '분산 락'] },
-  { key: 'data', name: '데이터', ready: false, topics: [] },
-];
+import type { ConfigField } from './types';
 
 const renderFields = (schema: Record<string, ConfigField>, draft = {}) => {
   const onChange = vi.fn();
-  render(
-    <AgentConfigFields schema={schema} draft={draft} onChange={onChange} jobRoles={jobRoles} />,
-  );
+  render(<AgentConfigFields schema={schema} draft={draft} onChange={onChange} />);
   return onChange;
 };
 
@@ -32,21 +25,23 @@ describe('AgentConfigFields', () => {
     expect(screen.getByLabelText('기업명으로 검색')).toBeInTheDocument();
   });
 
-  it('열어 두지 않은 직무는 고를 수 없다', () => {
-    renderFields({ jobRole: { type: 'enum', required: true, description: '지원 직무' } });
+  it('직무는 자소서에서 넘어온 값이 채워진 입력칸으로 뜬다', () => {
+    renderFields(
+      { jobRole: { type: 'string', required: true, description: '지원 직무' } },
+      { jobRole: '서버 개발(Java/Spring)' },
+    );
 
-    expect(screen.getByRole('button', { name: /백엔드/ })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /데이터/ })).toBeDisabled();
+    expect(screen.getByLabelText('지원 직무')).toHaveValue('서버 개발(Java/Spring)');
   });
 
-  it('직무를 고르면 key 로 올려 준다', async () => {
+  it('직무는 고정 목록이 아니라 고쳐 쓸 수 있다', async () => {
     const onChange = renderFields({
-      jobRole: { type: 'enum', required: true, description: '지원 직무' },
+      jobRole: { type: 'string', required: true, description: '지원 직무' },
     });
 
-    await userEvent.click(screen.getByRole('button', { name: /백엔드/ }));
+    await userEvent.type(screen.getByLabelText('지원 직무'), 'QA');
 
-    expect(onChange).toHaveBeenCalledWith({ jobRole: 'backend' });
+    expect(onChange).toHaveBeenCalled();
   });
 
   it('스키마에 없던 항목도 type 만 보고 입력칸을 그린다', () => {

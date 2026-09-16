@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { AgentConfigPanel } from './AgentConfigPanel';
 import { MessageComposer } from './MessageComposer';
 import { MessageThread } from './MessageThread';
-import { useAgents, useJobRoles, useMessages, useRoom } from './queries';
+import { useAgents, useMessages, useRoom } from './queries';
 import { useTurnPolling } from './useTurnPolling';
 import type { RoomAgent } from './types';
 
@@ -27,7 +27,6 @@ interface RoomWorkspaceProps {
 export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspaceProps) {
   const { state: room, retry: reloadRoom } = useRoom(roomId);
   const { state: agents } = useAgents();
-  const { state: jobRoles } = useJobRoles();
   const { state: messages, retry: reloadMessages } = useMessages(roomId);
   const [openAgentKey, setOpenAgentKey] = useState<string | null>(null);
   const [activeTurnId, setActiveTurnId] = useState<number | null>(null);
@@ -65,7 +64,6 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
   const data = room.data;
   const open = data.agents.find((agent) => agent.agentKey === openAgentKey);
   const catalog = agents.status === 'success' ? agents.data : [];
-  const roles = jobRoles.status === 'success' ? jobRoles.data : [];
   const agentNames = Object.fromEntries(data.agents.map((agent) => [agent.agentKey, agent.name]));
 
   // 서버는 최신순으로 주는데 화면은 위에서 아래로 읽는다.
@@ -130,7 +128,6 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
           roomId={roomId}
           agent={open}
           catalog={catalog.find((entry) => entry.agentKey === open.agentKey)}
-          jobRoles={roles}
           onSaved={() => {
             setOpenAgentKey(null);
             reloadRoom();
