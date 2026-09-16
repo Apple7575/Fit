@@ -1,3 +1,4 @@
+import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import type { QueryState } from '../../hooks/useApiQuery';
 import type { NewsStats } from './types';
 
@@ -16,7 +17,10 @@ export function IssueKpiRow({ state }: IssueKpiRowProps) {
       <div aria-busy="true" className="grid grid-cols-2 gap-3 lg:grid-cols-4" role="status">
         <span className="sr-only">이슈 통계를 불러오는 중입니다</span>
         {Array.from({ length: 4 }, (_, i) => (
-          <div className="h-24 animate-pulse rounded-2xl border border-slate-200 bg-white" key={i} />
+          <div
+            className="h-24 animate-pulse rounded-2xl border border-slate-200 bg-white"
+            key={i}
+          />
         ))}
       </div>
     );
@@ -24,11 +28,46 @@ export function IssueKpiRow({ state }: IssueKpiRowProps) {
   if (state.status === 'error') return null;
 
   const { kpis } = state.data;
+  const nothing =
+    kpis.recentNewsCount === null &&
+    kpis.importantIssueCount === null &&
+    kpis.investmentIssueCount === null &&
+    kpis.techIssueCount === null;
+  if (nothing) {
+    return (
+      <div className="flex items-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-4">
+        <CharacterSlot character="fox" hideLabel size={48} />
+        <p className="text-sm font-semibold text-slate-500">
+          이 기업은 아직 뉴스 수집 대상이 아니에요. 뉴스가 쌓이면 여기에 통계가 나옵니다.
+        </p>
+      </div>
+    );
+  }
   const tiles = [
-    { label: '최근 뉴스 수', value: count(kpis.recentNewsCount), basis: `${kpis.recentNewsDays}일 기준`, icon: '📰' },
-    { label: '중요 이슈 수', value: count(kpis.importantIssueCount), basis: `최근 ${kpis.issueDays}일`, icon: '❗' },
-    { label: '투자 이슈', value: count(kpis.investmentIssueCount), basis: `최근 ${kpis.issueDays}일`, icon: '📈' },
-    { label: '기술 이슈', value: count(kpis.techIssueCount), basis: `최근 ${kpis.issueDays}일`, icon: '🔬' },
+    {
+      label: '최근 뉴스 수',
+      value: count(kpis.recentNewsCount),
+      basis: `${kpis.recentNewsDays}일 기준`,
+      icon: '📰',
+    },
+    {
+      label: '중요 이슈 수',
+      value: count(kpis.importantIssueCount),
+      basis: `최근 ${kpis.issueDays}일`,
+      icon: '❗',
+    },
+    {
+      label: '투자 이슈',
+      value: count(kpis.investmentIssueCount),
+      basis: `최근 ${kpis.issueDays}일`,
+      icon: '📈',
+    },
+    {
+      label: '기술 이슈',
+      value: count(kpis.techIssueCount),
+      basis: `최근 ${kpis.issueDays}일`,
+      icon: '🔬',
+    },
   ];
 
   return (
