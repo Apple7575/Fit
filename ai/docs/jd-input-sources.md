@@ -11,16 +11,43 @@ FastAPI의 실행 저장소는 프로젝트 PostgreSQL을 사용한다. `JD_DATA
 | 입력 | 엔드포인트 | 필수 메타데이터 | 처리 방식 |
 |---|---|---|---|
 | 직접 입력 | `POST /internal/job-contexts` | 기업명, 직무명, JD 텍스트 | 입력 텍스트를 그대로 사용 |
-| URL | `POST /internal/job-contexts/from-url` | URL | HTML 본문과 Schema.org `JobPosting` 메타데이터 추출 |
+| URL 추출만 | `POST /internal/job-sources/from-url` | URL | 본문과 Schema.org 메타데이터만 반환. 구조화·DB 저장 없음 |
+| URL 등록 | `POST /internal/job-contexts/from-url` | URL | 본문과 메타데이터 추출 후 JD 컨텍스트 구조화·저장 |
 | 파일 | `POST /internal/job-contexts/from-file` | 기업명, 직무명, 파일 | TXT·MD·HTML·PDF·DOCX에서 텍스트 추출 |
 
-URL에 `JobPosting` 구조화 데이터가 있으면 기업명, 직무명, 공고 ID, 게시일과 마감일을 가져온다. 요청에 기업명이나 직무명을 함께 보내면 사용자가 입력한 값을 우선한다. 구조화 데이터가 없고 두 값을 요청에서도 제공하지 않으면 `422`를 반환한다.
+URL에 `JobPosting` 구조화 데이터가 있으면 기업명, 직무명, 공고 ID, 게시일과 마감일을 가져온다. 추출 전용 API는 이 값이 없어도 `null`로 반환한다. URL 등록 API는 요청에 기업명이나 직무명을 함께 보내면 사용자가 입력한 값을 우선하며, 추출 값과 요청 값 모두 없으면 `422`를 반환한다.
 
 프론트엔드에서는 PDF·DOCX·TXT만 사용자 선택 형식으로 제공한다. MD·HTML은 외부 사용자 계약이 아니라 내부 변환기의 호환 형식이다.
 
 파일 입력은 원본 파일을 저장하지 않는다. 추출한 JD 텍스트와 원본 파일명, 원본 바이트의 SHA-256만 지원 컨텍스트에 저장한다. Spring은 반환된 `context_id`를 자신의 지원 세션 및 사용자와 연결한다.
 
 ## URL 입력 예시
+
+본문 추출만 필요할 때(통합 서버 내부 경로는 `/jd/internal/job-sources/from-url`):
+
+```http
+POST /internal/job-sources/from-url
+Content-Type: application/json
+
+{"url": "https://careers.example.com/jobs/123"}
+```
+
+성공 시 `200`으로 아래 8개 필드를 반환한다. `company_name`, `position_name` 등은 원문에서 찾지 못하면 `null`이다. `source_url`은 리다이렉트 후 최종 URL이고 `content_sha256`은 원본 응답 바이트의 SHA-256이다. 이 호출에는 JD DB 설정이나 Qwen 호출이 필요하지 않다.
+
+```json
+{
+  "jd_text": "담당 업무와 자격 요건이 포함된 채용공고 본문",
+  "source_url": "https://careers.example.com/jobs/123",
+  "company_name": "예시기업",
+  "position_name": "백엔드 엔지니어",
+  "job_posting_id": "123",
+  "published_at": "2026-09-01",
+  "valid_until": "2026-09-30",
+  "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+}
+```
+
+JD 컨텍스트까지 생성할 때는 기존 엔드포인트를 그대로 사용한다.
 
 ```http
 POST /internal/job-contexts/from-url

@@ -151,6 +151,33 @@ class CreateJobContextFromUrlRequest(BaseModel):
         return value
 
 
+class CreateJobSourceFromUrlRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    url: str = Field(min_length=1, max_length=2_000)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("url must be an absolute HTTP URL")
+        return value
+
+
+class JobSourceFromUrlResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    jd_text: str
+    source_url: str | None
+    company_name: str | None
+    position_name: str | None
+    job_posting_id: str | None
+    published_at: str | None
+    valid_until: str | None
+    content_sha256: str | None
+
+
 class ApplicantDocumentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -290,6 +317,25 @@ def create_job_context(
             status_code=502,
             detail=f"JD 구조화에 실패했습니다: {error}",
         ) from error
+
+
+@app.post(
+    "/internal/job-sources/from-url",
+    response_model=JobSourceFromUrlResponse,
+    tags=["internal"],
+)
+def ingest_job_source_from_url(
+    request: CreateJobSourceFromUrlRequest,
+    ingestor: Annotated[JdSourceIngestor, Depends(get_source_ingestor)],
+) -> JobSourceFromUrlResponse:
+    try:
+        return JobSourceFromUrlResponse.model_validate(ingestor.from_url(request.url))
+    except UnsupportedSourceError as error:
+        raise HTTPException(status_code=415, detail=str(error)) from error
+    except SourceFetchError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    except SourceIngestionError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post(

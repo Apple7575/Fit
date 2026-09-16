@@ -278,6 +278,19 @@ JavaScript 실행 후 본문이 나타나는 페이지는 지원하지 않는다
 
 성공: `201 Created`, JD 컨텍스트 반환.
 
+### 6.3.1 URL에서 본문만 추출
+
+백엔드가 추출된 공고 본문을 직접 받아 처리할 때 사용한다. 기존 `job-contexts/from-url`과 달리 컨텍스트 생성, DB 저장, Qwen 구조화를 수행하지 않는다. 통합 FastAPI 서버에서 실제 내부 경로는 `/jd/internal/job-sources/from-url`이다.
+
+```http
+POST /internal/job-sources/from-url
+Content-Type: application/json
+
+{"url": "https://careers.example.com/jobs/123"}
+```
+
+요청은 `url`(절대 HTTP·HTTPS URL, 1~2,000자)만 허용한다. 다른 필드는 `422`로 거절한다. 성공 시 `200 OK`이며 응답 필드는 `jd_text`, `source_url`, `company_name`, `position_name`, `job_posting_id`, `published_at`, `valid_until`, `content_sha256`이다. URL에서 메타데이터를 찾지 못한 필드는 `null`일 수 있다. 지원하지 않는 URL 응답 형식은 `415`, 외부 URL 요청 실패는 `502`, 본문 추출 실패나 차단된 로컬·내부망 주소는 `422`다.
+
 ### 6.4 파일에서 JD 등록
 
 ```http
