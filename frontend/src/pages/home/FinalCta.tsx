@@ -1,49 +1,65 @@
 import { Link } from 'react-router-dom';
+import { CharacterSlot } from '../../components/brand/CharacterSlot';
+import { COACHES } from '../../components/brand/characters';
 import { BRAND_NAME } from '../../components/layout/brand';
 import { LogoMark } from '../../components/layout/LogoMark';
 import { useInView } from '../../hooks/useInView';
 import { FEATURED_COMPANIES } from './featuredCompanies';
 
 interface FinalCtaProps {
-  /** 히어로 검색창으로 스크롤·포커스 */
-  onSearchClick: () => void;
+  /** "지금 시작하기" — 히어로 검색창으로 스냅·포커스 */
+  onStart: () => void;
 }
 
-/** 마지막 한 번 더 검색으로 밀어주고, 데이터 출처를 밝힌다. */
-export function FinalCta({ onSearchClick }: FinalCtaProps) {
+/** 마지막 한 장. 코치 다섯이 늘어서고, 시작 버튼과 바로 볼 수 있는 기업, 출처. */
+export function FinalCta({ onStart }: FinalCtaProps) {
   const [ref, inView] = useInView<HTMLDivElement>({ threshold: 0.3 });
 
   return (
-    <>
-      <section aria-labelledby="cta-title" className="mx-auto max-w-[1200px] px-6 py-24">
+    <section
+      aria-labelledby="cta-title"
+      className="snap-start flex min-h-screen flex-col justify-between bg-slate-50 pt-14"
+      id="start"
+    >
+      <div className="mx-auto flex w-full max-w-[1200px] flex-1 items-center px-6 py-16">
         <div
-          className="reveal relative overflow-hidden rounded-[2rem] bg-slate-950 px-8 py-16 text-center text-white sm:px-16"
+          className="reveal relative w-full overflow-hidden rounded-[2rem] bg-white px-8 py-14 text-center shadow-[var(--shadow-card)] ring-1 ring-slate-200/70 sm:px-16"
           data-inview={inView}
           ref={ref}
         >
-          <span className="anim-blob absolute -left-20 -top-20 size-72 bg-blue-500/30" />
-          <span className="anim-blob absolute -bottom-24 -right-16 size-80 bg-owl/30 [animation-delay:-5s]" />
-          <h2 className="display-lg relative text-balance" id="cta-title">
-            궁금한 회사부터 확인해 보세요.
+          <ul aria-label="코치 다섯" className="mb-8 flex items-end justify-center gap-2 sm:gap-4">
+            {COACHES.map((coach, i) => (
+              <li key={coach.key} style={{ transform: `translateY(${i % 2 ? 0 : 10}px)` }}>
+                <CharacterSlot character={coach.key} size={i === 2 ? 96 : 76} />
+              </li>
+            ))}
+          </ul>
+          <h2 className="display-lg text-balance text-slate-950" id="cta-title">
+            궁금한 회사부터 시작해 보세요.
           </h2>
-          <p className="relative mt-4 text-slate-300">
-            기업명을 검색하면 다섯 가지 분석이 시작됩니다.
+          <p className="mt-4 text-slate-600">
+            기업명을 검색하면 분석이 시작되고, 자소서와 면접까지 코치들이 따라옵니다.
           </p>
-          <button
-            className="relative mt-8 rounded-full bg-white px-7 py-3.5 text-base font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-            onClick={onSearchClick}
-            type="button"
-          >
-            기업명으로 검색하기 ↑
-          </button>
-          <ul
-            aria-label="분석 가능한 기업"
-            className="relative mt-8 flex flex-wrap justify-center gap-2"
-          >
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <button
+              className="rounded-full bg-blue-600 px-8 py-3.5 text-base font-bold text-white transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[var(--shadow-lift)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
+              onClick={onStart}
+              type="button"
+            >
+              지금 시작하기
+            </button>
+            <Link
+              className="rounded-full bg-white px-8 py-3.5 text-base font-bold text-slate-700 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:bg-slate-100"
+              to="/cover-letters/new"
+            >
+              로그인 없이 자소서 써 보기
+            </Link>
+          </div>
+          <ul aria-label="분석 가능한 기업" className="mt-8 flex flex-wrap justify-center gap-2">
             {FEATURED_COMPANIES.map((company) => (
               <li key={company.corpCode}>
                 <Link
-                  className="inline-block rounded-full px-4 py-1.5 text-sm font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/10"
+                  className="inline-block rounded-full px-4 py-1.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
                   to={`/companies/${company.corpCode}/overview`}
                 >
                   {company.name}
@@ -52,10 +68,10 @@ export function FinalCta({ onSearchClick }: FinalCtaProps) {
             ))}
           </ul>
         </div>
-      </section>
+      </div>
 
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-4 px-6 py-8 text-sm text-slate-500">
+        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-4 px-6 py-6 text-sm text-slate-500">
           <span className="flex items-center gap-2 font-extrabold text-slate-950">
             <LogoMark /> {BRAND_NAME}
           </span>
@@ -65,6 +81,6 @@ export function FinalCta({ onSearchClick }: FinalCtaProps) {
           </p>
         </div>
       </footer>
-    </>
+    </section>
   );
 }

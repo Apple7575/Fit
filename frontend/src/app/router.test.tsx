@@ -66,46 +66,39 @@ describe('application routes', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: /회사를 고르면, 준비가 시작됩니다/ }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('searchbox', { name: '기업명' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: '기업명' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '검색' })).toBeInTheDocument();
+  });
+
+  it('renders the company search page at /companies', () => {
+    renderRoute('/companies');
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: /어느 회사를 볼까요/ }),
+    ).toBeInTheDocument();
+    // 헤더의 "기업 분석"은 랜딩(/)이 아니라 이 검색 페이지로 간다
+    expect(screen.getByRole('link', { name: '기업 분석' })).toHaveAttribute('href', '/companies');
   });
 
   it('renders the company overview tab by default (index redirect)', async () => {
     renderRoute('/companies/00126380');
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: '삼성전자' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: '기업 개요' }),
-    ).toHaveAttribute('aria-current', 'page');
-    expect(
-      screen.getByRole('link', { name: '산업 비교' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: '삼성전자' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '기업 개요' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: '산업 비교' })).toBeInTheDocument();
   });
 
   it('keeps unknown company metadata route-neutral', async () => {
     renderRoute('/companies/000000');
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: '기업 분석' }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('기업코드 000000'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: '기업 분석' })).toBeInTheDocument();
+    expect(await screen.findByText('기업코드 000000')).toBeInTheDocument();
   });
 
   it('renders a not-found page for unknown paths', () => {
     renderRoute('/unknown');
 
-    expect(
-      screen.getByRole('heading', { name: '페이지를 찾을 수 없습니다' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '홈으로 돌아가기' })).toHaveAttribute(
-      'href',
-      '/',
-    );
+    expect(screen.getByRole('heading', { name: '페이지를 찾을 수 없습니다' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '홈으로 돌아가기' })).toHaveAttribute('href', '/');
   });
 });

@@ -38,7 +38,7 @@ export function AuthLayout({
           <span className="anim-blob absolute -right-20 bottom-10 size-96 bg-white/10 [animation-delay:-4s]" />
           <p className="display-lg relative max-w-[14ch] text-balance">{headline}</p>
           <div className="relative flex items-end gap-4">
-            <CharacterSlot character={character} hideLabel pose={pose} size={200} />
+            <CharacterSlot character={character} pose={pose} size={200} />
             <SpeechBubble className="mb-16 max-w-[240px] text-slate-800" lines={lines} />
           </div>
         </aside>

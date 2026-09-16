@@ -9,6 +9,7 @@ import { AgentRoomPage } from '../pages/agent-room/AgentRoomPage';
 import { CompanyComparisonTab } from '../pages/company-detail/CompanyComparisonTab';
 import { CompanyGrowthTab } from '../pages/company-detail/CompanyGrowthTab';
 import { CompanyDetailPage } from '../pages/company-detail/CompanyDetailPage';
+import { CompanySearchPage } from '../pages/companies/CompanySearchPage';
 import { CompanyFocusTab } from '../pages/company-detail/CompanyFocusTab';
 import { CompanyIssuesTab } from '../pages/company-detail/CompanyIssuesTab';
 import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
@@ -27,6 +28,10 @@ const routes: RouteObject[] = [
   {
     path: '/',
     element: <HomePage />,
+  },
+  {
+    path: '/companies',
+    element: <CompanySearchPage />,
   },
   {
     path: '/login',

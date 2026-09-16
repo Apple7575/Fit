@@ -35,7 +35,7 @@ export function LoadingScreen({
             key={key}
             style={{ animationDelay: `${i * -0.45}s`, animationDuration: '1.4s' }}
           >
-            <CharacterSlot character={key} hideLabel size={size} />
+            <CharacterSlot character={key} size={size} />
           </span>
         ))}
       </div>

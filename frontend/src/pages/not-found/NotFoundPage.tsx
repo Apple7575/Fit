@@ -29,7 +29,7 @@ export function NotFoundPage() {
           className="parallax-item relative flex flex-col items-center gap-4 sm:flex-row sm:items-end"
           style={{ '--depth': 14 } as never}
         >
-          <CharacterSlot character="hamster" hideLabel pose="empty" size={180} />
+          <CharacterSlot character="hamster" pose="empty" size={180} />
           <SpeechBubble
             className="mb-10 max-w-[260px] text-left"
             lines={[

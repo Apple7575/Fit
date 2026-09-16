@@ -1,6 +1,7 @@
+import { CharacterSlot } from '../../components/brand/CharacterSlot';
+import { characterForAgent } from '../../components/brand/characters';
 import { useState } from 'react';
 import { AgentConfigPanel } from './AgentConfigPanel';
-import { AGENT_DOT } from './agentStyle';
 import { MessageComposer } from './MessageComposer';
 import { MessageThread } from './MessageThread';
 import { useAgents, useJobRoles, useMessages, useRoom } from './queries';
@@ -102,9 +103,10 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
                     : 'border-slate-200 bg-white text-slate-700'
                 } ${selectable && !busy ? 'hover:bg-slate-50' : 'cursor-default opacity-80'}`}
               >
-                <span
-                  aria-hidden
-                  className={`size-[7px] rounded-full ${AGENT_DOT[agent.agentKey] ?? 'bg-slate-400'}`}
+                <CharacterSlot
+                  character={characterForAgent(agent.agentKey)}
+                  interactive={false}
+                  size={18}
                 />
                 {agent.name}
                 {summary && <span className="text-slate-500">· {summary}</span>}
