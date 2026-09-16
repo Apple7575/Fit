@@ -263,6 +263,52 @@ body {
   transition: transform 0.25s ease-out;
 }
 
+
+/* ---------- 돌멩이 코치 (components/brand/CharacterSlot) ----------
+   --stone 은 몸 색, --ex/--ey 는 눈동자 오프셋(stoneMotion 이 넣음).
+   data-mood 는 고정 표정, data-act 는 잠깐의 딴짓, data-poke 는 클릭 반응. */
+.stone { position: relative; display: inline-block; user-select: none; -webkit-tap-highlight-color: transparent; transform-origin: 50% 100%; animation: float 5.5s ease-in-out infinite; }
+.stone[data-interactive="true"] { cursor: pointer; }
+.stone-body { position: absolute; inset: 0; background: var(--stone); opacity: 0.92; transform-origin: 50% 100%; animation: blob 9s ease-in-out infinite; }
+.stone-face { position: absolute; inset: 0; transition: transform 0.2s ease; }
+.stone-eye { position: absolute; background: #fff; border-radius: 50%; transform-origin: center; animation: blink 4.8s ease-in-out infinite; }
+.stone-pupil { position: absolute; background: #1f2937; border-radius: 50%; transform: translate(var(--ex, 0px), var(--ey, 0px)); transition: transform 0.12s ease-out; }
+.stone-shine { position: absolute; background: #fff; border-radius: 50%; }
+.stone-brow { position: absolute; height: 3px; background: rgba(31, 41, 55, 0.5); border-radius: 3px; opacity: 0; transition: opacity 0.2s; }
+.stone-brow[data-on="true"] { opacity: 0.55; }
+.stone-mouth { position: absolute; border-bottom: 3.5px solid rgba(31, 41, 55, 0.7); border-radius: 0 0 12px 12px; transition: all 0.15s; }
+.stone-cheek { position: absolute; border-radius: 50%; transition: background 0.4s; }
+/* 눈 깜빡임 시차: 화면의 돌들이 한꺼번에 감지 않게 자식 순서로 조금씩 밀어 둔다 */
+.stone:nth-of-type(2n) .stone-eye { animation-delay: -1.3s; }
+.stone:nth-of-type(3n) .stone-eye { animation-delay: -2.7s; }
+.stone:nth-of-type(5n) .stone-eye { animation-delay: -3.9s; }
+/* 표정 상태 */
+.stone[data-mood="happy"] .stone-mouth, .stone[data-act="happy"] .stone-mouth { border-bottom-width: 4px; border-radius: 0 0 16px 16px; transform: scaleX(1.6); }
+.stone[data-mood="wow"] .stone-mouth, .stone[data-act="wow"] .stone-mouth { border: 2.5px solid rgba(31, 41, 55, 0.7); border-radius: 50%; transform: scale(0.8, 1.8); }
+.stone[data-mood="wow"] .stone-eye, .stone[data-act="wow"] .stone-eye { transform: scale(1.18); animation: none; }
+.stone[data-mood="sleepy"] .stone-eye, .stone[data-act="sleepy"] .stone-eye { animation: none; transform: scaleY(0.15); }
+.stone[data-mood="sleepy"] .stone-mouth, .stone[data-act="sleepy"] .stone-mouth { border: 2px solid rgba(31, 41, 55, 0.6); border-radius: 50%; transform: scale(0.5, 1.2); }
+.stone[data-mood="shy"] .stone-face, .stone[data-act="shy"] .stone-face { transform: rotate(-7deg); }
+.stone[data-mood="shy"] .stone-cheek, .stone[data-act="shy"] .stone-cheek, .stone[data-act="blush"] .stone-cheek { background: rgba(251, 113, 133, 0.65) !important; }
+.stone[data-mood="angry"] .stone-brow { opacity: 0.8; }
+.stone[data-mood="angry"] .stone-brow[data-side="l"] { transform: rotate(22deg) !important; }
+.stone[data-mood="angry"] .stone-brow[data-side="r"] { transform: rotate(-22deg) !important; }
+.stone[data-act="peek"] .stone-pupil { transform: translate(5px, -1px); }
+.stone[data-act="hop"] { animation: hop 0.55s cubic-bezier(0.3, 0.8, 0.3, 1) 1; }
+.stone[data-poke="true"] .stone-body, .stone[data-poke="true"] .stone-face { animation: squash 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) 1; }
+
+@keyframes squash {
+  0% { transform: scale(1, 1); }
+  30% { transform: scale(1.16, 0.8); }
+  60% { transform: scale(0.94, 1.08); }
+  100% { transform: scale(1, 1); }
+}
+@keyframes hop {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-18px); }
+  100% { transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-float,
   .anim-float-slow,
@@ -286,5 +332,13 @@ body {
   }
   .flip-inner {
     transition: none;
+  }
+  .stone,
+  .stone-body,
+  .stone-eye,
+  .stone[data-act="hop"],
+  .stone[data-poke="true"] .stone-body,
+  .stone[data-poke="true"] .stone-face {
+    animation: none;
   }
 }
