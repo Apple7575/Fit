@@ -1,45 +1,27 @@
-# JD 코칭 내부 API 명세
+# JD 분석 내부 API 명세 — 1차 Spring 연동 범위
 
 ## 역할과 연결 경계
 
-JD 담당은 채용공고의 요구사항을 구조화하고, 사용자가 작성한 자소서·이력서 등에서 각 요구사항을 뒷받침하는 근거를 분석한다. URL 본문 추출만 필요한 백엔드를 위해 `job-sources/from-url`을 별도로 제공한다.
+이번 연동은 **채용공고 URL 추출 → JD 컨텍스트 등록 → 사용자 자료 동기 분석 → 무상태 JD 후속 대화**를 다룬다. 기존 상태 저장형 JD 대화 API는 호환성을 위해 유지하지만, Spring 검토방은 새 무상태 API를 사용한다.
 
 ```text
-브라우저 → Spring Boot → FastAPI JD → 채용공고 URL / PostgreSQL / Qwen
+브라우저 → Spring Boot → FastAPI JD → 공고 URL / PostgreSQL / Qwen
 ```
 
-Spring은 인증·권한, 지원 세션 및 자소서 연결, 내부 AI ID 보관, 화면용 결과 저장을 담당한다. JD FastAPI는 URL 추출, JD 컨텍스트·분석·JD 후속 대화의 상태를 관리한다. 포지션 API와 달리 **JD 분석·대화 경로는 무상태가 아니다.** 새 추출 전용 경로만 DB와 Qwen을 사용하지 않는다.
+Spring은 사용자 인증·권한, 지원 세션과 자소서 연결, 추출 결과 및 `context_id` 보관, 분석 결과·대화 이력의 저장과 화면 노출을 담당한다. Spring 검토방은 이미 턴을 백그라운드에서 실행하므로, **Spring 작업 스레드가 JD 분석·후속 대화 API를 동기로 호출**한다. FastAPI의 추출 전용 API는 저장·Qwen 호출을 하지 않는다. JD 컨텍스트 등록과 분석 API는 AI 서버의 PostgreSQL·Qwen을 사용하고, 무상태 대화 API는 AI DB에 메시지를 저장하지 않는다.
 
 ## 엔드포인트
 
 | 목적 | 메서드 | 통합 서버 경로 | 성공 |
 | --- | --- | --- | --- |
-| URL에서 본문·메타데이터만 추출 | `POST` | `/jd/internal/job-sources/from-url` | `200` |
-| 추출 결과/직접 입력으로 JD 컨텍스트 등록 | `POST` | `/jd/internal/job-contexts` | `201` |
-| URL 추출과 JD 컨텍스트 등록을 한 번에 수행 | `POST` | `/jd/internal/job-contexts/from-url` | `201` |
-| 파일에서 JD 컨텍스트 등록 | `POST` | `/jd/internal/job-contexts/from-file` | `201` |
-| JD 컨텍스트 조회 | `GET` | `/jd/internal/job-contexts/{context_id}` | `200` |
+| URL 본문·메타데이터 추출 | `POST` | `/jd/internal/job-sources/from-url` | `200` |
+| 추출한 텍스트로 JD 컨텍스트 등록 | `POST` | `/jd/internal/job-contexts` | `201` |
 | JD-사용자 자료 동기 분석 | `POST` | `/jd/internal/job-contexts/{context_id}/analyses` | `200` |
-| JD-사용자 자료 비동기 분석 시작 | `POST` | `/jd/internal/job-contexts/{context_id}/analysis-jobs` | `202` |
-| 비동기 분석 상태·결과 조회 | `GET` | `/jd/internal/analysis-jobs/{analysis_id}` | `200` |
-| JD 후속 대화 생성 | `POST` | `/jd/internal/conversations` | `201` |
-| JD 후속 메시지 전송 | `POST` | `/jd/internal/conversations/{conversation_id}/messages` | `200` |
-| JD 대화 조회/삭제 | `GET` / `DELETE` | `/jd/internal/conversations/{conversation_id}` | `200` / `204` |
-| 프로세스 상태 | `GET` | `/jd/health` | `200` |
+| 무상태 JD 후속 메시지 | `POST` | `/jd/internal/messages` | `200` |
 
-JD 앱 자체의 경로는 `/internal/...`, `/health`다. 통합 FastAPI 진입점 `ai/serve.py`가 `/jd`에 마운트한다. 아래는 통합 서버 기준이며 `{AI_SERVICE_BASE_URL}`에는 `/jd`나 `/ai`를 중복해서 붙이지 않는다. 내부 API에 별도 인증 헤더 검사는 없으므로 외부에 직접 공개하지 않아야 한다.
+JD 앱 자체 경로는 `/internal/...`이고, 통합 FastAPI 진입점 `ai/serve.py`가 `/jd` 접두어로 마운트한다. 아래 `{AI_SERVICE_BASE_URL}`은 통합 서버 주소이며 `/jd`를 포함하지 않는다. 프록시 환경에서는 주소 앞에 `/ai`가 붙을 수 있다. 내부 API는 별도 인증 헤더 검사가 없으므로 외부에 직접 공개하면 안 된다.
 
-백엔드가 **공고 원문을 먼저 받아야 하는 현재 요청**에는 아래 흐름을 권장한다.
-
-```text
-job-sources/from-url → Spring에서 추출 결과·메타데이터 확인/저장
-                     → job-contexts → analysis-jobs → analysis-jobs/{analysis_id}
-                     → (JD 후속 대화가 필요할 때만) conversations → messages
-```
-
-기존 `job-contexts/from-url`은 URL 추출과 등록을 한 번에 처리하는 **대체 경로**다. 위 첫 두 호출 뒤 다시 호출하면 URL을 중복으로 가져오므로 함께 사용할 필요가 없다.
-
-## URL 본문 추출 요청
+## 1. URL 본문·메타데이터 추출
 
 ```http
 POST {AI_SERVICE_BASE_URL}/jd/internal/job-sources/from-url
@@ -50,9 +32,13 @@ Content-Type: application/json
 {"url": "https://careers.example.com/jobs/123"}
 ```
 
-`url`은 필수 1~2,000자 절대 HTTP·HTTPS URL이다. 다른 요청 필드는 `422`로 거절한다. 기존 `ingestor.from_url()`을 호출하므로 HTML·XHTML·일반 텍스트를 최대 10 MiB까지 읽고, 추출 텍스트는 10~50,000자로 제한한다. 로컬·사설 주소와 해당 주소로의 리다이렉트는 차단한다. JavaScript 실행이 필요한 페이지는 본문 추출에 실패할 수 있다.
+| 필드 | 필수 | 제한 | 의미 |
+| --- | --- | --- | --- |
+| `url` | 예 | 절대 HTTP·HTTPS URL, 1~2,000자 | 사용자가 제공한 공고 주소 |
 
-### 성공 응답 `200`
+다른 요청 필드는 `422`로 거절한다. 기존 `ingestor.from_url()`을 사용하며, HTML·XHTML·일반 텍스트 응답만 지원한다. 원본 최대 10 MiB, 추출 본문 10~50,000자다. 로컬·사설망 주소와 그곳으로 향하는 리다이렉트를 차단한다. JavaScript 실행 후 본문이 나타나는 공고는 추출에 실패할 수 있다.
+
+### `200` 응답
 
 ```json
 {
@@ -67,11 +53,11 @@ Content-Type: application/json
 }
 ```
 
-응답은 위 8개 필드다. `source_url`은 리다이렉트 후 최종 URL이며 `content_sha256`은 **원본 응답 바이트**의 SHA-256이다. 기업명·직무명·공고 ID·날짜 등 추출하지 못한 메타데이터는 `null`일 수 있다. 이 API는 `context_id`를 만들지 않으며 JD 구조화, DB 저장, Qwen 호출을 하지 않는다.
+응답 필드는 정확히 위 8개다. 추출하지 못한 기업명·직무명·공고 ID·날짜는 `null`일 수 있다. `source_url`은 리다이렉트 후 최종 URL, `content_sha256`은 **원본 응답 바이트**의 SHA-256이다. 이 호출은 컨텍스트 생성·DB 저장·JD 구조화를 하지 않으므로 `context_id`가 없다.
 
-## JD 컨텍스트 등록 요청
+## 2. JD 컨텍스트 등록
 
-추출 전용 API의 `jd_text`를 분석에 사용하려면 별도로 컨텍스트를 등록한다.
+Spring이 추출 결과를 확인하고, 분석에 사용할 JD를 등록한다. `company_name`과 `position_name`이 추출되지 않았다면 사용자 입력 등으로 채워야 한다.
 
 ```http
 POST {AI_SERVICE_BASE_URL}/jd/internal/job-contexts
@@ -91,28 +77,59 @@ Content-Type: application/json
 }
 ```
 
-| 필드 | 필수 | 제한·의미 |
-| --- | --- | --- |
-| `company_name` | 예 | 공백 제외 1~100자 |
-| `position_name` | 예 | 공백 제외 1~200자 |
-| `jd_text` | 예 | 공백 제외 10~50,000자 |
-| `job_posting_id` | 아니오 | 1~200자 |
-| `source_url` | 아니오 | 절대 HTTP·HTTPS URL, 최대 2,000자 |
-| `published_at`, `valid_until`, `retrieved_at` | 아니오 | `YYYY-MM-DD`; 마감일은 게시일 이전일 수 없음 |
-| `source_type` | 아니오 | `USER_PROVIDED_JOB_POSTING`(기본), `OFFICIAL_CAREERS_SITE`, `RECRUITMENT_PLATFORM` |
+| 필드 | 필수 | 제한 | 의미 |
+| --- | --- | --- | --- |
+| `company_name` | 예 | 공백 제외 1~100자 | 기업명 |
+| `position_name` | 예 | 공백 제외 1~200자 | 직무명 |
+| `jd_text` | 예 | 공백 제외 10~50,000자 | 추출한 공고 본문 |
+| `job_posting_id` | 아니오 | 1~200자 | 공고 식별자 |
+| `source_url` | 아니오 | 절대 HTTP·HTTPS URL, 최대 2,000자 | 추출 결과의 최종 URL |
+| `published_at`, `valid_until`, `retrieved_at` | 아니오 | `YYYY-MM-DD` | 게시·마감·수집일; 마감일은 게시일 이전 불가 |
+| `source_type` | 아니오 | `USER_PROVIDED_JOB_POSTING`(기본), `OFFICIAL_CAREERS_SITE`, `RECRUITMENT_PLATFORM` | JD 출처 |
 
-성공 시 `201`로 `context_id`, 기업·직무·JD 원문, 구조화된 `requirements`, 출처 메타데이터, `cache_hit`, 모델 `usage` 등을 반환한다. `requirements`는 최대 8개다. 동일한 입력에 대한 컨텍스트가 있으면 기존 ID와 `cache_hit: true`가 반환될 수 있다. Spring은 `context_id`를 자기 지원 세션에 연결하고 소유권을 검사해야 한다.
+### `201` 응답
 
-**현재 계약의 주의점:** 추출 전용 API가 반환하는 `content_sha256`은 `POST /job-contexts`의 허용 입력 필드가 아니다. 이 두 단계 흐름을 택한다면 해시는 Spring에서 보관해야 하며, 임의로 `source_content_sha256`을 등록 요청에 넣으면 `422`가 난다. 원본 해시를 AI 컨텍스트에도 저장해야 한다면 별도 API 계약 변경이 필요하다.
+```json
+{
+  "context_id": "jctx_abc123",
+  "company_name": "예시기업",
+  "position_name": "백엔드 개발자",
+  "jd_text": "Python 기반 API 개발 경험이 필요합니다.",
+  "requirements": [
+    {
+      "role_element_id": "role-001",
+      "name": "Python 기반 API 개발",
+      "source_quote": "Python 기반 API 개발 경험이 필요합니다.",
+      "evidence_section_ids": ["section-001"],
+      "evidence_logic": "ALL",
+      "evidence_requirements": [
+        {"evidence_requirement_id": "evidence-001", "description": "Python 기반 API 구현 경험"}
+      ]
+    }
+  ],
+  "created_at": "2026-09-16T00:00:00+00:00",
+  "job_posting_id": "123",
+  "source_url": "https://careers.example.com/jobs/123",
+  "published_at": "2026-09-01",
+  "valid_until": "2026-09-30",
+  "retrieved_at": null,
+  "source_type": "OFFICIAL_CAREERS_SITE",
+  "version": 1,
+  "source_filename": null,
+  "source_content_sha256": null,
+  "cache_hit": false,
+  "usage": {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
+}
+```
 
-대체 경로 `POST /jd/internal/job-contexts/from-url`은 `url`과 선택적 `company_name`, `position_name`, `job_posting_id`, `source_type`을 받는다. 직접 URL을 가져와 구조화·저장하고 `201`로 같은 컨텍스트 형태를 반환한다. URL 메타데이터가 없으면 기업명과 직무명을 요청에 제공해야 한다. 파일 등록 경로는 `multipart/form-data`로 `company_name`, `position_name`, `file`을 필수로 받는다. 두 대체 경로의 자세한 필드는 `ai/docs/jd-coaching-api-spec.md`를 참고한다.
+위 값은 **필드 구조 예시**이며 실제 `requirements`는 구조화된 JD 요구사항(최대 8개), `usage`는 실제 모델 사용량이다. 동일한 컨텍스트가 재사용되면 `cache_hit: true`일 수 있다. Spring은 `context_id`를 자기 지원 세션에 연결하고 접근 권한을 검사한다.
 
-## 분석 요청과 성공 응답
+**현재 계약의 제약:** 1번의 `content_sha256`은 이 등록 API의 입력 필드가 아니다. AI 컨텍스트에 전달하려고 `source_content_sha256`을 추가하면 `422`가 나므로, 해시가 필요하면 Spring이 별도로 보관해야 한다.
 
-화면용 흐름은 비동기 분석을 권장한다. 동기 분석과 비동기 시작의 요청 본문은 동일하다.
+## 3. JD-사용자 자료 동기 분석
 
 ```http
-POST {AI_SERVICE_BASE_URL}/jd/internal/job-contexts/{context_id}/analysis-jobs
+POST {AI_SERVICE_BASE_URL}/jd/internal/job-contexts/{context_id}/analyses
 Content-Type: application/json
 ```
 
@@ -122,83 +139,136 @@ Content-Type: application/json
     {
       "document_id": "cover-letter-item-12",
       "document_type": "SELF_INTRO",
-      "text": "FastAPI로 주문 조회 API를 구현하고 응답 시간을 측정했습니다."
+      "text": "팀 프로젝트에서 서비스를 개발하고 기능을 개선했습니다."
     }
   ]
 }
 ```
 
-| 필드 | 필수 | 제한·의미 |
-| --- | --- | --- |
-| `documents` | 예 | 1~20개. 사용자 원문 근거 |
-| `documents[].document_id` | 예 | 요청 안에서 고유한 1~100자 |
-| `documents[].document_type` | 예 | `RESUME`, `SELF_INTRO`, `EXPERIENCE`, `PORTFOLIO` |
-| `documents[].text` | 예 | 10~50,000자 |
+| 필드 | 필수 | 제한 | 의미 |
+| --- | --- | --- | --- |
+| `context_id` | 예 | URL 경로의 기존 JD 컨텍스트 ID | 분석 기준 JD |
+| `documents` | 예 | 1~20개 | 사용자 원문 자료 |
+| `documents[].document_id` | 예 | 요청 안에서 고유한 1~100자 | 원문 식별자 |
+| `documents[].document_type` | 예 | `RESUME`, `SELF_INTRO`, `EXPERIENCE`, `PORTFOLIO` | 자료 유형 |
+| `documents[].text` | 예 | 10~50,000자 | 사용자 원문 |
 
-비동기 시작은 `202`로 `analysis_id`, `context_id`, `status: "QUEUED"`, `result: null`, `error: null`, 생성·갱신 시각을 반환한다. `GET /jd/internal/analysis-jobs/{analysis_id}`로 `QUEUED`/`RUNNING`/`COMPLETED`/`FAILED`를 조회한다. `COMPLETED`면 `result`에 JD 요구사항별 분석(`requirements`), 실패한 요구사항(`failed_requirements`), 요약 집계(`summary`), `model`, `usage`가 들어간다. 일부 요구사항 실패가 있어도 `result.failed_requirements`와 `summary.failed`를 확인해야 한다. `FAILED`면 `error.code`, `error.message`를 확인한다.
-
-동기 `POST /jd/internal/job-contexts/{context_id}/analyses`는 같은 요청으로 분석 결과를 바로 `200`으로 반환한다. Spring HTTP 요청을 오래 붙잡지 않으려면 비동기 경로를 사용한다.
-
-## JD 후속 대화 요청과 응답
-
-JD의 후속 대화는 완료된 분석에 묶이는 **상태 저장형 API**다. 필요할 때만 아래 두 호출을 추가한다.
-
-```http
-POST {AI_SERVICE_BASE_URL}/jd/internal/conversations
-Content-Type: application/json
-```
+### `200` 응답
 
 ```json
-{"context_id": "jctx_abc123", "analysis_id": "analysis_abc123"}
+{
+  "context_id": "jctx_abc123",
+  "company_name": "예시기업",
+  "position_name": "백엔드 개발자",
+  "requirements": [
+    {
+      "requirement_id": "role-001",
+      "requirement": "Python 기반 API 개발",
+      "jd_quote": "Python 기반 API 개발 경험이 필요합니다.",
+      "evidence_logic": "ALL",
+      "label": "NOT_SUPPORTED",
+      "present_evidence": [],
+      "missing_evidence": [
+        {"evidence_requirement_id": "evidence-001", "description": "Python 기반 API 구현 경험"}
+      ],
+      "feedback": "Python 기반 API 구현 경험을 확인할 수 없습니다.",
+      "suggested_actions": ["직접 구현한 API와 사용한 기술을 구체적으로 작성하세요."],
+      "follow_up_questions": ["Python으로 구현한 API가 있나요?"]
+    }
+  ],
+  "failed_requirements": [],
+  "summary": {"supported": 0, "partially_supported": 0, "not_supported": 1, "failed": 0},
+  "model": "Qwen 모델명",
+  "usage": {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
+}
 ```
 
-`context_id`와 `analysis_id`는 필수이며 서로 일치해야 하고, 분석 상태가 `COMPLETED`여야 한다. 성공 `201` 응답에 `conversation_id`, 두 ID, 생성·갱신 시각, 빈 `messages` 배열이 있다. 이후:
+응답에 `analysis_id`나 작업 `status`는 없다. 일부 요구사항만 실패해도 분석 응답은 `200`일 수 있으므로 `failed_requirements`와 `summary.failed`를 확인한다. Spring은 이 결과를 자기 턴 결과로 저장하고 화면에 전달한다. **AI API를 폴링할 필요는 없지만**, 브라우저가 Spring 턴 진행 상태를 확인하는 기존 흐름은 유지된다. JD 요구사항별 Qwen 호출에 시간이 걸릴 수 있으므로 Spring→FastAPI HTTP 타임아웃을 실제 처리 시간에 맞게 설정해야 한다.
+
+## 4. 무상태 JD 후속 메시지
+
+Spring이 저장한 기준 분석 결과, **현재 자소서 원문**, 필요한 이전 사용자·에이전트 발화를 매 요청에 보낸다. 이 API는 `conversation_id`·`analysis_id`를 받지 않고 메시지를 AI DB에 저장하지 않는다. 다만 `context_id`로 JD 컨텍스트는 AI DB에서 조회한다.
 
 ```http
-POST {AI_SERVICE_BASE_URL}/jd/internal/conversations/{conversation_id}/messages
+POST {AI_SERVICE_BASE_URL}/jd/internal/messages
 Content-Type: application/json
 ```
 
 ```json
 {
-  "client_message_id": "spring-message-480",
-  "content": "제 경험에서 무엇을 먼저 보완해야 하나요?"
+  "context_id": "jctx_abc123",
+  "analysis_result": {
+    "context_id": "jctx_abc123",
+    "summary": {"supported": 0, "partially_supported": 1, "not_supported": 0, "failed": 0},
+    "requirements": [{"requirement_id": "role-001", "requirement": "Python 기반 API 개발"}]
+  },
+  "current_document": {
+    "document_id": "cover-letter-item-12",
+    "text": "팀 프로젝트에서 Python API를 개발하고 서비스를 배포했습니다."
+  },
+  "message": "배포 경험을 어떻게 더 구체적으로 쓸까?",
+  "history": [
+    {"role": "user", "content": "직무 적합성이 드러나?"},
+    {"role": "assistant", "content": "배포 결과를 보완하면 좋아요."}
+  ]
 }
 ```
 
-`client_message_id`는 1~100자이며 대화 안에서 중복 전송을 구분한다. `content`는 1~10,000자다. 성공 `200`은 `user_message`와 `assistant_message` 객체를 반환한다. 각 객체에는 `message_id`, `role`, `content`, `reply_to_message_id`, `metadata`, `created_at`, `sequence_no` 등이 있다. 같은 ID·같은 내용 재전송은 기존 답변을 반환하고, 같은 ID·다른 내용은 `409`다. Spring은 `conversation_id`를 지원 세션에 연결하고, 대화 삭제 시 `DELETE /jd/internal/conversations/{conversation_id}` 호출 여부를 정해야 한다.
+| 필드 | 필수 | 제한 | 의미 |
+| --- | --- | --- | --- |
+| `context_id` | 예 | 1~80자 | 이미 등록된 JD 컨텍스트 ID |
+| `analysis_result` | 예 | `context_id`, `summary` 객체, `requirements` 배열 포함 | 앞선 동기 분석 API 응답. 내부 `context_id`가 요청 값과 같아야 함 |
+| `current_document.document_id` | 예 | 1~100자 | 현재 자소서 문항 식별자 |
+| `current_document.text` | 예 | 공백 제외 10~50,000자 | **현재 버전** 자소서 원문 |
+| `message` | 예 | 공백 제외 1~10,000자 | 이번 사용자 질문 |
+| `history` | 아니오 | 최대 20개, 기본 `[]` | 이전 발화. 오래된 순서로 `user`·`assistant` 모두 포함 |
+| `history[].role` | 예 | `user` 또는 `assistant` | 발화 주체 |
+| `history[].content` | 예 | 공백 제외 1~10,000자 | 발화 내용 |
 
-검토방의 `agent_message`도 대화를 저장하므로, Spring 검토방과 이 상태 저장형 JD 대화를 함께 사용할 경우 **어느 저장소가 대화의 원본인지** 정해야 한다. JD 메시지 API는 이전 대화 배열을 요청마다 받지 않는다. 포지션·글쓰기 API의 무상태 `conversation` 필드와 혼동하면 안 된다.
+Spring은 분석 응답 전체를 보관하고 `analysis_result`로 다시 보내는 것이 안전하다. 분석 이후 자소서가 수정됐으면 `current_document.text`에는 수정된 원문을 보낸다. 이때 기준 분석은 이전 버전의 결과일 수 있으므로 최신 적합성 판정이 필요하면 분석 API를 다시 호출해야 한다.
+
+### `200` 응답
+
+```json
+{
+  "answer": "배포에서 맡은 역할과 성과를 구체적으로 적어 보세요.",
+  "referenced_requirement_ids": ["role-001"],
+  "follow_up_questions": ["배포 후 확인한 성과 지표가 있나요?"],
+  "model": "Qwen 모델명",
+  "usage": {"prompt_tokens": 1000, "completion_tokens": 300, "total_tokens": 1300}
+}
+```
+
+Spring이 이 응답과 사용자 질문을 검토방에 저장하고, 다음 요청의 `history`에 필요한 이력만 넣는다. 동일 요청 재시도 시 모델을 다시 호출하므로 턴 중복 저장 방지는 Spring이 맡는다. 기존 `/jd/internal/conversations/...` 경로는 변경하지 않았다.
 
 ## 오류와 호출 정책
 
 | 상태 | 의미 |
 | --- | --- |
-| `200`/`201`/`202`/`204` | 경로별 성공 상태(위 표 참조) |
-| `404` | 컨텍스트·분석 작업·대화를 찾을 수 없음 |
-| `409` | 미완료 분석으로 대화 생성, ID 관계 불일치, 메시지 ID 충돌 |
-| `415` | URL 응답 또는 업로드 파일 형식 미지원 |
-| `422` | Pydantic 요청 형식 검증, URL 본문 추출, 날짜 형식 오류 |
-| `502` | URL 가져오기, JD 구조화·동기 분석·대화 모델 호출 실패 |
+| `200` / `201` | 각 API의 성공 상태 |
+| `404` | 존재하지 않는 `context_id` |
+| `415` | URL 응답 형식 미지원 |
+| `422` | 요청 형식·날짜 검증 또는 URL 본문 추출 실패 |
+| `502` | URL 가져오기, JD 컨텍스트 구조화, 동기 분석 또는 대화 모델 처리 실패 |
 
-`GET /jd/health`의 `200 {"status":"ok"}`는 프로세스 상태만 뜻한다. DB·Qwen 준비 상태까지 보장하지 않는다. URL 추출 전용 경로는 추출 오류를 `415`/`422`/`502`로 매핑하며 JD 컨텍스트 등록이나 Qwen 오류를 반환하지 않는다.
+무상태 대화에서 요청 필드가 없거나 형식이 잘못되면 `422`, 분석 결과의 `context_id`가 다르면 `409`, JD 컨텍스트가 없으면 `404`다. 모델이 알 수 없는 `requirement_id`를 인용하는 등 출력 검증에 실패하면 `502`다.
 
-비동기 분석에서 문서 ID 중복 같은 의미 검증 오류가 작업 시작 후 발견되면 초기 요청은 `202`이고 이후 작업이 `FAILED`가 된다. 동기 분석 경로에서는 서비스의 `ValueError`도 현재 구현상 `502`로 매핑된다. 따라서 Spring은 HTTP 상태뿐 아니라 비동기 작업의 `status`와 `error`를 확인해야 한다.
+동기 분석의 요청 스키마 오류는 `422`다. 문서 ID 중복 등 서비스 단계의 의미 검증 오류는 현재 구현상 `502`로 매핑된다. FastAPI 기본 오류 본문은 `{"detail": ...}` 형태다. Spring이 호출 제한 시간을 넘기거나 연결이 끊기면 해당 Spring 턴을 실패 처리할 정책이 필요하다.
 
 ## Spring 연동 시 필요한 결정
 
-1. 원문 확인이 필요한 현재 요구에는 추출 전용 API → Spring의 기업명·직무명 확인 → 텍스트 등록 API를 사용한다. 추출된 기업명·직무명이 `null`이면 사용자 입력 등으로 채워야 등록할 수 있다.
-2. Spring은 로그인 사용자·지원 세션 소유권을 확인하고 `context_id`, `analysis_id`, 필요 시 `conversation_id`를 지원 세션에 연결한다. AI API는 사용자 ID를 받지 않는다.
-3. 분석은 비동기 상태를 조회해 완료/실패를 반영한다. `202`는 분석 완료가 아니다.
-4. 화면/총괄에서 요구사항별 판정·원문 근거를 사용하려면 `result` 전체를 구조화해 보존한다. JD 분석 결과는 포지션의 `{message, analysis}` 형태가 아니다.
-5. JD 후속 대화를 사용할지, 검토방의 Spring 메시지 저장을 원본으로 둘지 결정한다. 두 저장소를 함께 쓰면 메시지 동기화와 삭제 책임을 정해야 한다.
+1. Spring은 1번 결과의 기업명·직무명을 확인하고, 누락 시 사용자 입력으로 채운 다음 2번을 호출한다.
+2. `content_sha256`이 필요하면 Spring이 보관한다. 현행 2번 API로는 AI 컨텍스트에 전달할 수 없다.
+3. `context_id`를 Spring의 지원 세션에 연결하고 소유권을 확인한다. AI API 자체는 사용자 ID를 받지 않는다.
+4. Spring의 백그라운드 턴 안에서 3번을 동기로 호출한다. AI 작업 ID·상태 조회는 필요 없으며, 화면과 총괄에서 JD 근거를 활용할 경우 분석 응답 전체를 보존한다.
+5. JD 후속 대화에는 4번 API를 사용한다. Spring이 분석 결과·현재 자소서·이전 사용자 및 에이전트 발화를 전달하고, 반환된 답변을 저장한다.
 
 ## 관련 구현
 
 - 통합 마운트: `ai/serve.py`
-- JD FastAPI 라우트·요청 검증: `ai/jd_coaching/api.py`
+- 요청·응답 및 라우트: `ai/jd_coaching/api.py`
 - URL 추출·SSRF 방어: `ai/jd_coaching/source_ingestion.py`
 - JD 구조화·분석: `ai/jd_coaching/service.py`
-- JD 후속 대화: `ai/jd_coaching/chat.py`, `ai/jd_coaching/postgres_conversation_store.py`
-- 상세 필드·응답 예시: `ai/docs/jd-coaching-api-spec.md`
+- 무상태 JD 대화: `ai/jd_coaching/chat.py`
+- 상세 JD 응답 스키마: `ai/docs/jd-coaching-api-spec.md`
 - Spring의 JD FastAPI HTTP 클라이언트 및 검토방 연동: 미구현
