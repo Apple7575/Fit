@@ -4,6 +4,7 @@ import com.ssafy.companyanalysis.agent.ai.AgentLlmClient;
 import com.ssafy.companyanalysis.agent.ai.JobSourceClient;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
+import com.ssafy.companyanalysis.jobposting.cache.JobPostingSourceCache;
 import com.ssafy.companyanalysis.jobposting.dto.JobPostingParseResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,8 +23,8 @@ import java.util.List;
  * <p>본문은 AI 서버에서 받아 온다. 백엔드가 사용자가 준 주소로 직접 붙으면 사내망을 찔러 보는
  * 통로가 되기 때문이다(S15P21A504-140).
  *
- * <p>받은 본문은 남기지 않는다. 화면 입력칸을 채우는 것이 전부라서 저장할 이유가 없다.
- * 공고 원문이 필요해지는 것은 JD 담당 에이전트가 공고를 읽게 될 때이고, 저장은 그때 함께 정한다.
+ * <p>받은 본문은 저장하지 않는다. 다만 사용자가 곧 검토를 눌러 같은 공고를 등록할 수 있어,
+ * 그때 다시 긁지 않도록 보관 키와 함께 잠시 메모리에 들고 있는다(S15P21A504-140).
  */
 @Service
 public class JobPostingParseService {
@@ -53,12 +54,14 @@ public class JobPostingParseService {
     private final JobSourceClient jobSourceClient;
     private final AgentLlmClient llmClient;
     private final ObjectMapper objectMapper;
+    private final JobPostingSourceCache sourceCache;
 
     public JobPostingParseService(JobSourceClient jobSourceClient, AgentLlmClient llmClient,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper, JobPostingSourceCache sourceCache) {
         this.jobSourceClient = jobSourceClient;
         this.llmClient = llmClient;
         this.objectMapper = objectMapper;
+        this.sourceCache = sourceCache;
     }
 
     public JobPostingParseResponse parse(String url) {
@@ -79,7 +82,7 @@ public class JobPostingParseService {
         if (companyName == null && positions.isEmpty()) {
             throw new BusinessException(ErrorCode.JOB_POSTING_PARSE_FAILED);
         }
-        return new JobPostingParseResponse(companyName, positions, url);
+        return new JobPostingParseResponse(companyName, positions, url, sourceCache.put(source));
     }
 
     private static String truncate(String posting) {

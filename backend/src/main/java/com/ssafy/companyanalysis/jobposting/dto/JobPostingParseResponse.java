@@ -11,9 +11,14 @@ import java.util.List;
  *
  * <p>회사명을 못 찾으면 {@code companyName} 이 null 이다. 직무를 못 찾으면 빈 배열이다.
  * 둘 다 비면 서비스가 400 을 낸다.
+ *
+ * <p>{@code sourceKey} 는 방금 긁은 본문을 서버가 잠시 들고 있다는 표시다. 등록할 때
+ * 그대로 돌려주면 공고를 다시 긁지 않는다. 보관하지 못했으면 null 이고, 그때는 등록 쪽이
+ * 주소로 다시 읽는다.
  */
 public record JobPostingParseResponse(
         String companyName,
         List<String> positions,
-        String sourceUrl) {
+        String sourceUrl,
+        String sourceKey) {
 }
