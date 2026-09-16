@@ -1,7 +1,7 @@
 package com.ssafy.companyanalysis.jobposting.service;
 
 import com.ssafy.companyanalysis.agent.ai.AgentLlmClient;
-import com.ssafy.companyanalysis.agent.crawl.JobPostingFetcher;
+import com.ssafy.companyanalysis.agent.ai.JobSourceClient;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
 import com.ssafy.companyanalysis.jobposting.dto.JobPostingParseResponse;
@@ -19,7 +19,10 @@ import java.util.List;
 /**
  * 채용공고 URL 에서 회사명과 모집 직무를 읽어 낸다.
  *
- * <p>긁은 본문은 남기지 않는다. 화면 입력칸을 채우는 것이 전부라서 저장할 이유가 없다.
+ * <p>본문은 AI 서버에서 받아 온다. 백엔드가 사용자가 준 주소로 직접 붙으면 사내망을 찔러 보는
+ * 통로가 되기 때문이다(S15P21A504-140).
+ *
+ * <p>받은 본문은 남기지 않는다. 화면 입력칸을 채우는 것이 전부라서 저장할 이유가 없다.
  * 공고 원문이 필요해지는 것은 JD 담당 에이전트가 공고를 읽게 될 때이고, 저장은 그때 함께 정한다.
  */
 @Service
@@ -44,27 +47,43 @@ public class JobPostingParseService {
               positions 는 빈 배열로 둔다.
             """;
 
-    private final JobPostingFetcher fetcher;
+    /** 공고 하나가 프롬프트를 다 잡아먹지 않게 자른다. */
+    private static final int MAX_POSTING_CHARS = 8000;
+
+    private final JobSourceClient jobSourceClient;
     private final AgentLlmClient llmClient;
     private final ObjectMapper objectMapper;
 
-    public JobPostingParseService(JobPostingFetcher fetcher, AgentLlmClient llmClient, ObjectMapper objectMapper) {
-        this.fetcher = fetcher;
+    public JobPostingParseService(JobSourceClient jobSourceClient, AgentLlmClient llmClient,
+                                  ObjectMapper objectMapper) {
+        this.jobSourceClient = jobSourceClient;
         this.llmClient = llmClient;
         this.objectMapper = objectMapper;
     }
 
     public JobPostingParseResponse parse(String url) {
-        String posting = fetcher.fetch(url);
-        JsonNode parsed = readJson(llmClient.generateJson(INSTRUCTION, posting));
+        JobSourceClient.JobSource source = jobSourceClient.fromUrl(url);
+        JsonNode parsed = readJson(llmClient.generateJson(INSTRUCTION, truncate(source.jdText())));
 
         String companyName = text(parsed.path("companyName"));
         List<String> positions = positions(parsed.path("positions"));
+
+        // 모델이 못 찾아도 공고 메타데이터에 적혀 있을 때가 있다. 빈손으로 돌려보내기 전에 쓴다.
+        if (companyName == null) {
+            companyName = source.companyName();
+        }
+        if (positions.isEmpty() && source.positionName() != null) {
+            positions = List.of(source.positionName());
+        }
 
         if (companyName == null && positions.isEmpty()) {
             throw new BusinessException(ErrorCode.JOB_POSTING_PARSE_FAILED);
         }
         return new JobPostingParseResponse(companyName, positions, url);
+    }
+
+    private static String truncate(String posting) {
+        return posting.length() > MAX_POSTING_CHARS ? posting.substring(0, MAX_POSTING_CHARS) : posting;
     }
 
     private JsonNode readJson(String raw) {

@@ -14,7 +14,6 @@ function summarize(agent: RoomAgent): string | null {
     return agent.config.companies.map((company) => company.name ?? company.corpCode).join(', ');
   }
   if (agent.config.jobRole) return agent.config.jobRole;
-  if (agent.config.jdUrl) return '공고 연결됨';
   return null;
 }
 
@@ -81,6 +80,12 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
           {data.coverLetter ? data.coverLetter.title : '연결된 자소서 없음'}
           <span className="mx-1.5 text-slate-300">·</span>
           에이전트 {data.agents.length}명
+          {data.jobContext && (
+            <>
+              <span className="mx-1.5 text-slate-300">·</span>
+              공고 {data.jobContext.companyName} {data.jobContext.positionName}
+            </>
+          )}
         </p>
       </header>
 

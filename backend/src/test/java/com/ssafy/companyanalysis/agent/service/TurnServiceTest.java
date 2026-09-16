@@ -1,5 +1,6 @@
 package com.ssafy.companyanalysis.agent.service;
 
+import com.ssafy.companyanalysis.agent.domain.JobContext;
 import com.ssafy.companyanalysis.agent.domain.Message;
 import com.ssafy.companyanalysis.agent.domain.MessageStatus;
 import com.ssafy.companyanalysis.agent.domain.Room;
@@ -7,6 +8,7 @@ import com.ssafy.companyanalysis.agent.domain.RoomAgent;
 import com.ssafy.companyanalysis.agent.dto.MessageSendRequest;
 import com.ssafy.companyanalysis.agent.dto.TurnStartedResponse;
 import com.ssafy.companyanalysis.agent.dto.TurnStatusResponse;
+import com.ssafy.companyanalysis.agent.repository.JobContextRepository;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
 import com.ssafy.companyanalysis.agent.repository.RoomRepository;
 import com.ssafy.companyanalysis.coverletter.domain.CoverLetterItem;
@@ -16,6 +18,7 @@ import com.ssafy.companyanalysis.global.error.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
@@ -38,6 +41,7 @@ class TurnServiceTest {
 
     private RoomRepository roomRepository;
     private MessageRepository messageRepository;
+    private JobContextRepository jobContextRepository;
     private CoverLetterItemRepository itemRepository;
     private TurnExecutor turnExecutor;
     private TurnService service;
@@ -60,7 +64,9 @@ class TurnServiceTest {
         messageRepository = Mockito.mock(MessageRepository.class);
         itemRepository = Mockito.mock(CoverLetterItemRepository.class);
         turnExecutor = Mockito.mock(TurnExecutor.class);
-        service = new TurnService(roomRepository, messageRepository, itemRepository, turnExecutor,
+        jobContextRepository = Mockito.mock(JobContextRepository.class);
+        service = new TurnService(roomRepository, messageRepository, jobContextRepository,
+                itemRepository, turnExecutor,
                 new AnalysisRateLimiter(100, java.time.Duration.ofHours(1)));
 
         AtomicLong seq = new AtomicLong(100);
@@ -91,6 +97,66 @@ class TurnServiceTest {
         Room room = Room.create(USER, 12L, "검토 방",
                 java.util.Arrays.stream(agentKeys).map(k -> new RoomAgent(k, Map.of())).toList());
         given(roomRepository.findByIdAndUserId(ROOM, USER)).willReturn(Optional.of(room));
+    }
+
+    private void roomWithJobContext(String contextId, String... agentKeys) {
+        Room room = Room.create(USER, 12L, contextId, "검토 방",
+                java.util.Arrays.stream(agentKeys).map(k -> new RoomAgent(k, Map.of())).toList());
+        given(roomRepository.findByIdAndUserId(ROOM, USER)).willReturn(Optional.of(room));
+    }
+
+    private static JobContext jobContext(String companyName, String positionName, String jdText) {
+        JobContext context = Mockito.mock(JobContext.class);
+        given(context.getCompanyName()).willReturn(companyName);
+        given(context.getPositionName()).willReturn(positionName);
+        given(context.getJdText()).willReturn(jdText);
+        return context;
+    }
+
+    @Test
+    @DisplayName("방에 붙은 공고는 턴을 시작할 때 한 번 읽어 전원에게 같이 넘긴다")
+    void jobPostingIsLoadedOnceAndSharedWithEveryAgent() {
+        roomWithJobContext("ctx-1", "jd", "writing");
+        // 스터빙 안에서 또 스터빙하면 Mockito 가 끝나지 않은 스터빙으로 본다. 먼저 만들어 둔다.
+        JobContext context = jobContext("네이버", "백엔드", "자격요건: 자바 3년");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+
+        service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
+
+        ArgumentCaptor<TurnContext> captor = ArgumentCaptor.forClass(TurnContext.class);
+        then(turnExecutor).should().runTurn(anyLong(), captor.capture());
+        assertThat(captor.getValue().hasJobPosting()).isTrue();
+        assertThat(captor.getValue().jobPostingText())
+                .contains("네이버")
+                .contains("백엔드")
+                .contains("자격요건: 자바 3년");
+        then(jobContextRepository).should().findById("ctx-1");
+    }
+
+    @Test
+    @DisplayName("공고 없이 연 방은 공고를 조회하지 않는다")
+    void roomWithoutJobPostingSkipsTheLookup() {
+        roomWith("writing");
+
+        service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
+
+        ArgumentCaptor<TurnContext> captor = ArgumentCaptor.forClass(TurnContext.class);
+        then(turnExecutor).should().runTurn(anyLong(), captor.capture());
+        assertThat(captor.getValue().hasJobPosting()).isFalse();
+        then(jobContextRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("분석이 사라졌으면 공고 없는 방으로 본다 — 방과 대화는 그대로 열린다")
+    void missingAnalysisFallsBackToNoJobPosting() {
+        roomWithJobContext("ctx-gone", "writing");
+        given(jobContextRepository.findById("ctx-gone")).willReturn(Optional.empty());
+
+        service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
+
+        ArgumentCaptor<TurnContext> captor = ArgumentCaptor.forClass(TurnContext.class);
+        then(turnExecutor).should().runTurn(anyLong(), captor.capture());
+        assertThat(captor.getValue().hasJobPosting()).isFalse();
     }
 
     @Test

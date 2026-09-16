@@ -50,14 +50,21 @@ export interface RoomAgent {
   config: {
     companies?: RoomCompany[];
     jobRole?: string;
-    jdUrl?: string;
   };
+}
+
+/** 방이 놓고 도는 채용공고. 공고 없이 연 방은 null 이다. */
+export interface RoomJobContext {
+  contextId: string;
+  companyName: string;
+  positionName: string;
 }
 
 export interface Room {
   roomId: number;
   title: string;
   coverLetter: { id: number; title: string } | null;
+  jobContext: RoomJobContext | null;
   agents: RoomAgent[];
   createdAt: string;
   lastMessageAt: string | null;
@@ -83,6 +90,8 @@ export interface AgentSpec {
 export interface RoomCreateInput {
   coverLetterId: number;
   title: string;
+  /** 자소서 작성 화면이 채용공고를 확인했을 때만 보낸다. 공고 없이도 방은 열린다. */
+  jobContextId?: string;
   agents: AgentSpec[];
 }
 

@@ -16,8 +16,8 @@ import java.util.Map;
 public enum AgentType {
 
     JD("jd", "채용공고 담당", "채용공고 필수 자격요건의 누락 여부를 점검합니다.",
-            "채용공고 원문(웹 크롤링)", true,
-            schema("jdUrl", new ConfigField("string", true, "채용공고 URL"))),
+            "방에 붙은 채용공고 분석", true,
+            schema()),
 
     COMPANY("company", "기업 RAG 담당", "기업의 사업 방향과 강점의 부합 여부를 분석합니다.",
             "기업별 Vector DB(사업보고서 · IR)", true,
