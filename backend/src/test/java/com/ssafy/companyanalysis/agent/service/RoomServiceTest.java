@@ -9,6 +9,7 @@ import com.ssafy.companyanalysis.agent.repository.JobContextRepository;
 import com.ssafy.companyanalysis.agent.repository.RoomRepository;
 import com.ssafy.companyanalysis.company.domain.Company;
 import com.ssafy.companyanalysis.company.repository.CompanyRepository;
+import com.ssafy.companyanalysis.company.repository.CompanySummaryProjection;
 import com.ssafy.companyanalysis.coverletter.domain.CoverLetter;
 import com.ssafy.companyanalysis.coverletter.repository.CoverLetterRepository;
 import com.ssafy.companyanalysis.global.error.BusinessException;
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +29,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 class RoomServiceTest {
@@ -53,11 +57,22 @@ class RoomServiceTest {
                     .toList();
         });
 
+        // 이름이 정확히 걸리지 않을 때만 부른다. 부르는 테스트가 따로 채운다.
+        given(companyRepository.search(any(), any())).willReturn(Page.empty());
+
         CoverLetter letter = Mockito.mock(CoverLetter.class);
         given(letter.getId()).willReturn(LETTER);
         given(letter.getTitle()).willReturn("2026 상반기 네이버 지원");
         given(coverLetterRepository.findByIdAndUserId(LETTER, USER)).willReturn(Optional.of(letter));
         given(coverLetterRepository.findById(LETTER)).willReturn(Optional.of(letter));
+    }
+
+    /** 이름 검색 결과 한 건. 네이티브 쿼리 프로젝션이라 인터페이스를 직접 채운다. */
+    private static CompanySummaryProjection found(String corpCode, String corpName) {
+        CompanySummaryProjection projection = Mockito.mock(CompanySummaryProjection.class);
+        given(projection.getCorpCode()).willReturn(corpCode);
+        given(projection.getCorpName()).willReturn(corpName);
+        return projection;
     }
 
     private static Company company(String corpCode) {
@@ -67,14 +82,14 @@ class RoomServiceTest {
         return company;
     }
 
-    private RoomService service(Set<String> readyRoles, Set<String> indexed) {
-        AgentCatalogProperties properties = new AgentCatalogProperties(readyRoles, indexed);
+    private RoomService service(Set<String> indexed) {
+        AgentCatalogProperties properties = new AgentCatalogProperties(indexed);
         return new RoomService(roomRepository, jobContextRepository, coverLetterRepository,
                 companyRepository, new RoomAgentValidator(companyRepository, properties), properties);
     }
 
     private RoomService service() {
-        return service(Set.of("backend"), Set.of());
+        return service(Set.of());
     }
 
     private static RoomCreateRequest.AgentSpec spec(String key, Map<String, Object> config) {
@@ -120,17 +135,6 @@ class RoomServiceTest {
             assertThat(one).containsEntry("name", "네이버");
             assertThat(one).containsEntry("ragReady", true);
         });
-    }
-
-    @Test
-    @DisplayName("열어 두지 않은 직무를 고르면 그 에이전트는 ready=false 다")
-    void agentIsNotReadyWhenJobRoleHasNoKnowledgeBase() {
-        RoomResponse response = service(Set.of("backend"), Set.of())
-                .create(USER, new RoomCreateRequest(LETTER, "데이터 직무", null,
-                        List.of(spec("position", Map.of("jobRole", "data")))));
-
-        assertThat(response.agents()).singleElement()
-                .satisfies(agent -> assertThat(agent.ready()).isFalse());
     }
 
     @Test
@@ -224,5 +228,131 @@ class RoomServiceTest {
             assertThat(one.lastMessagePreview()).isNull();
             assertThat(one.running()).isFalse();
         });
+    }
+
+    @Test
+    @DisplayName("방을 깔 때 자소서의 직무와 회사가 에이전트 설정에 그대로 들어간다")
+    void defaultsCarryTheCoverLetterSettings() {
+        givenCoverLetter("네이버", "서버 개발(Java/Spring)");
+        Company naver = company("00126380");
+        given(companyRepository.findByCorpName("네이버")).willReturn(List.of(naver));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        Map<String, Map<String, Object>> byAgent = savedSoloConfigs();
+        assertThat(byAgent.get("position")).containsEntry("jobRole", "서버 개발(Java/Spring)");
+        assertThat(byAgent.get("company")).containsEntry("corpCodes", List.of("00126380"));
+        assertThat(byAgent.get("news")).containsEntry("corpCodes", List.of("00126380"));
+    }
+
+    @Test
+    @DisplayName("채용공고 담당은 비워 둔다 — 공고 URL 을 자소서에 저장하지 않는다")
+    void jobPostingAgentStaysEmpty() {
+        givenCoverLetter("네이버", "서버 개발");
+        Company naver = company("00126380");
+        given(companyRepository.findByCorpName("네이버")).willReturn(List.of(naver));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedSoloConfigs().get("jd")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("이름이 기업 목록에 없으면 회사는 비워 둔다 — 엉뚱한 기업을 넣지 않는다")
+    void unknownCompanyNameIsLeftEmpty() {
+        givenCoverLetter("이름만적은회사", "서버 개발");
+        given(companyRepository.findByCorpName("이름만적은회사")).willReturn(List.of());
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        Map<String, Map<String, Object>> byAgent = savedSoloConfigs();
+        assertThat(byAgent.get("company")).isEmpty();
+        assertThat(byAgent.get("news")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("법인격 표기가 달라도 같은 기업이면 찾는다 — 공고의 \"네이버\" 와 등록명 \"네이버 주식회사\"")
+    void matchesCompanyDespiteLegalFormSuffix() {
+        givenCoverLetter("네이버", "서버 개발");
+        CompanySummaryProjection registered = found("00126380", "네이버 주식회사");
+        CompanySummaryProjection sibling = found("00999999", "네이버파이낸셜");
+        given(companyRepository.findByCorpName("네이버")).willReturn(List.of());
+        given(companyRepository.search(eq("네이버"), any()))
+                .willReturn(new PageImpl<>(List.of(registered, sibling)));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedSoloConfigs().get("company")).containsEntry("corpCodes", List.of("00126380"));
+    }
+
+    @Test
+    @DisplayName("표기를 떼어 내도 둘이면 회사를 비워 둔다")
+    void ambiguousAfterNormalizationIsLeftEmpty() {
+        givenCoverLetter("같은이름", "서버 개발");
+        CompanySummaryProjection first = found("00000001", "같은이름 주식회사");
+        CompanySummaryProjection second = found("00000002", "(주)같은이름");
+        given(companyRepository.findByCorpName("같은이름")).willReturn(List.of());
+        given(companyRepository.search(eq("같은이름"), any()))
+                .willReturn(new PageImpl<>(List.of(first, second)));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedSoloConfigs().get("company")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("같은 이름이 여럿이면 회사를 비워 둔다 — 어느 쪽인지 알 수 없다")
+    void ambiguousCompanyNameIsLeftEmpty() {
+        givenCoverLetter("같은이름", "서버 개발");
+        Company first = company("00000001");
+        Company second = company("00000002");
+        given(companyRepository.findByCorpName("같은이름")).willReturn(List.of(first, second));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedSoloConfigs().get("company")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("이미 있는 방은 다시 채우지 않는다 — 방에서 고친 설정이 되돌아가면 안 된다")
+    void existingRoomsAreNotOverwritten() {
+        givenCoverLetter("네이버", "서버 개발");
+        Company naver = company("00126380");
+        given(companyRepository.findByCorpName("네이버")).willReturn(List.of(naver));
+        Room existing = Room.create(USER, LETTER, "포지션 담당",
+                List.of(new RoomAgent("position", Map.of("jobRole", "사용자가 고친 값"))));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of(existing));
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedSoloConfigs()).doesNotContainKey("position");
+    }
+
+    private void givenCoverLetter(String company, String position) {
+        CoverLetter letter = Mockito.mock(CoverLetter.class);
+        given(letter.getId()).willReturn(LETTER);
+        given(letter.getTitle()).willReturn("자소서");
+        given(letter.getTargetCompany()).willReturn(company);
+        given(letter.getTargetPosition()).willReturn(position);
+        given(coverLetterRepository.findByIdAndUserId(LETTER, USER)).willReturn(Optional.of(letter));
+        given(coverLetterRepository.findById(LETTER)).willReturn(Optional.of(letter));
+    }
+
+    /** 새로 저장된 전담 방(에이전트 1명)의 설정을 agentKey 로 모은다. */
+    @SuppressWarnings("unchecked")
+    private Map<String, Map<String, Object>> savedSoloConfigs() {
+        org.mockito.ArgumentCaptor<List<Room>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        org.mockito.Mockito.verify(roomRepository).saveAll(captor.capture());
+        return captor.getValue().stream()
+                .filter(room -> room.getAgents().size() == 1)
+                .collect(java.util.stream.Collectors.toMap(
+                        room -> room.getAgents().get(0).agentKey(),
+                        room -> room.getAgents().get(0).config()));
     }
 }

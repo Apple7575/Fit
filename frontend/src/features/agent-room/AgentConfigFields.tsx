@@ -1,12 +1,11 @@
 import { CompanyMultiPicker } from './CompanyMultiPicker';
 import type { ConfigDraft } from './configDraft';
-import type { ConfigField, JobRoleOption, RoomCompany } from './types';
+import type { ConfigField, RoomCompany } from './types';
 
 interface AgentConfigFieldsProps {
   schema: Record<string, ConfigField>;
   draft: ConfigDraft;
   onChange: (draft: ConfigDraft) => void;
-  jobRoles: JobRoleOption[];
   disabled?: boolean;
 }
 
@@ -14,14 +13,13 @@ interface AgentConfigFieldsProps {
  * 에이전트 설정 입력칸을 configSchema 로 그린다.
  *
  * <p>에이전트마다 폼을 따로 만들지 않는다. 에이전트가 늘어도 서버가 스키마만 내려주면 화면은
- * 그대로 동작한다. 다만 기업·직무는 단순 입력칸으로는 고를 수 없어 항목 이름으로 전용 위젯을
- * 붙이고, 나머지는 type 을 보고 일반 입력칸을 쓴다.
+ * 그대로 동작한다. 다만 기업은 단순 입력칸으로는 고를 수 없어 항목 이름으로 전용 위젯을 붙이고,
+ * 나머지는 type 을 보고 일반 입력칸을 쓴다. 직무는 자소서에서 넘어온 값이 이미 채워져 있다.
  */
 export function AgentConfigFields({
   schema,
   draft,
   onChange,
-  jobRoles,
   disabled = false,
 }: AgentConfigFieldsProps) {
   const entries = Object.entries(schema);
@@ -46,31 +44,6 @@ export function AgentConfigFields({
               onChange={(companies) => set('corpCodes', companies)}
               disabled={disabled}
             />
-          ) : name === 'jobRole' ? (
-            <ul className="flex flex-wrap gap-1.5" aria-label="지원 직무">
-              {jobRoles.map((role) => {
-                const selected = draft.jobRole === role.key;
-                return (
-                  <li key={role.key}>
-                    <button
-                      type="button"
-                      disabled={disabled || !role.ready}
-                      aria-pressed={selected}
-                      title={role.ready ? role.topics.join(' · ') : '지금은 열어 두지 않은 직무입니다'}
-                      onClick={() => set('jobRole', role.key)}
-                      className={`rounded-full px-3 py-1 text-[13px] transition ${
-                        selected
-                          ? 'bg-emerald-50 font-semibold text-emerald-800'
-                          : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                      } disabled:cursor-not-allowed disabled:border-dashed disabled:text-slate-300 disabled:hover:bg-transparent`}
-                    >
-                      {role.name}
-                      {!role.ready && <span className="ml-1 text-[11px]">잠김</span>}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
           ) : (
             <input
               type={field.type === 'number' ? 'number' : 'text'}

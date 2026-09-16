@@ -44,9 +44,8 @@ class RoomAgentValidatorTest {
         return company;
     }
 
-    private RoomAgentValidator validator(Set<String> readyRoles, Set<String> indexedCorpCodes) {
-        return new RoomAgentValidator(companyRepository,
-                new AgentCatalogProperties(readyRoles, indexedCorpCodes));
+    private RoomAgentValidator validator(Set<String> indexedCorpCodes) {
+        return new RoomAgentValidator(companyRepository, new AgentCatalogProperties(indexedCorpCodes));
     }
 
     private static RoomCreateRequest.AgentSpec spec(String key, Map<String, Object> config) {
@@ -56,7 +55,7 @@ class RoomAgentValidatorTest {
     @Test
     @DisplayName("총괄은 사용자가 직접 넣을 수 없다")
     void supervisorCannotBeChosen() {
-        assertThatThrownBy(() -> validator(Set.of(), Set.of()).validateAll(List.of(spec("supervisor", Map.of()))))
+        assertThatThrownBy(() -> validator(Set.of()).validateAll(List.of(spec("supervisor", Map.of()))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.AGENT_NOT_SUPPORTED);
@@ -65,7 +64,7 @@ class RoomAgentValidatorTest {
     @Test
     @DisplayName("모르는 에이전트 키는 AGENT_NOT_SUPPORTED")
     void unknownAgentKeyIsRejected() {
-        assertThatThrownBy(() -> validator(Set.of(), Set.of()).validateAll(List.of(spec("없는에이전트", Map.of()))))
+        assertThatThrownBy(() -> validator(Set.of()).validateAll(List.of(spec("없는에이전트", Map.of()))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.AGENT_NOT_SUPPORTED);
@@ -77,7 +76,7 @@ class RoomAgentValidatorTest {
         List<RoomCreateRequest.AgentSpec> specs = List.of(
                 spec("writing", Map.of()), spec("writing", Map.of()));
 
-        assertThatThrownBy(() -> validator(Set.of(), Set.of()).validateAll(specs))
+        assertThatThrownBy(() -> validator(Set.of()).validateAll(specs))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.INVALID_PARAMETER);
@@ -86,7 +85,7 @@ class RoomAgentValidatorTest {
     @Test
     @DisplayName("필수 설정이 비어도 저장은 된다 — 방은 설정 없이 자동으로 만들어진다")
     void partialConfigIsAccepted() {
-        List<RoomAgent> agents = validator(Set.of(), Set.of())
+        List<RoomAgent> agents = validator(Set.of())
                 .validateAll(List.of(spec("company", Map.of("corpCodes", List.of()))));
 
         assertThat(agents).singleElement()
@@ -108,19 +107,19 @@ class RoomAgentValidatorTest {
     }
 
     @Test
-    @DisplayName("모르는 직무는 JOB_ROLE_NOT_SUPPORTED")
-    void unknownJobRoleIsRejected() {
-        assertThatThrownBy(() -> validator(Set.of(), Set.of())
-                .validateAll(List.of(spec("position", Map.of("jobRole", "점성술")))))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.JOB_ROLE_NOT_SUPPORTED);
+    @DisplayName("직무는 공고에 쓰인 문구를 그대로 받는다 — 고정 목록으로 거르지 않는다")
+    void jobRoleTakesAnyWordingFromThePosting() {
+        assertThat(validator(Set.of())
+                .validateAll(List.of(spec("position", Map.of("jobRole", "서버 개발(Java/Spring)")))))
+                .singleElement()
+                .extracting(agent -> agent.config().get("jobRole"))
+                .isEqualTo("서버 개발(Java/Spring)");
     }
 
     @Test
     @DisplayName("인덱싱 목록을 모르면(비어 있으면) 기업 선택을 막지 않는다")
     void emptyIndexAllowlistDoesNotBlock() {
-        List<RoomAgent> agents = validator(Set.of(), Set.of())
+        List<RoomAgent> agents = validator(Set.of())
                 .validateAll(List.of(spec("company", Map.of("corpCodes", List.of("00126380")))));
 
         assertThat(agents).singleElement()
@@ -130,7 +129,7 @@ class RoomAgentValidatorTest {
     @Test
     @DisplayName("인덱싱 목록이 채워지면 그 밖의 기업은 COMPANY_RAG_NOT_INDEXED")
     void unindexedCompanyIsRejectedOnceAllowlistIsKnown() {
-        assertThatThrownBy(() -> validator(Set.of(), Set.of("00126380"))
+        assertThatThrownBy(() -> validator(Set.of("00126380"))
                 .validateAll(List.of(spec("company", Map.of("corpCodes", List.of("00999999"))))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -140,7 +139,7 @@ class RoomAgentValidatorTest {
     @Test
     @DisplayName("스키마에 없는 키는 저장하지 않고 버린다")
     void unknownConfigKeysAreDropped() {
-        Map<String, Object> cleaned = validator(Set.of(), Set.of())
+        Map<String, Object> cleaned = validator(Set.of())
                 .validateConfig(AgentType.WRITING, Map.of("아무거나", "값"));
 
         assertThat(cleaned).isEmpty();
@@ -149,7 +148,7 @@ class RoomAgentValidatorTest {
     @Test
     @DisplayName("스키마에 없는 키는 저장하지 않는다 — 옛 설정이 남아 있어도 걸러진다")
     void unknownKeysAreDropped() {
-        RoomAgentValidator validator = validator(Set.of(), Set.of());
+        RoomAgentValidator validator = validator(Set.of());
 
         assertThat(validator.validateConfig(AgentType.NEWS, Map.of("corpCodes", List.of("00126380"))))
                 .containsOnlyKeys("corpCodes");

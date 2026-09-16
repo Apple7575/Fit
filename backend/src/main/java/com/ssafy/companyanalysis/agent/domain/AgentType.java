@@ -25,7 +25,7 @@ public enum AgentType {
 
     POSITION("position", "포지션 담당", "직무 요구 수준에 맞는 기술적 깊이를 검증합니다.",
             "모델 지식 + 직무별 관점 힌트", true,
-            schema("jobRole", new ConfigField("enum", true, "지원 직무. /api/job-roles 의 key"))),
+            schema("jobRole", new ConfigField("string", true, "지원 직무. 자소서의 지원 직무가 그대로 들어온다"))),
 
     NEWS("news", "뉴스/트렌드 담당", "설득력을 높여줄 최근 기업 이슈 및 트렌드를 제안합니다.",
             "최근 뉴스", true,

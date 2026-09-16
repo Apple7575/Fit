@@ -35,7 +35,6 @@ public enum ErrorCode {
     AGENT_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 에이전트입니다."),
     AGENT_NOT_IN_ROOM(HttpStatus.BAD_REQUEST, "이 방에 없는 에이전트입니다."),
     AGENT_CONFIG_REQUIRED(HttpStatus.BAD_REQUEST, "에이전트 설정이 비어 있습니다."),
-    JOB_ROLE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 직무입니다."),
     COMPANY_RAG_NOT_INDEXED(HttpStatus.BAD_REQUEST, "아직 분석 자료가 준비되지 않은 기업입니다."),
     TURN_IN_PROGRESS(HttpStatus.CONFLICT, "이전 요청이 아직 끝나지 않았습니다."),
     TURN_NOT_FOUND(HttpStatus.NOT_FOUND, "요청 기록을 찾을 수 없습니다."),

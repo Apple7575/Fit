@@ -1,7 +1,6 @@
 import { apiGet, apiPatch, apiSend } from '../../api/client';
 import type {
   AgentCatalogEntry,
-  JobRoleOption,
   MessagePage,
   Room,
   RoomAgent,
@@ -17,10 +16,6 @@ export const fetchAgents = (signal?: AbortSignal) =>
     (data) => data.agents,
   );
 
-export const fetchJobRoles = (signal?: AbortSignal) =>
-  apiGet<{ jobRoles: JobRoleOption[] }>('/api/job-roles', { signal }).then(
-    (data) => data.jobRoles,
-  );
 
 export const fetchRooms = (coverLetterId: number | null, signal?: AbortSignal) => {
   const query = coverLetterId === null ? '' : `?coverLetterId=${coverLetterId}`;

@@ -21,13 +21,6 @@ export interface AgentCatalogEntry {
   configSchema: Record<string, ConfigField>;
 }
 
-/** GET /api/job-roles 의 한 건. ready=false 면 아직 열어 두지 않은 직무라 고를 수 없다. */
-export interface JobRoleOption {
-  key: string;
-  name: string;
-  ready: boolean;
-  topics: string[];
-}
 
 /** 방 상세의 기업 담당·뉴스 담당 설정에 실려 오는 기업. */
 export interface RoomCompany {

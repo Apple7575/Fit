@@ -6,7 +6,6 @@ import com.ssafy.companyanalysis.agent.ai.PositionAnalysisClient;
 import com.ssafy.companyanalysis.agent.ai.WritingCoachingClient;
 import com.ssafy.companyanalysis.agent.crawl.CompanyNewsDigest;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
-import com.ssafy.companyanalysis.agent.domain.JobRole;
 import com.ssafy.companyanalysis.agent.domain.Message;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
 import com.ssafy.companyanalysis.global.error.BusinessException;
@@ -19,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * 에이전트 하나를 실행해 자기 메시지를 채운다.
@@ -111,11 +109,13 @@ public class AgentTaskRunner {
     /**
      * 포지션 API 는 자소서 답변을 사실 근거로 받는다. 방에 남긴 사용자의 말은 흐름 문맥이라
      * 근거로 쓰이지 않으므로 conversation 으로만 넘긴다.
+     *
+     * <p>직무는 공고에 쓰인 문구가 그대로 들어온다. 고정 목록이 없어져 관점 힌트를 붙일 자리도
+     * 없으니, 어느 관점으로 볼지는 AI 쪽 프롬프트에 맡긴다(S15P21A504-139).
      */
     private String positionReply(TurnContext context) {
         Map<String, Object> config = context.configOf(AgentType.POSITION);
-        String key = String.valueOf(config.get("jobRole"));
-        Optional<JobRole> role = JobRole.from(key);
+        String jobRole = String.valueOf(config.get("jobRole"));
 
         List<PositionAnalysisClient.Document> documents = context.answeredParts().stream()
                 .map(part -> new PositionAnalysisClient.Document(
@@ -125,11 +125,7 @@ public class AgentTaskRunner {
             throw new BusinessException(ErrorCode.AI_FAILED, "검토할 자소서 답변이 없습니다.");
         }
 
-        return positionClient.analyze(
-                role.map(JobRole::displayName).orElse(key),
-                role.map(JobRole::topics).orElse(List.of()),
-                documents,
-                userTurn(context));
+        return positionClient.analyze(jobRole, List.of(), documents, userTurn(context));
     }
 
     /** 글쓰기 API 는 문항 하나만 본다. 문항별로 부르고 결과를 한 메시지로 모은다. */

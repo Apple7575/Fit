@@ -54,7 +54,8 @@ class AgentTaskRunnerTest {
         given(positionClient.analyze(anyString(), any(), any(), any()))
                 .willReturn("담당 역할을 더 구체적으로 써 주세요.");
 
-        runner.run(MESSAGE_ID, contextOf(AgentType.POSITION, Map.of("jobRole", "backend"), null,
+        runner.run(MESSAGE_ID, contextOf(AgentType.POSITION,
+                Map.of("jobRole", "서버 개발(Java/Spring)"), null,
                 part(1, "협업 경험을 써 주세요.", "API 응답 시간을 개선했습니다.", 700),
                 part(2, "아직 안 쓴 문항", "  ", 500)));
 
@@ -64,7 +65,8 @@ class AgentTaskRunnerTest {
         Mockito.verify(positionClient)
                 .analyze(positionName.capture(), any(), documents.capture(), any());
 
-        assertThat(positionName.getValue()).isEqualTo("백엔드");
+        // 고정 목록이 없어져 공고에 쓰인 문구가 그대로 넘어간다(S15P21A504-139).
+        assertThat(positionName.getValue()).isEqualTo("서버 개발(Java/Spring)");
         assertThat(documents.getValue()).hasSize(1);
         assertThat(documents.getValue().getFirst().documentId()).isEqualTo("cover-letter-item-1");
         assertThat(documents.getValue().getFirst().type()).isEqualTo("SELF_INTRO");

@@ -3,7 +3,6 @@ package com.ssafy.companyanalysis.agent.service;
 import com.ssafy.companyanalysis.agent.config.AgentCatalogProperties;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
 import com.ssafy.companyanalysis.agent.domain.ConfigField;
-import com.ssafy.companyanalysis.agent.domain.JobRole;
 import com.ssafy.companyanalysis.agent.domain.RoomAgent;
 import com.ssafy.companyanalysis.agent.dto.RoomCreateRequest;
 import com.ssafy.companyanalysis.company.repository.CompanyRepository;
@@ -25,6 +24,9 @@ import java.util.Set;
  */
 @Component
 public class RoomAgentValidator {
+
+    /** 자소서의 지원 직무 칸과 같은 한도. */
+    private static final int MAX_JOB_ROLE_LENGTH = 120;
 
     private final CompanyRepository companyRepository;
     private final AgentCatalogProperties properties;
@@ -115,12 +117,17 @@ public class RoomAgentValidator {
         return corpCodes;
     }
 
+    /**
+     * 직무는 공고에 쓰인 문구가 그대로 들어온다. 고정 목록으로 거르지 않는다 —
+     * 자소서에서 고른 "서버 개발(Java/Spring)" 같은 값을 받아야 한다.
+     */
     private String validateJobRole(Object value) {
-        String key = String.valueOf(value);
-        return JobRole.from(key)
-                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_ROLE_NOT_SUPPORTED,
-                        "지원하지 않는 직무입니다: " + key))
-                .key();
+        String jobRole = String.valueOf(value).trim();
+        if (jobRole.length() > MAX_JOB_ROLE_LENGTH) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER,
+                    "직무는 " + MAX_JOB_ROLE_LENGTH + "자 이하여야 합니다.");
+        }
+        return jobRole;
     }
 
     private static boolean isEmpty(Object value) {
