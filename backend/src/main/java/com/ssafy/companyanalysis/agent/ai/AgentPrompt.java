@@ -5,8 +5,9 @@ import com.ssafy.companyanalysis.agent.domain.AgentType;
 /**
  * 에이전트별 역할 지시문.
  *
- * <p>자료원이 아직 연결되지 않은 에이전트({@link #requiresUnbuiltSource})는 여기서 지시문을
- * 주지 않는다. 프롬프트만 넣고 돌리면 모델이 자료를 본 척 지어내기 때문이다.
+ * <p>자료원이 아직 연결되지 않은 에이전트({@link #requiresUnbuiltSource})는 돌리지 않는다.
+ * 프롬프트만 넣고 돌리면 모델이 자료를 본 척 지어내기 때문이다. 지시문 자체는 남겨 둔다 —
+ * 자료를 붙일 때 무엇을 시키려 했는지가 그대로 필요하다.
  */
 public final class AgentPrompt {
 
@@ -24,13 +25,18 @@ public final class AgentPrompt {
     }
 
     /**
-     * 볼 자료를 아직 가져올 수 없는 에이전트.
+     * 볼 자료가 모델까지 가지 않는 에이전트. 지시문은 아래에 있지만 돌리지 않는다.
      *
-     * <p>기업 RAG 담당만 남았다. 사업보고서·IR 을 담은 Vector DB 가 있어야 하는데 그 파이프라인이
-     * 아직 없다(S15P21A504-132). 채용공고는 크롤러로, 뉴스는 기존 news_article 로 붙였다.
+     * <ul>
+     *   <li>기업 RAG 담당 — Vector DB 파이프라인이 없다(S15P21A504-132)
+     *   <li>채용공고 담당 — {@code AgentTaskRunner} 가 {@code JobPostingFetcher} 를 부르지 않는다
+     *   <li>뉴스 담당 — {@code CompanyNewsDigest} 를 부르는 곳이 없다
+     * </ul>
+     *
+     * <p>자료를 실제로 넘기게 되면 그때 뺀다(S15P21A504-130).
      */
     public static boolean requiresUnbuiltSource(AgentType type) {
-        return type == AgentType.COMPANY;
+        return type == AgentType.COMPANY || type == AgentType.JD || type == AgentType.NEWS;
     }
 
     public static String systemInstruction(AgentType type) {

@@ -7,6 +7,5 @@ public record CoverLetterSummaryResponse(
         String targetCompany,
         String targetPosition,
         int itemCount,
-        boolean hasFeedback,
         String updatedAt) {
 }

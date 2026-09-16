@@ -1,4 +1,4 @@
-package com.ssafy.companyanalysis.coverletter.ratelimit;
+package com.ssafy.companyanalysis.jobposting.ratelimit;
 
 import com.ssafy.companyanalysis.auth.service.UserPrincipal;
 import com.ssafy.companyanalysis.global.error.BusinessException;
@@ -12,21 +12,23 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 문항 피드백 API 남용·비용 방어. 고정 창(window) 안에서 게스트는 IP, 로그인은 userId 기준으로 횟수를 센다.
- * 단일 인스턴스 인메모리 방식이라, 다중 인스턴스로 확장하면 공유 저장소(Redis 등)로 옮겨야 한다.
+ * 공고 확인 API 남용·비용 방어. 한 번 부를 때마다 외부 페이지를 긁고 모델을 부른다.
+ * 고정 창(window) 안에서 게스트는 IP, 로그인은 userId 기준으로 횟수를 센다.
+ *
+ * <p>단일 인스턴스 인메모리 방식이라, 다중 인스턴스로 확장하면 공유 저장소(Redis 등)로 옮겨야 한다.
  */
 @Component
-public class FeedbackRateLimiter {
+public class JobPostingRateLimiter {
 
     private final int guestLimit;
     private final int userLimit;
     private final long windowMillis;
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
 
-    public FeedbackRateLimiter(
-            @Value("${app.feedback.rate-limit.guest-limit:10}") int guestLimit,
-            @Value("${app.feedback.rate-limit.user-limit:60}") int userLimit,
-            @Value("${app.feedback.rate-limit.window:1h}") Duration window) {
+    public JobPostingRateLimiter(
+            @Value("${app.job-posting.rate-limit.guest-limit:10}") int guestLimit,
+            @Value("${app.job-posting.rate-limit.user-limit:60}") int userLimit,
+            @Value("${app.job-posting.rate-limit.window:1h}") Duration window) {
         this.guestLimit = guestLimit;
         this.userLimit = userLimit;
         this.windowMillis = window.toMillis();
@@ -41,7 +43,7 @@ public class FeedbackRateLimiter {
                         ? new Window(now, 1)
                         : new Window(existing.start(), existing.count() + 1));
         if (updated.count() > limit) {
-            throw new BusinessException(ErrorCode.FEEDBACK_RATE_LIMITED);
+            throw new BusinessException(ErrorCode.JOB_POSTING_RATE_LIMITED);
         }
     }
 

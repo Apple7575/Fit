@@ -14,8 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 에이전트용 범용 LLM 호출. 기존 {@code GmsFeedbackClient} 는 문항 피드백 전용으로 프롬프트와
- * 응답 스키마가 박혀 있어 재사용할 수 없어서, 같은 RestClient 빈만 공유한다.
+ * 에이전트용 범용 LLM 호출. {@code AiClientConfig} 의 RestClient 빈을 면접 기능과 함께 쓴다.
  *
  * <p>에이전트마다 지시문이 다르므로 지시문을 인자로 받고 평문을 돌려준다.
  */
@@ -40,8 +39,22 @@ public class AgentLlmClient {
      * @return 모델이 만든 평문. 비어 있으면 실패로 본다
      */
     public String generate(String systemInstruction, String userText) {
+        return generate(systemInstruction, userText, Map.of("temperature", 0.4), true);
+    }
+
+    /**
+     * JSON 만 돌려받는다. 모델이 설명이나 코드펜스를 덧붙이지 못하게 응답 형식을 못박는다.
+     * 뽑아내기처럼 답이 하나로 정해지는 일에 쓰므로 temperature 도 낮춘다.
+     */
+    public String generateJson(String systemInstruction, String userText) {
+        return generate(systemInstruction, userText,
+                Map.of("temperature", 0.1, "responseMimeType", "application/json"), false);
+    }
+
+    private String generate(String systemInstruction, String userText,
+                            Map<String, Object> generationConfig, boolean stripMarkdown) {
         if (!properties.hasKey()) {
-            throw new BusinessException(ErrorCode.AI_FEEDBACK_UNAVAILABLE);
+            throw new BusinessException(ErrorCode.AI_UNAVAILABLE);
         }
 
         JsonNode response;
@@ -54,19 +67,20 @@ public class AgentLlmClient {
                     .body(Map.of(
                             "systemInstruction", Map.of("parts", List.of(Map.of("text", systemInstruction))),
                             "contents", List.of(Map.of("parts", List.of(Map.of("text", userText)))),
-                            "generationConfig", Map.of("temperature", 0.4)))
+                            "generationConfig", generationConfig))
                     .retrieve()
                     .body(JsonNode.class);
         } catch (RestClientException e) {
-            throw new BusinessException(ErrorCode.AI_FEEDBACK_FAILED);
+            throw new BusinessException(ErrorCode.AI_FAILED);
         }
 
         String text = extractText(response);
         if (text == null || text.isBlank()) {
-            throw new BusinessException(ErrorCode.AI_FEEDBACK_FAILED, "모델이 빈 응답을 돌려줬습니다.");
+            throw new BusinessException(ErrorCode.AI_FAILED, "모델이 빈 응답을 돌려줬습니다.");
         }
         // 화면이 평문으로 뿌리므로 마크다운 기호가 그대로 보인다. 프롬프트로 이르지만 자주 어긴다.
-        return PlainText.of(text);
+        // JSON 은 사람이 읽는 글이 아니라 그대로 파싱한다 — 값에 * 나 # 가 있으면 벗겨서 망가진다.
+        return stripMarkdown ? PlainText.of(text) : text;
     }
 
     private static String extractText(JsonNode response) {

@@ -65,6 +65,18 @@ function NewWorkspace() {
     navigate(`/cover-letters/${saved.id}`);
   };
 
+  // 검토 방은 저장된 자소서에 붙으므로 먼저 저장하고 넘어간다.
+  const onReview = async (input: CoverLetterInput) => {
+    if (!user) {
+      writeStash(input);
+      navigate('/login?redirect=/cover-letters/new');
+      return;
+    }
+    const saved = await createCoverLetter(input);
+    clearStash();
+    navigate(`/agent-rooms?coverLetterId=${saved.id}`);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <CoverLetterHeader />
@@ -72,6 +84,7 @@ function NewWorkspace() {
         initial={initial}
         isLoggedIn={!!user}
         onSave={onSave}
+        onReview={onReview}
         onBack={user ? () => navigate('/cover-letters') : undefined}
       />
     </div>
@@ -100,6 +113,12 @@ function ExistingLoaded({ id }: { id: number }) {
 
   const onSave = async (input: CoverLetterInput) => {
     await updateCoverLetter(id, input);
+  };
+
+  // 고친 내용을 에이전트가 보도록 저장부터 하고 넘어간다.
+  const onReview = async (input: CoverLetterInput) => {
+    await updateCoverLetter(id, input);
+    navigate(`/agent-rooms?coverLetterId=${id}`);
   };
 
   const notFound =
@@ -136,6 +155,7 @@ function ExistingLoaded({ id }: { id: number }) {
           isLoggedIn
           alreadySaved
           onSave={onSave}
+          onReview={onReview}
           onBack={() => navigate('/cover-letters')}
         />
       )}

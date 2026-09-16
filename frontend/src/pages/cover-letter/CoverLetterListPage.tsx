@@ -48,7 +48,7 @@ function ListBody() {
         <div>
           <h1 className="text-2xl font-bold text-slate-950">내 자기소개서</h1>
           <p className="mt-1 text-sm text-slate-500">
-            자소서를 선택해 답변을 수정하고, 문항별로 AI 피드백을 받아 보세요.
+            자소서를 선택해 문항과 답변을 수정할 수 있어요.
           </p>
         </div>
         <button
@@ -74,7 +74,7 @@ function ListBody() {
         (state.data.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
             <p className="text-[15px] font-medium text-slate-600">아직 저장된 자소서가 없습니다.</p>
-            <p className="mt-1 text-[13px] text-slate-400">새 자소서를 작성하고 AI 피드백을 받아 저장해 보세요.</p>
+            <p className="mt-1 text-[13px] text-slate-400">채용공고 주소를 넣으면 지원 회사와 직무를 대신 채워 드려요.</p>
             <button
               onClick={() => navigate('/cover-letters/new', { state: { fresh: true } })}
               className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -127,15 +127,6 @@ function ListRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-semibold text-slate-900">{letter.title}</span>
-            {letter.hasFeedback ? (
-              <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                피드백 받음
-              </span>
-            ) : (
-              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                작성 중
-              </span>
-            )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-slate-500">
             {letter.targetCompany && (
