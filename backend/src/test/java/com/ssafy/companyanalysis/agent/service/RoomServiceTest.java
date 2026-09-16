@@ -5,6 +5,7 @@ import com.ssafy.companyanalysis.agent.domain.Room;
 import com.ssafy.companyanalysis.agent.domain.RoomAgent;
 import com.ssafy.companyanalysis.agent.dto.RoomCreateRequest;
 import com.ssafy.companyanalysis.agent.dto.RoomResponse;
+import com.ssafy.companyanalysis.agent.repository.JobContextRepository;
 import com.ssafy.companyanalysis.agent.repository.RoomRepository;
 import com.ssafy.companyanalysis.company.domain.Company;
 import com.ssafy.companyanalysis.company.repository.CompanyRepository;
@@ -33,12 +34,14 @@ class RoomServiceTest {
     private static final Long LETTER = 12L;
 
     private RoomRepository roomRepository;
+    private JobContextRepository jobContextRepository;
     private CoverLetterRepository coverLetterRepository;
     private CompanyRepository companyRepository;
 
     @BeforeEach
     void setUp() {
         roomRepository = Mockito.mock(RoomRepository.class);
+        jobContextRepository = Mockito.mock(JobContextRepository.class);
         coverLetterRepository = Mockito.mock(CoverLetterRepository.class);
         companyRepository = Mockito.mock(CompanyRepository.class);
 
@@ -66,8 +69,8 @@ class RoomServiceTest {
 
     private RoomService service(Set<String> readyRoles, Set<String> indexed) {
         AgentCatalogProperties properties = new AgentCatalogProperties(readyRoles, indexed);
-        return new RoomService(roomRepository, coverLetterRepository, companyRepository,
-                new RoomAgentValidator(companyRepository, properties), properties);
+        return new RoomService(roomRepository, jobContextRepository, coverLetterRepository,
+                companyRepository, new RoomAgentValidator(companyRepository, properties), properties);
     }
 
     private RoomService service() {
@@ -81,7 +84,7 @@ class RoomServiceTest {
     @Test
     @DisplayName("에이전트가 2명 이상이면 총괄이 자동으로 붙는다")
     void supervisorIsAddedWhenTwoOrMore() {
-        RoomResponse response = service().create(USER, new RoomCreateRequest(LETTER, "합동 검토",
+        RoomResponse response = service().create(USER, new RoomCreateRequest(LETTER, "합동 검토", null,
                 List.of(spec("writing", Map.of()), spec("position", Map.of("jobRole", "backend")))));
 
         assertThat(response.agents()).extracting(RoomResponse.Agent::agentKey)
@@ -94,7 +97,7 @@ class RoomServiceTest {
     @Test
     @DisplayName("에이전트가 1명인 전담 방에는 총괄이 붙지 않는다 — 조정할 것이 없다")
     void supervisorIsNotAddedForSoloRoom() {
-        RoomResponse response = service().create(USER, new RoomCreateRequest(LETTER, "글쓰기 전담",
+        RoomResponse response = service().create(USER, new RoomCreateRequest(LETTER, "글쓰기 전담", null,
                 List.of(spec("writing", Map.of()))));
 
         assertThat(response.agents()).extracting(RoomResponse.Agent::agentKey).containsExactly("writing");
@@ -103,7 +106,7 @@ class RoomServiceTest {
     @Test
     @DisplayName("corpCodes 는 기업명과 ragReady 를 붙인 companies 로 나간다")
     void corpCodesAreEnrichedIntoCompanies() {
-        RoomResponse response = service().create(USER, new RoomCreateRequest(LETTER, "기업 검토",
+        RoomResponse response = service().create(USER, new RoomCreateRequest(LETTER, "기업 검토", null,
                 List.of(spec("company", Map.of("corpCodes", List.of("00126380"))))));
 
         Map<String, Object> config = response.agents().get(0).config();
@@ -123,7 +126,7 @@ class RoomServiceTest {
     @DisplayName("열어 두지 않은 직무를 고르면 그 에이전트는 ready=false 다")
     void agentIsNotReadyWhenJobRoleHasNoKnowledgeBase() {
         RoomResponse response = service(Set.of("backend"), Set.of())
-                .create(USER, new RoomCreateRequest(LETTER, "데이터 직무",
+                .create(USER, new RoomCreateRequest(LETTER, "데이터 직무", null,
                         List.of(spec("position", Map.of("jobRole", "data")))));
 
         assertThat(response.agents()).singleElement()
@@ -135,7 +138,7 @@ class RoomServiceTest {
     void cannotCreateRoomOnSomeoneElsesCoverLetter() {
         given(coverLetterRepository.findByIdAndUserId(LETTER, 99L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service().create(99L, new RoomCreateRequest(LETTER, "남의 자소서",
+        assertThatThrownBy(() -> service().create(99L, new RoomCreateRequest(LETTER, "남의 자소서", null,
                 List.of(spec("writing", Map.of())))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())

@@ -14,7 +14,13 @@ class AgentPromptTest {
         assertThat(AgentType.values())
                 .filteredOn(AgentPrompt::requiresUnbuiltSource)
                 .extracting(AgentType::key)
-                .containsExactlyInAnyOrder("company", "jd", "news");
+                .containsExactlyInAnyOrder("company", "news");
+    }
+
+    @Test
+    @DisplayName("채용공고 담당은 막지 않는다 — 방에 붙은 공고를 턴마다 실어 준다")
+    void jobPostingAgentRunsFromTheRoomContext() {
+        assertThat(AgentPrompt.requiresUnbuiltSource(AgentType.JD)).isFalse();
     }
 
     @Test
@@ -28,7 +34,6 @@ class AgentPromptTest {
     @Test
     @DisplayName("막아 둔 에이전트도 지시문은 남겨 둔다 — 자료를 붙일 때 그대로 쓴다")
     void blockedAgentsKeepTheirInstruction() {
-        assertThat(AgentPrompt.systemInstruction(AgentType.JD)).contains("채용공고 대조");
         assertThat(AgentPrompt.systemInstruction(AgentType.NEWS)).contains("뉴스·트렌드");
     }
 }

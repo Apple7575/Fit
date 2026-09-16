@@ -29,14 +29,16 @@ public final class AgentPrompt {
      *
      * <ul>
      *   <li>기업 RAG 담당 — Vector DB 파이프라인이 없다(S15P21A504-132)
-     *   <li>채용공고 담당 — {@code AgentTaskRunner} 가 {@code JobPostingFetcher} 를 부르지 않는다
      *   <li>뉴스 담당 — {@code CompanyNewsDigest} 를 부르는 곳이 없다
      * </ul>
+     *
+     * <p>채용공고 담당은 빠졌다. 방에 붙은 공고를 {@code TurnContext} 가 실어 나른다(S15P21A504-140).
+     * 공고가 없는 방은 {@code AgentTaskRunner} 가 따로 막는다.
      *
      * <p>자료를 실제로 넘기게 되면 그때 뺀다(S15P21A504-130).
      */
     public static boolean requiresUnbuiltSource(AgentType type) {
-        return type == AgentType.COMPANY || type == AgentType.JD || type == AgentType.NEWS;
+        return type == AgentType.COMPANY || type == AgentType.NEWS;
     }
 
     public static String systemInstruction(AgentType type) {

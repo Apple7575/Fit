@@ -1,7 +1,7 @@
 package com.ssafy.companyanalysis.jobposting.service;
 
 import com.ssafy.companyanalysis.agent.ai.AgentLlmClient;
-import com.ssafy.companyanalysis.agent.crawl.JobPostingFetcher;
+import com.ssafy.companyanalysis.agent.ai.JobSourceClient;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
 import com.ssafy.companyanalysis.jobposting.dto.JobPostingParseResponse;
@@ -21,13 +21,17 @@ class JobPostingParseServiceTest {
     private static final String POSTING = "채용공고 본문";
 
     private JobPostingParseService service(String modelOutput) {
-        JobPostingFetcher fetcher = mock(JobPostingFetcher.class);
-        when(fetcher.fetch(anyString())).thenReturn(POSTING);
+        return service(modelOutput, new JobSourceClient.JobSource(POSTING, null, null, null));
+    }
+
+    private JobPostingParseService service(String modelOutput, JobSourceClient.JobSource source) {
+        JobSourceClient jobSourceClient = mock(JobSourceClient.class);
+        when(jobSourceClient.fromUrl(anyString())).thenReturn(source);
 
         AgentLlmClient llmClient = mock(AgentLlmClient.class);
         when(llmClient.generateJson(any(), any())).thenReturn(modelOutput);
 
-        return new JobPostingParseService(fetcher, llmClient, new ObjectMapper());
+        return new JobPostingParseService(jobSourceClient, llmClient, new ObjectMapper());
     }
 
     @Test
@@ -93,5 +97,17 @@ class JobPostingParseServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.JOB_POSTING_PARSE_FAILED);
+    }
+
+    @Test
+    @DisplayName("모델이 못 찾아도 공고 메타데이터에 회사·직무가 있으면 그걸 쓴다")
+    void fallsBackToSourceMetadata() {
+        JobPostingParseResponse response = service("""
+                {"companyName": null, "positions": []}
+                """, new JobSourceClient.JobSource(POSTING, "네이버", "백엔드 개발자", "https://example.com/job/7"))
+                .parse("https://example.com/job/7");
+
+        assertThat(response.companyName()).isEqualTo("네이버");
+        assertThat(response.positions()).containsExactly("백엔드 개발자");
     }
 }

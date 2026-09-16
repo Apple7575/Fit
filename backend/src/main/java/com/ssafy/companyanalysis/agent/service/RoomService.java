@@ -2,6 +2,7 @@ package com.ssafy.companyanalysis.agent.service;
 
 import com.ssafy.companyanalysis.agent.config.AgentCatalogProperties;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
+import com.ssafy.companyanalysis.agent.domain.JobContext;
 import com.ssafy.companyanalysis.agent.domain.JobRole;
 import com.ssafy.companyanalysis.agent.domain.Room;
 import com.ssafy.companyanalysis.agent.domain.RoomAgent;
@@ -9,6 +10,7 @@ import com.ssafy.companyanalysis.agent.dto.RoomCreateRequest;
 import com.ssafy.companyanalysis.agent.dto.RoomListResponse;
 import com.ssafy.companyanalysis.agent.dto.RoomResponse;
 import com.ssafy.companyanalysis.agent.dto.RoomUpdateRequest;
+import com.ssafy.companyanalysis.agent.repository.JobContextRepository;
 import com.ssafy.companyanalysis.agent.repository.RoomRepository;
 import com.ssafy.companyanalysis.company.domain.Company;
 import com.ssafy.companyanalysis.company.repository.CompanyRepository;
@@ -38,17 +40,20 @@ import java.util.stream.Collectors;
 public class RoomService {
 
     private final RoomRepository roomRepository;
+    private final JobContextRepository jobContextRepository;
     private final CoverLetterRepository coverLetterRepository;
     private final CompanyRepository companyRepository;
     private final RoomAgentValidator validator;
     private final AgentCatalogProperties properties;
 
     public RoomService(RoomRepository roomRepository,
+                       JobContextRepository jobContextRepository,
                        CoverLetterRepository coverLetterRepository,
                        CompanyRepository companyRepository,
                        RoomAgentValidator validator,
                        AgentCatalogProperties properties) {
         this.roomRepository = roomRepository;
+        this.jobContextRepository = jobContextRepository;
         this.coverLetterRepository = coverLetterRepository;
         this.companyRepository = companyRepository;
         this.validator = validator;
@@ -59,8 +64,9 @@ public class RoomService {
     public RoomResponse create(Long userId, RoomCreateRequest request) {
         CoverLetter coverLetter = ownedCoverLetter(userId, request.coverLetterId());
         List<RoomAgent> agents = validator.validateAll(request.agents());
+        String jobContextId = existingJobContextId(request.jobContextId());
         Room saved = roomRepository.save(
-                Room.create(userId, coverLetter.getId(), request.title().trim(), agents));
+                Room.create(userId, coverLetter.getId(), jobContextId, request.title().trim(), agents));
         return toDetail(saved, coverLetter);
     }
 
@@ -183,9 +189,37 @@ public class RoomService {
                 coverLetter == null
                         ? null
                         : new RoomResponse.CoverLetterRef(coverLetter.getId(), coverLetter.getTitle()),
+                jobContextRef(room.getJobContextId()),
                 agents,
                 room.getCreatedAt(),
                 room.getLastMessageAt());
+    }
+
+    /**
+     * 방에 붙은 공고를 화면 표시용으로 바꾼다.
+     *
+     * <p>AI 서비스가 분석을 지웠으면 FK 가 job_context_id 를 NULL 로 만든다. 그래도 조회 시점에
+     * 사라져 있을 수 있으므로 없으면 공고 없는 방으로 본다 — 방과 대화는 그대로 열려야 한다.
+     */
+    private RoomResponse.JobContextRef jobContextRef(String contextId) {
+        if (contextId == null) {
+            return null;
+        }
+        return jobContextRepository.findById(contextId)
+                .map(context -> new RoomResponse.JobContextRef(
+                        context.getContextId(), context.getCompanyName(), context.getPositionName()))
+                .orElse(null);
+    }
+
+    /** 없는 분석을 가리키면 FK 위반이 저장 시점에 터진다. 그 전에 400 으로 돌려준다. */
+    private String existingJobContextId(String contextId) {
+        if (contextId == null || contextId.isBlank()) {
+            return null;
+        }
+        return jobContextRepository.findById(contextId)
+                .map(JobContext::getContextId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PARAMETER,
+                        "채용공고 분석을 찾지 못했습니다."));
     }
 
     /** 저장된 설정을 화면이 쓰기 좋게 바꾼다. corpCodes 는 기업명·ragReady 를 붙인 companies 가 된다. */

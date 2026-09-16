@@ -14,11 +14,16 @@ public record RoomResponse(
         Long roomId,
         String title,
         CoverLetterRef coverLetter,
+        JobContextRef jobContext,
         List<Agent> agents,
         OffsetDateTime createdAt,
         OffsetDateTime lastMessageAt) {
 
     public record CoverLetterRef(Long id, String title) {
+    }
+
+    /** 방이 놓고 도는 채용공고. 공고 없이 연 방은 null 이다. */
+    public record JobContextRef(String contextId, String companyName, String positionName) {
     }
 
     /**

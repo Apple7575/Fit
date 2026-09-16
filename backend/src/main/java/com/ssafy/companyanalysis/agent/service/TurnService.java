@@ -8,6 +8,7 @@ import com.ssafy.companyanalysis.agent.domain.RoomAgent;
 import com.ssafy.companyanalysis.agent.dto.MessageSendRequest;
 import com.ssafy.companyanalysis.agent.dto.TurnStartedResponse;
 import com.ssafy.companyanalysis.agent.dto.TurnStatusResponse;
+import com.ssafy.companyanalysis.agent.repository.JobContextRepository;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
 import com.ssafy.companyanalysis.agent.repository.RoomRepository;
 import com.ssafy.companyanalysis.coverletter.domain.CoverLetterItem;
@@ -37,17 +38,20 @@ public class TurnService {
 
     private final RoomRepository roomRepository;
     private final MessageRepository messageRepository;
+    private final JobContextRepository jobContextRepository;
     private final CoverLetterItemRepository coverLetterItemRepository;
     private final TurnExecutor turnExecutor;
     private final AnalysisRateLimiter rateLimiter;
 
     public TurnService(RoomRepository roomRepository,
                        MessageRepository messageRepository,
+                       JobContextRepository jobContextRepository,
                        CoverLetterItemRepository coverLetterItemRepository,
                        TurnExecutor turnExecutor,
                        AnalysisRateLimiter rateLimiter) {
         this.roomRepository = roomRepository;
         this.messageRepository = messageRepository;
+        this.jobContextRepository = jobContextRepository;
         this.coverLetterItemRepository = coverLetterItemRepository;
         this.turnExecutor = turnExecutor;
         this.rateLimiter = rateLimiter;
@@ -67,7 +71,7 @@ public class TurnService {
         }
         rateLimiter.check(userId);
 
-        String coverLetterText = buildCoverLetterText(room, request.coverLetterItemId());
+        List<CoverLetterItem> items = targetItems(room, request.coverLetterItemId());
         Message userMessage = messageRepository.save(
                 Message.fromUser(roomId, request.content().trim()));
 
@@ -78,7 +82,8 @@ public class TurnService {
         messageRepository.saveAll(slots);
 
         turnExecutor.runTurn(userMessage.getId(),
-                new TurnContext(coverLetterText, request.content().trim(), configsOf(room)));
+                new TurnContext(joinedText(items), partsOf(items), request.content().trim(),
+                        jobPostingText(room), configsOf(room)));
 
         return new TurnStartedResponse(
                 userMessage.getId(),
@@ -88,6 +93,21 @@ public class TurnService {
                         .map(slot -> new TurnStartedResponse.AgentSlot(
                                 slot.getAgentKey(), slot.getStatus().name()))
                         .toList());
+    }
+
+    /**
+     * 방에 붙은 공고 본문. 턴을 시작할 때 한 번만 읽어 참여 에이전트 전부가 같은 것을 본다.
+     *
+     * <p>분석이 사라졌으면 공고 없는 방으로 본다. 공고를 보는 에이전트만 자기 자리에서 실패한다.
+     */
+    private String jobPostingText(Room room) {
+        if (room.getJobContextId() == null) {
+            return null;
+        }
+        return jobContextRepository.findById(room.getJobContextId())
+                .map(context -> "[" + context.getCompanyName() + " · " + context.getPositionName()
+                        + "]\n" + context.getJdText())
+                .orElse(null);
     }
 
     /** 턴 상태는 저장하지 않고 자식들의 상태를 모아 계산한다. */
@@ -156,7 +176,7 @@ public class TurnService {
     }
 
     /** 문항 하나만 지정하면 그 문항만, 없으면 자소서 전체를 본다. */
-    private String buildCoverLetterText(Room room, Long coverLetterItemId) {
+    private List<CoverLetterItem> targetItems(Room room, Long coverLetterItemId) {
         List<CoverLetterItem> items =
                 coverLetterItemRepository.findByCoverLetterIdOrderBySeqAsc(room.getCoverLetterId());
         if (coverLetterItemId != null) {
@@ -169,10 +189,23 @@ public class TurnService {
         if (items.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, "자소서에 문항이 없습니다.");
         }
+        return items;
+    }
+
+    /** 프롬프트로 도는 에이전트가 읽는 본문. */
+    private static String joinedText(List<CoverLetterItem> items) {
         return items.stream()
                 .map(item -> "문항 %d. %s%n답변: %s".formatted(
                         item.getSeq(), item.getQuestion(), item.getAnswer()))
                 .collect(Collectors.joining("\n\n"));
+    }
+
+    /** 포지션·글쓰기 API 가 문항과 답변을 따로 받으므로 조각째로도 싣는다. */
+    private static List<TurnContext.CoverLetterPart> partsOf(List<CoverLetterItem> items) {
+        return items.stream()
+                .map(item -> new TurnContext.CoverLetterPart(
+                        item.getSeq(), item.getQuestion(), item.getAnswer(), item.getCharLimit()))
+                .toList();
     }
 
     private Room ownedRoom(Long userId, Long roomId) {
