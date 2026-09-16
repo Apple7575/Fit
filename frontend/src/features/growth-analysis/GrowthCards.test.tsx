@@ -23,17 +23,32 @@ const data: KeyMetricsData = {
 };
 
 describe('GrowthKpiRow', () => {
-  it('renders six compact KPI cards with the year and 미제공 for missing values', () => {
+  it('renders a card per available metric and folds missing ones into one note', () => {
     render(<GrowthKpiRow data={data} />);
 
+    // 값이 없는 당기순이익은 카드가 아니라 아래 한 줄로 접힌다
     const cards = within(screen.getByRole('list', { name: '기준연도 핵심지표' })).getAllByRole('listitem');
-    expect(cards).toHaveLength(6);
+    expect(cards).toHaveLength(5);
     expect(within(cards[0]).getByText('300.9조')).toBeInTheDocument();
     expect(within(cards[0]).getByText('2025년')).toBeInTheDocument();
-    expect(within(cards[2]).getByText('미제공')).toBeInTheDocument();
-    expect(within(cards[3]).getByText('125,000')).toBeInTheDocument();
-    expect(within(cards[4]).getByText('1.2억')).toBeInTheDocument();
-    expect(within(cards[5]).getByText('8.6')).toBeInTheDocument();
+    expect(within(cards[2]).getByText('125,000')).toBeInTheDocument();
+    expect(within(cards[3]).getByText('1.2억')).toBeInTheDocument();
+    expect(within(cards[4]).getByText('8.6')).toBeInTheDocument();
+    expect(screen.queryByText('미제공')).not.toBeInTheDocument();
+    expect(screen.getByText(/당기순이익 은\(는\) 이 기업의 공시 데이터가 없어/)).toBeInTheDocument();
+  });
+
+  it('shows one placeholder when every metric is missing', () => {
+    render(
+      <GrowthKpiRow
+        data={{
+          ...data,
+          metrics: data.metrics.map((m) => ({ ...m, value: null, prevValue: null, changeRate: null })),
+        }}
+      />,
+    );
+
+    expect(screen.getByText('2025년 핵심지표가 미제공입니다')).toBeInTheDocument();
   });
 });
 
