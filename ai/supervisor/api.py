@@ -2,14 +2,19 @@ import os
 from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException
 
 from ai.jd_coaching.api import get_analysis_service
 from ai.jd_coaching.baseline import load_qwen_config
 from ai.position_coaching.api import get_position_service
-from ai.supervisor.adapters import AgentRegistry, JdAgentAdapter, PositionAgentAdapter
+from ai.supervisor.adapters import (
+    AgentRegistry,
+    JdAgentAdapter,
+    PositionAgentAdapter,
+    WritingAgentAdapter,
+)
 from ai.supervisor.contracts import (
     AllAgentsFailedError,
     NoAvailableAgentError,
@@ -17,11 +22,28 @@ from ai.supervisor.contracts import (
     SupervisorRunResponse,
 )
 from ai.supervisor.graph import build_supervisor_graph
-from ai.supervisor.model import QwenSupervisorModel
+from ai.supervisor.model import QwenSupervisorModel, SupervisorModel
 from ai.supervisor.service import SupervisorService
+from ai.writing_coaching.api import get_writing_service
 
 
 AI_ROOT = Path(__file__).parents[1]
+
+
+def assemble_supervisor_service(
+    supervisor_model: SupervisorModel,
+    jd_provider: Callable[[], Any],
+    position_provider: Callable[[], Any],
+    writing_provider: Callable[[], Any],
+) -> SupervisorService:
+    registry = AgentRegistry(
+        [
+            JdAgentAdapter(jd_provider),
+            PositionAgentAdapter(position_provider),
+            WritingAgentAdapter(writing_provider),
+        ]
+    )
+    return SupervisorService(build_supervisor_graph(supervisor_model, registry))
 
 
 @lru_cache(maxsize=1)
@@ -36,22 +58,12 @@ def get_supervisor_service() -> SupervisorService:
             status_code=503,
             detail="supervisor Qwen configuration unavailable",
         ) from error
-    jd_env_file = Path(os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env")))
-    try:
-        load_qwen_config(jd_env_file)
-    except ValueError as error:
-        raise HTTPException(
-            status_code=503,
-            detail="JD Qwen configuration unavailable",
-        ) from error
-    model = QwenSupervisorModel(config)
-    registry = AgentRegistry(
-        [
-            JdAgentAdapter(get_analysis_service()),
-            PositionAgentAdapter(get_position_service()),
-        ]
+    return assemble_supervisor_service(
+        supervisor_model=QwenSupervisorModel(config),
+        jd_provider=get_analysis_service,
+        position_provider=get_position_service,
+        writing_provider=get_writing_service,
     )
-    return SupervisorService(build_supervisor_graph(model, registry))
 
 
 def get_supervisor_service_provider() -> Callable[[], SupervisorService]:
@@ -74,7 +86,11 @@ def create_run(
     ],
 ) -> SupervisorRunResponse:
     try:
-        if request.agent_contexts.jd is None and request.agent_contexts.position is None:
+        if (
+            request.agent_contexts.jd is None
+            and request.agent_contexts.position is None
+            and request.agent_contexts.writing is None
+        ):
             raise NoAvailableAgentError("no agent context was provided")
         return service_provider().run(request)
     except NoAvailableAgentError as error:

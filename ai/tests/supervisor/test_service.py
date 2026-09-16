@@ -79,6 +79,35 @@ class SupervisorServiceTest(unittest.TestCase):
             [item.agent for item in response.agent_results], ["jd", "position"]
         )
 
+    def test_treats_writing_clarification_as_successful_execution(self):
+        clarification = "본인이 수행한 행동을 알려주세요."
+        graph = FakeGraph(
+            {
+                "plan": {
+                    "selected_agents": ["writing"],
+                    "reason": "추가 정보 필요",
+                },
+                "agent_results": [
+                    {
+                        "agent": "writing",
+                        "status": "SUCCESS",
+                        "result": {
+                            "status": "CLARIFICATION_REQUIRED",
+                            "message": clarification,
+                            "revision": None,
+                        },
+                    }
+                ],
+                "final_message": clarification,
+            }
+        )
+
+        response = SupervisorService(graph).run(REQUEST)
+
+        self.assertEqual(response.status, "SUCCESS")
+        self.assertEqual(response.message, clarification)
+        self.assertEqual(response.agent_results[0].status, "SUCCESS")
+
     def test_raises_when_all_agents_fail(self):
         graph = FakeGraph(
             {

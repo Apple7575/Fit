@@ -72,9 +72,22 @@ class PositionAgentContext(StrictModel):
     position_context: PositionContext
 
 
+class WritingAgentContext(StrictModel):
+    question: str = Field(min_length=1, max_length=500)
+    char_limit: int = Field(strict=True, ge=1, le=50_000)
+
+    @field_validator("question")
+    @classmethod
+    def reject_blank_question(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be blank")
+        return value
+
+
 class AgentContexts(StrictModel):
     jd: JdAgentContext | None = None
     position: PositionAgentContext | None = None
+    writing: WritingAgentContext | None = None
 
 
 class SupervisorRunRequest(StrictModel):
@@ -102,12 +115,12 @@ class SupervisorRunRequest(StrictModel):
 
 
 class SupervisorPlan(StrictModel):
-    selected_agents: list[Literal["jd", "position"]] = Field(min_length=1)
+    selected_agents: list[Literal["jd", "position", "writing"]] = Field(min_length=1)
     reason: str = Field(min_length=1, max_length=2_000)
 
 
 class AgentResult(StrictModel):
-    agent: Literal["jd", "position"]
+    agent: Literal["jd", "position", "writing"]
     status: Literal["SUCCESS", "FAILED"]
     result: dict[str, Any] | None = None
     error: str | None = None

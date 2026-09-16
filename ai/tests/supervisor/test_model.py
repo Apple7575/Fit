@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from ai.supervisor.contracts import AgentResult
-from ai.supervisor.model import PlanOutputError, QwenSupervisorModel
+from ai.supervisor.model import PLAN_SCHEMA, PlanOutputError, QwenSupervisorModel
 
 
 class FakeQwen:
@@ -70,3 +70,24 @@ class QwenSupervisorModelTest(unittest.TestCase):
         self.assertEqual(message, "JD 기준으로 보완이 필요합니다.")
         self.assertEqual(qwen.calls[0]["schema_name"], "supervisor_plan_v1")
         self.assertEqual(qwen.calls[1]["schema_name"], "supervisor_aggregate_v1")
+
+    def test_plan_schema_and_prompt_explain_writing_selection_rules(self):
+        qwen = FakeQwen()
+        model = QwenSupervisorModel({}, qwen_caller=qwen)
+
+        model.create_plan(
+            instruction="자기소개서를 고쳐줘",
+            documents=[],
+            conversation=[],
+            available_agents=["writing"],
+            validation_error=None,
+        )
+
+        self.assertEqual(
+            set(PLAN_SCHEMA["properties"]["selected_agents"]["items"]["enum"]),
+            {"jd", "position", "writing"},
+        )
+        prompt = qwen.calls[0]["messages"][0]["content"]
+        self.assertIn("Writing", prompt)
+        self.assertIn("첨삭", prompt)
+        self.assertIn("명시", prompt)
