@@ -33,7 +33,7 @@ from ai.jd_coaching.analysis_store import (
     AnalysisJob,
     AnalysisStore,
 )
-from ai.jd_coaching.chat import ChatService
+from ai.jd_coaching.chat import ChatService, StatelessChatService
 from ai.jd_coaching.conversation_store import (
     ChatMessage,
     Conversation,
@@ -225,6 +225,38 @@ class CreateMessageRequest(BaseModel):
     content: str = Field(min_length=1, max_length=10_000)
 
 
+class StatelessAnalysisResult(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    context_id: str = Field(min_length=1, max_length=80)
+    summary: dict[str, Any]
+    requirements: list[dict[str, Any]]
+
+
+class CurrentDocumentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    document_id: str = Field(min_length=1, max_length=100)
+    text: str = Field(min_length=10, max_length=50_000)
+
+
+class HistoryMessageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=10_000)
+
+
+class StatelessMessageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    context_id: str = Field(min_length=1, max_length=80)
+    analysis_result: StatelessAnalysisResult
+    current_document: CurrentDocumentRequest
+    message: str = Field(min_length=1, max_length=10_000)
+    history: list[HistoryMessageRequest] = Field(default_factory=list, max_length=20)
+
+
 @lru_cache(maxsize=1)
 def get_analysis_service() -> JdAnalysisService:
     env_file = Path(
@@ -263,6 +295,12 @@ def get_chat_service() -> ChatService:
         config=load_qwen_config(env_file),
         store=get_conversation_store(),
     )
+
+
+@lru_cache(maxsize=1)
+def get_stateless_chat_service() -> StatelessChatService:
+    env_file = Path(os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env")))
+    return StatelessChatService(config=load_qwen_config(env_file))
 
 
 def _required_database_url() -> str:
@@ -660,6 +698,36 @@ def create_conversation_message(
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     except RuntimeError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"대화 모델 처리에 실패했습니다: {error}",
+        ) from error
+
+
+@app.post("/internal/messages", tags=["internal"])
+def create_stateless_message(
+    request: StatelessMessageRequest,
+    service: Annotated[JdAnalysisService, Depends(get_analysis_service)],
+    chat_service: Annotated[StatelessChatService, Depends(get_stateless_chat_service)],
+) -> dict[str, Any]:
+    if request.analysis_result.context_id != request.context_id:
+        raise HTTPException(
+            status_code=409,
+            detail="분석 결과와 지원 컨텍스트가 일치하지 않습니다.",
+        )
+    try:
+        context = service.get_context(request.context_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="지원 컨텍스트가 없습니다.") from error
+    try:
+        return chat_service.respond(
+            context=context,
+            analysis_result=request.analysis_result.model_dump(),
+            current_document=request.current_document.model_dump(),
+            message=request.message,
+            history=[item.model_dump() for item in request.history],
+        )
+    except (KeyError, RuntimeError, ValueError, TypeError) as error:
         raise HTTPException(
             status_code=502,
             detail=f"대화 모델 처리에 실패했습니다: {error}",
