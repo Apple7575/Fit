@@ -3,18 +3,49 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 
-from ai.company_context.embedding_store import encode_vector
-from ai.company_context.postgres_corpus import _to_document
-from ai.company_context.retrieval.vector import Encoder, document_embedding_text
 
 
-DEFAULT_MODEL = "intfloat/multilingual-e5-large"
+class Encoder(Protocol):
+    def embed_passages(self, texts: list[str]) -> np.ndarray: ...
+
+
+def encode_vector(vector: np.ndarray) -> bytes:
+    values = np.asarray(vector, dtype=np.float64)
+    if values.ndim != 1 or values.size == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("embedding vector must be a finite, nonempty vector")
+    scale = np.max(np.abs(values))
+    if scale == 0:
+        raise ValueError("embedding vector must not be zero")
+    normalized = (values / scale) / np.sqrt(np.dot(values / scale, values / scale))
+    return normalized.astype("<f4").tobytes()
+
+
+def document_embedding_text(row: Mapping[str, Any]) -> str:
+    metadata = row.get("metadata") or {}
+    fields = (
+        ("기업", row.get("company_name")),
+        ("자료 유형", row.get("source_type")),
+        ("제목", row.get("title")),
+        ("문서 구간", metadata.get("section_title")),
+        ("지표", metadata.get("metric_name")),
+        ("기준 기간", row.get("reference_period")),
+        ("발행일", row["published_at"].isoformat()),
+    )
+    lines = [f"{label}: {value}" for label, value in fields if value]
+    lines.append(f"본문: {row['content']}")
+    return "\n".join(lines)
+
+
+DEFAULT_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_VERSION = "document-v1"
-KNOWN_DIMENSIONS = {DEFAULT_MODEL: 1024}
+KNOWN_DIMENSIONS = {
+    DEFAULT_MODEL: 1024,
+    "intfloat/multilingual-e5-large": 1024,
+}
 ALLOWED_SOURCE_TYPES = frozenset({
     "COMPANY_PROFILE", "COMPANY_METRIC", "COMPANY_TEXT", "SEGMENT_METRIC",
     "COMPANY_ACTIVITY", "DART_BUSINESS_REPORT", "NEWS",
@@ -84,7 +115,7 @@ class EmbeddingBuildRepository:
     def pending(
         self, model: str, version: str, corp_codes: list[str] | None,
         source_types: list[str] | None = None,
-        *, batch_size: int = 64, after: tuple[str, str] | None = None,
+        *, batch_size: int = 64, after: str | None = None,
     ) -> list[dict[str, Any]]:
         if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
             raise ValueError("batch_size must be a positive integer")
@@ -98,9 +129,9 @@ class EmbeddingBuildRepository:
             sql += " AND e.source_type = ANY(%s)"
             params.append(source_types)
         if after is not None:
-            sql += " AND (e.corp_code, e.evidence_id) > (%s, %s)"
-            params.extend(after)
-        sql += " ORDER BY e.corp_code, e.evidence_id LIMIT %s"
+            sql += " AND e.evidence_id > %s"
+            params.append(after)
+        sql += " ORDER BY e.evidence_id LIMIT %s"
         params.append(batch_size)
         with self.connection.cursor() as cur:
             cur.execute(sql, params)
@@ -150,7 +181,7 @@ def build_embeddings(
             if not batch:
                 break
             # Model inference runs after the read transaction has closed.
-            texts = [document_embedding_text(_to_document(row)) for row in batch]
+            texts = [document_embedding_text(row) for row in batch]
             vectors = np.asarray(encoder.embed_passages(texts))
             if vectors.ndim != 2 or vectors.shape[0] != len(batch) or vectors.shape[1] == 0:
                 raise ValueError("embedding shape does not match the batch")
@@ -163,7 +194,7 @@ def build_embeddings(
             with conn_factory() as conn:
                 EmbeddingBuildRepository(conn).upsert(stored)
             summary.embedded += len(batch)
-            after = (batch[-1]["corp_code"], batch[-1]["evidence_id"])
+            after = batch[-1]["evidence_id"]
     except Exception as error:
         summary.failed = len(batch)
         raise EmbeddingBuildError(summary) from error

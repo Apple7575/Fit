@@ -69,9 +69,9 @@ class FakeConnection:
         if "COUNT(*)" in sql:
             self.result = [(len(pending), len(filtered) - len(pending))]
         else:
-            if "(e.corp_code, e.evidence_id) >" in sql:
-                pending = [r for r in pending if (r['corp_code'], r['evidence_id']) > tuple(params[index:index + 2])]
-            self.result = sorted(pending, key=lambda r: (r['corp_code'], r['evidence_id']))[:params[-1]]
+            if "e.evidence_id >" in sql:
+                pending = [r for r in pending if r['evidence_id'] > params[index]]
+            self.result = sorted(pending, key=lambda r: r['evidence_id'])[:params[-1]]
 
     def fetchall(self):
         return self.result
@@ -104,7 +104,7 @@ class EmbeddingBuildTests(unittest.TestCase):
         factory = FakeFactory([])
         EmbeddingBuildRepository(FakeConnection(factory)).pending(
             "e5", "v2", ["00126380"], ["DART_BUSINESS_REPORT"],
-            batch_size=2, after=("00126380", "e1"),
+            batch_size=2, after="e1",
         )
         sql, params = factory.executed[0]
         self.assertIn("LEFT JOIN rag_evidence_embedding", sql)
@@ -112,13 +112,13 @@ class EmbeddingBuildTests(unittest.TestCase):
         self.assertIn("re.embedding_version = %s", sql)
         self.assertIn("re.content_hash <> e.content_hash", sql)
         self.assertIn("re.evidence_id IS NULL", sql)
-        self.assertIn("ORDER BY e.corp_code, e.evidence_id", sql)
-        self.assertIn("(e.corp_code, e.evidence_id) > (%s, %s)", sql)
+        self.assertIn("ORDER BY e.evidence_id", sql)
+        self.assertIn("e.evidence_id > %s", sql)
         self.assertIn("LIMIT %s", sql)
         self.assertIn("e.source_type = ANY(%s)", sql)
         self.assertEqual(params, [
             "e5", "v2", ["00126380"], ["DART_BUSINESS_REPORT"],
-            "00126380", "e1", 2,
+            "e1", 2,
         ])
 
     def test_batches_persist_normalized_vectors_and_rerun_skips_committed_rows(self):

@@ -29,6 +29,25 @@ class EmbeddingCliTests(unittest.TestCase):
         self.assertEqual((payload['status'], payload['selected'], payload['embedded'], payload['dimension']), ('success', 3, 0, 1024))
         self.assertEqual(factory.stored, {})
 
+    def test_default_model_is_qwen3_embedding(self):
+        factory = FakeFactory([])
+        code, payload = self.invoke(["--dry-run"], factory)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(cli.parse_args([]).batch_size, 32)
+        count_params = next(params for sql, params in factory.executed if "COUNT(*)" in sql)
+        self.assertEqual(count_params[:2], ["Qwen/Qwen3-Embedding-0.6B", "document-v1"])
+
+    def test_qwen3_real_build_requires_remote_vllm_before_database_access(self):
+        factory = FakeFactory(pending_rows(1))
+        with patch.dict("os.environ", {}, clear=True), \
+             patch.object(cli, "FastEmbedEncoder") as local_encoder:
+            code, payload = self.invoke([], factory)
+
+        self.assertEqual((code, payload["status"]), (1, "failed"))
+        local_encoder.assert_not_called()
+        self.assertEqual(factory.executed, [])
+
     def test_real_path_uses_selected_options_and_writes(self):
         factory = FakeFactory(pending_rows(3))
         encoder = FakeEncoder(factory)
@@ -36,6 +55,42 @@ class EmbeddingCliTests(unittest.TestCase):
             code, payload = self.invoke(["--model", "custom", "--version", "v2", "--batch-size", "2"], factory)
         self.assertEqual((code, payload['embedded']), (0, 3))
         self.assertEqual({key[1:] for key in factory.stored}, {('custom', 'v2')})
+
+    def test_explicit_cuda_device_is_forwarded_without_cpu_fallback(self):
+        factory = FakeFactory(pending_rows(1))
+        encoder = FakeEncoder(factory)
+        with patch.object(cli, "FastEmbedEncoder", return_value=encoder) as constructor:
+            code, payload = self.invoke(["--model", "custom", "--device", "cuda"], factory)
+
+        self.assertEqual((code, payload["embedded"]), (0, 1))
+        constructor.assert_called_once_with("custom", device="cuda")
+
+    def test_remote_url_uses_remote_encoder_without_loading_local_model(self):
+        factory = FakeFactory(pending_rows(1))
+        encoder = FakeEncoder(factory)
+        with patch.object(cli, "FastEmbedEncoder", side_effect=AssertionError("must not load")), \
+             patch.object(cli, "RemoteEmbeddingEncoder", return_value=encoder) as constructor, \
+             patch.dict("os.environ", {
+                 "EMBEDDING_API_KEY": "key",
+                 "EMBEDDING_SERVED_MODEL": "main-embedding",
+             }):
+            code, payload = self.invoke([
+                "--model", "custom", "--remote-url", "http://gpu:8001",
+            ], factory)
+
+        self.assertEqual((code, payload["embedded"]), (0, 1))
+        constructor.assert_called_once_with(
+            "custom", base_url="http://gpu:8001", api_key="key",
+            served_model_name="main-embedding",
+        )
+
+    def test_remote_url_requires_key_before_database_access(self):
+        factory = FakeFactory(pending_rows(1))
+        with patch.dict("os.environ", {}, clear=True):
+            code, payload = self.invoke(["--remote-url", "http://gpu:8001"], factory)
+
+        self.assertEqual((code, payload["status"]), (1, "failed"))
+        self.assertEqual(factory.executed, [])
 
     def test_repeated_source_type_filters_and_deduplicates_in_input_order(self):
         rows = pending_rows(3)
@@ -78,7 +133,10 @@ class EmbeddingCliTests(unittest.TestCase):
         self.assertNotIn('secret', json.dumps(payload))
 
     def test_argument_errors_are_json_and_exit_one(self):
-        for args in (["--batch-size", "0"], ["--batch-size", "bad"], ["--unknown"], ["--model", ""]):
+        for args in (
+            ["--batch-size", "0"], ["--batch-size", "bad"], ["--unknown"],
+            ["--model", ""], ["--device", "tpu"],
+        ):
             with self.subTest(args=args):
                 code, payload = self.invoke(args, FakeFactory([]))
                 self.assertEqual((code, payload['status']), (1, 'failed'))
@@ -131,7 +189,7 @@ class EmbeddingCliTests(unittest.TestCase):
             with patch.object(cli, "resolve_company_codes", return_value=[]), \\
                  patch.object(cli, "FastEmbedEncoder", side_effect=load_model), \\
                  patch.object(cli, "build_embeddings", side_effect=build):
-                raise SystemExit(cli.main([]))
+                raise SystemExit(cli.main(["--model", "intfloat/multilingual-e5-large"]))
         ''')
         for stage in ('loading', 'inference'):
             for outcome in ('success', 'failure'):

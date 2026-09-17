@@ -14,6 +14,7 @@ from pipeline.rag_corpus.models import EvidenceRecord
 from pipeline.rag_corpus.transform import content_hash, stable_evidence_id
 
 from .dart_archive import DartArchive, DartDocumentRef
+from .chunking_profiles import ChunkingProfile
 from .models import EvidenceBatch
 
 
@@ -33,15 +34,21 @@ class _TableChunk:
 
 
 class BusinessReportSource:
-    def __init__(self, archive: DartArchive, *, years: set[int] | None = None):
+    def __init__(
+        self, archive: DartArchive, *, years: set[int] | None = None,
+        profile: ChunkingProfile | None = None,
+    ):
         self.archive = archive
         self.years = years
+        self.profile = profile
 
     def records(self, corp_code: str) -> list[EvidenceRecord]:
         return self.batch(corp_code).records
 
     def batch(self, corp_code: str) -> EvidenceBatch:
-        return business_report_batch(self.archive, corp_code, years=self.years)
+        return business_report_batch(
+            self.archive, corp_code, years=self.years, profile=self.profile,
+        )
 
     def inventory(self) -> dict[str, object]:
         inventory = self.archive.inventory()
@@ -57,15 +64,21 @@ class BusinessReportSource:
 
 def business_report_records(
     archive: DartArchive, corp_code: str, *, years: set[int] | None = None, max_chars: int = 1500,
+    profile: ChunkingProfile | None = None,
 ) -> list[EvidenceRecord]:
-    return business_report_batch(archive, corp_code, years=years, max_chars=max_chars).records
+    return business_report_batch(
+        archive, corp_code, years=years, max_chars=max_chars, profile=profile,
+    ).records
 
 
 def business_report_batch(
     archive: DartArchive, corp_code: str, *, years: set[int] | None = None, max_chars: int = 1500,
+    profile: ChunkingProfile | None = None,
 ) -> EvidenceBatch:
-    if not 200 <= max_chars <= 1500:
-        raise ValueError("max_chars는 200 이상 1500 이하이어야 합니다")
+    text_max_chars = profile.text_max_chars if profile else max_chars
+    table_max_chars = profile.table_max_chars if profile else max_chars
+    if not 200 <= text_max_chars <= 1500 or not 200 <= table_max_chars <= 1500:
+        raise ValueError("청킹 길이는 200 이상 1500 이하이어야 합니다")
     records: list[EvidenceRecord] = []
     inputs: Counter[str] = Counter()
     excluded: Counter[str] = Counter()
@@ -75,7 +88,10 @@ def business_report_batch(
         inputs["documents"] += 1
         try:
             document = Document.from_bytes(archive.read(ref), rcept_no=ref.rcept_no)
-            batch = _document_records(document, ref, max_chars=max_chars)
+            batch = _document_records(
+                document, ref, text_max_chars=text_max_chars, table_max_chars=table_max_chars,
+                chunking_profile=profile.name if profile else None,
+            )
         except Exception as error:
             if not _is_xml_payload_error(error):
                 raise
@@ -94,7 +110,10 @@ def business_report_batch(
     )
 
 
-def _document_records(document: Document, ref: DartDocumentRef, *, max_chars: int) -> EvidenceBatch:
+def _document_records(
+    document: Document, ref: DartDocumentRef, *, text_max_chars: int, table_max_chars: int,
+    chunking_profile: str | None,
+) -> EvidenceBatch:
     published_at = _published_at(ref.rcept_dt)
     records: list[EvidenceRecord] = []
     inputs: Counter[str] = Counter({
@@ -122,13 +141,15 @@ def _document_records(document: Document, ref: DartDocumentRef, *, max_chars: in
             else:
                 seen_paragraphs.add(entry.text)
                 paragraphs.append((entry.index, entry.text))
-        for chunk_index, chunk in enumerate(_text_chunks(paragraphs, max_chars=max_chars)):
+        for chunk_index, chunk in enumerate(_text_chunks(paragraphs, max_chars=text_max_chars)):
             content, paragraph_start, paragraph_end = chunk
-            identity = f"dart_business_report:{ref.corp_code}:{ref.rcept_no}:{section_index}:text:{chunk_index}"
+            profile_identity = f":{chunking_profile}" if chunking_profile else ""
+            identity = f"dart_business_report{profile_identity}:{ref.corp_code}:{ref.rcept_no}:{section_index}:text:{chunk_index}"
             metadata = _metadata(
                 document, ref, section.title, section_index,
                 content_type="TEXT", chunk_index=chunk_index,
                 paragraph_start=paragraph_start, paragraph_end=paragraph_end,
+                chunking_profile=chunking_profile,
             )
             records.append(_record(ref, published_at, section.title, identity, content, metadata))
 
@@ -146,14 +167,16 @@ def _document_records(document: Document, ref: DartDocumentRef, *, max_chars: in
                 excluded["duplicate_table_content"] += 1
                 continue
             seen_tables.add(table_key)
-            for chunk in _table_chunks(table.caption, table.m, max_chars=max_chars):
+            for chunk in _table_chunks(table.caption, table.m, max_chars=table_max_chars):
+                profile_identity = f":{chunking_profile}" if chunking_profile else ""
                 identity = (
-                    f"dart_business_report:{ref.corp_code}:{ref.rcept_no}:{section_index}:"
+                    f"dart_business_report{profile_identity}:{ref.corp_code}:{ref.rcept_no}:{section_index}:"
                     f"table:{table.idx}:{chunk.row_start}:{chunk.row_end}"
                 )
                 metadata = _metadata(
                     document, ref, section.title, section_index, content_type="TABLE",
                     table_index=table.idx, row_start=chunk.row_start, row_end=chunk.row_end, unit=unit,
+                    chunking_profile=chunking_profile,
                 )
                 if chunk.row_part_index is not None:
                     identity += f":part:{chunk.row_part_index}"
@@ -167,15 +190,19 @@ def _document_records(document: Document, ref: DartDocumentRef, *, max_chars: in
 
 def _metadata(
     document: Document, ref: DartDocumentRef, section_title: str, section_index: int, *, content_type: str,
+    chunking_profile: str | None = None,
     **coordinates: object,
 ) -> dict[str, object]:
-    return {
+    metadata = {
         "parent_id": f"dart-report:{ref.corp_code}:{ref.rcept_no}:{section_index}",
         "rcept_no": ref.rcept_no, "rcept_dt": ref.rcept_dt, "document_file": ref.entry_name,
         "report_name": ref.report_name, "section_title": section_title, "section_index": section_index,
         "section_path": str(section_index), "content_type": content_type,
         "chunk_schema_version": 2, "encoding": document.encoding, **coordinates,
     }
+    if chunking_profile:
+        metadata["chunking_profile"] = chunking_profile
+    return metadata
 
 
 def _published_at(value: str) -> datetime:

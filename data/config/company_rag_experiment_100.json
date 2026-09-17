@@ -1,0 +1,711 @@
+{
+  "selection_version": "representative-100-v1",
+  "source_summary": "archive-2642-staged-v2-dry-run.json (local build output; not included)",
+  "company_count": 100,
+  "groups": {
+    "holdout": 20,
+    "tuning": 80
+  },
+  "companies": [
+    {
+      "corp_code": "00126380",
+      "group": "tuning",
+      "selection_reason": "anchor",
+      "baseline_record_count": 7403,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00164742",
+      "group": "holdout",
+      "selection_reason": "anchor",
+      "baseline_record_count": 6164,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00164779",
+      "group": "tuning",
+      "selection_reason": "anchor",
+      "baseline_record_count": 6109,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00266961",
+      "group": "holdout",
+      "selection_reason": "anchor",
+      "baseline_record_count": 7501,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00356361",
+      "group": "holdout",
+      "selection_reason": "anchor",
+      "baseline_record_count": 5478,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00439965",
+      "group": "holdout",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 618,
+      "baseline_failure_count": 4
+    },
+    {
+      "corp_code": "01466832",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 542,
+      "baseline_failure_count": 3
+    },
+    {
+      "corp_code": "00145552",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 2826,
+      "baseline_failure_count": 2
+    },
+    {
+      "corp_code": "01021666",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 2107,
+      "baseline_failure_count": 2
+    },
+    {
+      "corp_code": "00102618",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 2028,
+      "baseline_failure_count": 2
+    },
+    {
+      "corp_code": "00163196",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 1858,
+      "baseline_failure_count": 2
+    },
+    {
+      "corp_code": "00131939",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 1850,
+      "baseline_failure_count": 2
+    },
+    {
+      "corp_code": "01301623",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 1330,
+      "baseline_failure_count": 2
+    },
+    {
+      "corp_code": "00292434",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 1328,
+      "baseline_failure_count": 2
+    },
+    {
+      "corp_code": "00688996",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 13800,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "01350869",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 9778,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "00162461",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 7685,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "00113359",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 6986,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "00126566",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 6542,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "00139214",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 6531,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "00339391",
+      "group": "holdout",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 6284,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "01596425",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 5739,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "00872984",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 5687,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "00795135",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 5035,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "01205842",
+      "group": "tuning",
+      "selection_reason": "source-failure",
+      "baseline_record_count": 5019,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "01924673",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 282,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01594791",
+      "group": "holdout",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 327,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00863533",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 328,
+      "baseline_failure_count": 1
+    },
+    {
+      "corp_code": "01875146",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 332,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01854392",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 337,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01784677",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 392,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01639508",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 395,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00488244",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 404,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01818682",
+      "group": "holdout",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 420,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01379563",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 442,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00127875",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 450,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01807729",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 453,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01203659",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 459,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01807738",
+      "group": "holdout",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 469,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01010615",
+      "group": "tuning",
+      "selection_reason": "low-volume",
+      "baseline_record_count": 474,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00181712",
+      "group": "holdout",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 28133,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00382199",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 17270,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00160588",
+      "group": "holdout",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 15745,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00120182",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 13812,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00500254",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 13517,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00149646",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 13358,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00631518",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 13214,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00110893",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 13189,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00148540",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 12751,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00547583",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 12631,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00980122",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 12537,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00120021",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 12396,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00111722",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 12283,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00155319",
+      "group": "tuning",
+      "selection_reason": "high-volume",
+      "baseline_record_count": 12090,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01638387",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 476,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01258428",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 716,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01142260",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 998,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01161432",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 1222,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01584934",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 1456,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01134216",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 1604,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00660033",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 1731,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01492688",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 1824,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00911229",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 1909,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00221728",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2012,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00370200",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2116,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01437432",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2181,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00808086",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2258,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01042429",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2328,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01573284",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2402,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00187770",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2475,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01157235",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2525,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00229021",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2606,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00181943",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2657,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00410915",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2726,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00418379",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2790,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01770203",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2865,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01093007",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2935,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01335790",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 2999,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01013694",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3059,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00246417",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3128,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00608316",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3194,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00303192",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3272,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00156691",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3356,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00413417",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3426,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00136165",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3494,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00138598",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3595,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00263654",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3671,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00133335",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3754,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00340272",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3833,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00134477",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 3921,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00306454",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 4045,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00138242",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 4196,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00150633",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 4358,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00232007",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 4572,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00199252",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 4787,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00679314",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 5026,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00134510",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 5431,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "01258507",
+      "group": "tuning",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 6059,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00904672",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 6921,
+      "baseline_failure_count": 0
+    },
+    {
+      "corp_code": "00153861",
+      "group": "holdout",
+      "selection_reason": "volume-quantile",
+      "baseline_record_count": 11324,
+      "baseline_failure_count": 0
+    }
+  ]
+}

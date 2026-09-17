@@ -13,11 +13,13 @@ from typing import Iterable
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from ai.company_context.retrieval.vector import FastEmbedEncoder  # noqa: E402
 from pipeline.rag_corpus.embedding_build import (  # noqa: E402
     ALLOWED_SOURCE_TYPES, DEFAULT_MODEL, DEFAULT_VERSION, EmbeddingBuildError,
     build_embeddings,
 )
+from pipeline.rag_corpus.fastembed_encoder import FastEmbedEncoder  # noqa: E402
+from pipeline.rag_corpus.remote_embedding_encoder import RemoteEmbeddingEncoder  # noqa: E402
+from pipeline.paths import _load_env  # noqa: E402
 from scripts.build_rag_corpus import connect, resolve_company_codes  # noqa: E402
 
 
@@ -32,7 +34,9 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--source-type", action="append", choices=sorted(ALLOWED_SOURCE_TYPES))
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--version", default=DEFAULT_VERSION)
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument("--remote-url")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     if args.batch_size <= 0 or not args.model.strip() or not args.version.strip():
@@ -68,9 +72,25 @@ def silence_dependency_output():
 def main(argv: Iterable[str] | None = None) -> int:
     try:
         args = parse_args(argv)
+        _load_env()
+        remote_url = args.remote_url or (os.environ.get("EMBEDDING_BASE_URL") or "").strip()
+        remote_key = (os.environ.get("EMBEDDING_API_KEY") or "").strip()
+        served_model = (os.environ.get("EMBEDDING_SERVED_MODEL") or "main").strip()
+        if not args.dry_run and args.model == DEFAULT_MODEL and not remote_url:
+            raise ValueError("Qwen3 embedding requires the remote vLLM server")
+        if remote_url and not remote_key:
+            raise ValueError("EMBEDDING_API_KEY is required for remote embedding")
         with silence_dependency_output():
             corp_codes = resolve_company_codes(connect, args.corp_code)
-            encoder = None if args.dry_run else FastEmbedEncoder(args.model)
+            if args.dry_run:
+                encoder = None
+            elif remote_url:
+                encoder = RemoteEmbeddingEncoder(
+                    args.model, base_url=remote_url, api_key=remote_key,
+                    served_model_name=served_model,
+                )
+            else:
+                encoder = FastEmbedEncoder(args.model, device=args.device)
             summary = build_embeddings(connect, encoder, model=args.model, version=args.version,
                                        corp_codes=corp_codes, source_types=args.source_type,
                                        batch_size=args.batch_size, dry_run=args.dry_run)
