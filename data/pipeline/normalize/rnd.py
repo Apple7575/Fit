@@ -243,7 +243,10 @@ def matrix(table, p: Patterns) -> list[list[str]]:
             for dc in range(cs):
                 grid[(r, c + dc)] = val
                 if rs > 1:
-                    pending[c + dc] = (rs - 1, val)
+                    # 남은 행 수는 이 행을 포함해 rs다. 행 끝에서 1 줄어 다음 rs-1개 행을 덮는다.
+                    # 예전에는 rs-1을 넣고 같은 행 끝에서 바로 줄여 ROWSPAN=2가 자기 행만 덮었다
+                    # (우리금융지주 20260313001235 표 825의 `판매관리비` 행이 한 칸 밀린 원인).
+                    pending[c + dc] = (rs, val)
             c += cs
         pending = {k: (n - 1, v) for k, (n, v) in pending.items() if n - 1 > 0}
         r += 1

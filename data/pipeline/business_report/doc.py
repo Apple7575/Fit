@@ -26,6 +26,15 @@ def _is_in_table(element) -> bool:
     return False
 
 
+def _has_text_ancestor(element) -> bool:
+    parent = element.getparent()
+    while parent is not None:
+        if isinstance(parent.tag, str) and parent.tag.upper() in TEXT_TAGS:
+            return True
+        parent = parent.getparent()
+    return False
+
+
 def _has_nested_table(element) -> bool:
     return any(
         isinstance(descendant.tag, str) and descendant.tag.upper() == "TABLE"
@@ -48,6 +57,7 @@ class Table:
     caption: str
     m: list[list[str]]
     excluded_reason: str | None = None
+    header_rows: int = 0
 
     @property
     def rows(self) -> int:
@@ -121,7 +131,8 @@ def _table_shape(
             if row_count * width > max_table_cells:
                 return row_count, width, expanded_chars
             if rowspan > 1:
-                pending = _overlay_pending(pending, column, end, rowspan - 1)
+                # `matrix`와 같은 수명: 이 행을 포함해 rowspan개 행을 덮고 행 끝마다 1씩 줄인다.
+                pending = _overlay_pending(pending, column, end, rowspan)
             column = end
         pending = _decrement_pending(pending)
     return row_count, width, expanded_chars
@@ -223,7 +234,7 @@ class Document:
                 recent = []
                 paragraph_index = 0
             elif tag in TEXT_TAGS:
-                if _is_in_table(element):
+                if _is_in_table(element) or _has_text_ancestor(element):
                     continue
                 text = squash("".join(element.itertext()))
                 current.paragraph_entries.append(ParagraphEntry(paragraph_index, text))
@@ -258,6 +269,7 @@ class Document:
                     caption=" | ".join(recent[-3:]),
                     m=table_matrix,
                     excluded_reason=excluded_reason,
+                    header_rows=len(element.findall("./THEAD/TR")),
                 )
                 self.tables.append(table)
                 current.tables.append(table)
