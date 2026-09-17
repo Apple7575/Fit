@@ -6,9 +6,13 @@
 
 왜 필요한가
 ----------
-`company` 는 load_company.py, 착지 테이블은 load_raw.py, 지표는 load_metrics.py
-가 넣는다. 그런데 **`company_text`·`segment_metric`·`company_activity`·
-`news_article` 은 넣는 코드가 저장소에 없었다.** dev DB 에 값은 들어 있는데
+`company` 는 load_company.py, 착지 테이블은 load_raw.py 가 넣는다. 그런데
+**`company_metric`·`company_text`·`segment_metric`·`company_activity`·
+`news_article` 은 넣는 코드가 저장소에 없었다.**
+
+`load_metrics.py` 가 지표를 넣기는 하는데 `targets.csv` 13개사를 정규화해 꽂는
+옛 경로다. 전 종목 시드(`curated/seed/company_metric.csv` 10만 행, 2,688개사)를
+넣는 코드는 없었고 — dev 에 값은 들어 있다 — 아래 표들과 같은 상황이었다. dev DB 에 값은 들어 있는데
 누가 언제 넣었는지 기록이 없었고(`collection_run` 0건), "지금 DB 에 뭐가 들어
 있더라" 를 알아내려고 psql 로 표를 하나씩 세어봐야 했다. 그 경로를 남긴다.
 
@@ -51,10 +55,22 @@ SEED_DIR = ROOT / "curated" / "seed"
 
 # 자연키. Flyway 의 PK·UNIQUE 와 같아야 한다 — 아래 _check_keys 가 대조한다.
 NATURAL_KEYS: dict[str, tuple[str, ...]] = {
+    "company_metric": ("corp_code", "fiscal_year", "metric_code"),
     "company_text": ("corp_code", "fiscal_year", "attr_key", "seq"),
     "segment_metric": ("corp_code", "fiscal_year", "segment_name", "metric_code"),
     "news_article": ("corp_code", "guid"),
 }
+
+# 정리 범위를 corp_code 밖으로 한 칸 더 좁히는 표.
+#
+# `company_metric` 은 **한 표를 여러 원천이 나눠 쓴다.** 시드가 만드는 것은 재무 5종 +
+# rd_expense + 직원 3종이고, `rd_ratio` 는 DERIVED 라 다른 경로가 넣는다. corp_code
+# 만으로 "시드에 없는 행" 을 지우면 **rd_ratio 가 통째로 날아가고 산업 비교 API 가
+# 빈다.** 오류가 아니라 값이 사라지는 것이라 조용하다.
+#
+# 그래서 시드에 실제로 들어 있는 metric_code 안에서만 지운다 — "시드가 다루지 않는
+# 기업은 손대지 않는다" 를 지표 축으로 한 번 더 적용한 것이다.
+CLEANUP_SCOPE: dict[str, str] = {"company_metric": "metric_code"}
 # 자연키가 없어 범위를 좁혀 갈아끼우는 표
 REPLACE_TABLES = ("company_activity",)
 TABLES = tuple(NATURAL_KEYS) + REPLACE_TABLES
@@ -156,15 +172,22 @@ def main() -> int:
                 cur.executemany(
                     "INSERT INTO _seed_keys VALUES (" +
                     ", ".join(["%s"] * len(key)) + ")", seen)
+                extra = CLEANUP_SCOPE.get(table)
+                params: list = [scope]
+                narrow = sql.SQL("")
+                if extra:
+                    params.append(sorted({r[extra] for r in rows if r.get(extra)}))
+                    narrow = sql.SQL(" AND {c} = ANY(%s)").format(c=sql.Identifier(extra))
                 cur.execute(
-                    sql.SQL("DELETE FROM {t} WHERE corp_code = ANY(%s) AND NOT EXISTS ("
+                    sql.SQL("DELETE FROM {t} WHERE corp_code = ANY(%s){narrow} "
+                            "AND NOT EXISTS ("
                             "SELECT 1 FROM _seed_keys s WHERE {cond})")
-                    .format(t=sql.Identifier(table),
+                    .format(t=sql.Identifier(table), narrow=narrow,
                             cond=sql.SQL(" AND ").join(
                                 sql.SQL("s.k{i} = {c}::text").format(
                                     i=sql.SQL(str(i)), c=sql.Identifier(c))
                                 for i, c in enumerate(key))),
-                    (scope,))
+                    tuple(params))
                 removed = cur.rowcount
             conn.commit()
             after = db.count(conn, table)
