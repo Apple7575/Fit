@@ -1,0 +1,216 @@
+{
+  "_request": {
+    "path": "/api/companies/00126380/metrics/timeseries",
+    "params": {
+      "from": 2021,
+      "to": 2025
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 30,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "range": {
+        "from": 2021,
+        "to": 2025
+      },
+      "series": [
+        {
+          "key": "revenue",
+          "label": "매출액",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": 279604799000000,
+              "changeRate": null
+            },
+            {
+              "year": 2022,
+              "value": 302231360000000,
+              "changeRate": 8.1
+            },
+            {
+              "year": 2023,
+              "value": 258935494000000,
+              "changeRate": -14.3
+            },
+            {
+              "year": 2024,
+              "value": 300870903000000,
+              "changeRate": 16.2
+            },
+            {
+              "year": 2025,
+              "value": 333605938000000,
+              "changeRate": 10.9
+            }
+          ]
+        },
+        {
+          "key": "operating_profit",
+          "label": "영업이익",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": 51633856000000,
+              "changeRate": null
+            },
+            {
+              "year": 2022,
+              "value": 43376630000000,
+              "changeRate": -16.0
+            },
+            {
+              "year": 2023,
+              "value": 6566976000000,
+              "changeRate": -84.9
+            },
+            {
+              "year": 2024,
+              "value": 32725961000000,
+              "changeRate": 398.3
+            },
+            {
+              "year": 2025,
+              "value": 43601051000000,
+              "changeRate": 33.2
+            }
+          ]
+        },
+        {
+          "key": "net_income",
+          "label": "당기순이익",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": 39907450000000,
+              "changeRate": null
+            },
+            {
+              "year": 2022,
+              "value": 55654077000000,
+              "changeRate": 39.5
+            },
+            {
+              "year": 2023,
+              "value": 15487100000000,
+              "changeRate": -72.2
+            },
+            {
+              "year": 2024,
+              "value": 34451351000000,
+              "changeRate": 122.5
+            },
+            {
+              "year": 2025,
+              "value": 45206805000000,
+              "changeRate": 31.2
+            }
+          ]
+        },
+        {
+          "key": "employee_count",
+          "label": "직원 수",
+          "unit": "PERSON",
+          "points": [
+            {
+              "year": 2021,
+              "value": 113485,
+              "changeRate": null
+            },
+            {
+              "year": 2022,
+              "value": 121404,
+              "changeRate": 7.0
+            },
+            {
+              "year": 2023,
+              "value": 124804,
+              "changeRate": 2.8
+            },
+            {
+              "year": 2024,
+              "value": 129480,
+              "changeRate": 3.7
+            },
+            {
+              "year": 2025,
+              "value": 128881,
+              "changeRate": -0.5
+            }
+          ]
+        },
+        {
+          "key": "average_salary",
+          "label": "1인 평균 급여",
+          "unit": "KRW",
+          "points": [
+            {
+              "year": 2021,
+              "value": 143955571,
+              "changeRate": null
+            },
+            {
+              "year": 2022,
+              "value": 134344445,
+              "changeRate": -6.7
+            },
+            {
+              "year": 2023,
+              "value": 119803644,
+              "changeRate": -10.8
+            },
+            {
+              "year": 2024,
+              "value": 130190060,
+              "changeRate": 8.7
+            },
+            {
+              "year": 2025,
+              "value": 157064509,
+              "changeRate": 20.6
+            }
+          ]
+        },
+        {
+          "key": "average_tenure",
+          "label": "평균 근속",
+          "unit": "YEAR",
+          "points": [
+            {
+              "year": 2021,
+              "value": 12.1,
+              "changeRate": null
+            },
+            {
+              "year": 2022,
+              "value": 12.5,
+              "changeRate": 3.3
+            },
+            {
+              "year": 2023,
+              "value": 12.8,
+              "changeRate": 2.4
+            },
+            {
+              "year": 2024,
+              "value": 13.0,
+              "changeRate": 1.6
+            },
+            {
+              "year": 2025,
+              "value": 13.7,
+              "changeRate": 5.4
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "text": null
+}

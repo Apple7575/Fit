@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "position-analysis-v2.json",
+  "title": "Position Analysis v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["analysis_status", "rubric", "findings", "model_metadata"],
+  "properties": {
+    "analysis_status": {"type": "string", "enum": ["COMPLETED", "NO_EXPERIENCE_CLAIM"]},
+    "rubric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"type": "string", "const": "experience-depth-v1"},
+        "version": {"type": "integer", "const": 1}
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding_id", "claim_type", "claim", "present_elements", "missing_elements", "verdict", "reason", "follow_up_questions"],
+        "properties": {
+          "finding_id": {"type": "string", "minLength": 1},
+          "claim_type": {"type": "string", "enum": ["PROBLEM_SOLVING", "ACHIEVEMENT", "DECISION", "EXECUTION", "COLLABORATION", "GROWTH", "OTHER"]},
+          "claim": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["quote", "document_id", "start_offset", "end_offset"],
+            "properties": {
+              "quote": {"type": "string", "minLength": 1},
+              "document_id": {"type": "string", "minLength": 1},
+              "start_offset": {"type": "integer", "minimum": 0},
+              "end_offset": {"type": "integer", "minimum": 0}
+            }
+          },
+          "present_elements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["element", "quote"],
+              "properties": {
+                "element": {"type": "string", "enum": ["SITUATION", "PROBLEM", "ROLE", "ACTION", "REASONING", "PROCESS", "VERIFICATION", "RESULT", "LEARNING"]},
+                "quote": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "missing_elements": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["SITUATION", "PROBLEM", "ROLE", "ACTION", "REASONING", "PROCESS", "VERIFICATION", "RESULT", "LEARNING"]}
+          },
+          "verdict": {"type": "string", "enum": ["SUFFICIENT", "PARTIAL", "CLAIM_ONLY", "NOT_ASSESSABLE"]},
+          "reason": {"type": "string", "minLength": 1},
+          "follow_up_questions": {"type": "array", "maxItems": 2, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "model_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_model", "base_revision", "adapter", "training_dataset", "prompt_version"],
+      "properties": {
+        "base_model": {"type": "string", "minLength": 1},
+        "base_revision": {"type": "string", "minLength": 1},
+        "adapter": {"type": ["string", "null"], "minLength": 1},
+        "training_dataset": {"type": ["string", "null"], "minLength": 1},
+        "prompt_version": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

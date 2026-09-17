@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-034", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "DB 관련 문제 해결 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-034", "document_type": "SELF_INTRO", "text": "서비스 성장 과정에서 회원 테이블의 중복 이메일 데이터가 고객 문의로 이어졌습니다."}],
+  "expected_findings": [{"experience_type": "DATABASE", "claim_quote": "서비스 성장 과정에서 회원 테이블의 중복 이메일 데이터가 고객 문의로 이어졌습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["회원 이메일에 유일 인덱스를 추가했습니다.", "중복 이메일 데이터 1,204건을 정리했습니다.", "회원 트랜잭션의 MySQL 격리 수준을 변경했습니다."]
+}

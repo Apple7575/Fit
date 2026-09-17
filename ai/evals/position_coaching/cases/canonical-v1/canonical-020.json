@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-020", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "동시성 이슈를 다룬 구현 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-020", "document_type": "PORTFOLIO", "text": "동시에 좋아요 요청이 들어올 때 집계 값이 덮어써지는 문제를 확인하고, 데이터베이스 증가 연산으로 갱신하도록 변경했습니다."}],
+  "expected_findings": [{"experience_type": "CONCURRENCY", "claim_quote": "동시에 좋아요 요청이 들어올 때 집계 값이 덮어써지는 문제를 확인하고, 데이터베이스 증가 연산으로 갱신하도록 변경했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "MECHANISM"], "missing_elements": ["VERIFICATION"]}],
+  "forbidden_output_substrings": ["좋아요 집계에 낙관적 락을 적용했습니다.", "좋아요 API에 1천 스레드 테스트를 수행했습니다.", "좋아요 정합성 오류 0건을 달성했습니다."]
+}

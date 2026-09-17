@@ -1,0 +1,47 @@
+{
+  "_request": {
+    "path": "/api/companies/01384787/metrics",
+    "params": {
+      "year": 2025,
+      "keys": "revenue,rd_ratio"
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 14,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "corpCode": "01384787",
+      "year": 2025,
+      "metrics": [
+        {
+          "key": "revenue",
+          "label": "매출액",
+          "value": 294545937439,
+          "unit": "KRW",
+          "yoy": {
+            "prevValue": 224084645616,
+            "changeRate": 31.4
+          }
+        },
+        {
+          "key": "rd_ratio",
+          "label": "R&D/매출",
+          "value": null,
+          "unit": "%",
+          "yoy": {
+            "prevValue": 12.8,
+            "changeRate": null
+          }
+        }
+      ],
+      "profitability": {
+        "operatingMargin": 61.6,
+        "netMargin": 65.0,
+        "debtRatio": 17.6
+      }
+    }
+  },
+  "text": null
+}

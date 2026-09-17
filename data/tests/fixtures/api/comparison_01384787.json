@@ -1,0 +1,48 @@
+{
+  "_request": {
+    "path": "/api/companies/01384787/industry-comparison",
+    "params": {
+      "year": 2025
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 0,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "year": 2025,
+      "industry": {
+        "code": "58",
+        "name": "출판업",
+        "companyCount": 281
+      },
+      "metrics": [
+        "revenue",
+        "revenue_growth",
+        "operating_profit",
+        "operating_margin",
+        "employee_count",
+        "average_salary",
+        "rd_ratio"
+      ],
+      "companies": [
+        {
+          "corpCode": "01384787",
+          "corpName": "시프트업",
+          "isTarget": true,
+          "values": {
+            "revenue": 294545937439,
+            "revenue_growth": 31.4,
+            "operating_profit": 181417657557,
+            "operating_margin": 61.6,
+            "employee_count": 332,
+            "average_salary": 93923422,
+            "rd_ratio": null
+          }
+        }
+      ]
+    }
+  },
+  "text": null
+}

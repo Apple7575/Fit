@@ -1,0 +1,77 @@
+{
+  "table": "company_activity",
+  "generated_at": "2026-09-17T07:04:16.803113+00:00",
+  "generated_by": "scripts/build_curated_seed.py",
+  "header": [
+    "corp_code",
+    "fiscal_year",
+    "activity_type",
+    "field_name",
+    "purpose",
+    "amount",
+    "rcept_no",
+    "counterparty"
+  ],
+  "columns_excluded": [
+    "id",
+    "updated_at"
+  ],
+  "flyway_files": [
+    "V1__init_schema.sql",
+    "V2__seed_metric.sql",
+    "V3__industry_ksic_division.sql",
+    "V4__rename_average_metric_codes.sql",
+    "V5__add_metric_evidence.sql",
+    "V6__document_corp_name_source.sql",
+    "V7__metric_catalog_v2.sql",
+    "V8__company_address_homepage.sql",
+    "V9__dart_otr_cpr_invstmnt.sql",
+    "V10__company_profile.sql",
+    "V11__company_focus_and_activity.sql",
+    "V12__company_news.sql",
+    "V13__erd_alignment.sql",
+    "V14__users.sql",
+    "V15__email_verification.sql",
+    "V16__news_article_drop_ai_columns.sql",
+    "V17__erd_alignment_followup.sql",
+    "V18__cover_letter.sql",
+    "V19__interview.sql",
+    "V20__jd_ai_analysis.sql",
+    "V21__jd_ai_conversation.sql",
+    "V22__agent_room.sql",
+    "V23__agent_message.sql",
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
+  ],
+  "source": ".cache/otrCprInvstmntSttus_*.json (타법인 출자현황) + staged/business_report/facility.csv (사업보고서 시설투자)",
+  "seed_rows": 7911,
+  "null_counts": {
+    "corp_code": 0,
+    "fiscal_year": 0,
+    "activity_type": 0,
+    "field_name": 3828,
+    "purpose": 843,
+    "amount": 356,
+    "rcept_no": 0,
+    "counterparty": 4504
+  },
+  "notes": [
+    "activity_type 은 corporate_invest·facility 둘 — ma·transfer 는 원천 미확보",
+    "amount 는 기말 장부가액이다 (사건이 아니라 연말 잔액 스냅샷)",
+    "corporate_invest 의 field_name 은 원천에 대응하는 값이 없어 비운다",
+    "facility 의 counterparty 는 비운다 — 상대방이 있는 거래가 아니다",
+    "investment_period 는 표에 있어도 뽑지 않는다 (팀장 기준 2항)"
+  ],
+  "distinct_corp_codes": 436,
+  "fiscal_years": [
+    2021,
+    2025
+  ],
+  "build_stats": {
+    "기말 장부가액 없음(NULL 로 둠)": 356,
+    "시설투자 행": 4502,
+    "합계 행 제외": 47,
+    "행": 3409
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-055", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "비동기 메시지 처리 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-055", "document_type": "EXPERIENCE", "text": "Kafka 세미나에 참석했으며 생산자나 소비자를 구현한 프로젝트 경험은 없습니다."}],
+  "expected_findings": [{"experience_type": "MESSAGING", "claim_quote": "Kafka 세미나에 참석했으며 생산자나 소비자를 구현한 프로젝트 경험은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["Kafka 토픽 파티션 12개를 운영했습니다.", "메시지 키 저장으로 중복 소비를 방지했습니다.", "초당 2만 개 이벤트를 처리했습니다."]
+}

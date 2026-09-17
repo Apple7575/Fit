@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-058", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "모니터링이나 로깅을 개선한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-058", "document_type": "SELF_INTRO", "text": "로그와 메트릭의 차이를 학습했지만 서비스 관측 체계를 구성한 경험은 없습니다."}],
+  "expected_findings": [{"experience_type": "OBSERVABILITY", "claim_quote": "로그와 메트릭의 차이를 학습했지만 서비스 관측 체계를 구성한 경험은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "RESULT"]}],
+  "forbidden_output_substrings": ["서비스 추적에 OpenTelemetry를 적용했습니다.", "운영 지표 대시보드 14개를 만들었습니다.", "서비스 장애 MTTD를 80% 단축했습니다."]
+}

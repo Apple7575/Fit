@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-028", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "입력 검증이나 보안을 개선한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-028", "document_type": "PORTFOLIO", "text": "게시글 검색어가 쿼리 문자열에 직접 이어 붙는 문제를 발견해 파라미터 바인딩을 적용하고 특수문자 입력 테스트를 통과시켰습니다."}],
+  "expected_findings": [{"experience_type": "SECURITY", "claim_quote": "게시글 검색어가 쿼리 문자열에 직접 이어 붙는 문제를 발견해 파라미터 바인딩을 적용하고 특수문자 입력 테스트를 통과시켰습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "VERIFICATION"], "missing_elements": ["REASONING"]}],
+  "forbidden_output_substrings": ["게시글 검색 API 앞단에 WAF를 도입했습니다.", "SQL 인젝션 공격 17종을 차단했습니다.", "검색 API 보안 등급 A를 획득했습니다."]
+}

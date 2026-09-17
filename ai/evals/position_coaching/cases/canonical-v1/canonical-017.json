@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-017", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "호환성을 고려해 API를 개선한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-017", "document_type": "RESUME", "text": "구형 앱과의 호환 문제를 피하려고 기존 응답 필드는 유지한 채 신규 배송 예정일 필드를 추가했습니다."}],
+  "expected_findings": [{"experience_type": "API_DESIGN", "claim_quote": "구형 앱과의 호환 문제를 피하려고 기존 응답 필드는 유지한 채 신규 배송 예정일 필드를 추가했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "REASONING"], "missing_elements": ["ROLE", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["배송 API 버전 v3를 출시했습니다.", "필드 추가 후 앱 크래시 0건을 달성했습니다.", "배송 API 문서를 Swagger로 자동 생성했습니다."]
+}

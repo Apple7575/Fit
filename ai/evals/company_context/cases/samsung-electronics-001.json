@@ -1,0 +1,164 @@
+{
+  "schema_version": "1.1",
+  "dataset_status": "DRAFT",
+  "case_id": "company-context-samsung-001",
+  "case_purpose": "기업 주장 추출, 사실 판정과 지원 이유 연결 판정을 한 자소서에서 함께 검증한다.",
+  "as_of": "2025-12-31",
+  "input": {
+    "company_name": "삼성전자",
+    "corp_code": "00126380",
+    "job_name": "AI 엔지니어",
+    "question": "삼성전자를 지원한 이유와 입사 후 이루고 싶은 목표를 본인의 경험과 연결하여 작성해 주세요. 이 문항은 평가를 위해 만든 가상 문항입니다.",
+    "essay": "삼성전자는 2024년 연결 기준 약 300조원의 매출을 기록한 글로벌 전자 기업입니다. 특히 DS 부문이 전체 매출의 58.1%를 차지하는 만큼 AI 반도체가 회사 성장을 주도한다고 생각합니다. 삼성전자는 2024년 AI 반도체 연구에만 35조원을 투자했고 전 세계에 265,410건의 특허를 보유하고 있습니다. 또한 2011년 이후 14년 연속 스마트폰 출하량 세계 1위를 유지하며 기술을 제품으로 확장하는 역량을 증명했습니다. 최근 출시한 AI 통버블 세탁기는 AI 절약 모드로 에너지 사용량을 최대 50% 줄였습니다. SK텔레콤과 6G·AI-RAN 공동 연구를 시작하고 엔비디아에 HBM4를 공급하는 점에서도 AI를 제품과 인프라에 함께 적용하려는 방향을 확인했습니다. 삼성전자는 2025년에 하만의 ZF ADAS 사업 인수를 완료해 전장 사업 기반도 확보했습니다. 더 나아가 자체 자율주행 운영체제 S-Auto를 모든 협력 차량에 상용화한 것으로 알고 있습니다. 저는 대학 프로젝트에서 엣지 환경의 이미지 분류 모델을 경량화해 추론 시간을 30% 줄였습니다. 이 경험을 바탕으로 메모리와 네트워크, 가전과 전장을 연결하는 온디바이스 AI 기능을 개발하고 싶어 지원했습니다."
+  },
+  "gold_claims": [
+    {
+      "claim_id": "company-claim-001",
+      "claim": "삼성전자는 2024년 연결 기준 약 300조원의 매출을 기록했다.",
+      "essay_evidence": "삼성전자는 2024년 연결 기준 약 300조원의 매출을 기록한 글로벌 전자 기업입니다.",
+      "claim_type": "PERFORMANCE",
+      "fact_verdict": "SUPPORTED",
+      "connection_verdict": "DISCONNECTED",
+      "evidence_ids": [
+        "metric-00126380-2024-revenue"
+      ],
+      "reason": "구조화 재무 근거의 2024년 연결 매출액은 300조 8,709억 300만원으로 약 300조원이라는 표현을 뒷받침한다.",
+      "missing_link": "기업 규모가 지원자의 AI 개발 목표와 왜 연결되는지 이 문장만으로는 설명되지 않는다."
+    },
+    {
+      "claim_id": "company-claim-002",
+      "claim": "DS 부문이 삼성전자 전체 매출의 58.1%를 차지한다.",
+      "essay_evidence": "특히 DS 부문이 전체 매출의 58.1%를 차지하는 만큼 AI 반도체가 회사 성장을 주도한다고 생각합니다.",
+      "claim_type": "PERFORMANCE",
+      "fact_verdict": "CONTRADICTED",
+      "connection_verdict": "INDIRECT",
+      "evidence_ids": [
+        "dart-20250311001085-007-001"
+      ],
+      "reason": "사업보고서는 2024년 매출 비중을 DX 58.1%, DS 36.9%로 기재하므로 부문과 비율을 잘못 연결했다.",
+      "missing_link": "사실 오류를 고친 뒤 DS 사업과 지원자의 AI 경험이 연결되는 이유를 유지해야 한다."
+    },
+    {
+      "claim_id": "company-claim-003",
+      "claim": "삼성전자는 2024년 AI 반도체 연구에만 35조원을 투자했다.",
+      "essay_evidence": "삼성전자는 2024년 AI 반도체 연구에만 35조원을 투자했고 전 세계에 265,410건의 특허를 보유하고 있습니다.",
+      "claim_type": "TECHNOLOGY_OR_RND",
+      "fact_verdict": "PARTIALLY_SUPPORTED",
+      "connection_verdict": "INDIRECT",
+      "evidence_ids": [
+        "dart-20250311001085-012-001"
+      ],
+      "reason": "사업보고서는 2024년 총 R&D 투자액 35조원을 확인하지만 전액이 AI 반도체 연구에 사용됐다고 한정하지 않는다.",
+      "missing_link": "35조원을 전체 R&D 투자액으로 고치고 지원자가 관심 있는 AI 연구 영역을 별도로 설명해야 한다."
+    },
+    {
+      "claim_id": "company-claim-004",
+      "claim": "삼성전자는 전 세계에 265,410건의 특허를 보유하고 있다.",
+      "essay_evidence": "삼성전자는 2024년 AI 반도체 연구에만 35조원을 투자했고 전 세계에 265,410건의 특허를 보유하고 있습니다.",
+      "claim_type": "PERFORMANCE",
+      "fact_verdict": "SUPPORTED",
+      "connection_verdict": "DISCONNECTED",
+      "evidence_ids": [
+        "dart-20250311001085-012-001"
+      ],
+      "reason": "2024년 말 연결 기준 국가별 특허 등록 건수 합계가 265,410건으로 기재돼 있다.",
+      "missing_link": "특허 보유 규모가 지원자의 목표와 어떤 관계인지 구체적인 설명이 없다."
+    },
+    {
+      "claim_id": "company-claim-005",
+      "claim": "삼성전자는 2011년 이후 14년 연속 스마트폰 출하량 세계 1위를 유지했다.",
+      "essay_evidence": "또한 2011년 이후 14년 연속 스마트폰 출하량 세계 1위를 유지하며 기술을 제품으로 확장하는 역량을 증명했습니다.",
+      "claim_type": "PERFORMANCE",
+      "fact_verdict": "SUPPORTED",
+      "connection_verdict": "INDIRECT",
+      "evidence_ids": [
+        "dart-20250311001085-012-005"
+      ],
+      "reason": "사업보고서가 TechInsights 2025년 2월 자료를 인용해 같은 내용을 명시한다.",
+      "missing_link": "스마트폰 시장 지위와 지원자의 온디바이스 AI 목표 사이의 연결을 명시해야 한다."
+    },
+    {
+      "claim_id": "company-claim-006",
+      "claim": "AI 통버블 세탁기의 AI 절약 모드는 에너지 사용량을 최대 50% 줄인다.",
+      "essay_evidence": "최근 출시한 AI 통버블 세탁기는 AI 절약 모드로 에너지 사용량을 최대 50% 줄였습니다.",
+      "claim_type": "BUSINESS_OR_PRODUCT",
+      "fact_verdict": "CONTRADICTED",
+      "connection_verdict": "DIRECT",
+      "evidence_ids": [
+        "news-9cc30c93cd170253"
+      ],
+      "reason": "기사에 기재된 최대 에너지 절감률은 20%이므로 자소서의 50%와 충돌한다.",
+      "missing_link": "수치를 20%로 고치고 해당 기능이 지원자의 엣지 AI 경험과 어떤 기술 문제로 연결되는지 설명해야 한다."
+    },
+    {
+      "claim_id": "company-claim-007",
+      "claim": "삼성전자는 SK텔레콤과 6G·AI-RAN 공동 연구를 시작했다.",
+      "essay_evidence": "SK텔레콤과 6G·AI-RAN 공동 연구를 시작하고 엔비디아에 HBM4를 공급하는 점에서도 AI를 제품과 인프라에 함께 적용하려는 방향을 확인했습니다.",
+      "claim_type": "TECHNOLOGY_OR_RND",
+      "fact_verdict": "SUPPORTED",
+      "connection_verdict": "DIRECT",
+      "evidence_ids": [
+        "news-7114842f65d9ab1c"
+      ],
+      "reason": "기사는 양사가 업무협약을 체결하고 AI 기반 채널 추정 등 6G 핵심 기술을 공동 연구·실증한다고 설명한다.",
+      "missing_link": "없음"
+    },
+    {
+      "claim_id": "company-claim-008",
+      "claim": "삼성전자는 엔비디아에 HBM4를 공급한다.",
+      "essay_evidence": "SK텔레콤과 6G·AI-RAN 공동 연구를 시작하고 엔비디아에 HBM4를 공급하는 점에서도 AI를 제품과 인프라에 함께 적용하려는 방향을 확인했습니다.",
+      "claim_type": "BUSINESS_OR_PRODUCT",
+      "fact_verdict": "SUPPORTED",
+      "connection_verdict": "DIRECT",
+      "evidence_ids": [
+        "news-09d8c5d3f4a339b7"
+      ],
+      "reason": "기사에서 삼성전자가 엔비디아에 HBM4를 포함한 차세대 메모리 제품을 공급한다고 명시한다.",
+      "missing_link": "없음"
+    },
+    {
+      "claim_id": "company-claim-009",
+      "claim": "삼성전자는 2025년에 하만의 ZF ADAS 사업 인수를 완료했다.",
+      "essay_evidence": "삼성전자는 2025년에 하만의 ZF ADAS 사업 인수를 완료해 전장 사업 기반도 확보했습니다.",
+      "claim_type": "STRATEGY_OR_GOAL",
+      "fact_verdict": "CONTRADICTED",
+      "connection_verdict": "DIRECT",
+      "evidence_ids": [
+        "news-617e371c71f39484"
+      ],
+      "reason": "2025년 12월 기사는 인수 발표 사실과 함께 인수 절차가 2026년 내 마무리될 예정이라고 설명하므로 2025년 완료 주장은 맞지 않는다.",
+      "missing_link": "인수 발표 또는 추진으로 고치고 완료된 역량처럼 단정하지 않아야 한다."
+    },
+    {
+      "claim_id": "company-claim-010",
+      "claim": "삼성전자는 자체 자율주행 운영체제 S-Auto를 모든 협력 차량에 상용화했다.",
+      "essay_evidence": "더 나아가 자체 자율주행 운영체제 S-Auto를 모든 협력 차량에 상용화한 것으로 알고 있습니다.",
+      "claim_type": "BUSINESS_OR_PRODUCT",
+      "fact_verdict": "NOT_VERIFIABLE",
+      "connection_verdict": "NOT_ASSESSABLE",
+      "evidence_ids": [],
+      "reason": "현재 고정 근거에는 S-Auto라는 운영체제나 모든 협력 차량 대상 상용화를 확인하거나 반박할 내용이 없다.",
+      "missing_link": "확인 가능한 출처를 추가하지 못하면 연결 판단을 보류하고 해당 문장을 제거해야 한다."
+    }
+  ],
+  "non_company_statements": [
+    "지원자는 대학 프로젝트에서 엣지 환경의 이미지 분류 모델을 경량화해 추론 시간을 30% 줄였다.",
+    "지원자는 온디바이스 AI 기능을 개발하고 싶어 지원했다."
+  ],
+  "forbidden_outputs": [
+    "지원자의 프로젝트에 사용된 모델, 데이터셋, 기술 스택이나 추가 성과를 만들어내지 않는다.",
+    "근거가 없는 S-Auto 주장을 사실로 보완하거나 유사한 제품명을 만들어내지 않는다.",
+    "DX와 DS의 매출 비중을 바꾸거나 2024년 전체 R&D 투자액을 AI 반도체 전용 투자액으로 단정하지 않는다.",
+    "뉴스나 사업보고서에 없는 문장을 직접 인용문으로 생성하지 않는다.",
+    "사실이 맞는 기업 정보만으로 지원 이유가 충분하다고 판정하지 않는다."
+  ],
+  "evidence_bundle": {
+    "manifest": "data/manifests/evaluation/company_context/00126380-evidence.json",
+    "content": "data/curated/evaluation/company_context/00126380/evidence.jsonl"
+  },
+  "review": {
+    "author_reviewed": false,
+    "second_reviewer_reviewed": false,
+    "notes": "가상 입력과 첫 정답 라벨을 작성한 상태다. 실행 전 근거 원문과 라벨 정의를 다시 대조한다."
+  }
+}

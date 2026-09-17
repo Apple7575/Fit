@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "document_id": "samsung-ds-software-job-intro-2026-09-12",
+  "company_name": "삼성전자",
+  "organization": "DS부문",
+  "job_title": "S/W 개발",
+  "source_type": "OFFICIAL_JOB_DESCRIPTION",
+  "source_url": "https://www.samsungcareers.com/subsid/detail/C10CAH",
+  "retrieved_at": "2026-09-12",
+  "published_at": null,
+  "valid_until": null,
+  "source_status": "ACCESSIBLE",
+  "sections": [
+    {
+      "section_id": "job-summary-01",
+      "section_type": "JOB_SUMMARY",
+      "ordinal": 1,
+      "text": "S/W기술에 관한 지식을 바탕으로 반도체가 활용된 Solution 제품을 연구/개발 하는 직무."
+    },
+    {
+      "section_id": "responsibility-product-software",
+      "section_type": "RESPONSIBILITY",
+      "ordinal": 2,
+      "text": "제품 (SSD, DRAM Module, CPU, GPU, Mobile AP, DDI, PMIC, Secure IP, Multimedia 등)의 요구 사항에 부합하는 S/W 개발"
+    },
+    {
+      "section_id": "responsibility-software-quality",
+      "section_type": "RESPONSIBILITY",
+      "ordinal": 3,
+      "text": "개발 방법론 및 프로세스 개선, 인프라/툴 구축 및 자동화, S/W 분석 및 품질관리"
+    },
+    {
+      "section_id": "responsibility-data-ml-quality",
+      "section_type": "RESPONSIBILITY",
+      "ordinal": 4,
+      "text": "제품별 Test Platform 개발 및 Data 및 Machine Learning 기반 S/W 분석 및 품질 관리"
+    },
+    {
+      "section_id": "responsibility-smart-factory",
+      "section_type": "RESPONSIBILITY",
+      "ordinal": 5,
+      "text": "생산시스템 개발/운영 및 이상 감지/분석 지능화 시스템 개발/운영"
+    },
+    {
+      "section_id": "qualification-programming",
+      "section_type": "REQUIRED_QUALIFICATION",
+      "ordinal": 6,
+      "text": "프로그래밍 언어(C / C++ / C# / Python / Java / R / Spotfire 등) 및 알고리즘 문제해결 역량 보유자"
+    },
+    {
+      "section_id": "qualification-requirement-design-test",
+      "section_type": "REQUIRED_QUALIFICATION",
+      "ordinal": 7,
+      "text": "요구사항을 이해하고 이에 기반한 소프트웨어 설계 및 Test script 구현 역량 보유자"
+    },
+    {
+      "section_id": "qualification-data-mining",
+      "section_type": "REQUIRED_QUALIFICATION",
+      "ordinal": 8,
+      "text": "데이터 마이닝 역량 보유자"
+    }
+  ]
+}

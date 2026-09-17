@@ -1,0 +1,19 @@
+{
+  "_request": {
+    "path": "/api/companies",
+    "params": {
+      "keyword": " "
+    }
+  },
+  "_status": 400,
+  "_elapsed_ms": 0,
+  "_content_type": "application/json",
+  "body": {
+    "success": false,
+    "error": {
+      "code": "INVALID_PARAMETER",
+      "message": "요청 파라미터가 올바르지 않습니다."
+    }
+  },
+  "text": null
+}

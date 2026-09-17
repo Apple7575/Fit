@@ -1,0 +1,24 @@
+{
+  "_request": {
+    "path": "/api/companies/01384787",
+    "params": {}
+  },
+  "_status": 200,
+  "_elapsed_ms": 16,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "corpCode": "01384787",
+      "corpName": "시프트업",
+      "industryCode": "58",
+      "industryName": "출판업",
+      "ceo": "김형태",
+      "establishedDate": "2013-12-02",
+      "address": null,
+      "homepageUrl": null,
+      "dataYear": 2025
+    }
+  },
+  "text": null
+}

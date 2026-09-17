@@ -1,0 +1,12 @@
+{
+  "checked_at": "2026-09-05T05:23:45.799816+00:00",
+  "user_agent": "SSAFYNewsPoC/0.1",
+  "robots_url": "https://news.google.com/robots.txt",
+  "target": "https://news.google.com/rss/search?q=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90&hl=ko&gl=KR&ceid=KR%3Ako",
+  "rss_requested": false,
+  "http_status": 200,
+  "final_url": "https://news.google.com/robots.txt",
+  "robots_sha256": "4502e8995fdd07a23e4ecc527fda8ac19fb69505843fa49ce3958bab47f19e88",
+  "robots_allowed": false,
+  "status": "disallowed"
+}

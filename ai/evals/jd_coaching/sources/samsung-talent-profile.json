@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "document_id": "samsung-talent-profile-2026-09-12",
+  "company_name": "삼성전자",
+  "organization": null,
+  "job_title": null,
+  "source_type": "TALENT_PROFILE",
+  "source_url": "https://www.samsungcareers.com/subsid/detail/C10CAH",
+  "retrieved_at": "2026-09-12",
+  "published_at": null,
+  "valid_until": null,
+  "source_status": "ACCESSIBLE",
+  "sections": [
+    {
+      "section_id": "talent-passion",
+      "section_type": "TALENT_VALUE",
+      "ordinal": 1,
+      "text": "끊임없는 열정으로 미래에 도전하는 인재"
+    },
+    {
+      "section_id": "talent-creativity",
+      "section_type": "TALENT_VALUE",
+      "ordinal": 2,
+      "text": "창의와 혁신으로 세상을 변화시키는 인재"
+    },
+    {
+      "section_id": "talent-integrity",
+      "section_type": "TALENT_VALUE",
+      "ordinal": 3,
+      "text": "정직과 바른 행동으로 역할과 책임을 다하는 인재"
+    }
+  ]
+}

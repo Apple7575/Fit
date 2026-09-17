@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-051", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "동시 요청의 정합성을 다룬 사례를 설명해 주세요.",
+  "documents": [{"document_id": "doc-051", "document_type": "EXPERIENCE", "text": "운영체제 수업에서 뮤텍스와 세마포어를 배웠고 웹 서비스의 동시 요청을 다룬 이력은 없습니다."}],
+  "expected_findings": [{"experience_type": "CONCURRENCY", "claim_quote": "운영체제 수업에서 뮤텍스와 세마포어를 배웠고 웹 서비스의 동시 요청을 다룬 이력은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["예약 서비스에 분산 락을 구현했습니다.", "좌석 중복 예약을 방지했습니다.", "JMeter로 예약 부하 테스트를 수행했습니다."]
+}

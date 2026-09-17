@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-029", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "백엔드 모듈을 개선한 본인의 기여를 설명해 주세요.",
+  "documents": [{"document_id": "doc-029", "document_type": "RESUME", "text": "여러 서비스에 중복된 날짜 검증 로직 문제에서 공통 모듈 담당자로 규칙 객체와 단위 테스트를 작성했습니다."}],
+  "expected_findings": [{"experience_type": "OTHER_BACKEND", "claim_quote": "여러 서비스에 중복된 날짜 검증 로직 문제에서 공통 모듈 담당자로 규칙 객체와 단위 테스트를 작성했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ROLE", "ACTION"], "missing_elements": ["RESULT"]}],
+  "forbidden_output_substrings": ["날짜 검증 모듈을 사내 라이브러리로 배포했습니다.", "중복 검증 코드 2천 줄을 삭제했습니다.", "기능 개발 속도를 25% 향상했습니다."]
+}

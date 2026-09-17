@@ -1,0 +1,68 @@
+{
+  "_request": {
+    "path": "/api/companies/00126380/metrics",
+    "params": {
+      "year": 2021
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 16,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "corpCode": "00126380",
+      "year": 2021,
+      "metrics": [
+        {
+          "key": "revenue",
+          "label": "매출액",
+          "value": 279604799000000,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "operating_profit",
+          "label": "영업이익",
+          "value": 51633856000000,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "net_income",
+          "label": "당기순이익",
+          "value": 39907450000000,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "employee_count",
+          "label": "직원 수",
+          "value": 113485,
+          "unit": "PERSON",
+          "yoy": null
+        },
+        {
+          "key": "average_salary",
+          "label": "1인 평균 급여",
+          "value": 143955571,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "average_tenure",
+          "label": "평균 근속",
+          "value": 12.1,
+          "unit": "YEAR",
+          "yoy": null
+        }
+      ],
+      "profitability": {
+        "operatingMargin": 18.5,
+        "netMargin": 14.3,
+        "debtRatio": 39.9
+      }
+    }
+  },
+  "text": null
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-014", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "백엔드 개발에서 맡은 역할과 성과를 소개해 주세요.",
+  "documents": [{"document_id": "doc-014", "document_type": "SELF_INTRO", "text": "대용량 CSV 업로드가 웹 요청 시간 제한을 넘기는 문제에서 저는 변환 파이프라인을 맡았습니다. 파일을 행 단위로 읽어 청크 작업으로 분할하는 스트리밍 처리를 구현했고, 1GB 샘플 파일 처리 결과 요청 타임아웃 없이 완료되어 최대 힙 사용량이 1.8GB에서 420MB로 줄었습니다."}],
+  "expected_findings": [{"experience_type": "OTHER_BACKEND", "claim_quote": "대용량 CSV 업로드가 웹 요청 시간 제한을 넘기는 문제에서 저는 변환 파이프라인을 맡았습니다. 파일을 행 단위로 읽어 청크 작업으로 분할하는 스트리밍 처리를 구현했고, 1GB 샘플 파일 처리 결과 요청 타임아웃 없이 완료되어 최대 힙 사용량이 1.8GB에서 420MB로 줄었습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ROLE", "ACTION", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["CSV 변환에 Apache Spark를 사용했습니다.", "1GB 파일 처리 시간을 5초로 줄였습니다.", "CSV 업로드 성공률 100%를 달성했습니다."]
+}

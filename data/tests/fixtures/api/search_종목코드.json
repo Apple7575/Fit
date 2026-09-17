@@ -1,0 +1,27 @@
+{
+  "_request": {
+    "path": "/api/companies",
+    "params": {
+      "keyword": "005930"
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 0,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "items": [
+        {
+          "corpCode": "00126380",
+          "corpName": "삼성전자",
+          "stockCode": "005930",
+          "industryCode": "26",
+          "industryName": "전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업"
+        }
+      ],
+      "total": 1
+    }
+  },
+  "text": null
+}

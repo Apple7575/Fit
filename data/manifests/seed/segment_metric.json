@@ -1,0 +1,68 @@
+{
+  "table": "segment_metric",
+  "generated_at": "2026-09-17T07:04:16.595522+00:00",
+  "generated_by": "scripts/build_curated_seed.py",
+  "header": [
+    "corp_code",
+    "fiscal_year",
+    "segment_name",
+    "metric_code",
+    "metric_value"
+  ],
+  "columns_excluded": [
+    "updated_at"
+  ],
+  "flyway_files": [
+    "V1__init_schema.sql",
+    "V2__seed_metric.sql",
+    "V3__industry_ksic_division.sql",
+    "V4__rename_average_metric_codes.sql",
+    "V5__add_metric_evidence.sql",
+    "V6__document_corp_name_source.sql",
+    "V7__metric_catalog_v2.sql",
+    "V8__company_address_homepage.sql",
+    "V9__dart_otr_cpr_invstmnt.sql",
+    "V10__company_profile.sql",
+    "V11__company_focus_and_activity.sql",
+    "V12__company_news.sql",
+    "V13__erd_alignment.sql",
+    "V14__users.sql",
+    "V15__email_verification.sql",
+    "V16__news_article_drop_ai_columns.sql",
+    "V17__erd_alignment_followup.sql",
+    "V18__cover_letter.sql",
+    "V19__interview.sql",
+    "V20__jd_ai_analysis.sql",
+    "V21__jd_ai_conversation.sql",
+    "V22__agent_room.sql",
+    "V23__agent_message.sql",
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
+  ],
+  "source": ".cache/empSttus_*.json (직원 현황) + staged/business_report/segment_revenue.csv (사업보고서)",
+  "seed_rows": 47746,
+  "null_counts": {
+    "corp_code": 0,
+    "fiscal_year": 0,
+    "segment_name": 0,
+    "metric_code": 0,
+    "metric_value": 260
+  },
+  "notes": [
+    "segment_employee_count 의 부문 축은 fo_bbm 이고 성별 행을 접어 하나로 만든다",
+    "segment_revenue 는 사업보고서 원문에서 오고 부문 축이 다르다 — 직원 부문과 사업 부문이 한 기업에 함께 보인다 (S15P21A504-73)",
+    "값 없는 행은 만들지 않는다 (MR !81 과 같은 규칙)"
+  ],
+  "distinct_corp_codes": 2666,
+  "fiscal_years": [
+    2021,
+    2025
+  ],
+  "build_stats": {
+    "사업보고서 부문 매출": 26942,
+    "인원 미기재": 949,
+    "직원현황 부문(기업×연도×부문)": 20804,
+    "합계 행 제외": 1431
+  }
+}

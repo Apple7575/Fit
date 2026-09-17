@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "data-001", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "데이터 분석가", "priority_requirements": ["지표 설계"]},
+  "question": "의사결정 경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "재구매 분석을 맡아 단순 건수 대신 고객별 재구매율을 선택했고, 중복 고객을 제거한 뒤 이탈군을 찾아 캠페인 대상을 좁혔습니다."}],
+  "expected_findings": [{"claim_type": "DECISION", "claim_quote": "재구매 분석을 맡아 단순 건수 대신 고객별 재구매율을 선택했고, 중복 고객을 제거한 뒤 이탈군을 찾아 캠페인 대상을 좁혔습니다.", "verdict": "SUFFICIENT", "present_elements": ["SITUATION", "ROLE", "ACTION", "REASONING", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["합격", "매출 20%"]
+}
