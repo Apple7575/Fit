@@ -280,7 +280,7 @@ public class RoomService {
     /**
      * 방에 붙은 공고를 화면 표시용으로 바꾼다.
      *
-     * <p>AI 서비스가 분석을 지웠으면 FK 가 job_context_id 를 NULL 로 만든다. 그래도 조회 시점에
+     * <p>AI 서비스가 분석을 지웠으면 FK 가 context_id 를 NULL 로 만든다. 그래도 조회 시점에
      * 사라져 있을 수 있으므로 없으면 공고 없는 방으로 본다 — 방과 대화는 그대로 열려야 한다.
      */
     private RoomResponse.JobContextRef jobContextRef(String contextId) {

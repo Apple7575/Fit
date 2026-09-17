@@ -33,7 +33,7 @@ public class Room {
     private Long coverLetterId;
 
     /** 검토 대상 채용공고 분석(ai_job_contexts.context_id). 공고 없이 연 방은 NULL. */
-    @Column(name = "job_context_id", length = 80)
+    @Column(name = "context_id", length = 80)
     private String jobContextId;
 
     @Column(name = "title", length = 120, nullable = false)
