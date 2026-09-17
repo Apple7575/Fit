@@ -134,6 +134,12 @@ def _from_table(doc: Document, t: Table, p: Patterns) -> tuple[list[Segment], di
             continue
         if sp.exclude_row.search(name):
             continue
+        # 부문이 아니라 재무상태표 항목이다. 같은 섹션의 '부문별 자산·부채' 표가
+        # 부문 매출표로 뽑히는 것을 막는다 — OCI 2025 는 총자산·유형자산·무형자산·
+        # 총부채 네 행의 합(2.07조)이 매출(2.14조)과 3.2% 차이라 합계 대조를
+        # 우연히 통과했다. 스칼라 하나만 보는 대조로는 가려낼 수 없는 표다.
+        if sp.balance_sheet_row.match(name):
+            continue
         # 라벨 셋 어디에든 걸리면 매출 행이 아니다. 0열만 보면 현대차처럼
         # 매출액 행과 영업이익 행이 같은 이름으로 합쳐진다.
         if any(sp.exclude_cell.search(squash(c)) for c in row[:3]):

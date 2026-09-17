@@ -67,6 +67,7 @@ class SegmentPatterns:
     table_hint: re.Pattern
     exclude_row: re.Pattern
     exclude_cell: re.Pattern
+    balance_sheet_row: re.Pattern                    # 부문이 아니라 재무상태표 항목
     name_strip: re.Pattern
     name_max_len: int
     value_position: int
@@ -82,8 +83,10 @@ class FacilityPatterns:
     purpose_header: re.Pattern
     amount_header_priority: tuple[re.Pattern, ...]   # 순서 = 우선순위
     amount_exclude_header: re.Pattern
+    subheader_cell: re.Pattern                       # 2단 헤더의 아랫단
     foreign_currency: re.Pattern
-    period_in_purpose: re.Pattern
+    period_cell: re.Pattern                          # 항목·목적 칸의 투자기간
+    period_field: re.Pattern                         # 연도로 시작하는 항목 이름
 
 
 @dataclass(frozen=True)
@@ -209,6 +212,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
                 table_hint=_re(br["segment"]["table_hint_re"]),
                 exclude_row=_re(br["segment"]["exclude_row_re"]),
                 exclude_cell=_re(br["segment"]["exclude_cell_re"]),
+                balance_sheet_row=_re(br["segment"]["balance_sheet_row_re"]),
                 name_strip=_re(br["segment"]["name_strip_re"]),
                 name_max_len=int(br["segment"]["name_max_len"]),
                 value_position=int(br["segment"]["value_position"]),
@@ -222,8 +226,10 @@ def load_patterns(path: Path | None = None) -> Patterns:
                 amount_header_priority=tuple(
                     _re(x) for x in br["facility"]["amount_header_priority_re"]),
                 amount_exclude_header=_re(br["facility"]["amount_exclude_header_re"]),
+                subheader_cell=_re(br["facility"]["subheader_cell_re"]),
                 foreign_currency=_re(br["facility"]["foreign_currency_re"]),
-                period_in_purpose=_re(br["facility"]["period_in_purpose_re"]),
+                period_cell=_re(br["facility"]["period_cell_re"]),
+                period_field=_re(br["facility"]["period_field_re"]),
             ),
             text=TextPatterns(
                 main_business_section=_re(br["text"]["main_business_section_re"]),
