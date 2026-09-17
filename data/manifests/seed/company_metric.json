@@ -1,6 +1,6 @@
 {
   "table": "company_metric",
-  "generated_at": "2026-09-16T08:03:26.544697+00:00",
+  "generated_at": "2026-09-17T04:02:47.290663+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -35,16 +35,17 @@
     "V20__jd_ai_analysis.sql",
     "V21__jd_ai_conversation.sql",
     "V22__agent_room.sql",
-    "V23__agent_message.sql"
+    "V23__agent_message.sql",
+    "V24__agent_room_job_context.sql"
   ],
   "source": "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
-  "seed_rows": 59200,
+  "seed_rows": 61099,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "metric_code": 0,
     "metric_value": 0,
-    "fs_div": 873
+    "fs_div": 2772
   },
   "notes": [
     "연결 우선·별도 폴백. 고른 쪽을 fs_div 에 남긴다",
@@ -66,10 +67,10 @@
     },
     "pairs": 11880,
     "rd": {
-      "판정 high": 851,
-      "판정 mismatch": 150,
-      "판정 medium": 22,
-      "채택": 873
+      "판정 high": 2684,
+      "판정 mismatch": 532,
+      "판정 medium": 88,
+      "채택": 2772
     },
     "skipped_currency": {
       "USD": 268,
