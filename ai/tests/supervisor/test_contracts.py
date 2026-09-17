@@ -6,6 +6,22 @@ from ai.supervisor.contracts import SupervisorPlan, SupervisorRunRequest
 
 
 class SupervisorContractsTest(unittest.TestCase):
+    def test_news_context_requires_job_and_company_ids(self):
+        request = SupervisorRunRequest.model_validate({
+            "instruction": "최근 기업 변화를 검토해줘",
+            "documents": [{
+                "document_id": "essay-1",
+                "document_type": "SELF_INTRO",
+                "text": "Spring 기반 주문 API를 구현했습니다.",
+            }],
+            "conversation": [],
+            "agent_contexts": {
+                "news": {"job_context_id": "ctx-1", "corp_code": "00126380"},
+            },
+        })
+
+        self.assertEqual(request.agent_contexts.news.corp_code, "00126380")
+
     def test_accepts_supported_documents_and_contexts(self):
         request = SupervisorRunRequest.model_validate({
             "instruction": "공고 적합성과 경험 깊이를 검토해줘",

@@ -1,4 +1,5 @@
 import unittest
+import json
 from unittest.mock import patch
 
 from ai.supervisor.contracts import AgentResult
@@ -17,6 +18,30 @@ class FakeQwen:
 
 
 class QwenSupervisorModelTest(unittest.TestCase):
+    def test_accepts_news_plan_and_describes_news_capability(self):
+        calls = []
+
+        def qwen(config, messages, **kwargs):
+            calls.append({"config": config, "messages": messages, **kwargs})
+            return {"output": {"selected_agents": ["news"], "reason": "최근 변화 확인"}}
+
+        model = QwenSupervisorModel({}, qwen_caller=qwen)
+
+        plan = model.create_plan(
+            instruction="최근 기업 변화를 검토해줘",
+            documents=[],
+            conversation=[],
+            available_agents=["news"],
+            validation_error=None,
+        )
+
+        payload = json.loads(calls[0]["messages"][1]["content"])
+        self.assertEqual(plan.selected_agents, ["news"])
+        self.assertEqual(
+            payload["agent_capabilities"]["news"],
+            "기업·산업·직무 변화의 기사 근거와 JD 관련성 분석",
+        )
+
     def test_malformed_plan_output_uses_dedicated_contract_error(self):
         for response in (
             {}, None, {"output": None},
@@ -85,7 +110,7 @@ class QwenSupervisorModelTest(unittest.TestCase):
 
         self.assertEqual(
             set(PLAN_SCHEMA["properties"]["selected_agents"]["items"]["enum"]),
-            {"jd", "position", "writing"},
+            {"jd", "position", "news", "writing"},
         )
         prompt = qwen.calls[0]["messages"][0]["content"]
         self.assertIn("Writing", prompt)

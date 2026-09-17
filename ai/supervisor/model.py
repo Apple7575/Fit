@@ -16,7 +16,7 @@ PLAN_SCHEMA = {
         "selected_agents": {
             "type": "array",
             "minItems": 1,
-            "items": {"type": "string", "enum": ["jd", "position", "writing"]},
+            "items": {"type": "string", "enum": ["jd", "position", "news", "writing"]},
         },
         "reason": {"type": "string", "minLength": 1},
     },
@@ -86,6 +86,7 @@ class QwenSupervisorModel:
             "agent_capabilities": {
                 "jd": "채용 공고 요구사항 대비 지원자 근거 검토",
                 "position": "백엔드 경험의 문제·행동·검증·결과 구체성 검토",
+                "news": "기업·산업·직무 변화의 기사 근거와 JD 관련성 분석",
                 "writing": "자기소개서 첨삭 또는 작성 방식 설명",
             },
         }

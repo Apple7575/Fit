@@ -3,6 +3,7 @@ import unittest
 from ai.supervisor.adapters import (
     AgentRegistry,
     JdAgentAdapter,
+    NewsAgentAdapter,
     PositionAgentAdapter,
     WritingAgentAdapter,
 )
@@ -28,6 +29,22 @@ class FakePositionService:
         return {"rubric": {"id": rubric_id}, "position_context": position_context}
 
 
+class FakeNewsResponse:
+    def model_dump(self, *, mode="python"):
+        return {"analysis": {"company": {"corp_code": "00126380"}}}
+
+
+class FakeNewsService:
+    def __init__(self, error=None):
+        self.calls = []
+        self.error = error
+
+    def analyze(self, request):
+        self.calls.append(request)
+        if self.error is not None:
+            raise self.error
+        return FakeNewsResponse()
+
 class FakeWritingService:
     def __init__(self):
         self.calls = []
@@ -48,6 +65,20 @@ class FakeWritingService:
 
 
 class AgentRegistryTest(unittest.TestCase):
+    def test_news_adapter_ignores_applicant_documents(self):
+        service = FakeNewsService()
+        adapter = NewsAgentAdapter(service)
+
+        result = adapter.execute(
+            "최근 변화",
+            [{"document_id": "resume-1", "document_type": "RESUME", "text": "이력"}],
+            [{"message_id": "m1", "role": "USER", "content": "뉴스도 봐줘"}],
+            {"job_context_id": "ctx-1", "corp_code": "00126380"},
+        )
+
+        self.assertFalse(hasattr(service.calls[0], "documents"))
+        self.assertEqual(result["analysis"]["company"]["corp_code"], "00126380")
+
     def test_resolves_context_backed_agents_and_calls_services_directly(self):
         jd = FakeJdService()
         position = FakePositionService()

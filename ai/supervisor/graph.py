@@ -12,7 +12,7 @@ from ai.supervisor.contracts import AgentResult, NoAvailableAgentError, Supervis
 from ai.supervisor.model import PlanOutputError, SupervisorModel
 
 
-ANALYSIS_AGENT_NAMES = {"jd", "position"}
+ANALYSIS_AGENT_NAMES = {"jd", "position", "news"}
 
 
 class SupervisorState(TypedDict, total=False):
