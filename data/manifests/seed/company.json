@@ -1,6 +1,6 @@
 {
   "table": "company",
-  "generated_at": "2026-09-17T04:02:45.050436+00:00",
+  "generated_at": "2026-09-17T07:04:07.861935+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -45,7 +45,9 @@
     "V21__jd_ai_conversation.sql",
     "V22__agent_room.sql",
     "V23__agent_message.sql",
-    "V24__agent_room_job_context.sql"
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
   ],
   "source": "config/company_universe.csv + 기업개황(company.json)",
   "seed_rows": 2703,
