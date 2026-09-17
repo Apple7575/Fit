@@ -22,6 +22,18 @@ API). facility 는 정형 API 가 없어 사업보고서 '3. 원재료 및 생�
 
 investment_period 는 뽑지 않는다 (팀장 기준 2항). 표에 있어도 버린다.
 
+2단 헤더 — 아랫단은 걷어내지만 열 정렬까지는 못 맞춘다
+--------------------------------------------------
+병합 셀이 펼쳐지지 않아 헤더가 두세 행에 걸쳐 오는 표가 있다. 아랫단이 데이터 행으로
+남으면 '자산형태' 가 항목이 되고 연도가 금액이 된다 — 하이트진로 2023 이 2,023억원짜리
+시설투자를 만들었다. `_data_start` 가 그 행들을 걷어낸다.
+
+**아랫단의 열 이름을 윗단에 맞춰 붙이지는 않는다.** 아랫단은 병합된 열에만 왼쪽부터
+채워져 와서(동국제강 2025: 윗단 7칸에 아랫단 3칸) 어느 칸이 어느 부모 밑인지 표마다
+다르다. 그래서 윗단 이름으로 잡은 열 매핑을 그대로 쓴다. 결과로 **동국제강처럼
+금액이 한 칸 옆에 있는 표는 값을 못 뽑고 no_row 로 남는다** — 틀린 값을 만드는 것보다
+비는 쪽이 낫다는 판단이다. 열 정렬은 별도 과제다.
+
 남은 한계 — 셀이 밀린 행은 인접 기간 열을 읽는다
 ----------------------------------------------
 헤더 이름으로 열을 잡으므로, 어떤 행에 셀이 하나 빠져 밀려 오면 그 행만 옆 열을
@@ -107,6 +119,46 @@ def _header_row(m: list[list[str]], fp) -> tuple[int, dict[str, int]] | None:
     return None
 
 
+# 헤더 아랫단으로 인정하려면 이만큼은 걸려야 한다. 한 칸만 걸리면 '기타' 하나로
+# 진짜 데이터 행이 지워질 수 있어 둘로 둔다.
+_SUBHEADER_MIN_HITS = 2
+
+
+def _data_start(m: list[list[str]], hrow: int, fp) -> int:
+    """데이터가 시작하는 행. 2단·3단 헤더의 아랫단을 걷어낸다.
+
+    병합 셀이 펼쳐지지 않아 헤더가 여러 행에 걸쳐 오는 표가 있다. 윗단만 헤더로
+    잡히면 아랫단이 데이터 행으로 남아 **머리말이 항목이 되고 연도가 금액이
+    된다** — 하이트진로 2023 이 `자산형태 | 금액 | 2023년` 으로 와서 2,023억원짜리
+    시설투자가 만들어졌다. 억원·백만원 표에서는 자릿수까지 그럴듯해 F축이 못 잡고
+    그대로 시드에 들어간다 (1차 확대 때 25행 · 합계 2.3조원).
+
+    아랫단의 표시는 둘이다. **머리말 어휘가 둘 이상**이고, **머리말이 아닌 칸에
+    금액이 없다.** 금액이 하나라도 있으면 데이터 행으로 본다 — 791 같은 값이 든
+    행을 헤더로 지우면 진짜 투자액을 잃는다.
+
+    머리말 어휘에 걸린 칸의 숫자는 세지 않는다. '제47기' 가 47 로 읽혀 금액으로
+    보이면 남선알미늄의 아랫단이 데이터로 남는다 (실측).
+    """
+    r = hrow + 1
+    while r < len(m):
+        hits, has_amount = 0, False
+        for cell in m[r]:
+            s = squash(cell)
+            if not s:
+                continue
+            if fp.subheader_cell.search(s):
+                hits += 1
+                continue                            # 머리말이다. 숫자로 세지 않는다
+            v = to_num(s)
+            if v is not None and not (1900 <= v <= 2100):
+                has_amount = True
+        if hits < _SUBHEADER_MIN_HITS or has_amount:
+            break                                   # 금액이 있다 = 데이터 행이다
+        r += 1
+    return r
+
+
 def candidates(doc: Document, p: Patterns) -> list[Table]:
     fp = p.business_report.facility
     cap = p.thresholds.candidate_table_max_rows
@@ -149,14 +201,17 @@ def extract(doc: Document, p: Patterns | None = None) -> FacilityResult:
             continue
         hrow, cols = hdr
         items: list[Facility] = []
-        for row in t.m[hrow + 1:]:
+        for row in t.m[_data_start(t.m, hrow, fp):]:
             name = _cell(row, cols, "field")
             if name and fp.exclude_row.search(name):
                 continue
             purpose = _cell(row, cols, "purpose")
-            # 목적 자리에 투자기간이 들어왔다 = 열이 밀렸다. 금액도 못 믿으므로 버린다.
-            # 한국전력공사가 해마다 한 행씩 이렇게 온다 (실측).
-            if purpose and fp.period_in_purpose.search(purpose):
+            # 항목이나 목적 자리에 투자기간이 들어왔다 = 열이 밀렸다. 금액도 못
+            # 믿으므로 버린다. 한국전력공사가 해마다 한 행씩 목적 자리로, GS 는
+            # 한 칸 더 밀려 항목 자리로 이렇게 온다 (실측).
+            if ((purpose and fp.period_cell.search(purpose))
+                    or (name and (fp.period_cell.search(name)
+                                  or fp.period_field.search(name)))):
                 continue
             raw_amount = _cell(row, cols, "amount") or ""
             # 원화가 아니면 버린다. 환산은 추정이라 하지 않는다 — build_metric_seed 의
@@ -177,7 +232,8 @@ def extract(doc: Document, p: Patterns | None = None) -> FacilityResult:
         res = FacilityResult(
             status=OK, table_idx=t.idx, section=t.title[:45], unit=unit_nm,
             unit_src=unit_src, items=items, candidates=len(cands),
-            evidence={"header_row": hrow, "cols": cols})
+            evidence={"header_row": hrow, "cols": cols,
+                      "data_start": _data_start(t.m, hrow, fp)})
         if not mult:
             res.verdict = UNIT_UNKNOWN
         else:
