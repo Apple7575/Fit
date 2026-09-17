@@ -342,3 +342,54 @@ body {
     animation: none;
   }
 }
+
+/* ---------- 기업 요약 화면 ----------
+   사진은 아주 천천히 커지고(켄번즈), 막대는 보이는 순간 자라나고, 숫자는 세어 올라간다.
+   모두 data-inview / 클래스로만 켜고, 모션 축소 설정에서는 아래에서 한꺼번에 끈다. */
+@keyframes kenburns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+.anim-kenburns {
+  animation: kenburns 22s ease-out forwards;
+}
+.grow-x {
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--grow-delay, 0ms);
+}
+[data-inview="true"] .grow-x {
+  transform: scaleX(1);
+}
+.grow-y {
+  transform-origin: center bottom;
+  transform: scaleY(0);
+  transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--grow-delay, 0ms);
+}
+[data-inview="true"] .grow-y {
+  transform: scaleY(1);
+}
+/* 자리만 있는 기업 이미지: 브랜드색 덩어리가 깔린 어두운 바탕 */
+.image-fallback {
+  background:
+    radial-gradient(60% 70% at 20% 20%, rgb(37 99 235 / 0.45), transparent 70%),
+    radial-gradient(50% 60% at 80% 30%, rgb(20 184 166 / 0.35), transparent 70%),
+    radial-gradient(70% 60% at 50% 95%, rgb(139 92 246 / 0.35), transparent 70%),
+    linear-gradient(135deg, #0f172a, #1e293b);
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-kenburns {
+    animation: none;
+  }
+  .grow-x,
+  .grow-y {
+    transform: none;
+    transition: none;
+  }
+}

@@ -1,24 +1,23 @@
 import { useOutletContext } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useFinancialTrend } from '../../features/financial-trend/useFinancialTrend';
-import { GrowthHeader } from '../../features/growth-analysis/GrowthHeader';
 import { GrowthKpiRow } from '../../features/growth-analysis/GrowthKpiRow';
 import { GrowthTrendCard } from '../../features/growth-analysis/GrowthTrendCard';
 import { ProfitabilityCard } from '../../features/growth-analysis/ProfitabilityCard';
 import { YoyCard } from '../../features/growth-analysis/YoyCard';
 import { useKeyMetrics } from '../../features/key-metrics/useKeyMetrics';
 import type { CompanyDetailOutletContext } from './CompanyDetailPage';
+import { DetailHeader } from './DetailHeader';
 
 /**
- * 성장 분석 탭: 헤더 → 기준연도 KPI 6장 → [5년 추이 차트 | 전년 대비 · 수익성/안정성].
+ * 성장 탭: 머리 → 기준연도 KPI 6장 → [5년 추이 차트 | 전년 대비 · 수익성/안정성].
  * 기준연도는 기본정보의 dataYear 를 따르고, 5년 추이의 구간(to)도 같은 해로 맞춘다.
- * 연도는 화면에서 정하지 않는다 — 헤더·차트의 구간은 시계열 응답의 range 그대로다.
+ * 연도는 화면에서 정하지 않는다 — 머리·차트의 구간은 시계열 응답의 range 그대로다.
  * 기본정보가 확정되기 전에는 지표를 조회하지 않아
  * (연도 없이 한 번, 연도 붙여 한 번 부르는 이중 호출 방지) 자리만 잡아둔다.
  */
 export function CompanyGrowthTab() {
-  const { corpCode, detailState } =
-    useOutletContext<CompanyDetailOutletContext>();
+  const { corpCode, detailState } = useOutletContext<CompanyDetailOutletContext>();
   const detail = detailState.status === 'success' ? detailState.data : null;
 
   if (detailState.status === 'loading') {
@@ -33,24 +32,10 @@ export function CompanyGrowthTab() {
     );
   }
 
-  return (
-    <GrowthBody
-      corpCode={corpCode}
-      corpName={detail?.corpName ?? null}
-      year={detail?.dataYear ?? null}
-    />
-  );
+  return <GrowthBody corpCode={corpCode} year={detail?.dataYear ?? null} />;
 }
 
-function GrowthBody({
-  corpCode,
-  corpName,
-  year,
-}: {
-  corpCode: string;
-  corpName: string | null;
-  year: number | null;
-}) {
+function GrowthBody({ corpCode, year }: { corpCode: string; year: number | null }) {
   const { state, retry } = useKeyMetrics(corpCode, year);
   const trend = useFinancialTrend(corpCode, year);
   const range =
@@ -59,8 +44,11 @@ function GrowthBody({
       : null;
 
   return (
-    <div className="space-y-4">
-      <GrowthHeader corpName={corpName} range={range} />
+    <div className="space-y-5">
+      <DetailHeader
+        description={`최근 5년 성장 분석${range ? ` (${range.from}–${range.to})` : ''}`}
+        tab="growth"
+      />
 
       {state.status === 'loading' && (
         <div

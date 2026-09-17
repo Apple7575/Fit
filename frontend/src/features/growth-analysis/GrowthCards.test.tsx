@@ -2,7 +2,6 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../api/client';
 import type { KeyMetricsData } from '../../types/metrics';
-import { GrowthHeader } from './GrowthHeader';
 import { GrowthKpiRow } from './GrowthKpiRow';
 import { GrowthTrendCard } from './GrowthTrendCard';
 import { ProfitabilityCard } from './ProfitabilityCard';
@@ -183,13 +182,3 @@ describe('GrowthTrendCard', () => {
   });
 });
 
-describe('GrowthHeader', () => {
-  it('shows the range only once the trend response is known', () => {
-    const { unmount } = render(<GrowthHeader corpName="삼성전자" range={null} />);
-    expect(screen.getByText('최근 5년 성장 분석')).toBeInTheDocument();
-    unmount();
-
-    render(<GrowthHeader corpName="삼성전자" range={{ from: 2022, to: 2026 }} />);
-    expect(screen.getByText('최근 5년 성장 분석 (2022–2026)')).toBeInTheDocument();
-  });
-});

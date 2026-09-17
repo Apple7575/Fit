@@ -57,16 +57,6 @@ export function IndustryComparisonSection({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
-          동일 산업 기업 비교
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {industryName ? `${industryName} 산업 내 ` : '같은 산업 '}주요 기업의 핵심 지표를
-          비교해보세요.
-        </p>
-      </div>
-
       {waitingForCandidates ? (
         <div
           aria-busy="true"
