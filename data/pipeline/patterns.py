@@ -84,6 +84,8 @@ class FacilityPatterns:
     amount_header_priority: tuple[re.Pattern, ...]   # 순서 = 우선순위
     amount_exclude_header: re.Pattern
     subheader_cell: re.Pattern                       # 2단 헤더의 아랫단
+    cell_unit: re.Pattern                            # 금액 칸에 직접 붙은 단위
+    require_field_or_purpose: bool                   # 금액 열만 있는 표는 안 본다
     foreign_currency: re.Pattern
     period_cell: re.Pattern                          # 항목·목적 칸의 투자기간
     period_field: re.Pattern                         # 연도로 시작하는 항목 이름
@@ -227,6 +229,9 @@ def load_patterns(path: Path | None = None) -> Patterns:
                     _re(x) for x in br["facility"]["amount_header_priority_re"]),
                 amount_exclude_header=_re(br["facility"]["amount_exclude_header_re"]),
                 subheader_cell=_re(br["facility"]["subheader_cell_re"]),
+                cell_unit=_re(br["facility"]["cell_unit_re"]),
+                require_field_or_purpose=bool(
+                    br["facility"]["require_field_or_purpose"]),
                 foreign_currency=_re(br["facility"]["foreign_currency_re"]),
                 period_cell=_re(br["facility"]["period_cell_re"]),
                 period_field=_re(br["facility"]["period_field_re"]),
