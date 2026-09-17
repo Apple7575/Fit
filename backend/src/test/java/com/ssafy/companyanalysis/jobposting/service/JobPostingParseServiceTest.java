@@ -4,10 +4,13 @@ import com.ssafy.companyanalysis.agent.ai.AgentLlmClient;
 import com.ssafy.companyanalysis.agent.ai.JobSourceClient;
 import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
+import com.ssafy.companyanalysis.jobposting.cache.JobPostingSourceCache;
 import com.ssafy.companyanalysis.jobposting.dto.JobPostingParseResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
+
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,7 +24,8 @@ class JobPostingParseServiceTest {
     private static final String POSTING = "채용공고 본문";
 
     private JobPostingParseService service(String modelOutput) {
-        return service(modelOutput, new JobSourceClient.JobSource(POSTING, null, null, null));
+        return service(modelOutput,
+                new JobSourceClient.JobSource(POSTING, null, null, null, null, null, null));
     }
 
     private JobPostingParseService service(String modelOutput, JobSourceClient.JobSource source) {
@@ -31,7 +35,8 @@ class JobPostingParseServiceTest {
         AgentLlmClient llmClient = mock(AgentLlmClient.class);
         when(llmClient.generateJson(any(), any())).thenReturn(modelOutput);
 
-        return new JobPostingParseService(jobSourceClient, llmClient, new ObjectMapper());
+        return new JobPostingParseService(jobSourceClient, llmClient, new ObjectMapper(),
+                new JobPostingSourceCache(Duration.ofMinutes(30), 200));
     }
 
     @Test
@@ -104,7 +109,8 @@ class JobPostingParseServiceTest {
     void fallsBackToSourceMetadata() {
         JobPostingParseResponse response = service("""
                 {"companyName": null, "positions": []}
-                """, new JobSourceClient.JobSource(POSTING, "네이버", "백엔드 개발자", "https://example.com/job/7"))
+                """, new JobSourceClient.JobSource(POSTING, "네이버", "백엔드 개발자",
+                        "https://example.com/job/7", null, null, null))
                 .parse("https://example.com/job/7");
 
         assertThat(response.companyName()).isEqualTo("네이버");

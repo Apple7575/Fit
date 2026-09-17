@@ -18,6 +18,7 @@ import tools.jackson.databind.JsonNode;
 final class AgentAiCall {
 
     private static final int DETAIL_LIMIT = 120;
+    private static final int USER_DETAIL_LIMIT = 200;
 
     private AgentAiCall() {
     }
@@ -56,6 +57,31 @@ final class AgentAiCall {
             default -> new BusinessException(ErrorCode.AI_FAILED,
                     agentName + " AI 호출이 " + status + " 로 실패했습니다.");
         };
+    }
+
+    /**
+     * FastAPI 가 {@code {"detail": ...}} 로 주는 사유만 뽑는다. 화면에 그대로 띄우는 문구라
+     * 본문 전체를 옮기지 않는다.
+     */
+    static String userDetail(RestClientResponseException e, String fallback) {
+        String body = e.getResponseBodyAsString();
+        if (body == null || body.isBlank()) {
+            return fallback;
+        }
+        int key = body.indexOf("\"detail\"");
+        if (key < 0) {
+            return fallback;
+        }
+        int open = body.indexOf('"', body.indexOf(':', key) + 1);
+        int close = open < 0 ? -1 : body.indexOf('"', open + 1);
+        if (open < 0 || close < 0) {
+            return fallback;
+        }
+        String message = body.substring(open + 1, close).trim();
+        if (message.isEmpty()) {
+            return fallback;
+        }
+        return message.length() > USER_DETAIL_LIMIT ? message.substring(0, USER_DETAIL_LIMIT) : message;
     }
 
     private static String detail(RestClientResponseException e) {

@@ -18,12 +18,11 @@ import java.util.Map;
  * 찔러 보는 통로가 된다. AI 쪽 수집기는 호스트를 풀어 공인 대역인지 보고 리다이렉트 뒤에도 최종
  * 주소를 다시 검사하며, 응답 크기와 형식까지 제한한다.
  *
- * <p>아무것도 저장하지 않는다. 받은 본문은 회사명·직무를 뽑는 데만 쓰고 버린다.
+ * <p>여기서는 저장하지 않는다. 받은 본문은 회사명·직무를 뽑는 데 쓰고, 사용자가 검토를
+ * 시작하면 그대로 등록에 넘기려고 잠시 보관한다(JobPostingSourceCache).
  */
 @Component
 public class JobSourceClient {
-
-    private static final int DETAIL_LIMIT = 200;
 
     private final RestClient agentAiRestClient;
     private final AgentAiProperties properties;
@@ -63,7 +62,10 @@ public class JobSourceClient {
                 response.path("jd_text").asString(""),
                 nullable(response, "company_name"),
                 nullable(response, "position_name"),
-                nullable(response, "source_url"));
+                nullable(response, "source_url"),
+                nullable(response, "job_posting_id"),
+                nullable(response, "published_at"),
+                nullable(response, "valid_until"));
     }
 
     /**
@@ -76,32 +78,11 @@ public class JobSourceClient {
             case 502 -> new BusinessException(ErrorCode.AGENT_SOURCE_UNAVAILABLE,
                     "채용공고 페이지에 연결하지 못했습니다. 주소를 다시 확인해 주세요.");
             // AI 쪽이 사람이 읽을 한국어 사유를 준다(내부망 주소·본문 없음 등). 그대로 전한다.
-            case 415, 422 -> new BusinessException(ErrorCode.JOB_POSTING_PARSE_FAILED, detail(e));
+            case 415, 422 -> new BusinessException(ErrorCode.JOB_POSTING_PARSE_FAILED,
+                    AgentAiCall.userDetail(e, ErrorCode.JOB_POSTING_PARSE_FAILED.getDefaultMessage()));
             case 503 -> new BusinessException(ErrorCode.AI_UNAVAILABLE);
             default -> new BusinessException(ErrorCode.AI_FAILED);
         };
-    }
-
-    private static String detail(RestClientResponseException e) {
-        String fallback = ErrorCode.JOB_POSTING_PARSE_FAILED.getDefaultMessage();
-        String body = e.getResponseBodyAsString();
-        if (body == null || body.isBlank()) {
-            return fallback;
-        }
-        int key = body.indexOf("\"detail\"");
-        if (key < 0) {
-            return fallback;
-        }
-        int open = body.indexOf('"', body.indexOf(':', key) + 1);
-        int close = open < 0 ? -1 : body.indexOf('"', open + 1);
-        if (open < 0 || close < 0) {
-            return fallback;
-        }
-        String message = body.substring(open + 1, close).trim();
-        if (message.isEmpty()) {
-            return fallback;
-        }
-        return message.length() > DETAIL_LIMIT ? message.substring(0, DETAIL_LIMIT) : message;
     }
 
     private static String nullable(JsonNode response, String field) {
@@ -112,7 +93,10 @@ public class JobSourceClient {
     /**
      * @param companyName  AI 가 공고 메타데이터에서 찾은 회사명. 못 찾으면 null
      * @param positionName 같은 자리에서 찾은 직무명. 못 찾으면 null
+     * @param sourceUrl    리다이렉트를 따라간 뒤의 최종 주소
+     * @param publishedAt  공고 게시일({@code YYYY-MM-DD}). 등록할 때 함께 넘긴다
      */
-    public record JobSource(String jdText, String companyName, String positionName, String sourceUrl) {
+    public record JobSource(String jdText, String companyName, String positionName, String sourceUrl,
+                            String jobPostingId, String publishedAt, String validUntil) {
     }
 }
