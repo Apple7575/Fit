@@ -1,6 +1,6 @@
 {
   "table": "segment_metric",
-  "generated_at": "2026-09-17T06:37:33.070643+00:00",
+  "generated_at": "2026-09-17T07:04:16.595522+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -36,7 +36,9 @@
     "V21__jd_ai_conversation.sql",
     "V22__agent_room.sql",
     "V23__agent_message.sql",
-    "V24__agent_room_job_context.sql"
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
   ],
   "source": ".cache/empSttus_*.json (직원 현황) + staged/business_report/segment_revenue.csv (사업보고서)",
   "seed_rows": 47746,

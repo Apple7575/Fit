@@ -1,6 +1,6 @@
 {
   "table": "industry",
-  "generated_at": "2026-09-17T06:37:22.941444+00:00",
+  "generated_at": "2026-09-17T07:04:07.787400+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "industry_code",
@@ -31,7 +31,9 @@
     "V21__jd_ai_conversation.sql",
     "V22__agent_room.sql",
     "V23__agent_message.sql",
-    "V24__agent_room_job_context.sql"
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
   ],
   "source": "config/ksic_division.csv",
   "seed_rows": 77,
