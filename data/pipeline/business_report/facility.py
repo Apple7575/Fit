@@ -71,6 +71,7 @@ class Facility:
     purpose: str | None
     amount_raw: float
     krw: float | None = None
+    cell_unit: str | None = None      # 칸이 직접 말한 단위. 있으면 표 단위를 이긴다
 
 
 @dataclass
@@ -88,6 +89,9 @@ class FacilityResult:
 
 def _header_row(m: list[list[str]], fp) -> tuple[int, dict[str, int]] | None:
     """헤더 행과 열 매핑. 투자액 열이 없으면 헤더로 인정하지 않는다.
+
+    **투자액 열 하나만으로도 부족하다.** 항목 열이나 목적 열 중 하나는 있어야 한다 —
+    이지홀딩스 2022 의 계열사 현황표가 금액 열 하나만 걸려 시설투자표로 뽑혔다.
 
     앞쪽 몇 행만 본다 — 표 중간에 소제목 행이 또 나오는 경우가 있는데 그걸
     헤더로 잡으면 데이터 행이 반으로 준다.
@@ -114,7 +118,9 @@ def _header_row(m: list[list[str]], fp) -> tuple[int, dict[str, int]] | None:
                 cols["purpose"] = c
             elif "field" not in cols and fp.field_header.search(s):
                 cols["field"] = c
-        if "amount" in cols:
+        if "amount" in cols and (
+                not fp.require_field_or_purpose
+                or "field" in cols or "purpose" in cols):
             return r, cols
     return None
 
@@ -224,9 +230,15 @@ def extract(doc: Document, p: Patterns | None = None) -> FacilityResult:
                 continue
             if purpose and fp.exclude_row.search(purpose):
                 purpose = None
-            items.append(Facility(field_name=name, purpose=purpose, amount_raw=amount))
+            # 칸에 단위가 직접 붙어 있으면 그것을 쓴다 — 표 단위는 칸이 말이 없을
+            # 때의 기본값이다. 대덕 2024 가 '2,700억원' 인데 직전표-2 의 '단위: 원'
+            # 을 곱해 2,700원이 됐다 (실측).
+            m = fp.cell_unit.search(raw_amount)
+            items.append(Facility(field_name=name, purpose=purpose, amount_raw=amount,
+                                  cell_unit=m.group(1) if m else None))
         if not items:
             continue
+
 
         unit_nm, mult, unit_src = doc.unit(t)
         res = FacilityResult(
@@ -234,11 +246,18 @@ def extract(doc: Document, p: Patterns | None = None) -> FacilityResult:
             unit_src=unit_src, items=items, candidates=len(cands),
             evidence={"header_row": hrow, "cols": cols,
                       "data_start": _data_start(t.m, hrow, fp)})
+        # 칸이 직접 말한 단위를 먼저 쓴다. 표 단위를 못 찾았어도 칸에 적혀 있으면
+        # 그 행은 읽을 수 있다 — 표 단위가 없다고 통째로 버리던 것과 달라지는 자리다.
+        by_name = dict(p.rnd.units)
+        for it in items:
+            if it.cell_unit:
+                it.krw = it.amount_raw * by_name[it.cell_unit]
         if not mult:
-            res.verdict = UNIT_UNKNOWN
+            res.verdict = OK if all(it.krw is not None for it in items) else UNIT_UNKNOWN
         else:
             for it in items:
-                it.krw = it.amount_raw * mult
+                if it.krw is None:
+                    it.krw = it.amount_raw * mult
             res.verdict = OK
         if best is None or len(items) > len(best.items):
             best = res
