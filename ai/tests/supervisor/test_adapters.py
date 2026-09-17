@@ -45,6 +45,7 @@ class FakeNewsService:
             raise self.error
         return FakeNewsResponse()
 
+
 class FakeWritingService:
     def __init__(self):
         self.calls = []

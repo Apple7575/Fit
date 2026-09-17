@@ -331,7 +331,7 @@ class QwenNewsModelTest(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(call["schema_name"], name)
                 self.assertEqual(call["max_tokens"], tokens)
-                self.assertEqual(call["timeout_seconds"], 30)
+                self.assertEqual(call["timeout_seconds"], 45)
                 self.assertFalse(call["schema"]["additionalProperties"])
                 self.assertEqual(set(call["schema"]["required"]), set(call["schema"]["properties"]))
 
@@ -380,13 +380,19 @@ class QwenNewsModelTest(unittest.TestCase):
             {"signals": [{k: v for k, v in DRAFT.items() if k != "preparation_checks"}]},
             {"signals": [{**DRAFT, "sources": [{"url": "https://invented.test"}]}]},
             {"signals": [{**DRAFT, "evidence_level": "HIGH"}]},
-            {"signals": [DRAFT] * 4},
             {"signals": [DRAFT] * 10},
             {"signals": [], "message": "unvalidated content"},
         ]
         for output in invalid:
             with self.subTest(output=output), self.assertRaises(NewsOutputError):
                 QwenNewsModel(CONFIG, FakeQwen(output)).extract_signals(CONTEXT, CANDIDATES, "분석", [])
+
+    def test_keeps_only_first_three_signals_per_scope(self):
+        drafts = [dict(DRAFT) for _ in range(5)] + [{**DRAFT, "scope": "INDUSTRY"}]
+        result = QwenNewsModel(CONFIG, FakeQwen({"signals": drafts})).extract_signals(
+            CONTEXT, CANDIDATES, "분석", [],
+        )
+        self.assertEqual([item.scope for item in result], ["COMPANY"] * 3 + ["INDUSTRY"])
 
     def test_accepts_empty_signals_and_nine_across_three_scopes(self):
         for drafts in ([], [{**DRAFT, "scope": scope} for scope in ("COMPANY", "INDUSTRY", "ROLE") for _ in range(3)]):

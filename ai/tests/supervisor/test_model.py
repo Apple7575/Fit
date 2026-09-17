@@ -110,7 +110,7 @@ class QwenSupervisorModelTest(unittest.TestCase):
 
         self.assertEqual(
             set(PLAN_SCHEMA["properties"]["selected_agents"]["items"]["enum"]),
-            {"jd", "position", "news", "writing"},
+            {"jd", "position", "writing", "news"},
         )
         prompt = qwen.calls[0]["messages"][0]["content"]
         self.assertIn("Writing", prompt)

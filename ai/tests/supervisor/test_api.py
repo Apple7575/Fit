@@ -53,8 +53,16 @@ VALID_RESPONSE = {
             "status": "SUCCESS",
             "result": {"summary": {}},
             "error": None,
+            "evidence": [],
+            "needs": [],
+            "tool_calls": [],
+            "usage": None,
+            "delegated_from": None,
         }
     ],
+    "evidence": [],
+    "lead": None,
+    "trace": [],
 }
 WRITING_ONLY_REQUEST = {
     "instruction": "두괄식으로 고쳐줘",
@@ -135,15 +143,19 @@ class SupervisorApiTest(unittest.TestCase):
         self.assertEqual(detail["code"], "ALL_AGENTS_FAILED")
         self.assertEqual(detail["agent_results"][0]["agent"], "jd")
 
-    def test_does_not_map_domain_value_error_to_configuration_503(self):
-        service = FakeService(error=ValueError("bad graph output"))
+    def test_maps_unexpected_domain_error_to_502_not_configuration_503(self):
+        service = FakeService(error=ValueError("bad graph output: SECRET"))
         app.dependency_overrides[get_supervisor_service_provider] = lambda: lambda: service
 
         response = TestClient(app, raise_server_exceptions=False).post(
             "/internal/runs", json=VALID_REQUEST
         )
 
-        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.json()["detail"], {"code": "SUPERVISOR_FAILED", "message": "ValueError"}
+        )
+        self.assertNotIn("SECRET", response.text)
 
     def test_redacts_writing_validation_error_in_failed_worker_responses(self):
         sentinel = "SECRET_Q7"
@@ -191,6 +203,7 @@ class SupervisorApiTest(unittest.TestCase):
                 self.assertEqual(writing_result, {
                     "agent": "writing", "status": "FAILED", "result": None,
                     "error": "writing worker failed",
+                    "evidence": [], "needs": [], "tool_calls": [], "usage": None, "delegated_from": None,
                 })
                 writing_provider.assert_not_called()
 
@@ -279,6 +292,14 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
             {
                 "agent": "jd", "status": "SUCCESS",
                 "result": {"context_id": "jctx"}, "error": None,
+                "evidence": [
+                    {
+                        "evidence_id": "jd:jctx", "source_type": "JOB_POSTING",
+                        "source_id": "jctx", "agent": "jd", "title": None,
+                        "date": None, "url": None, "excerpt": None,
+                    }
+                ],
+                "needs": [], "tool_calls": [], "usage": None, "delegated_from": None,
             },
             {
                 "agent": "position", "status": "SUCCESS",
@@ -290,8 +311,10 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
                     },
                 },
                 "error": None,
+                "evidence": [], "needs": [], "tool_calls": [], "usage": None, "delegated_from": None,
             },
         ])
+        self.assertEqual([item["evidence_id"] for item in body["evidence"]], ["jd:jctx"])
         self.assertEqual(jd.calls, [("jctx", request["documents"])])
         self.assertEqual(position.calls, [
             (
@@ -395,6 +418,53 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["agent_results"][0]["agent"], "writing")
         self.assertEqual(writing.calls[0].question, "협업 경험")
+
+    def test_news_only_request_without_documents_is_accepted(self):
+        get_supervisor_service.cache_clear()
+        news = FakeNewsService()
+        model = FakeModel([SupervisorPlan(selected_agents=["news"], reason="뉴스 확인")])
+        request = {
+            "instruction": "최근 회사 변화 알려줘",
+            "documents": [],
+            "agent_contexts": {
+                "jd": {"job_context_id": "jctx"},
+                "news": {"job_context_id": "jctx", "corp_code": "00126380"},
+            },
+        }
+        with (
+            patch("ai.supervisor.api.load_qwen_config", return_value={}),
+            patch("ai.supervisor.api.QwenSupervisorModel", return_value=model),
+            patch("ai.supervisor.api.get_analysis_service", side_effect=AssertionError("JD must not run without documents")),
+            patch("ai.supervisor.api.get_position_service", return_value=FakePositionService()),
+            patch("ai.supervisor.api.get_news_service", return_value=news),
+        ):
+            response = TestClient(build_app()).post("/supervisor/internal/runs", json=request)
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["plan"]["selected_agents"], ["news"])
+        self.assertEqual([item["agent"] for item in body["agent_results"]], ["news"])
+        self.assertEqual(len(news.calls), 1)
+
+    def test_document_requiring_agents_without_documents_return_422(self):
+        get_supervisor_service.cache_clear()
+        model = FakeModel([SupervisorPlan(selected_agents=["jd"], reason="JD")])
+        request = {
+            "instruction": "검토해줘",
+            "documents": [],
+            "agent_contexts": {"jd": {"job_context_id": "jctx"}},
+        }
+        with (
+            patch("ai.supervisor.api.load_qwen_config", return_value={}),
+            patch("ai.supervisor.api.QwenSupervisorModel", return_value=model),
+            patch("ai.supervisor.api.get_analysis_service", return_value=FakeJdService()),
+            patch("ai.supervisor.api.get_position_service", return_value=FakePositionService()),
+            patch("ai.supervisor.api.get_news_service", return_value=FakeNewsService()),
+        ):
+            response = TestClient(build_app()).post("/supervisor/internal/runs", json=request)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["detail"]["code"], "NO_AVAILABLE_AGENT")
 
     def test_malformed_body_is_422_before_unavailable_configuration(self):
         get_supervisor_service.cache_clear()

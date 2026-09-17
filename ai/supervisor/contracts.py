@@ -9,6 +9,9 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
+AgentName = Literal["jd", "position", "writing", "news"]
+
+
 class SupervisorDocument(StrictModel):
     document_id: str = Field(min_length=1, max_length=100)
     document_type: Literal["RESUME", "SELF_INTRO", "EXPERIENCE", "PORTFOLIO"]
@@ -99,15 +102,18 @@ class WritingAgentContext(StrictModel):
 class AgentContexts(StrictModel):
     jd: JdAgentContext | None = None
     position: PositionAgentContext | None = None
-    news: NewsAgentContext | None = None
     writing: WritingAgentContext | None = None
+    news: NewsAgentContext | None = None
 
 
 class SupervisorRunRequest(StrictModel):
     instruction: str = Field(min_length=1, max_length=10_000)
-    documents: list[SupervisorDocument] = Field(min_length=1, max_length=21)
+    documents: list[SupervisorDocument] = Field(default_factory=list, max_length=21)
     conversation: list[ConversationMessage] = Field(default_factory=list, max_length=20)
     agent_contexts: AgentContexts
+    # lead 모드: 총괄의 계획 단계를 건너뛰고 이 담당부터 실행한다(담당 직접 호출).
+    # 위임과 재실행은 그대로 동작하고 최종 메시지는 lead 담당의 것을 쓴다.
+    lead: AgentName | None = None
 
     @field_validator("instruction")
     @classmethod
@@ -127,16 +133,96 @@ class SupervisorRunRequest(StrictModel):
         return value
 
 
+EvidenceSourceType = Literal[
+    "NEWS_ARTICLE",  # 뉴스 담당이 조회한 기사
+    "JOB_POSTING",  # JD 담당이 조회한 채용 공고 (job_context)
+    "USER_DOCUMENT",  # 사용자가 제출한 문서의 인용 구간
+    "COMPANY_REPORT",  # 사업보고서 등 기업 공시 (기업 RAG 합류 시 사용)
+]
+
+
+class Evidence(StrictModel):
+    """담당이 판단에 실제로 사용한 근거 한 건.
+
+    모든 담당의 근거를 같은 형태로 모아 총괄 응답에 실어 보내기 위한 공통 규격이다.
+    사실 근거는 도구로 가져온 자료와 사용자 제출 문서만 허용하고, 대화 내용은
+    근거로 등록하지 않는다.
+    """
+
+    evidence_id: str = Field(min_length=1, max_length=200)
+    source_type: EvidenceSourceType
+    source_id: str = Field(min_length=1, max_length=200)
+    agent: AgentName
+    title: str | None = Field(default=None, max_length=500)
+    date: str | None = Field(default=None, max_length=40)
+    url: str | None = Field(default=None, max_length=2_000)
+    excerpt: str | None = Field(default=None, max_length=1_000)
+
+
+ToolName = Literal[
+    "get_job_context",  # 등록된 채용 공고 컨텍스트 조회
+    "list_news",  # 저장된 기사 목록 조회
+    "search_news_external",  # 외부 뉴스 검색(일회성 후보)
+    "get_conversation",  # 저장된 대화 조회
+]
+
+
+ToolCaller = Literal["jd", "position", "writing", "news", "supervisor"]
+
+
+class ToolCall(StrictModel):
+    """담당이 실행 중 호출한 조회 도구 한 건. 추적과 호출 제한의 단위다."""
+
+    tool: ToolName
+    agent: ToolCaller
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    status: Literal["SUCCESS", "FAILED", "DENIED"]
+    duration_ms: int = Field(ge=0)
+    result_count: int | None = None
+    error: str | None = None
+
+
+TracePhase = Literal["plan", "analysis", "writing", "delegation", "rerun", "aggregate"]
+
+
+class TraceStep(StrictModel):
+    """실행 단계 한 건. 재실행으로 대체된 1차 결과도 남겨 전 과정을 추적할 수 있게 한다."""
+
+    step: int = Field(ge=1)
+    phase: TracePhase
+    agent: ToolCaller
+    called_by: str = Field(min_length=1, max_length=40)  # "request" | "plan" | "lead" | 요청 담당 이름
+    status: Literal["SUCCESS", "FAILED", "SKIPPED"]
+    duration_ms: int = Field(ge=0)
+    tool_calls: list[ToolCall] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    usage: dict[str, int] | None = None
+    superseded: bool = False  # 같은 담당의 재실행으로 대체된 결과
+    note: str | None = Field(default=None, max_length=1_000)
+
+
+class AgentNeed(StrictModel):
+    """담당이 스스로 채울 수 없어 총괄에게 요청하는 추가 담당 호출."""
+
+    agent: AgentName
+    reason: str = Field(min_length=1, max_length=1_000)
+
+
 class SupervisorPlan(StrictModel):
-    selected_agents: list[Literal["jd", "position", "news", "writing"]] = Field(min_length=1)
+    selected_agents: list[AgentName] = Field(min_length=1)
     reason: str = Field(min_length=1, max_length=2_000)
 
 
 class AgentResult(StrictModel):
-    agent: Literal["jd", "position", "news", "writing"]
+    agent: AgentName
     status: Literal["SUCCESS", "FAILED"]
     result: dict[str, Any] | None = None
     error: str | None = None
+    evidence: list[Evidence] = Field(default_factory=list, max_length=200)
+    needs: list[AgentNeed] = Field(default_factory=list, max_length=4)
+    tool_calls: list[ToolCall] = Field(default_factory=list, max_length=100)
+    usage: dict[str, int] | None = None
+    delegated_from: AgentName | None = None
 
 
 class SupervisorRunResponse(StrictModel):
@@ -144,6 +230,9 @@ class SupervisorRunResponse(StrictModel):
     message: str
     plan: SupervisorPlan
     agent_results: list[AgentResult]
+    evidence: list[Evidence] = Field(default_factory=list)
+    lead: AgentName | None = None
+    trace: list[TraceStep] = Field(default_factory=list)
 
 
 class NoAvailableAgentError(RuntimeError):

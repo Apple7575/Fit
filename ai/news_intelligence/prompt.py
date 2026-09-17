@@ -41,6 +41,17 @@ per scope, and an empty preparation_checks array per signal. Every signal requir
 at least one supplied source ID. Return an empty signals array if metadata is
 insufficient. Clearly distinguish observed title facts from limited JD relevance;
 never present a possible relation as an established company or industry change.
+
+Grounding rule (validated mechanically): every clause of "title" and "summary" must be
+built from words that appear in the cited article titles, and every clause of
+"jd_relevance" from words that appear in the JD text or role elements. Do not add
+interpretation, forecasts, implications or new nouns. Do not reuse numbers that are not
+in the cited titles. Copy the cited article title verbatim into the summary and copy
+the matching JD requirement text verbatim into jd_relevance. Never shorten, paraphrase,
+or use angle brackets or placeholders. Example for an article titled
+"A사, 서울 데이터센터 증설 발표" and a JD line "데이터센터 관련 서비스 개발 경험":
+summary = "기사 제목에서 A사, 서울 데이터센터 증설 발표를 확인할 수 있습니다."
+jd_relevance = "JD의 데이터센터 관련 서비스 개발 경험과 관련됩니다."
 """
 
 

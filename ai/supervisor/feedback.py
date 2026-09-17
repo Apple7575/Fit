@@ -20,6 +20,8 @@ def normalize_writing_feedback(
             items.extend(_jd_feedback(result.result))
         elif result.agent == "position":
             items.extend(_position_feedback(result.result))
+        elif result.agent == "news":
+            items.extend(_news_feedback(result.result))
     return [
         {**item, "content": item["content"][:2_000]}
         for item in items[:20]
@@ -81,6 +83,42 @@ def _position_feedback(result: Mapping[str, Any]) -> list[dict[str, str]]:
             "source": "position",
             "content": content,
         })
+    return feedback
+
+
+def _news_feedback(result: Mapping[str, Any]) -> list[dict[str, str]]:
+    """뉴스 신호를 글쓰기 방향 피드백으로 바꾼다. 기사 사실은 출처와 함께 전달한다."""
+    analysis = result.get("analysis")
+    if not isinstance(analysis, Mapping):
+        return []
+    signals = analysis.get("signals")
+    if not isinstance(signals, list):
+        return []
+    feedback: list[dict[str, str]] = []
+    for signal in signals:
+        if not isinstance(signal, Mapping):
+            continue
+        signal_id = _non_blank_string(signal.get("signal_id"))
+        title = _non_blank_string(signal.get("title"))
+        summary = _non_blank_string(signal.get("summary"))
+        relevance = _non_blank_string(signal.get("jd_relevance"))
+        if signal_id is None or title is None or summary is None:
+            continue
+        feedback_id = f"news-{signal_id}"
+        if len(feedback_id) > MAX_WRITING_FEEDBACK_ID_LENGTH:
+            continue
+        sources = signal.get("sources")
+        titles = [
+            source["title"]
+            for source in (sources if isinstance(sources, list) else [])
+            if isinstance(source, Mapping) and _non_blank_string(source.get("title"))
+        ][:3]
+        content = f"[{signal.get('scope', 'COMPANY')}] {title}: {summary}"
+        if relevance:
+            content += f" 직무 관련성: {relevance}"
+        if titles:
+            content += f" 출처: {' / '.join(titles)}"
+        feedback.append({"feedback_id": feedback_id, "source": "news", "content": content})
     return feedback
 
 

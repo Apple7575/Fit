@@ -26,6 +26,7 @@ from ai.supervisor.contracts import (
 from ai.supervisor.graph import build_supervisor_graph
 from ai.supervisor.model import QwenSupervisorModel, SupervisorModel
 from ai.supervisor.service import SupervisorService
+from ai.supervisor.tools import instrument_jd_service, instrument_news_service
 from ai.writing_coaching.api import get_writing_service
 
 
@@ -37,14 +38,16 @@ def assemble_supervisor_service(
     jd_provider: Callable[[], Any],
     position_provider: Callable[[], Any],
     writing_provider: Callable[[], Any],
-    news_provider: Callable[[], Any] = get_news_service,
+    news_provider: Callable[[], Any] | None = None,
 ) -> SupervisorService:
+    resolved_news_provider = news_provider or get_news_service
     registry = AgentRegistry(
         [
-            JdAgentAdapter(jd_provider),
+            # 총괄 아래에서 실행되는 담당의 조회는 모두 도구 프록시를 거친다.
+            JdAgentAdapter(lambda: instrument_jd_service(jd_provider())),
             PositionAgentAdapter(position_provider),
-            NewsAgentAdapter(news_provider),
             WritingAgentAdapter(writing_provider),
+            NewsAgentAdapter(lambda: instrument_news_service(resolved_news_provider())),
         ]
     )
     return SupervisorService(build_supervisor_graph(supervisor_model, registry))
@@ -94,10 +97,12 @@ def create_run(
         if (
             request.agent_contexts.jd is None
             and request.agent_contexts.position is None
-            and request.agent_contexts.news is None
             and request.agent_contexts.writing is None
+            and request.agent_contexts.news is None
         ):
             raise NoAvailableAgentError("no agent context was provided")
+        if request.lead is not None and getattr(request.agent_contexts, request.lead) is None:
+            raise NoAvailableAgentError(f"lead agent has no context: {request.lead}")
         return service_provider().run(request)
     except NoAvailableAgentError as error:
         raise HTTPException(
@@ -112,4 +117,12 @@ def create_run(
                 "message": str(error),
                 "agent_results": [item.model_dump() for item in error.results],
             },
+        ) from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        # 계획·종합 모델 연결 실패 등 총괄 자체의 실패. 내부 메시지는 노출하지 않는다.
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "SUPERVISOR_FAILED", "message": type(error).__name__},
         ) from error

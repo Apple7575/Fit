@@ -69,28 +69,6 @@ class PositionAgentAdapter:
         )
 
 
-class NewsAgentAdapter:
-    name = "news"
-
-    def __init__(self, service: Any) -> None:
-        self._service_provider = service if callable(service) else lambda: service
-
-    def is_available(self, context: Mapping[str, Any] | None) -> bool:
-        return bool(
-            context and context.get("job_context_id") and context.get("corp_code")
-        )
-
-    def execute(self, instruction, documents, conversation, context, prior_results=()):
-        response = self._service_provider().analyze(
-            NewsAnalysisRequest(
-                instruction=instruction,
-                job_context_id=context["job_context_id"],
-                corp_code=context["corp_code"],
-                conversation=list(conversation),
-            )
-        )
-        return response.model_dump(mode="json")
-
 class WritingAgentAdapter:
     name = "writing"
 
@@ -128,6 +106,29 @@ class WritingAgentAdapter:
             conversation=list(conversation),
         )
         return self._service_provider().respond(request).model_dump()
+
+
+class NewsAgentAdapter:
+    name = "news"
+
+    def __init__(self, service: Any) -> None:
+        self._service_provider = service if callable(service) else lambda: service
+
+    def is_available(self, context: Mapping[str, Any] | None) -> bool:
+        return bool(
+            context and context.get("job_context_id") and context.get("corp_code")
+        )
+
+    def execute(self, instruction, documents, conversation, context, prior_results=()):
+        response = self._service_provider().analyze(
+            NewsAnalysisRequest(
+                instruction=instruction,
+                job_context_id=context["job_context_id"],
+                corp_code=context["corp_code"],
+                conversation=list(conversation),
+            )
+        )
+        return response.model_dump(mode="json")
 
 
 class AgentRegistry:

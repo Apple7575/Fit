@@ -66,7 +66,7 @@ class NewsBudgetTest(unittest.TestCase):
         with patch("ai.news_intelligence.search_provider.urlopen", urlopen):
             response = service.analyze(REQUEST)
 
-        self.assertEqual(model_timeouts, [30, 30, 10])
+        self.assertEqual(model_timeouts, [45, 45, 10])
         self.assertEqual(rss_timeouts, [20])
         self.assertEqual(response.analysis.analysis_status, "INSUFFICIENT_EVIDENCE")
 
@@ -107,7 +107,7 @@ class NewsBudgetTest(unittest.TestCase):
             timeouts.append(kwargs["timeout_seconds"])
             return {"output": {"signals": []}}
         QwenNewsModel({}, qwen).extract_signals(CONTEXT, candidates(), "news", [])
-        self.assertEqual(timeouts, [30])
+        self.assertEqual(timeouts, [45])
 
     def test_source_deadline_exhaustion_is_not_insufficient_or_completed(self):
         for phase in ("repository", "provider"):

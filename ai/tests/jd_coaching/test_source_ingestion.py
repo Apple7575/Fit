@@ -23,6 +23,21 @@ class FakeFetcher:
         return self.result
 
 
+class RoutingFakeFetcher:
+    """URL에 부분 문자열이 있으면 그 결과를 주는 라우팅 fetcher. 사람인 2단계 요청용."""
+
+    def __init__(self, routes: dict[str, SourceFetchResult]):
+        self.routes = routes
+        self.requested_urls: list[str] = []
+
+    def fetch(self, url: str) -> SourceFetchResult:
+        self.requested_urls.append(url)
+        for marker, result in self.routes.items():
+            if marker in url:
+                return result
+        raise AssertionError(f"unexpected url: {url}")
+
+
 def make_docx(text: str) -> bytes:
     document_xml = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -152,6 +167,150 @@ class JdSourceIngestorTest(unittest.TestCase):
     def test_rejects_local_url_before_request(self):
         with self.assertRaisesRegex(SourceIngestionError, "내부망"):
             SafeHttpFetcher().fetch("http://127.0.0.1/internal")
+
+    def test_saramin_shell_page_is_replaced_by_detail_page_body(self):
+        shell = SourceFetchResult(
+            content=(
+                "<html><head><title>[백엔드] 삼성전자 채용공고 - 사람인</title>"
+                '<meta property="og:description" content="경력 3년, 마감 2026-10-01">'
+                "</head><body><div id=\"app\">로딩중...</div></body></html>"
+            ).encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=12345678",
+        )
+        detail = SourceFetchResult(
+            content=(
+                "<html><body>"
+                "<div>담당 업무: 백엔드 API 개발</div>"
+                "<div>자격 요건: Java, Spring 3년 이상</div>"
+                "</body></html>"
+            ).encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=12345678",
+        )
+        fetcher = RoutingFakeFetcher({"view-detail": detail, "view?rec_idx": shell})
+
+        result = JdSourceIngestor(fetcher=fetcher).from_url(
+            "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=12345678"
+        )
+
+        self.assertIn("백엔드] 삼성전자 채용공고", result.jd_text)
+        self.assertIn("경력 3년, 마감 2026-10-01", result.jd_text)
+        self.assertIn("담당 업무: 백엔드 API 개발", result.jd_text)
+        self.assertNotIn("로딩중", result.jd_text)
+        self.assertEqual(
+            fetcher.requested_urls[1],
+            "https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=12345678",
+        )
+
+    def test_non_saramin_url_is_not_fetched_twice(self):
+        fetcher = FakeFetcher(
+            SourceFetchResult(
+                content=(
+                    "<div>담당 업무: 개발</div><div>자격 요건: 3년</div>"
+                ).encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://careers.example.com/jobs/123?rec_idx=999",
+            )
+        )
+
+        JdSourceIngestor(fetcher=fetcher).from_url("https://careers.example.com/jobs/123?rec_idx=999")
+
+        # rec_idx가 있어도 saramin.co.kr이 아니면 상세 주소를 만들지 않는다(호출 1회).
+        self.assertEqual(fetcher.requested_url, "https://careers.example.com/jobs/123?rec_idx=999")
+
+    def test_hiring_organization_as_plain_string_is_used_as_company_name(self):
+        posting = {
+            "@type": "JobPosting",
+            "title": "Backend Engineer",
+            "hiringOrganization": "넛지헬스케어",
+            "description": "담당 업무: 백엔드 개발. 자격 요건: 3년 이상.",
+        }
+        html = (
+            f'<script type="application/ld+json">{json.dumps(posting)}</script>'
+        )
+        fetcher = FakeFetcher(
+            SourceFetchResult(
+                content=html.encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://cashwalk12.career.greetinghr.com/ko/o/223660",
+            )
+        )
+
+        result = JdSourceIngestor(fetcher=fetcher).from_url(
+            "https://cashwalk12.career.greetinghr.com/ko/o/223660"
+        )
+
+        self.assertEqual(result.company_name, "넛지헬스케어")
+        self.assertEqual(result.position_name, "Backend Engineer")
+
+    def test_gms_fills_missing_company_and_position_when_json_ld_is_absent(self):
+        fetcher = FakeFetcher(
+            SourceFetchResult(
+                content=(
+                    "<div>담당 업무: 서버 개발</div><div>자격 요건: 3년 이상</div>"
+                ).encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://cashwalk12.career.greetinghr.com/ko/o/223660",
+            )
+        )
+        calls = []
+
+        def fake_gms(key, text):
+            calls.append((key, text))
+            return {"company_name": "넛지헬스케어", "position_name": "백엔드개발"}
+
+        result = JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", company_position_caller=fake_gms
+        ).from_url("https://cashwalk12.career.greetinghr.com/ko/o/223660")
+
+        self.assertEqual(result.company_name, "넛지헬스케어")
+        self.assertEqual(result.position_name, "백엔드개발")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], "test-key")
+
+    def test_gms_is_not_called_when_no_key_configured(self):
+        fetcher = FakeFetcher(
+            SourceFetchResult(
+                content=(
+                    "<div>담당 업무: 서버 개발</div><div>자격 요건: 3년 이상</div>"
+                ).encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://cashwalk12.career.greetinghr.com/ko/o/223660",
+            )
+        )
+
+        def failing_caller(key, text):
+            raise AssertionError("GMS should not be called without a key")
+
+        result = JdSourceIngestor(
+            fetcher=fetcher, company_position_caller=failing_caller
+        ).from_url("https://cashwalk12.career.greetinghr.com/ko/o/223660")
+
+        self.assertIsNone(result.company_name)
+        self.assertIsNone(result.position_name)
+
+    def test_gms_failure_does_not_break_ingestion(self):
+        fetcher = FakeFetcher(
+            SourceFetchResult(
+                content=(
+                    "<div>담당 업무: 서버 개발</div><div>자격 요건: 3년 이상</div>"
+                ).encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://cashwalk12.career.greetinghr.com/ko/o/223660",
+            )
+        )
+
+        def failing_gms(key, text):
+            raise RuntimeError("GMS API HTTP 500")
+
+        result = JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", company_position_caller=failing_gms
+        ).from_url("https://cashwalk12.career.greetinghr.com/ko/o/223660")
+
+        self.assertIsNone(result.company_name)
+        self.assertIsNone(result.position_name)
+        self.assertIn("담당 업무", result.jd_text)
 
 
 if __name__ == "__main__":
