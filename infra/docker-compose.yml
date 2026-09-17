@@ -108,6 +108,8 @@ services:
       # 서빙 중인 모델 ID 는 main 하나다 (GET /v1/models 로 확인).
       - QWEN_MODEL=${QWEN_MODEL:-main}
       - QWEN_API_KEY=${LLM_KEY:-}
+      # 공고에서 회사명·직무명을 뽑는 보완 추출에만 쓴다. 비면 그 보완만 꺼지고 크롤링은 돈다.
+      - GMS_KEY=${GMS_KEY:-}
       - TZ=${TZ:-Asia/Seoul}
     # backend 와 동일하게 호스트 리버스터널 포트로 vLLM 에 닿는다. infra/tunnel 참고.
     extra_hosts:

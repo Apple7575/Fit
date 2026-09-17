@@ -1,33 +1,40 @@
 package com.ssafy.companyanalysis.agent.service;
 
+import com.ssafy.companyanalysis.agent.ai.SupervisorClient;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * 한 턴을 도는 동안 에이전트들이 함께 보는 재료.
+ * 한 턴을 도는 동안 담당들이 함께 보는 재료.
  *
- * <p>턴을 시작할 때 한 번 만들어 넘긴다. 에이전트마다 자소서를 다시 조회하면 같은 내용을
- * 여러 번 읽게 된다.
+ * <p>턴을 시작할 때 한 번 만들어 넘긴다. 담당마다 자소서를 다시 조회하면 같은 내용을 여러 번
+ * 읽게 된다.
  *
- * <p>자소서를 붙인 본문과 문항별 조각을 같이 싣는다. 프롬프트로 도는 에이전트는 본문
- * 한 덩어리면 되지만, 포지션·글쓰기 API 는 문항과 답변을 따로 받는다.
+ * <p>공고 본문은 싣지 않는다. AI 쪽이 {@code jobContextId} 로 자기 DB 에서 직접 꺼내 읽는다 —
+ * 같은 글을 백엔드가 한 번 더 실어 보낼 이유가 없다. 다만 분석이 사라졌으면 식별자도 넘기면
+ * 안 되므로, 턴을 시작할 때 실제로 있는지 확인한 값만 들어온다.
  *
- * @param coverLetterText  문항과 답변을 붙인 본문
+ * <p>AI 총괄은 대화를 들고 있지 않다. 지난 발화를 매번 통째로 실어 보내야 문맥이 이어지므로
+ * {@code conversation} 도 여기 담는다.
+ *
  * @param coverLetterParts 문항별 조각. 문항 하나만 지정한 턴에서는 한 개다
- * @param userMessage      사용자가 방에 남긴 말
- * @param jobPostingText   방에 붙은 채용공고 본문. 공고 없이 연 방은 null
+ * @param userMessage      사용자가 방에 남긴 말. 그대로 총괄의 지시문이 된다
+ * @param jobContextId     방에 붙은 채용공고 분석 식별자. 공고가 없거나 사라졌으면 null
+ * @param jobPositionName  공고에 적힌 직무명. 포지션 담당 설정이 비었을 때 대신 쓴다
+ * @param conversation     이 턴 앞의 대화. 오래된 것부터 최대 20개
  * @param agentConfigs     agentKey 별 설정(기업 선택·직무 선택)
  */
-public record TurnContext(String coverLetterText,
-                          List<CoverLetterPart> coverLetterParts,
+public record TurnContext(List<CoverLetterPart> coverLetterParts,
                           String userMessage,
-                          String jobPostingText,
+                          String jobContextId,
+                          String jobPositionName,
+                          List<SupervisorClient.Turn> conversation,
                           Map<String, Map<String, Object>> agentConfigs) {
 
-    public boolean hasJobPosting() {
-        return jobPostingText != null && !jobPostingText.isBlank();
+    public boolean hasJobContext() {
+        return jobContextId != null && !jobContextId.isBlank();
     }
 
     public Map<String, Object> configOf(AgentType type) {
