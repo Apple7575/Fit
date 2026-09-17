@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "case_id": "tossbank-ml-backend-holdout-001",
+  "label_status": "HUMAN_APPROVED",
+  "evaluation_context": "CROSS_COMPANY_HOLDOUT",
+  "source_document_ids": ["tossbank-ml-backend-2026"],
+  "question": "지원자의 자료가 토스뱅크 ML Backend Engineer 요구사항을 충족하는가?",
+  "experiences": [
+    {"experience_id": "toss-resume-01", "text": "Kotlin과 Spring Boot로 주문 API를 개발하고 운영했습니다. Kubernetes에 배포하고 Prometheus 대시보드로 오류율과 응답시간을 모니터링했습니다."}
+  ],
+  "expected_role_elements": [
+    {"role_element_id": "toss-role-01", "name": "서버 개발 및 운영", "evidence_section_ids": ["toss-required-server"], "evidence_requirements": [{"evidence_requirement_id": "server-language", "description": "서버 개발에 사용한 언어가 명시돼 있다."}, {"evidence_requirement_id": "server-development", "description": "서버를 개발한 행동이 명시돼 있다."}, {"evidence_requirement_id": "server-operation", "description": "서버를 운영한 경험이 명시돼 있다."}]},
+    {"role_element_id": "toss-role-02", "name": "서비스 아키텍처 및 코드 구조", "evidence_section_ids": ["toss-required-architecture"], "evidence_requirements": [{"evidence_requirement_id": "architecture-design", "description": "서비스 아키텍처를 설계한 판단이 명시돼 있다."}, {"evidence_requirement_id": "stable-code", "description": "안정적인 코드 구조를 구현한 행동이 명시돼 있다."}]},
+    {"role_element_id": "toss-role-03", "name": "Kubernetes 배포 및 모니터링", "evidence_section_ids": ["toss-preferred-kubernetes"], "evidence_requirements": [{"evidence_requirement_id": "kubernetes-environment", "description": "Kubernetes 환경 사용이 명시돼 있다."}, {"evidence_requirement_id": "deployment-action", "description": "서버 배포 행동이 명시돼 있다."}, {"evidence_requirement_id": "monitoring-action", "description": "서버 모니터링 행동이 명시돼 있다."}]},
+    {"role_element_id": "toss-role-04", "name": "대규모 트래픽 또는 높은 SLA", "evidence_section_ids": ["toss-preferred-scale"], "evidence_requirements": [{"evidence_requirement_id": "scale-or-sla", "description": "대규모 트래픽 또는 높은 SLA 조건이 명시돼 있다."}, {"evidence_requirement_id": "production-operation", "description": "해당 조건의 서비스를 프로덕션에서 운영한 경험이 명시돼 있다."}]}
+  ],
+  "expected_connections": [
+    {"role_element_id": "toss-role-01", "experience_id": "toss-resume-01", "label": "SUPPORTED", "present_evidence": [{"evidence_requirement_id": "server-language", "evidence_quote": "Kotlin"}, {"evidence_requirement_id": "server-development", "evidence_quote": "주문 API를 개발하고"}, {"evidence_requirement_id": "server-operation", "evidence_quote": "운영했습니다"}], "missing_evidence_requirement_ids": [], "reason": "언어, 서버 개발과 운영 행동이 모두 명시돼 있다."},
+    {"role_element_id": "toss-role-02", "experience_id": "toss-resume-01", "label": "NOT_SUPPORTED", "present_evidence": [], "missing_evidence_requirement_ids": ["architecture-design", "stable-code"], "reason": "API 구현은 확인되지만 아키텍처 설계 판단과 코드 구조는 확인되지 않는다."},
+    {"role_element_id": "toss-role-03", "experience_id": "toss-resume-01", "label": "SUPPORTED", "present_evidence": [{"evidence_requirement_id": "kubernetes-environment", "evidence_quote": "Kubernetes"}, {"evidence_requirement_id": "deployment-action", "evidence_quote": "Kubernetes에 배포하고"}, {"evidence_requirement_id": "monitoring-action", "evidence_quote": "Prometheus 대시보드로 오류율과 응답시간을 모니터링했습니다"}], "missing_evidence_requirement_ids": [], "reason": "Kubernetes 배포와 Prometheus 모니터링이 명시돼 있다."},
+    {"role_element_id": "toss-role-04", "experience_id": "toss-resume-01", "label": "NOT_SUPPORTED", "present_evidence": [], "missing_evidence_requirement_ids": ["scale-or-sla", "production-operation"], "reason": "트래픽 규모, SLA 조건과 해당 조건의 프로덕션 운영이 확인되지 않는다."}
+  ],
+  "forbidden_outputs": ["Kubernetes 사용만으로 대규모 트래픽 운영 경험을 단정한다.", "API 개발만으로 아키텍처 설계 경험을 단정한다."]
+}

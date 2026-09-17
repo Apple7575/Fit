@@ -1,0 +1,68 @@
+{
+  "_request": {
+    "path": "/api/companies/01384787/metrics",
+    "params": {
+      "year": 2022
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 0,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "corpCode": "01384787",
+      "year": 2022,
+      "metrics": [
+        {
+          "key": "revenue",
+          "label": "매출액",
+          "value": null,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "operating_profit",
+          "label": "영업이익",
+          "value": null,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "net_income",
+          "label": "당기순이익",
+          "value": null,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "employee_count",
+          "label": "직원 수",
+          "value": null,
+          "unit": "PERSON",
+          "yoy": null
+        },
+        {
+          "key": "average_salary",
+          "label": "1인 평균 급여",
+          "value": null,
+          "unit": "KRW",
+          "yoy": null
+        },
+        {
+          "key": "average_tenure",
+          "label": "평균 근속",
+          "value": null,
+          "unit": "YEAR",
+          "yoy": null
+        }
+      ],
+      "profitability": {
+        "operatingMargin": null,
+        "netMargin": null,
+        "debtRatio": null
+      }
+    }
+  },
+  "text": null
+}

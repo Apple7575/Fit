@@ -1,0 +1,53 @@
+# DART API 응답 원본 캐시 (330MB+). 재수집 가능하므로 커밋하지 않는다
+.cache/
+
+# 인증키
+.env
+
+# 개인 학습 기록
+docs/knowledge-debt/
+
+# 파이썬 캐시
+__pycache__/
+*.pyc
+
+# 수집·적재 실행 로그 (실행 산출물)
+_log/
+
+# 정규화 산출물 (적재 입력)
+_out/
+
+# 가상환경 (uv 로 재생성 가능하므로 커밋하지 않는다)
+.venv/
+
+# 뉴스 PoC 로컬 입력·출력
+news_poc/local_raw/
+news_poc/local_output/
+
+# ── raw / staged / curated 3계층 (data/docs/DATA_STORAGE_STANDARD.md) ──
+# 원본은 커밋하지 않는다. 용량이 크고(DART 캐시 330MB+), 뉴스 RSS 는 저장·재배포
+# 조건이 확정되지 않았다(docs/news-poc/90-source-review.md). 폴더 구조만 남긴다.
+/raw/**
+!/raw/**/
+!/raw/**/.gitkeep
+
+# 정제 결과는 원본에서 재생성 가능하므로 커밋하지 않는다. _out/ 과 같은 판단이다.
+/staged/**
+!/staged/**/
+!/staged/**/.gitkeep
+
+# 뉴스 시드는 제3자 기사 제목·URL 을 담는다. 사용조건 확정까지 커밋하지 않는다.
+# V13 에서 표 이름이 company_news → news_article 로 바뀌었다. **옛 이름만 적혀 있어
+# 새 이름은 제외되지 않고 있었다** — 시드를 처음 만든 날(2026-09-15) 발견했다.
+# 이름이 또 바뀌면 여기도 같이 고쳐야 한다. manifest 는 건수·설정만 담아 커밋한다.
+/curated/seed/company_news.csv
+/curated/seed/news_article.csv
+
+# 평가용 선별 근거에는 사업보고서·뉴스 본문이 들어간다. 이용 조건이 확정되기 전에는
+# 로컬에서만 생성하고, 본문이 없는 선택 설정과 manifest 만 커밋한다.
+/curated/evaluation/**
+!/curated/evaluation/**/
+!/curated/evaluation/**/.gitkeep
+
+# logs/ 는 저장소 루트 .gitignore 의 `logs/` 규칙에 이미 걸려 통째로 제외된다.
+# 실행 로그이므로 그대로 둔다. _log/ 과 같은 판단이다.

@@ -1,0 +1,24 @@
+{
+  "_request": {
+    "path": "/api/companies/00126380",
+    "params": {}
+  },
+  "_status": 200,
+  "_elapsed_ms": 16,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "corpCode": "00126380",
+      "corpName": "삼성전자",
+      "industryCode": "26",
+      "industryName": "전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",
+      "ceo": "전영현, 노태문",
+      "establishedDate": "1969-01-13",
+      "address": null,
+      "homepageUrl": null,
+      "dataYear": 2025
+    }
+  },
+  "text": null
+}

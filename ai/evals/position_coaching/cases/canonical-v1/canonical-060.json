@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-060", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "기타 서버 개발 경험에서 기여한 내용을 작성해 주세요.",
+  "documents": [{"document_id": "doc-060", "document_type": "PORTFOLIO", "text": "백엔드 개발에 지원하고 있지만 배포 가능한 서버 기능을 맡아 완성한 프로젝트는 아직 없습니다."}],
+  "expected_findings": [{"experience_type": "OTHER_BACKEND", "claim_quote": "백엔드 개발에 지원하고 있지만 배포 가능한 서버 기능을 맡아 완성한 프로젝트는 아직 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ROLE", "ACTION", "RESULT"]}],
+  "forbidden_output_substrings": ["대용량 파일 서버를 구현했습니다.", "백엔드 서버를 Docker로 배포했습니다.", "월간 사용자 2천 명을 지원했습니다."]
+}

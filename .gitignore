@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# 비밀값이 아니라 mock 스위치라 커밋한다.
+!frontend/.env.api
 **/*.pem
 **/*.key
 *.p12
@@ -63,3 +65,8 @@ logs/
 # ── 빌드 도구 캐시 ──
 .cache/
 tmp/
+data/runtime/
+outputs/position-lora/
+
+# ── Git 격리 작업공간 ──
+.worktrees/

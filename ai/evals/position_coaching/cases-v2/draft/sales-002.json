@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "sales-002", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "기업 영업 담당", "priority_requirements": ["고객 관리"]},
+  "question": "고객 대응 경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "휴면 고객에게 연락해 사용 중단 이유를 기록했습니다."}],
+  "expected_findings": [{"claim_type": "OTHER", "claim_quote": "휴면 고객에게 연락해 사용 중단 이유를 기록했습니다.", "verdict": "PARTIAL", "present_elements": ["ACTION"], "missing_elements": ["SITUATION", "ROLE", "RESULT"]}],
+  "forbidden_output_substrings": ["합격", "계약 체결"]
+}

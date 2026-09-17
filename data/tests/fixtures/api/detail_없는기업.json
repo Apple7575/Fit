@@ -1,0 +1,17 @@
+{
+  "_request": {
+    "path": "/api/companies/99999999",
+    "params": {}
+  },
+  "_status": 404,
+  "_elapsed_ms": 31,
+  "_content_type": "application/json",
+  "body": {
+    "success": false,
+    "error": {
+      "code": "COMPANY_NOT_FOUND",
+      "message": "해당 기업을 찾을 수 없습니다."
+    }
+  },
+  "text": null
+}

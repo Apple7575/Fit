@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-036", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "경합 상황을 해결한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-036", "document_type": "PORTFOLIO", "text": "포인트 사용 요청이 겹치면 잔액보다 많은 포인트가 차감될 수 있음을 테스트 중 발견했습니다."}],
+  "expected_findings": [{"experience_type": "CONCURRENCY", "claim_quote": "포인트 사용 요청이 겹치면 잔액보다 많은 포인트가 차감될 수 있음을 테스트 중 발견했습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["포인트 잔액에 비관적 락을 적용했습니다.", "잔액이 충분할 때만 조건부 갱신했습니다.", "포인트 병렬 요청 1만 건을 검증했습니다."]
+}

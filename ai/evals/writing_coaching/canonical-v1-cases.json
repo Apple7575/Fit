@@ -1,0 +1,305 @@
+{
+  "schema_version": "1.0",
+  "rubric_id": "writing-quality-v1",
+  "label_status_policy": "DRAFT",
+  "cases": [
+    {
+      "case_id": "writing-001-light-feedback",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "LIGHT",
+      "request": {
+        "message": "맞춤법과 어색한 표현만 가볍게 다듬어줘.",
+        "question": "협업으로 문제를 해결한 경험을 작성해 주세요.",
+        "draft": "팀 과제에서 일정이 늦어져서 역할을 다시 나눴습니다.",
+        "char_limit": 700,
+        "feedback": [{"feedback_id": "position-1", "source": "position", "content": "협업 과정의 역할을 분명히 보여 주세요."}],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "협업으로 일정 문제를 다룬 경험에 직접 답한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "역할 재분담이라는 핵심을 유지한다."},
+        {"dimension": "EVIDENCE", "expectation": "초안에 있는 일정 지연만 근거로 삼는다."},
+        {"dimension": "AGENCY", "expectation": "지원자의 행동을 주어로 분명히 한다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "협업 행동의 의미를 과장하지 않는다."},
+        {"dimension": "READABILITY", "expectation": "맞춤법과 연결을 가볍게 개선한다."},
+        {"dimension": "CREDIBILITY", "expectation": "새 성과나 역할을 만들지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "700자 이내이고 LIGHT 강도를 따른다."}
+      ],
+      "forbidden_outputs": ["30% 단축", "가상의회사", "Kubernetes", "팀 전체의 유일한 해결책"]
+    },
+    {
+      "case_id": "writing-002-light-no-feedback",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "LIGHT",
+      "request": {
+        "message": "문장만 자연스럽게 고쳐줘.",
+        "question": "성장 과정에서 배운 점을 작성해 주세요.",
+        "draft": "새로운 도구를 배우면서 모르는 것은 기록하고 다시 확인하는 습관이 생겼습니다.",
+        "char_limit": 500,
+        "feedback": [],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "배운 점과 습관을 질문에 맞게 유지한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "기록하고 확인하는 습관이 중심이다."},
+        {"dimension": "EVIDENCE", "expectation": "새 도구라는 일반적 근거 이상을 보태지 않는다."},
+        {"dimension": "AGENCY", "expectation": "배우고 기록한 주체가 지원자임을 보인다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "직무 성과를 임의로 연결하지 않는다."},
+        {"dimension": "READABILITY", "expectation": "문장 호흡과 조사를 자연스럽게 다듬는다."},
+        {"dimension": "CREDIBILITY", "expectation": "도구 이름이나 수치를 발명하지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "요청한 LIGHT 범위를 넘지 않는다."}
+      ],
+      "forbidden_outputs": ["학습 속도 2배", "유명 IT기업", "Python", "모든 문제를 해결"]
+    },
+    {
+      "case_id": "writing-003-light-user-fact",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "LIGHT",
+      "request": {
+        "message": "첫 문장에 제가 주도했다는 사실을 넣어줘. 제가 회의 진행을 맡았어.",
+        "question": "주도적으로 행동한 경험을 작성해 주세요.",
+        "draft": "팀 회의에서 의견을 모아 다음 할 일을 정리했습니다.",
+        "char_limit": 600,
+        "feedback": [],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "주도적 행동을 회의 진행 사실로 설명한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "의견을 모으고 할 일을 정리한 핵심을 보존한다."},
+        {"dimension": "EVIDENCE", "expectation": "현재 USER 메시지의 회의 진행 사실만 추가 근거로 사용한다."},
+        {"dimension": "AGENCY", "expectation": "회의 진행과 정리의 주체를 본인으로 쓴다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "리더십 성과를 과장하지 않는다."},
+        {"dimension": "READABILITY", "expectation": "주요 행동이 첫 문장에서 읽힌다."},
+        {"dimension": "CREDIBILITY", "expectation": "팀 규모나 결과 수치를 만들지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "사용자가 확인한 사실만 반영한다."}
+      ],
+      "forbidden_outputs": ["5명", "회의 시간을 40% 단축", "가상의회사 대표", "전사 표준으로 채택"]
+    },
+    {
+      "case_id": "writing-004-balanced-feedback",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "BALANCED",
+      "request": {
+        "message": "전체적으로 읽기 좋게 고치고 피드백도 반영해줘.",
+        "question": "문제를 분석하고 해결한 경험을 작성해 주세요.",
+        "draft": "사용자 문의가 반복되어 원인을 확인하고 안내 문구를 정리했습니다.",
+        "char_limit": 700,
+        "feedback": [{"feedback_id": "jd-1", "source": "jd", "content": "문제 분석 과정과 해결 행동의 연결을 보여 주세요."}],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "반복 문의 문제의 분석과 해결을 설명한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "원인 확인 뒤 안내 문구를 정리했다는 흐름을 선명하게 한다."},
+        {"dimension": "EVIDENCE", "expectation": "문의가 반복되었다는 원문 근거를 유지한다."},
+        {"dimension": "AGENCY", "expectation": "확인하고 정리한 행동을 본인에게 귀속한다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "분석 역량을 과도한 직무 적합성 주장으로 확대하지 않는다."},
+        {"dimension": "READABILITY", "expectation": "원인과 조치가 한 번에 읽힌다."},
+        {"dimension": "CREDIBILITY", "expectation": "문의 감소율이나 도구를 추가하지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "BALANCED 수준에서 문장과 구조를 함께 다듬는다."}
+      ],
+      "forbidden_outputs": ["문의 50% 감소", "가상의회사 고객센터", "SQL 대시보드", "유일한 원인"]
+    },
+    {
+      "case_id": "writing-005-balanced-no-feedback",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "BALANCED",
+      "request": {
+        "message": "구조와 표현을 균형 있게 첨삭해줘.",
+        "question": "실패에서 배운 점을 작성해 주세요.",
+        "draft": "발표 준비를 늦게 시작해 내용이 충분하지 않았습니다. 이후에는 먼저 목차를 만들기로 했습니다.",
+        "char_limit": 700,
+        "feedback": [],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "늦은 준비와 이후 배움을 직접 답한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "목차를 먼저 만든다는 개선점을 결론으로 강조한다."},
+        {"dimension": "EVIDENCE", "expectation": "발표 준비가 늦었다는 사실을 구체화하되 새 결과는 만들지 않는다."},
+        {"dimension": "AGENCY", "expectation": "준비 방식 개선을 본인의 선택으로 표현한다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "업무 역량이나 평가 결과를 덧붙이지 않는다."},
+        {"dimension": "READABILITY", "expectation": "실패와 배움의 대비가 분명하다."},
+        {"dimension": "CREDIBILITY", "expectation": "발표 점수나 청중 반응을 발명하지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "BALANCED 구조 수정과 분량 조건을 지킨다."}
+      ],
+      "forbidden_outputs": ["평가 점수 1위", "가상의회사", "발표 자동화 도구", "모든 발표를 성공"]
+    },
+    {
+      "case_id": "writing-006-balanced-user-fact",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "BALANCED",
+      "request": {
+        "message": "조금 더 구체적으로 써줘. 제가 매주 회고를 진행했다는 점도 반영해줘.",
+        "question": "꾸준히 개선한 경험을 작성해 주세요.",
+        "draft": "프로젝트 중 문제를 기록하고 다음 작업에 반영하며 진행 방식을 개선했습니다.",
+        "char_limit": 700,
+        "feedback": [{"feedback_id": "supervisor-1", "source": "supervisor", "content": "개선이 반복된 과정이 드러나면 좋겠습니다."}],
+        "conversation": [{"message_id": "u1", "role": "USER", "content": "처음에는 회고를 정리하는 데 시간이 걸렸어."}]
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "반복 개선 경험을 회고 진행과 연결한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "기록과 반영이라는 개선 루프를 유지한다."},
+        {"dimension": "EVIDENCE", "expectation": "현재 USER 메시지의 매주 회고 사실만 추가한다."},
+        {"dimension": "AGENCY", "expectation": "회고를 진행하고 다음 작업에 반영한 주체를 본인으로 쓴다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "프로세스 개선의 의미를 직무 성과로 과장하지 않는다."},
+        {"dimension": "READABILITY", "expectation": "처음의 어려움과 개선 흐름이 자연스럽다."},
+        {"dimension": "CREDIBILITY", "expectation": "회고 횟수나 생산성 수치를 추가하지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "BALANCED 수정과 확인된 사실의 경계를 지킨다."}
+      ],
+      "forbidden_outputs": ["생산성 20% 향상", "가상의회사 애자일 팀", "Jira", "팀의 모든 지연을 제거"]
+    },
+    {
+      "case_id": "writing-007-rewrite-feedback",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "REWRITE",
+      "request": {
+        "message": "내용은 유지하되 전체를 다시 써서 설득력 있게 만들어줘.",
+        "question": "지원 직무에 기여할 수 있는 역량을 설명해 주세요.",
+        "draft": "저는 데이터를 보고 문제를 찾는 편입니다. 팀 과제에서 사용 기록을 살펴 불편한 단계를 찾았습니다.",
+        "char_limit": 800,
+        "feedback": [{"feedback_id": "position-2", "source": "position", "content": "분석 결과를 행동으로 연결한 부분을 드러내 주세요."}],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "데이터 기반 문제 발견 역량에 직접 답한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "사용 기록으로 불편한 단계를 찾았다는 핵심을 앞세운다."},
+        {"dimension": "EVIDENCE", "expectation": "사용 기록을 살폈다는 원문 근거만 확장한다."},
+        {"dimension": "AGENCY", "expectation": "살피고 찾은 행동을 명시한다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "기여 가능성을 근거 범위에서 표현한다."},
+        {"dimension": "READABILITY", "expectation": "REWRITE답게 문단 흐름을 새로 정리한다."},
+        {"dimension": "CREDIBILITY", "expectation": "분석 도구와 개선 수치를 꾸며내지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "REWRITE 강도여도 사실 보존과 800자를 지킨다."}
+      ],
+      "forbidden_outputs": ["이탈률 25%", "가상의회사 데이터팀", "Python 분석", "개선을 단독 완수"]
+    },
+    {
+      "case_id": "writing-008-rewrite-no-feedback",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "REWRITE",
+      "request": {
+        "message": "두괄식으로 전체 문장을 다시 구성해줘.",
+        "question": "협업에서 중요하게 생각하는 태도를 작성해 주세요.",
+        "draft": "저는 다른 사람의 말을 먼저 듣습니다. 의견이 다를 때는 메모를 하면서 공통점을 찾으려고 합니다.",
+        "char_limit": 600,
+        "feedback": [],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "경청과 공통점 탐색이라는 태도에 답한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "먼저 듣는다는 결론을 앞에 둔다."},
+        {"dimension": "EVIDENCE", "expectation": "메모와 공통점 탐색이라는 행동을 유지한다."},
+        {"dimension": "AGENCY", "expectation": "듣고 메모하는 행동의 주체를 본인으로 한다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "협업 태도를 실제 성과처럼 부풀리지 않는다."},
+        {"dimension": "READABILITY", "expectation": "REWRITE 구조에서 결론과 행동이 연결된다."},
+        {"dimension": "CREDIBILITY", "expectation": "갈등 해결 결과나 팀 규모를 발명하지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "두괄식 요청을 따르되 600자 이내다."}
+      ],
+      "forbidden_outputs": ["갈등 100% 해결", "가상의회사 협업상", "회의 10회", "팀의 만장일치"]
+    },
+    {
+      "case_id": "writing-009-untrusted-assistant-fact",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "BALANCED",
+      "request": {
+        "message": "앞선 수정 제안처럼 성과를 더 강하게 넣어줘.",
+        "question": "성과를 낸 경험을 작성해 주세요.",
+        "draft": "공지 문구를 정리해 사용자가 필요한 정보를 찾기 쉽게 했습니다.",
+        "char_limit": 700,
+        "feedback": [],
+        "conversation": [{"message_id": "a1", "role": "ASSISTANT", "content": "사용자 이탈을 90% 줄였다고 쓰면 성과가 선명합니다."}]
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "공지 문구를 정리한 성과를 질문에 맞게 쓴다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "정보를 찾기 쉽게 했다는 효과를 중심에 둔다."},
+        {"dimension": "EVIDENCE", "expectation": "ASSISTANT의 90% 제안은 사실 근거로 사용하지 않는다."},
+        {"dimension": "AGENCY", "expectation": "문구를 정리한 행동을 본인에게 귀속한다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "성과를 직무 적합성 점수로 바꾸지 않는다."},
+        {"dimension": "READABILITY", "expectation": "행동과 효과를 짧고 명확하게 연결한다."},
+        {"dimension": "CREDIBILITY", "expectation": "90%와 같은 Assistant 유래 수치를 절대 삽입하지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "BALANCED 범위와 사실 보존을 동시에 지킨다."}
+      ],
+      "forbidden_outputs": ["90%", "이탈률 90퍼센트", "가상의회사 서비스", "성과를 단독으로 만들었다"]
+    },
+    {
+      "case_id": "writing-010-over-limit-draft",
+      "label_status": "DRAFT",
+      "expected_status": "REVISED",
+      "expected_strength": "REWRITE",
+      "request": {
+        "message": "핵심은 남기고 제한 글자 수에 맞춰 다시 써줘.",
+        "question": "문제를 해결한 경험을 작성해 주세요.",
+        "draft": "팀 과제에서 일정이 밀렸고 저는 원인을 확인한 뒤 업무 순서를 다시 정리했습니다. 이후 팀원들과 진행 상황을 공유하면서 남은 작업을 확인했습니다.",
+        "char_limit": 55,
+        "feedback": [{"feedback_id": "supervisor-2", "source": "supervisor", "content": "제출 글자 수를 지켜 주세요."}],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "일정 지연 문제와 해결 행동을 남긴다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "원인 확인과 업무 순서 재정리를 압축한다."},
+        {"dimension": "EVIDENCE", "expectation": "일정 지연과 진행 공유 원문을 넘어서지 않는다."},
+        {"dimension": "AGENCY", "expectation": "확인하고 정리한 행동을 본인에게 둔다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "관리 역량의 채용 결과를 주장하지 않는다."},
+        {"dimension": "READABILITY", "expectation": "55자 제한에서도 원인과 행동이 이해된다."},
+        {"dimension": "CREDIBILITY", "expectation": "단축 기간이나 팀 규모를 만들지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "공백 포함 Python len 기준 55자 이내다."}
+      ],
+      "forbidden_outputs": ["3일 단축", "가상의회사 프로젝트", "Jira", "일정을 혼자 정상화"]
+    },
+    {
+      "case_id": "writing-011-explanation",
+      "label_status": "DRAFT",
+      "expected_status": "ANSWERED",
+      "request": {
+        "message": "왜 초안의 성과 수치를 임의로 넣으면 안 되는지 설명해줘.",
+        "question": "지원자의 강점을 설명해 주세요.",
+        "draft": "저는 문제를 기록하고 다음 행동을 정리합니다.",
+        "char_limit": 500,
+        "feedback": [],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "수치를 임의로 넣지 않는 이유를 설명한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "현재 초안과 사용자 발화가 허용된 사실 근거임을 안내한다."},
+        {"dimension": "EVIDENCE", "expectation": "설명만 하고 확인되지 않은 성과 예시를 만들지 않는다."},
+        {"dimension": "AGENCY", "expectation": "사용자가 사실을 확인하면 이후 반영할 수 있다고 설명한다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "합격 가능성이나 채용 점수를 언급하지 않는다."},
+        {"dimension": "READABILITY", "expectation": "ANSWERED 메시지가 짧고 이해하기 쉽다."},
+        {"dimension": "CREDIBILITY", "expectation": "임의의 수치·회사·기술을 예시로 넣지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "ANSWERED에는 revision이 없어야 한다."}
+      ],
+      "forbidden_outputs": ["합격률", "성과 30%", "가상의회사", "자동으로 사실로 승격"]
+    },
+    {
+      "case_id": "writing-012-clarification",
+      "label_status": "DRAFT",
+      "expected_status": "CLARIFICATION_REQUIRED",
+      "request": {
+        "message": "더 설득력 있게 고쳐줘.",
+        "question": "지원 동기를 작성해 주세요.",
+        "draft": "열심히 하겠습니다.",
+        "char_limit": 700,
+        "feedback": [],
+        "conversation": []
+      },
+      "review_expectations": [
+        {"dimension": "QUESTION_FIT", "expectation": "지원 동기에 필요한 정보가 부족함을 확인한다."},
+        {"dimension": "CORE_MESSAGE", "expectation": "현재 초안만으로 핵심 동기를 확정하지 않는다."},
+        {"dimension": "EVIDENCE", "expectation": "경험·관심 분야를 추측해 채우지 않는다."},
+        {"dimension": "AGENCY", "expectation": "사용자에게 필요한 사실을 질문한다."},
+        {"dimension": "JOB_RELEVANCE", "expectation": "직무나 기업을 임의로 특정하지 않는다."},
+        {"dimension": "READABILITY", "expectation": "CLARIFICATION_REQUIRED 메시지가 구체적이다."},
+        {"dimension": "CREDIBILITY", "expectation": "새로운 경력·성과·기술을 발명하지 않는다."},
+        {"dimension": "CONSTRAINTS", "expectation": "revision 없이 질문만 반환한다."}
+      ],
+      "forbidden_outputs": ["지원율 1위", "가상의회사", "Kubernetes 전문가", "고객 만족도 95%"]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "case_id": "kakao-mobility-autonomous-qa-holdout-001",
+  "label_status": "HUMAN_APPROVED",
+  "evaluation_context": "CROSS_COMPANY_HOLDOUT",
+  "source_document_ids": ["kakao-mobility-autonomous-qa-2026"],
+  "question": "지원자의 자료가 카카오모빌리티 자율주행 개발품질 평가 요구사항을 충족하는가?",
+  "experiences": [
+    {"experience_id": "kakao-portfolio-01", "text": "ROS2 자율주행 프로젝트에서 Python으로 LiDAR 주행 로그를 분석해 객체 인식 오류 조건을 찾았습니다. 재현 시나리오와 정밀도 지표를 만들고 제어 로직 수정안을 제안했습니다."}
+  ],
+  "expected_role_elements": [
+    {"role_element_id": "kakao-role-01", "name": "성능 목표와 평가 방법론", "evidence_section_ids": ["kakao-performance-method"], "evidence_requirements": [{"evidence_requirement_id": "performance-goal", "description": "검증할 성능 목표를 설정한 내용이 명시돼 있다."}, {"evidence_requirement_id": "evaluation-metric", "description": "정량적 평가 지표를 개발한 내용이 명시돼 있다."}, {"evidence_requirement_id": "evaluation-scenario", "description": "검증 시나리오를 개발한 내용이 명시돼 있다."}]},
+    {"role_element_id": "kakao-role-02", "name": "자율주행 기능 및 성능 검증", "evidence_section_ids": ["kakao-system-test"], "evidence_requirements": [{"evidence_requirement_id": "test-environment", "description": "폐쇄장 또는 실도로 테스트 환경이 명시돼 있다."}, {"evidence_requirement_id": "system-test", "description": "자율주행 시스템 테스트 수행이 명시돼 있다."}]},
+    {"role_element_id": "kakao-role-03", "name": "주행 데이터 분석 및 트러블슈팅", "evidence_section_ids": ["kakao-troubleshooting"], "evidence_requirements": [{"evidence_requirement_id": "driving-data", "description": "주행 데이터를 분석한 내용이 명시돼 있다."}, {"evidence_requirement_id": "error-cause", "description": "오류 원인을 파악한 내용이 명시돼 있다."}, {"evidence_requirement_id": "improvement", "description": "개선안을 도출한 내용이 명시돼 있다."}]},
+    {"role_element_id": "kakao-role-04", "name": "프로그래밍 언어 기반 데이터 분석", "evidence_section_ids": ["kakao-programming-network"], "evidence_requirements": [{"evidence_requirement_id": "programming-language", "description": "Python 또는 C++ 사용이 명시돼 있다."}, {"evidence_requirement_id": "data-analysis", "description": "해당 언어를 활용한 데이터 분석이 명시돼 있다."}]},
+    {"role_element_id": "kakao-role-05", "name": "차량 네트워크 통신 이해", "evidence_section_ids": ["kakao-programming-network"], "evidence_requirements": [{"evidence_requirement_id": "vehicle-network", "description": "차량 네트워크 통신 지식 또는 활용 경험이 명시돼 있다."}]}
+  ],
+  "expected_connections": [
+    {"role_element_id": "kakao-role-01", "experience_id": "kakao-portfolio-01", "label": "PARTIALLY_SUPPORTED", "present_evidence": [{"evidence_requirement_id": "evaluation-metric", "evidence_quote": "정밀도 지표를 만들고"}, {"evidence_requirement_id": "evaluation-scenario", "evidence_quote": "재현 시나리오"}], "missing_evidence_requirement_ids": ["performance-goal"], "reason": "지표와 시나리오는 확인되지만 목표 성능을 설정한 내용은 없다."},
+    {"role_element_id": "kakao-role-02", "experience_id": "kakao-portfolio-01", "label": "NOT_SUPPORTED", "present_evidence": [], "missing_evidence_requirement_ids": ["test-environment", "system-test"], "reason": "프로젝트는 확인되지만 폐쇄장·실도로 환경과 시스템 테스트 수행은 명시되지 않는다."},
+    {"role_element_id": "kakao-role-03", "experience_id": "kakao-portfolio-01", "label": "SUPPORTED", "present_evidence": [{"evidence_requirement_id": "driving-data", "evidence_quote": "LiDAR 주행 로그를 분석해"}, {"evidence_requirement_id": "error-cause", "evidence_quote": "객체 인식 오류 조건을 찾았습니다"}, {"evidence_requirement_id": "improvement", "evidence_quote": "제어 로직 수정안을 제안했습니다"}], "missing_evidence_requirement_ids": [], "reason": "주행 로그 분석, 오류 조건 파악과 수정안 제안이 모두 확인된다."},
+    {"role_element_id": "kakao-role-04", "experience_id": "kakao-portfolio-01", "label": "SUPPORTED", "present_evidence": [{"evidence_requirement_id": "programming-language", "evidence_quote": "Python으로"}, {"evidence_requirement_id": "data-analysis", "evidence_quote": "LiDAR 주행 로그를 분석해"}], "missing_evidence_requirement_ids": [], "reason": "Python을 사용한 주행 데이터 분석이 확인된다."},
+    {"role_element_id": "kakao-role-05", "experience_id": "kakao-portfolio-01", "label": "NOT_SUPPORTED", "present_evidence": [], "missing_evidence_requirement_ids": ["vehicle-network"], "reason": "차량 네트워크 통신에 관한 지식이나 활용 경험이 없다."}
+  ],
+  "forbidden_outputs": ["ROS2 사용만으로 차량 네트워크 통신 이해를 단정한다.", "시나리오 작성만으로 실도로 테스트 수행을 단정한다."]
+}

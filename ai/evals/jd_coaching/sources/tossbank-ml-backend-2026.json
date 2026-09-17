@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "document_id": "tossbank-ml-backend-2026",
+  "company_name": "토스뱅크",
+  "organization": null,
+  "job_title": "ML Backend Engineer",
+  "source_type": "JOB_POSTING",
+  "source_url": "https://toss.im/career/job-detail?job_id=6600650003",
+  "retrieved_at": "2026-09-13",
+  "published_at": null,
+  "valid_until": null,
+  "source_status": "ACCESSIBLE",
+  "source_file_name": null,
+  "source_file_sha256": null,
+  "sections": [
+    {"section_id": "toss-required-server", "section_type": "REQUIRED_QUALIFICATION", "ordinal": 1, "text": "Python, Kotlin, Go 등 하나 이상의 언어로 서버를 개발하고 운영해 본 경험이 필요해요.", "source_page": null},
+    {"section_id": "toss-required-architecture", "section_type": "REQUIRED_QUALIFICATION", "ordinal": 2, "text": "견고한 서비스 아키텍처를 설계하고 안정적인 구조의 코드를 구현할 수 있는 역량이 필요해요.", "source_page": null},
+    {"section_id": "toss-preferred-kubernetes", "section_type": "PREFERRED_QUALIFICATION", "ordinal": 3, "text": "쿠버네티스 환경 위에서 서버를 배포하고 모니터링하며 안정적으로 운영한 경험이 있으면 좋아요.", "source_page": null},
+    {"section_id": "toss-preferred-scale", "section_type": "PREFERRED_QUALIFICATION", "ordinal": 4, "text": "대규모 트래픽을 받거나 SLA가 높은 서비스를 프로덕션으로 개발하고 운영한 경험과 역량이 있으면 좋아요.", "source_page": null}
+  ]
+}

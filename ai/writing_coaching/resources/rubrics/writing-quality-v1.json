@@ -1,0 +1,12 @@
+{
+  "id": "writing-quality-v1",
+  "version": 1,
+  "dimensions": [
+    "QUESTION_FIT", "CORE_MESSAGE", "EVIDENCE", "AGENCY",
+    "JOB_RELEVANCE", "READABILITY", "CREDIBILITY", "CONSTRAINTS"
+  ],
+  "change_types": [
+    "STRUCTURE", "CLARITY", "CONCISENESS", "FLOW", "TONE", "LENGTH"
+  ],
+  "default_revision_strength": "BALANCED"
+}

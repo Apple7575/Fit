@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-010", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "장애 영향을 줄인 백엔드 개선 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-010", "document_type": "SELF_INTRO", "text": "이미지 변환 작업 하나가 실패하면 같은 배치 전체가 롤백되는 문제가 있었습니다. 성공 작업까지 다시 처리하지 않도록 작업 단위 체크포인트와 격리 큐를 도입했고, 오류 파일을 섞은 리허설로 정상 파일이 유지되는지 검증했습니다. 그 결과 재처리 대상이 배치 전체에서 실패 파일로 줄었습니다."}],
+  "expected_findings": [{"experience_type": "RELIABILITY", "claim_quote": "이미지 변환 작업 하나가 실패하면 같은 배치 전체가 롤백되는 문제가 있었습니다. 성공 작업까지 다시 처리하지 않도록 작업 단위 체크포인트와 격리 큐를 도입했고, 오류 파일을 섞은 리허설로 정상 파일이 유지되는지 검증했습니다. 그 결과 재처리 대상이 배치 전체에서 실패 파일로 줄었습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "REASONING", "VERIFICATION", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["이미지 변환기를 블루그린 방식으로 배포했습니다.", "배치 장애 복구 시간을 30초로 줄였습니다.", "이미지 파일 처리량을 400% 향상했습니다."]
+}

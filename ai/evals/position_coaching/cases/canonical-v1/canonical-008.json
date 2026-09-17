@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-008", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "비동기 이벤트 처리의 신뢰성을 확보한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-008", "document_type": "PORTFOLIO", "text": "주문 저장 뒤 포인트 적립 이벤트가 간헐적으로 누락되는 문제를 해결했습니다. 주문 트랜잭션에서 아웃박스 레코드를 함께 저장하고 폴러가 발행하도록 구현했으며, 프로세스 강제 종료를 포함한 시나리오 테스트로 재시작 뒤 모든 이벤트가 전달되는 것을 확인했습니다."}],
+  "expected_findings": [{"experience_type": "MESSAGING", "claim_quote": "주문 저장 뒤 포인트 적립 이벤트가 간헐적으로 누락되는 문제를 해결했습니다. 주문 트랜잭션에서 아웃박스 레코드를 함께 저장하고 폴러가 발행하도록 구현했으며, 프로세스 강제 종료를 포함한 시나리오 테스트로 재시작 뒤 모든 이벤트가 전달되는 것을 확인했습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"], "missing_elements": []}],
+  "forbidden_output_substrings": ["Debezium CDC로 아웃박스를 발행했습니다.", "포인트 이벤트 처리량 3만 TPS를 달성했습니다.", "포인트 적립 이벤트를 SQS FIFO로 전송했습니다."]
+}

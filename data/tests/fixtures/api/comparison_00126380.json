@@ -1,0 +1,48 @@
+{
+  "_request": {
+    "path": "/api/companies/00126380/industry-comparison",
+    "params": {
+      "year": 2025
+    }
+  },
+  "_status": 200,
+  "_elapsed_ms": 0,
+  "_content_type": "application/json",
+  "body": {
+    "success": true,
+    "data": {
+      "year": 2025,
+      "industry": {
+        "code": "26",
+        "name": "전자 부품, 컴퓨터, 영상, 음향 및 통신장비 제조업",
+        "companyCount": 494
+      },
+      "metrics": [
+        "revenue",
+        "revenue_growth",
+        "operating_profit",
+        "operating_margin",
+        "employee_count",
+        "average_salary",
+        "rd_ratio"
+      ],
+      "companies": [
+        {
+          "corpCode": "00126380",
+          "corpName": "삼성전자",
+          "isTarget": true,
+          "values": {
+            "revenue": 333605938000000,
+            "revenue_growth": 10.9,
+            "operating_profit": 43601051000000,
+            "operating_margin": 13.1,
+            "employee_count": 128881,
+            "average_salary": 157064509,
+            "rd_ratio": 11.3
+          }
+        }
+      ]
+    }
+  },
+  "text": null
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-001", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "백엔드 직무 역량을 보여 준 API 설계 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-001", "document_type": "RESUME", "text": "파트너사마다 주문 상태 표현이 달라 연동 오류가 반복되자, API 계약 담당자로서 상태 전이 규칙을 표준화하고 하위 호환을 위해 버전 헤더 방식을 선택했습니다. OpenAPI 명세와 계약 테스트를 직접 작성해 세 파트너사의 회귀 테스트가 모두 통과하는 것을 확인했습니다."}],
+  "expected_findings": [{"experience_type": "API_DESIGN", "claim_quote": "파트너사마다 주문 상태 표현이 달라 연동 오류가 반복되자, API 계약 담당자로서 상태 전이 규칙을 표준화하고 하위 호환을 위해 버전 헤더 방식을 선택했습니다. OpenAPI 명세와 계약 테스트를 직접 작성해 세 파트너사의 회귀 테스트가 모두 통과하는 것을 확인했습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ROLE", "ACTION", "REASONING", "VERIFICATION"], "missing_elements": []}],
+  "forbidden_output_substrings": ["주문 API를 GraphQL로 전환했습니다.", "API 응답 시간을 80% 단축했습니다.", "API 개편으로 매출이 12% 증가했습니다."]
+}

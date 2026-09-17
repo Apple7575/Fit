@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "rubric_id": "experience-depth-v1",
+  "version": 1,
+  "elements": [
+    "SITUATION",
+    "PROBLEM",
+    "ROLE",
+    "ACTION",
+    "REASONING",
+    "PROCESS",
+    "VERIFICATION",
+    "RESULT",
+    "LEARNING"
+  ],
+  "claim_types": [
+    {"code": "PROBLEM_SOLVING", "required_elements": ["PROBLEM", "ROLE", "ACTION", "REASONING", "VERIFICATION", "RESULT"]},
+    {"code": "ACHIEVEMENT", "required_elements": ["SITUATION", "ROLE", "ACTION", "VERIFICATION", "RESULT"]},
+    {"code": "DECISION", "required_elements": ["SITUATION", "ROLE", "ACTION", "REASONING", "RESULT"]},
+    {"code": "EXECUTION", "required_elements": ["SITUATION", "ROLE", "ACTION", "PROCESS", "RESULT"]},
+    {"code": "COLLABORATION", "required_elements": ["SITUATION", "ROLE", "ACTION", "PROCESS", "RESULT"]},
+    {"code": "GROWTH", "required_elements": ["SITUATION", "ACTION", "VERIFICATION", "LEARNING"]},
+    {"code": "OTHER", "required_elements": ["SITUATION", "ROLE", "ACTION", "RESULT"]}
+  ]
+}

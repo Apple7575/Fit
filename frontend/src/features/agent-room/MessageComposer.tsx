@@ -1,0 +1,85 @@
+import { useState } from 'react';
+import { ApiError } from '../../api/client';
+import { sendMessage } from './api';
+
+interface MessageComposerProps {
+  roomId: number;
+  /** 턴이 도는 동안에는 새 발화를 막는다. 서버도 409 로 막는다. */
+  busy: boolean;
+  onStarted: (turnId: number) => void;
+}
+
+/**
+ * 방에 말을 건다. 이 한 번이 곧 분석 요청이다.
+ *
+ * <p>지금은 자소서 전체만 본다. 서버는 문항 하나만 보는 것도 받지만
+ * (coverLetterItemId), 자소서 상세 응답이 문항 id 를 내려주지 않아 화면이 가리킬 수가 없다.
+ */
+export function MessageComposer({ roomId, busy, onStarted }: MessageComposerProps) {
+  const [content, setContent] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    const text = content.trim();
+    if (text === '') {
+      setError('무엇을 봐 달라고 할지 적어 주세요.');
+      return;
+    }
+    setSending(true);
+    setError(null);
+    try {
+      const started = await sendMessage(roomId, text);
+      setContent('');
+      onStarted(started.turnId);
+    } catch (caught) {
+      setError(
+        caught instanceof ApiError
+          ? caught.message
+          : '보내지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const disabled = busy || sending;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <textarea
+        value={content}
+        rows={3}
+        maxLength={2000}
+        disabled={disabled}
+        placeholder={
+          busy ? '에이전트들이 답하는 중입니다…' : '예: 기술 서술이 충분한지 봐 주세요'
+        }
+        aria-label="에이전트에게 할 말"
+        onChange={(event) => {
+          setContent(event.target.value);
+          if (error) setError(null);
+        }}
+        className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-[14px] leading-relaxed text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+      />
+
+      {error && (
+        <p role="alert" className="mt-1 text-[13px] font-medium text-red-600">
+          {error}
+        </p>
+      )}
+
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-[11px] text-slate-400">{content.length} / 2000</span>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={disabled}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+        >
+          {sending ? '보내는 중…' : busy ? '진행 중…' : '보내기'}
+        </button>
+      </div>
+    </div>
+  );
+}

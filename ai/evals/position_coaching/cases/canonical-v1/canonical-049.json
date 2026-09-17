@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-049", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "데이터 정합성을 보장한 DB 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-049", "document_type": "RESUME", "text": "관계형 데이터베이스 자격시험을 준비 중이며 트랜잭션 문제를 직접 해결해 본 적은 없습니다."}],
+  "expected_findings": [{"experience_type": "DATABASE", "claim_quote": "관계형 데이터베이스 자격시험을 준비 중이며 트랜잭션 문제를 직접 해결해 본 적은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["주문 트랜잭션의 격리 수준을 조정했습니다.", "PostgreSQL 데이터베이스를 운영했습니다.", "주문 정합성 테스트 100건을 통과시켰습니다."]
+}

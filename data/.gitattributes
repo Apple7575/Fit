@@ -1,0 +1,12 @@
+# 조사 근거의 SHA-256이 체크아웃 후에도 유지되도록 원본 바이트를 보존한다.
+docs/news-poc/evidence/robots.txt -text
+
+# 시드 CSV·데이터 사전은 재현 검증에서 바이트를 비교한다(scripts/verify_news.py 13번).
+# core.autocrlf 로 체크아웃에서 CRLF 가 되면 같은 입력인데도 결과가 달라진다.
+curated/seed/*.csv          text eol=lf
+docs/data_fields.csv        text eol=lf
+docs/seed_csv_inventory.csv text eol=lf
+
+# curated/ 바로 밑의 보조 산출물도 같은 이유로 고정한다. 시드는 아니지만
+# 재생성해서 대조하는 것은 마찬가지다 (seed_csv_inventory 의 not_applicable).
+curated/*.csv               text eol=lf

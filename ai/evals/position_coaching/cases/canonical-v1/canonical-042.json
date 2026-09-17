@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-042", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "로그 개선으로 문제를 해결한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-042", "document_type": "SELF_INTRO", "text": "여러 서버의 로그 형식이 달라 장애 상황에서 검색하기 어려웠습니다."}],
+  "expected_findings": [{"experience_type": "OBSERVABILITY", "claim_quote": "여러 서버의 로그 형식이 달라 장애 상황에서 검색하기 어려웠습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "MECHANISM", "RESULT"]}],
+  "forbidden_output_substrings": ["모든 서버 로그를 JSON 형식으로 통일했습니다.", "중앙 로그 저장소에 Loki를 도입했습니다.", "장애 로그 검색 시간을 75% 감소시켰습니다."]
+}
