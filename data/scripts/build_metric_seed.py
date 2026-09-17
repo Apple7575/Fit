@@ -122,11 +122,39 @@ FS_PRIORITY = ("CFS", "OFS")     # config/patterns.yaml 의 fs_div_priority
 # 믿을 수 없고, 그런 값을 넣느니 행이 없는 편이 낫다 (팀장 기준 4항).
 RD_ACCEPT_VERDICTS = ("high", "medium")
 
+# R&D 금액이 **같은 행의 보고 비율과 배수로** 어긋나면 금액을 못 믿는다.
+#
+# 파서는 표에서 금액과 비율을 따로 읽는데, 비율 칸을 금액으로 읽거나(SK오션플랜트
+# 2021: 비율 0.58% → 금액 "580") 단위를 놓치는 일이 있다(CJ CGV 2022: 천원을 원으로
+# 읽어 1,000배 작다). 판정은 전부 high 로 나온다 — 상식 검사는 비율이 60% 를 넘는
+# **너무 큰** 쪽만 보므로 1,000배 작은 값은 비율이 0.2% 로 멀쩡해 보여 통과한다.
+#
+# 판별자는 `보고 비율` 대 `금액 ÷ 매출` 의 **배수**다. %p 차이로는 못 잡는다 —
+# 0.2% 와 0.0002% 의 차이는 0.1998%p 라 작아 보인다.
+#
+# 경계를 100 배로 둔 근거 (실측 5,413행)
+#   1.0~4.5배가 연속이고 98.9% 가 5배 이내다. 보고서가 쓴 매출이 주요계정 매출과
+#   범위·기준이 달라 몇 배까지는 정상적으로 벌어진다.
+#   5~100배 39행은 **오류라고 단정할 수 없다** — 이마트(금액 15.8억 vs 비율역산
+#   870억)처럼 어느 쪽이 맞는지 원문을 봐야 안다. 그래서 세지만 버리지 않는다.
+#   실측으로 확인한 오류는 전부 1,000배 이상이었다(가장 낮은 것이 CJ CGV 1,110배).
+#
+# mismatch 를 통째로 버리지 않고 비율로 갈랐던 판단(S15P21A504-73)과 같은 결이다 —
+# 경계를 5배로 낮추면 확인되지 않은 39행을 함께 잃는다.
+RD_AMOUNT_DROP_FACTOR = 100.0
+RD_AMOUNT_WARN_FACTOR = 5.0
+
 FIELDS = ["corp_code", "fiscal_year", "metric_code", "metric_value", "fs_div"]
 
 
-def build_rd_rows() -> tuple[list[dict], Counter]:
-    """사업보고서 파싱 결과 → rd_expense 행.
+def build_rd_rows(revenue: dict | None = None) -> tuple[list[dict], Counter]:
+    """사업보고서 파싱 결과 → rd_expense · rd_ratio 행.
+
+    **비율을 여기서 나눠 만들지 않는다.** 파서가 문서의 매출로 이미 계산해
+    `rd_ratio` 칸에 넣어 두었고, 조회 API 도 `rd_ratio` 를 그대로 읽는다
+    (`CompanyFocusService.rnd` — "같은 숫자를 두 군데서 만들면 규칙이 갈린다").
+    금액만 내보내고 비율을 버리던 탓에 `rd_ratio` 가 옛 10개사 경로에만 있었고,
+    집중 분야 카드가 "매출의 ?%를 R&D에" 로 떴다.
 
     파싱 단계가 이미 단위 미상(unit_unknown)을 버렸다. 여기서는 판정만 더 거른다.
     파일이 없으면 빈 목록이다 — 사업보고서 파싱을 안 돌린 환경에서도 나머지 5종
@@ -144,12 +172,38 @@ def build_rd_rows() -> tuple[list[dict], Counter]:
             stats[f"판정 {r['verdict']}"] += 1
             if r["verdict"] not in RD_ACCEPT_VERDICTS or not r["rd_expense"]:
                 continue
+
+            # 금액이 같은 행의 비율과 배수로 어긋나면 금액·비율 둘 다 넣지 않는다.
+            # 어느 쪽이 틀렸는지 모르므로 한쪽만 살리지 않는다.
+            rev = (revenue or {}).get((r["corp_code"], int(r["fiscal_year"])))
+            ratio = float(r["rd_ratio"]) if r.get("rd_ratio") else 0.0
+            amount = float(r["rd_expense"])
+            if rev and ratio > 0 and amount > 0:
+                implied = amount / rev * 100
+                factor = max(ratio / implied, implied / ratio)
+                if factor >= RD_AMOUNT_DROP_FACTOR:
+                    stats[f"금액이 비율과 {RD_AMOUNT_DROP_FACTOR:.0f}배 이상 어긋남(제외)"] += 1
+                    continue
+                if factor >= RD_AMOUNT_WARN_FACTOR:
+                    stats["금액이 비율과 5~100배 어긋남(넣되 기록)"] += 1
+            elif not rev:
+                stats["매출이 없어 금액-비율 대조 못 함(넣음)"] += 1
+
             out.append({"corp_code": r["corp_code"],
                         "fiscal_year": int(r["fiscal_year"]),
                         "metric_code": "rd_expense",
                         "metric_value": r["rd_expense"],
                         # 문서 표에는 연결·별도 구분이 없다
                         "fs_div": ""})
+            # 비율도 같이 낸다. 위 대조를 통과한 행이므로 금액과 갈리지 않는다
+            if ratio > 0:
+                out.append({"corp_code": r["corp_code"],
+                            "fiscal_year": int(r["fiscal_year"]),
+                            "metric_code": "rd_ratio",
+                            "metric_value": r["rd_ratio"],
+                            "fs_div": ""})
+            else:
+                stats["rd_ratio 기재 없음"] += 1
     stats["채택"] = len(out)
     return out, stats
 
@@ -278,7 +332,10 @@ def build_rows() -> tuple[list[dict], dict]:
             out.append({"corp_code": corp, "fiscal_year": year, "metric_code": code,
                         "metric_value": f"{value:.4f}", "fs_div": chosen})
 
-    rd_rows, rd_stats = build_rd_rows()
+    # 금액-비율 대조에 쓸 매출. 위에서 막 만든 revenue 행이 곧 그 값이다
+    rd_rows, rd_stats = build_rd_rows({
+        (r["corp_code"], r["fiscal_year"]): float(r["metric_value"])
+        for r in out if r["metric_code"] == "revenue"})
     emp_rows, emp_stats = build_employee_rows()
     # company_metric 은 (corp_code, fiscal_year, metric_code) 가 PK 다. 원천이 달라
     # 겹칠 일이 없지만, 겹치면 적재가 아니라 여기서 걸려야 한다.
