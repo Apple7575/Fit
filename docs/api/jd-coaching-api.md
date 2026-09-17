@@ -36,7 +36,7 @@ Content-Type: application/json
 | --- | --- | --- | --- |
 | `url` | 예 | 절대 HTTP·HTTPS URL, 1~2,000자 | 사용자가 제공한 공고 주소 |
 
-다른 요청 필드는 `422`로 거절한다. 기존 `ingestor.from_url()`을 사용하며, HTML·XHTML·일반 텍스트 응답만 지원한다. 원본 최대 10 MiB, 추출 본문 10~50,000자다. 로컬·사설망 주소와 그곳으로 향하는 리다이렉트를 차단한다. JavaScript 실행 후 본문이 나타나는 공고는 추출에 실패할 수 있다.
+다른 요청 필드는 `422`로 거절한다. 기존 `ingestor.from_url()`을 사용하며, HTML·XHTML·일반 텍스트 응답만 지원한다. 원본 최대 10 MiB, 추출 본문 10~100,000자다. 로컬·사설망 주소와 그곳으로 향하는 리다이렉트를 차단한다. JavaScript 실행 후 본문이 나타나는 공고는 추출에 실패할 수 있다.
 
 ### `200` 응답
 
@@ -81,7 +81,7 @@ Content-Type: application/json
 | --- | --- | --- | --- |
 | `company_name` | 예 | 공백 제외 1~100자 | 기업명 |
 | `position_name` | 예 | 공백 제외 1~200자 | 직무명 |
-| `jd_text` | 예 | 공백 제외 10~50,000자 | 추출한 공고 본문 |
+| `jd_text` | 예 | 공백 제외 10~100,000자 | 추출한 공고 본문 |
 | `job_posting_id` | 아니오 | 1~200자 | 공고 식별자 |
 | `source_url` | 아니오 | 절대 HTTP·HTTPS URL, 최대 2,000자 | 추출 결과의 최종 URL |
 | `published_at`, `valid_until`, `retrieved_at` | 아니오 | `YYYY-MM-DD` | 게시·마감·수집일; 마감일은 게시일 이전 불가 |

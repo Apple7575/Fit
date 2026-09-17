@@ -312,6 +312,212 @@ class JdSourceIngestorTest(unittest.TestCase):
         self.assertIsNone(result.position_name)
         self.assertIn("담당 업무", result.jd_text)
 
+    def test_image_ocr_with_real_marker_text_is_accepted(self):
+        fetcher = RoutingFakeFetcher({
+            ".png": SourceFetchResult(
+                content=b"fake-image-bytes", content_type="image/png",
+                final_url="https://example.test/flyer.png",
+            ),
+            "": SourceFetchResult(
+                content='<title>회사 채용공고 페이지</title><img src="flyer.png">'.encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://example.test/job/1",
+            ),
+        })
+
+        def fake_ocr(key, image_bytes, mime_type):
+            return "담당 업무: 백엔드 서비스 개발\n자격 요건: 3년 이상 경력"
+
+        result = JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", image_ocr_caller=fake_ocr
+        ).from_url("https://example.test/job/1")
+
+        self.assertIn("담당 업무", result.jd_text)
+
+    def test_image_ocr_reached_even_when_page_has_no_visible_text(self):
+        # 공고가 이미지 한 장뿐인 페이지는 title도 없이 <img> 하나만 있는 경우가
+        # 흔하다 — 보이는 글자가 10자는커녕 0자에 가깝다. 이 기능을 만든 이유가
+        # 정확히 이 케이스라, 본문이 짧다고 OCR 분기 전에 거절되면 안 된다.
+        fetcher = RoutingFakeFetcher({
+            ".png": SourceFetchResult(
+                content=b"fake-image-bytes", content_type="image/png",
+                final_url="https://example.test/flyer.png",
+            ),
+            "": SourceFetchResult(
+                content='<img src="flyer.png">'.encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://example.test/job/1",
+            ),
+        })
+        calls = []
+
+        def fake_ocr(key, image_bytes, mime_type):
+            calls.append(1)
+            return "담당 업무: 백엔드 서비스 개발\n자격 요건: 3년 이상 경력"
+
+        result = JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", image_ocr_caller=fake_ocr
+        ).from_url("https://example.test/job/1")
+
+        self.assertEqual(len(calls), 1)
+        self.assertIn("담당 업무", result.jd_text)
+
+    def test_image_ocr_hallucinated_generic_text_is_rejected(self):
+        # 실제 매드업/CJ 사례 재현: 모델이 진짜 이미지 대신 그럴듯한 일반
+        # 채용공고 양식을 지어내면(JD 마커가 없는 자유 텍스트) 받아들이면 안 된다.
+        fetcher = RoutingFakeFetcher({
+            ".png": SourceFetchResult(
+                content=b"fake-image-bytes", content_type="image/png",
+                final_url="https://example.test/flag.png",
+            ),
+            "": SourceFetchResult(
+                content='<title>회사 채용공고 페이지</title><img src="flag.png">'.encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://example.test/job/1",
+            ),
+        })
+
+        def hallucinating_ocr(key, image_bytes, mime_type):
+            return (
+                "채용\n모집부문\n경력\n신입\n모집인원\n모집기간\n"
+                "근무지\n서울\n제출서류\n이력서, 자기소개서\n문의\n인사담당자 02-1234-5678"
+            )
+
+        with self.assertRaisesRegex(SourceIngestionError, "채용공고 본문"):
+            JdSourceIngestor(
+                fetcher=fetcher, gms_key="test-key", image_ocr_caller=hallucinating_ocr
+            ).from_url("https://example.test/job/1")
+
+    def test_image_ocr_placeholder_bracket_tile_is_discarded(self):
+        # 조각(타일) 하나가 플레이스홀더를 지어내도, 같은 이미지의 다른 조각에
+        # 진짜 내용이 있으면 그 이미지 전체를 버리지 않고 나쁜 조각만 뺀다.
+        from PIL import Image
+
+        buffer = io.BytesIO()
+        Image.new("RGB", (800, 9000), color="white").save(buffer, format="PNG")
+        tall_image_bytes = buffer.getvalue()
+
+        fetcher = RoutingFakeFetcher({
+            ".png": SourceFetchResult(
+                content=tall_image_bytes, content_type="image/png",
+                final_url="https://example.test/flyer.png",
+            ),
+            "": SourceFetchResult(
+                content='<title>회사 채용공고 페이지</title><img src="flyer.png">'.encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://example.test/job/1",
+            ),
+        })
+        calls = []
+
+        def fake_ocr(key, image_bytes, mime_type):
+            calls.append(1)
+            if len(calls) == 2:
+                return "문의: [이메일 주소]로 연락 바랍니다"
+            return "담당 업무: 백엔드 서비스 개발\n자격 요건: 3년 이상 경력"
+
+        result = JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", image_ocr_caller=fake_ocr
+        ).from_url("https://example.test/job/1")
+
+        self.assertEqual(len(calls), 3)  # 9000px / 4000px 타일 높이 → 3조각
+        self.assertIn("담당 업무", result.jd_text)
+        self.assertNotIn("이메일 주소", result.jd_text)
+
+    def test_image_ocr_unrelated_icon_hallucination_is_dropped_alongside_real_flyer(self):
+        # 실제 CJ 사례 재현: 진짜 공고 이미지 옆에 작은 국가 아이콘 같은 관련
+        # 없는 이미지가 있고, 그 이미지에서 모델이 그럴듯한 내용을 지어내도
+        # 최종 결과에 섞여 들어가면 안 된다. 전체가 아니라 이미지 단위로
+        # 마커 판정을 해야 걸러진다.
+        fetcher = RoutingFakeFetcher({
+            "flyer.png": SourceFetchResult(
+                content=b"fake-flyer-bytes", content_type="image/png",
+                final_url="https://example.test/flyer.png",
+            ),
+            "flag.png": SourceFetchResult(
+                content=b"fake-flag-bytes", content_type="image/png",
+                final_url="https://example.test/flag.png",
+            ),
+            "": SourceFetchResult(
+                content=(
+                    '<title>회사 채용공고 페이지</title>'
+                    '<img src="flyer.png"><img src="flag.png">'
+                ).encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://example.test/job/1",
+            ),
+        })
+
+        def fake_ocr(key, image_bytes, mime_type):
+            if image_bytes == b"fake-flyer-bytes":
+                return "담당 업무: 백엔드 서비스 개발\n자격 요건: 3년 이상 경력"
+            return "문의\n인사담당자\n02-1234-5678\n모집기간 2023.07.20 ~ 2023.08.19"
+
+        result = JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", image_ocr_caller=fake_ocr
+        ).from_url("https://example.test/job/1")
+
+        self.assertIn("담당 업무", result.jd_text)
+        self.assertNotIn("02-1234-5678", result.jd_text)
+        self.assertNotIn("2023.07.20", result.jd_text)
+
+    def test_tall_image_is_split_into_multiple_ocr_calls(self):
+        from PIL import Image
+
+        buffer = io.BytesIO()
+        Image.new("RGB", (800, 9000), color="white").save(buffer, format="PNG")
+        tall_image_bytes = buffer.getvalue()
+
+        fetcher = RoutingFakeFetcher({
+            ".png": SourceFetchResult(
+                content=tall_image_bytes, content_type="image/png",
+                final_url="https://example.test/flyer.png",
+            ),
+            "": SourceFetchResult(
+                content='<title>회사 채용공고 페이지</title><img src="flyer.png">'.encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://example.test/job/1",
+            ),
+        })
+        calls = []
+
+        def fake_ocr(key, image_bytes, mime_type):
+            calls.append(mime_type)
+            return "담당 업무: 백엔드 서비스 개발\n자격 요건: 3년 이상 경력"
+
+        JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", image_ocr_caller=fake_ocr
+        ).from_url("https://example.test/job/1")
+
+        # 9000px / 4000px 타일 높이 → 3조각.
+        self.assertEqual(len(calls), 3)
+        self.assertTrue(all(mime == "image/png" for mime in calls))
+
+    def test_non_ascii_image_src_is_percent_encoded_before_fetch(self):
+        fetcher = RoutingFakeFetcher({
+            "%EA%B3%B5%EA%B3%A0": SourceFetchResult(
+                content=b"fake-image-bytes", content_type="image/png",
+                final_url="https://example.test/img/공고(수정).jpg",
+            ),
+            "": SourceFetchResult(
+                content='<title>회사 채용공고 페이지</title><img src="/img/공고(수정).jpg">'.encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://example.test/job/1",
+            ),
+        })
+
+        def fake_ocr(key, image_bytes, mime_type):
+            return "담당 업무: 백엔드 서비스 개발\n자격 요건: 3년 이상 경력"
+
+        JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", image_ocr_caller=fake_ocr
+        ).from_url("https://example.test/job/1")
+
+        image_request = next(
+            u for u in fetcher.requested_urls if u != "https://example.test/job/1"
+        )
+        image_request.encode("ascii")  # 인코딩 안 됐으면 여기서 UnicodeEncodeError
+
 
 if __name__ == "__main__":
     unittest.main()

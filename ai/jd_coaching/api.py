@@ -63,7 +63,7 @@ class AnalyzeRequest(BaseModel):
 
     company_name: str = Field(min_length=1, max_length=100)
     position_name: str = Field(min_length=1, max_length=200)
-    jd_text: str = Field(min_length=10, max_length=50_000)
+    jd_text: str = Field(min_length=10, max_length=100_000)
     applicant_text: str = Field(min_length=10, max_length=50_000)
 
     @field_validator("company_name", "position_name", "jd_text", "applicant_text")
@@ -80,7 +80,7 @@ class CreateJobContextRequest(BaseModel):
 
     company_name: str = Field(min_length=1, max_length=100)
     position_name: str = Field(min_length=1, max_length=200)
-    jd_text: str = Field(min_length=10, max_length=50_000)
+    jd_text: str = Field(min_length=10, max_length=100_000)
     job_posting_id: str | None = Field(default=None, min_length=1, max_length=200)
     source_url: str | None = Field(default=None, max_length=2_000)
     published_at: str | None = None
