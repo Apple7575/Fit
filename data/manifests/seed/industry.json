@@ -1,6 +1,6 @@
 {
   "table": "industry",
-  "generated_at": "2026-09-17T04:02:44.946204+00:00",
+  "generated_at": "2026-09-17T06:37:22.941444+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "industry_code",
