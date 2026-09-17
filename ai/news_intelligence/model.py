@@ -23,6 +23,10 @@ from ai.news_intelligence.prompt import build_news_messages
 from ai.supervisor.contracts import ConversationMessage
 
 
+# 총괄이 담당 3개를 병렬로 돌리면 Qwen 응답이 느려진다. 90초 예산 안에서 호출당 상한을 둔다.
+_CALL_TIMEOUT_SECONDS = 45
+
+
 class NewsOutputError(ValueError):
     """Qwen output failed the news schema or citation contract."""
 
@@ -196,7 +200,7 @@ class QwenNewsModel:
             response = self._qwen_caller(
                 self._config,
                 build_news_messages(context, candidates, instruction, coverage=coverage),
-                timeout_seconds=remaining_timeout(30, NewsModelUnavailable),
+                timeout_seconds=remaining_timeout(_CALL_TIMEOUT_SECONDS, NewsModelUnavailable),
                 max_tokens=700 if coverage else 1800,
                 schema=COVERAGE_SCHEMA if coverage else SIGNALS_SCHEMA,
                 schema_name="news_coverage_v1" if coverage else "news_signals_v1",
@@ -212,7 +216,7 @@ class QwenNewsModel:
             raise NewsModelUnavailable("news model unavailable") from error
         except (RuntimeError, TimeoutError, ConnectionError) as error:
             raise NewsModelUnavailable("news model unavailable") from error
-        remaining_timeout(30, NewsModelUnavailable)
+        remaining_timeout(_CALL_TIMEOUT_SECONDS, NewsModelUnavailable)
         try:
             return response["output"]
         except (KeyError, TypeError) as error:
@@ -237,11 +241,29 @@ class QwenNewsModel:
             drafts = _SignalsOutput.model_validate(output, strict=True).signals
         except (ValueError, TypeError) as error:
             raise NewsOutputError("invalid news signals schema") from error
-        if any(count > 3 for count in Counter(draft.scope for draft in drafts).values()):
-            raise NewsOutputError("at most three signals per scope")
+        # 모델이 scope별 3개를 넘겨 내면 실패시키지 않고 앞의 3개만 남긴다.
+        # 모델은 이미 중요도 순으로 반환하고, 초과분 때문에 분석 전체를 버릴 이유는 없다.
+        kept: list[_SignalOutput] = []
+        per_scope: Counter[str] = Counter()
         for draft in drafts:
-            sources = resolve_sources(draft.source_ids, candidates)
-            _validate_content(draft, sources, context)
+            if per_scope[draft.scope] >= 3:
+                continue
+            per_scope[draft.scope] += 1
+            kept.append(draft)
+        # 근거 검증에 걸린 신호만 버리고 나머지는 살린다. 전부 걸리면 재시도를 위해 실패한다.
+        grounded: list[_SignalOutput] = []
+        first_error: NewsOutputError | None = None
+        for draft in kept:
+            sources = resolve_sources(draft.source_ids, candidates)  # 출처 id 오류는 그대로 실패
+            try:
+                _validate_content(draft, sources, context)
+            except NewsOutputError as error:
+                first_error = first_error or error
+                continue
+            grounded.append(draft)
+        if kept and not grounded and first_error is not None:
+            raise first_error
+        drafts = grounded
         return [
             SignalDraft(
                 **draft.model_dump(exclude={"preparation_checks"}),

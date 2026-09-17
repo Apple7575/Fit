@@ -98,7 +98,7 @@ Supervisor 결과 `SUCCESS`는 선택된 워커가 모두 성공했음을, `PART
 - Spring 호출자는 전체 요청에 120초 타임아웃을 적용해야 한다(호출자 구현 범위). 타임아웃·5xx에 대해 워커 호출을 자동 재시도하지 않는다.
 
 뉴스 worker는 요청마다 monotonic 시계로 90초 누적 예산을 시작한다. Qwen의 각 호출은
-`min(30초, 남은 예산)`을 전달하고, 출력 검증 재시도도 같은 예산을 사용한다. RSS provider는
+`min(45초, 남은 예산)`을 전달하고, 출력 검증 재시도도 같은 예산을 사용한다. RSS provider는
 `min(30초, 남은 예산)`의 deadline을 사용하며 연결·읽기 timeout도 그 안으로 줄인다.
 DB 연결 timeout은 5초이고 남은 예산이 5초보다 작으면 새 연결을 시작하지 않는다.
 각 조회 전 transaction-local `statement_timeout`을 `min(5초, 남은 예산)`으로 설정한다.

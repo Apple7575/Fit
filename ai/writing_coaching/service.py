@@ -56,7 +56,7 @@ class WritingService:
             except Exception as error:
                 raise WritingProviderError("writing provider request failed") from error
             try:
-                return validate_writing_output(response["output"], request)
+                return validate_writing_output(_normalize_output(response["output"]), request)
             except (KeyError, TypeError, ValueError) as error:
                 validation_error = str(error)
                 if attempt == 1:
@@ -65,3 +65,18 @@ class WritingService:
                     ) from error
 
         raise RuntimeError("writing response validation failed")
+
+
+def _normalize_output(output: object) -> object:
+    """모델이 빈 배열 자리에 null 을 넣는 흔한 실수를 검증 전에 바로잡는다."""
+    if not isinstance(output, dict):
+        return output
+    revision = output.get("revision")
+    if isinstance(revision, dict):
+        for key in ("changes", "warnings"):
+            if revision.get(key) is None:
+                revision[key] = []
+        for change in revision.get("changes") or []:
+            if isinstance(change, dict) and change.get("applied_feedback_ids") is None:
+                change["applied_feedback_ids"] = []
+    return output

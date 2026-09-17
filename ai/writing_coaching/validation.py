@@ -37,6 +37,9 @@ def trusted_fact_texts(request: WritingMessageRequest) -> list[str]:
             for item in request.conversation
             if item.role == "USER"
         ],
+        # jd/position feedback is advisory (suggested actions), not a verified fact —
+        # only news feedback quotes real article evidence and can carry trusted numbers.
+        *[item.content for item in request.feedback if item.source == "news"],
     ]
 
 
@@ -74,7 +77,11 @@ def validate_writing_output(
         trusted_numbers.update(extract_numeric_facts(text))
     untrusted_numbers = extract_numeric_facts(revision.revised_text) - trusted_numbers
     if untrusted_numbers:
-        raise ValueError("revised_text contains untrusted numeric fact")
+        # 어떤 숫자가 문제인지 알려야 재시도 프롬프트와 운영 로그에서 바로잡을 수 있다.
+        raise ValueError(
+            "revised_text contains untrusted numeric fact: "
+            + ", ".join(sorted(untrusted_numbers))
+        )
 
     revision.char_count = len(revision.revised_text)
     return response

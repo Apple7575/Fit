@@ -48,6 +48,7 @@ class RecordingAdapter:
         self.threads = []
         self.passed_barrier = False
         self.prior_agents = []
+        self.passed_barrier = False
 
     def is_available(self, context):
         return context is not None
