@@ -47,12 +47,12 @@ final class InterviewSchema {
                 List.of("overallSummary", "items"));
     }
 
-    /** { question, basis } */
+    /** { needed, question, basis } — needed=false 면 더 물을 가치가 없다는 신호로, question 은 비운다. */
     static Map<String, Object> followup(String typeCase) {
         Casing c = new Casing(typeCase);
         return c.object(
-                Map.<String, Object>of("question", c.string(), "basis", c.string()),
-                List.of("question"));
+                Map.<String, Object>of("needed", c.bool(), "question", c.string(), "basis", c.string()),
+                List.of("needed", "question"));
     }
 
     /** 타입 표기(대/소문자)만 다른 스키마 조각을 만든다. */
@@ -73,6 +73,10 @@ final class InterviewSchema {
 
         Map<String, Object> string() {
             return Map.<String, Object>of("type", upper ? "STRING" : "string");
+        }
+
+        Map<String, Object> bool() {
+            return Map.<String, Object>of("type", upper ? "BOOLEAN" : "boolean");
         }
 
         Map<String, Object> stringEnum(String... values) {
