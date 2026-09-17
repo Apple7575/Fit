@@ -1,6 +1,6 @@
 {
   "table": "company_metric",
-  "generated_at": "2026-09-17T07:06:26.413180+00:00",
+  "generated_at": "2026-09-17T07:44:18.975719+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -41,13 +41,13 @@
     "V26__cover_letter_context_corp.sql"
   ],
   "source": "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
-  "seed_rows": 100790,
+  "seed_rows": 106230,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "metric_code": 0,
     "metric_value": 0,
-    "fs_div": 42463
+    "fs_div": 47903
   },
   "notes": [
     "연결 우선·별도 폴백. 고른 쪽을 fs_div 에 남긴다",
@@ -88,9 +88,13 @@
     "rd": {
       "판정 high": 5207,
       "판정 mismatch": 1187,
+      "rd_ratio 기재 없음": 18,
       "판정 medium": 291,
+      "금액이 비율과 5~100배 어긋남(넣되 기록)": 39,
+      "매출이 없어 금액-비율 대조 못 함(넣음)": 67,
+      "금액이 비율과 100배 이상 어긋남(제외)": 20,
       "판정 low": 37,
-      "채택": 5498
+      "채택": 10938
     },
     "skipped_currency": {
       "USD": 268,
