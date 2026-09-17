@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -45,7 +46,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pipeline.news.csvio import write_csv  # noqa: E402
-from pipeline.paths import curated_seed_dir, staged_dir  # noqa: E402
+from pipeline.normalize.employee import aggregate as aggregate_employees  # noqa: E402
+from pipeline.paths import cache_dir, curated_seed_dir, raw_api_dir, staged_dir  # noqa: E402
 
 # metric_code → 주요계정 이름
 METRICS = {
@@ -58,6 +60,58 @@ METRICS = {
 
 # 같은 뜻인데 원천이 이름을 둘로 쓴다 (실측: 71개사).
 ALIAS = {"영업이익(손실)": "영업이익"}
+
+EMPLOYEE_METRICS = ("employee_count", "average_salary", "average_tenure")
+
+# 보고된 1인평균급여가 (연간급여총액/인원) 과 이만큼 넘게 벌어지면 보고값을 버리고
+# 총액/인원 을 쓴다. 팀 결정(2026-09-17): 50% 를 경계로 한다.
+#
+# 실측 분포가 근거다. 0~20% 2,093건 · 20~50% 63건까지는 계산 기준 차이이고
+# (크래프톤이 12% 내외로 지속 차이 난다), 50% 위로는 성격이 다르다 — 50~90% 17건과
+# 12배에 뭉친 90%+ 15건이다. 후자는 1인평균급여 칸에 **월급을 적은** 회사다.
+SALARY_SWAP_GAP_PCT = 50
+
+# E-5 상식 경계. 이 밖으로 나가는 값은 **그 지표만** 시드에서 뺀다(팀 결정 2026-09-17).
+# 연 1백만원 미만은 월급 기재이거나 단위 오류이고, 10억 초과는 등기임원 표를 직원
+# 표로 잘못 읽은 경우다. 총액/인원 대체(E-4)로도 안 고쳐지는 것들이라 원천이 틀렸다.
+#
+# "값이 있는 것보다 없는 게 낫다" — 단위 미상 R&D 를 rejected 로 버린 것과 같은
+# 판단이다. 화면은 행이 없으면 지표를 접으므로 0 으로 위장되지 않는다.
+SALARY_MIN = 1_000_000
+SALARY_MAX = 1_000_000_000
+TENURE_MAX = 45.0
+
+
+def pick_salary(r) -> tuple[float | None, str]:
+    """1인평균급여로 무엇을 쓸지 고른다. `(값, 사유)`.
+
+    **검산(`verify_employees.py`)이 같은 함수를 부른다.** 여기서 고른 값이 곧 시드에
+    들어가는 값이라, 규칙이 갈리면 "E-5 모순 = 시드에서 빠진 행" 이 깨진다.
+
+    보고값과 (연간급여총액/인원) 이 크게 어긋나면 후자를 쓰되, 후자가 상식 밖이면
+    보고값을 되살린다 — 두 값이 갈렸다는 것만으로 어느 쪽이 틀렸는지는 정해지지
+    않는다. POSCO홀딩스 2022 는 보고값 1.14억이 맞고 총액/인원 17.8억이 틀렸다.
+    """
+    if (r.salary_gap_pct is None or r.salary_gap_pct < SALARY_SWAP_GAP_PCT
+            or not r.avg_salary_from_total):
+        return r.avg_salary_krw, ""
+    for cand, why in ((r.avg_salary_from_total, "총액/인원 사용"),
+                      (r.avg_salary_krw, "총액/인원이 상식 밖이라 보고값 유지")):
+        if cand and _sane("average_salary", cand):
+            return cand, why
+    # 둘 다 상식 밖이다. 고르지 않고 넘겨 _sane 이 빼게 둔다
+    return r.avg_salary_from_total, "둘 다 상식 밖"
+
+
+def _sane(code: str, value: float) -> bool:
+    """E-5. 시드에 넣어도 되는 값인가."""
+    if code == "employee_count":
+        return value > 0
+    if code == "average_tenure":
+        return 0 <= value <= TENURE_MAX
+    if code == "average_salary":
+        return SALARY_MIN <= value <= SALARY_MAX
+    return True
 
 FS_PRIORITY = ("CFS", "OFS")     # config/patterns.yaml 의 fs_div_priority
 
@@ -97,6 +151,80 @@ def build_rd_rows() -> tuple[list[dict], Counter]:
                         # 문서 표에는 연결·별도 구분이 없다
                         "fs_div": ""})
     stats["채택"] = len(out)
+    return out, stats
+
+
+def employee_files() -> dict[tuple[str, int], Path]:
+    """직원현황 원본. 전 종목은 raw/, 기존 13개사 경로는 .cache/ 에 있다.
+
+    같은 (corp_code, year) 가 양쪽에 있으면 raw/ 를 쓴다 — 전 종목 수집이 최신이다.
+    `build_curated_seed.py` 의 `_profile_files()` 와 같은 판단이고, 부문별 직원수도
+    이 목록을 쓴다. **한쪽만 보면 수집을 다 돌려도 13개사에서 안 늘어난다.**
+    """
+    out: dict[tuple[str, int], Path] = {}
+    for d in (cache_dir(), raw_api_dir()):
+        for path in d.glob("empSttus_*.json"):
+            parts = path.stem.split("_")
+            if len(parts) != 3 or not parts[2].isdigit():
+                continue
+            out[(parts[1], int(parts[2]))] = path
+    return out
+
+
+def build_employee_rows() -> tuple[list[dict], Counter]:
+    """직원현황(empSttus) → employee_count · average_salary · average_tenure.
+
+    집계는 `pipeline/normalize/employee.py` 가 한다. 합계 행 제외, 인원 가중평균,
+    급여를 상세가 아니라 합계 행에만 적는 회사(삼성전자) 분기까지 이미 검증된
+    규칙이라 여기서 다시 쓰지 않는다.
+
+    metric_code 는 카탈로그 이름이다 — 파서의 `avg_salary_krw` · `avg_tenure_years`
+    가 아니라 `average_salary` · `average_tenure` 다 (V4 가 개명했고 FK 대상이다).
+
+    fs_div 는 빈 칸이다. 직원현황에는 연결·별도 구분이 없다 — rd_expense 와 같고
+    V1 주석의 "파생·비재무 지표는 NULL" 에 해당한다.
+
+    결측은 행을 넣지 않는다(규칙 ②). 평균근속·1인평균급여를 아예 기재하지 않는
+    회사가 흔하고, 그때 직원수 행은 남고 나머지 둘만 빠진다.
+    """
+    stats: Counter = Counter()
+    files = employee_files()
+    if not files:
+        stats["원천 없음(collect_employees.py 미실행)"] = 1
+        return [], stats
+
+    out: list[dict] = []
+    for (corp_code, year), path in sorted(files.items()):
+        body = json.loads(path.read_text(encoding="utf-8"))
+        rows = body.get("list") or []
+        if not rows:
+            # 013(미공시·상장 이전). 수집 실패와 갈라 센다
+            stats["빈 응답"] += 1
+            continue
+        r = aggregate_employees(rows, corp_code, year)
+        stats["집계한 기업-연도"] += 1
+
+        # 1인평균급여에 **월급을 적은 회사**가 있다. 규칙은 pick_salary 에 있다
+        salary, why = pick_salary(r)
+        if why:
+            stats[f"1인평균급여: {why}"] += 1
+
+        for code, value in (("employee_count", r.employee_count),
+                            ("average_salary", salary),
+                            ("average_tenure", r.avg_tenure_years)):
+            if value is None:
+                stats[f"{code} 결측"] += 1
+                continue
+            if not _sane(code, value):
+                # 지표별로 독립이다. 급여가 틀려도 인원·근속은 넣는다
+                stats[f"{code} 상식 위반(E-5, 제외)"] += 1
+                continue
+            out.append({"corp_code": corp_code, "fiscal_year": year,
+                        "metric_code": code, "metric_value": f"{value:.4f}",
+                        "fs_div": ""})
+        for w in r.warnings:
+            # 값은 넣되 무엇이 걸렸는지는 남긴다. 3차 검증이 이걸 본다
+            stats[f"경고: {w.split('(')[0].strip()[:24]}"] += 1
     return out, stats
 
 
@@ -151,22 +279,24 @@ def build_rows() -> tuple[list[dict], dict]:
                         "metric_value": f"{value:.4f}", "fs_div": chosen})
 
     rd_rows, rd_stats = build_rd_rows()
+    emp_rows, emp_stats = build_employee_rows()
     # company_metric 은 (corp_code, fiscal_year, metric_code) 가 PK 다. 원천이 달라
     # 겹칠 일이 없지만, 겹치면 적재가 아니라 여기서 걸려야 한다.
     seen = {(r["corp_code"], r["fiscal_year"], r["metric_code"]) for r in out}
-    for r in rd_rows:
-        key = (r["corp_code"], r["fiscal_year"], r["metric_code"])
-        if key in seen:
-            rd_stats["PK 중복(건너뜀)"] += 1
-            continue
-        seen.add(key)
-        out.append(r)
+    for extra, extra_stats in ((rd_rows, rd_stats), (emp_rows, emp_stats)):
+        for r in extra:
+            key = (r["corp_code"], r["fiscal_year"], r["metric_code"])
+            if key in seen:
+                extra_stats["PK 중복(건너뜀)"] += 1
+                continue
+            seen.add(key)
+            out.append(r)
 
     # 적재 순서를 고정한다 — 같은 입력이면 같은 바이트여야 한다 (저장 기준 9장)
     out.sort(key=lambda r: (r["corp_code"], r["fiscal_year"], r["metric_code"]))
     return out, {"staged_rows": len(rows), "pairs": len(pairs), "used_fs": used_fs,
                  "skipped_currency": skipped_currency, "missing": missing,
-                 "rd": rd_stats}
+                 "rd": rd_stats, "emp": emp_stats}
 
 
 def write_seed(rows: list[dict]) -> Path:
@@ -198,6 +328,11 @@ def main() -> int:
     n_rd = sum(1 for r in out if r["metric_code"] == "rd_expense")
     print(f"  rd_expense   {n_rd:,}행 (사업보고서 원문) — " +
           " · ".join(f"{k} {v}" for k, v in sorted(rd.items())))
+    emp = stats["emp"]
+    print(f"  직원 3종     " + " · ".join(
+        f"{c} {sum(1 for r in out if r['metric_code'] == c):,}"
+        for c in EMPLOYEE_METRICS) + " (직원현황)")
+    print("               " + " · ".join(f"{k} {v}" for k, v in sorted(emp.items())))
     print(f"  결측(행 없음) " + " · ".join(f"{c} {missing[c]:,}" for c in METRICS))
     if skipped_currency:
         print(f"  통화로 제외   {dict(skipped_currency)}  ← metric.unit 이 KRW 다")
