@@ -23,6 +23,7 @@ from ai.supervisor.contracts import (
 )
 from ai.tests.supervisor.test_adapters import (
     FakeJdService,
+    FakeNewsService,
     FakePositionService,
     FakeWritingService,
 )
@@ -228,6 +229,7 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
         get_supervisor_service.cache_clear()
         jd = FakeJdService()
         position = FakePositionService()
+        news = FakeNewsService()
         model = FakeModel(
             [SupervisorPlan(selected_agents=["jd", "position"], reason="둘 다 검토")]
         )
@@ -252,6 +254,7 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
             patch("ai.supervisor.api.QwenSupervisorModel", return_value=model),
             patch("ai.supervisor.api.get_analysis_service", return_value=jd),
             patch("ai.supervisor.api.get_position_service", return_value=position),
+            patch("ai.supervisor.api.get_news_service", return_value=news),
             patch(
                 "ai.supervisor.api.get_writing_service",
                 side_effect=AssertionError("Writing must remain lazy"),
@@ -298,6 +301,74 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
                 request["conversation"],
             )
         ])
+
+    def test_jd_only_mounted_api_defers_news_service_initialization(self):
+        get_supervisor_service.cache_clear()
+        jd = FakeJdService()
+        model = FakeModel([SupervisorPlan(selected_agents=["jd"], reason="JD 검토")])
+        with (
+            patch("ai.supervisor.api.load_qwen_config", return_value={}),
+            patch("ai.supervisor.api.QwenSupervisorModel", return_value=model),
+            patch("ai.supervisor.api.get_analysis_service", return_value=jd),
+            patch("ai.supervisor.api.get_position_service", return_value=FakePositionService()),
+            patch(
+                "ai.supervisor.api.get_news_service",
+                side_effect=AssertionError("JD-only request must not load news service"),
+            ),
+        ):
+            response = TestClient(build_app()).post(
+                "/supervisor/internal/runs", json=VALID_REQUEST
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "SUCCESS")
+        self.assertEqual(jd.calls, [("jctx", VALID_REQUEST["documents"])])
+
+    def test_mounted_api_handles_news_only_and_mixed_worker_outcomes(self):
+        request = {
+            **VALID_REQUEST,
+            "agent_contexts": {
+                "news": {"job_context_id": "jctx", "corp_code": "00126380"},
+            },
+        }
+        scenarios = [
+            ("news only", ["news"], FakeNewsService(), 200, "SUCCESS"),
+            ("jd and news", ["jd", "news"], FakeNewsService(), 200, "SUCCESS"),
+            ("news failed", ["news"], FakeNewsService(RuntimeError("unavailable")), 502, None),
+            ("partial", ["jd", "news"], FakeNewsService(RuntimeError("unavailable")), 200, "PARTIAL"),
+        ]
+        for name, selected_agents, news, status_code, status in scenarios:
+            with self.subTest(name=name):
+                get_supervisor_service.cache_clear()
+                jd = FakeJdService()
+                model = FakeModel([
+                    SupervisorPlan(selected_agents=selected_agents, reason="뉴스 검토")
+                ])
+                scenario_request = request
+                if "jd" in selected_agents:
+                    scenario_request = {
+                        **request,
+                        "agent_contexts": {
+                            "jd": {"job_context_id": "jctx"},
+                            "news": request["agent_contexts"]["news"],
+                        },
+                    }
+                with (
+                    patch("ai.supervisor.api.load_qwen_config", return_value={}),
+                    patch("ai.supervisor.api.QwenSupervisorModel", return_value=model),
+                    patch("ai.supervisor.api.get_analysis_service", return_value=jd),
+                    patch("ai.supervisor.api.get_position_service", return_value=FakePositionService()),
+                    patch("ai.supervisor.api.get_news_service", return_value=news),
+                ):
+                    response = TestClient(build_app()).post(
+                        "/supervisor/internal/runs", json=scenario_request
+                    )
+
+                self.assertEqual(response.status_code, status_code)
+                if status is not None:
+                    self.assertEqual(response.json()["status"], status)
+                else:
+                    self.assertEqual(response.json()["detail"]["code"], "ALL_AGENTS_FAILED")
 
     def test_writing_only_run_succeeds_through_mounted_api(self):
         writing = FakeWritingService()

@@ -4,7 +4,8 @@ import time
 import unittest
 from unittest.mock import patch
 
-from ai.supervisor.adapters import AgentRegistry
+from ai.supervisor.adapters import AgentRegistry, NewsAgentAdapter
+from ai.tests.news_intelligence.test_service import build_service, REQUEST
 from ai.supervisor.contracts import NoAvailableAgentError, SupervisorPlan
 from ai.supervisor.graph import build_supervisor_graph, validate_selected_agents
 from ai.supervisor.model import QwenSupervisorModel
@@ -45,6 +46,7 @@ class RecordingAdapter:
         self.execution_log = execution_log
         self.lifecycle_log = lifecycle_log
         self.threads = []
+        self.passed_barrier = False
         self.prior_agents = []
 
     def is_available(self, context):
@@ -58,7 +60,8 @@ class RecordingAdapter:
         if self.execution_log is not None:
             self.execution_log.append(self.name)
         if self.barrier is not None:
-            self.barrier.wait(timeout=1)
+            self.barrier.wait(timeout=2)
+            self.passed_barrier = True
         time.sleep(0.01)
         if self.fail:
             raise RuntimeError(f"{self.name} failed")
@@ -115,6 +118,69 @@ def all_contexts():
 
 
 class SupervisorGraphTest(unittest.TestCase):
+    def test_real_news_response_survives_qwen_and_fallback_aggregation(self):
+        service, _, _, _ = build_service()
+        for fallback in (False, True):
+            with self.subTest(fallback=fallback):
+                caller = FakeQwenCaller([{"selected_agents": ["news"], "reason": "news"}])
+                model = QwenSupervisorModel({}, qwen_caller=caller)
+                if fallback:
+                    model = FakeModel(
+                        [SupervisorPlan(selected_agents=["news"], reason="news")],
+                        aggregate_error=RuntimeError("offline"),
+                    )
+                output = invoke_graph(model, AgentRegistry([NewsAgentAdapter(service)]), {
+                    "news": {"job_context_id": REQUEST.job_context_id, "corp_code": REQUEST.corp_code},
+                })
+                result = output["agent_results"][0]
+                self.assertEqual(result.status, "SUCCESS")
+                payload = json.loads(json.dumps(result.result))
+                self.assertEqual(payload["analysis"]["window"]["to"], "2026-09-16")
+                source = payload["analysis"]["signals"][0]["sources"][0]
+                self.assertEqual(source["published_at"], "2026-09-15T12:00:00Z")
+                self.assertEqual(source["url"], "https://example.test/stored/1")
+                self.assertTrue(output["final_message"].startswith("[news]") if fallback
+                                else output["final_message"] == "종합 결과")
+
+    def test_dispatches_three_selected_workers_in_parallel(self):
+        barrier = threading.Barrier(3, timeout=2)
+        adapters = [
+            RecordingAdapter(name, barrier) for name in ("jd", "position", "news")
+        ]
+        graph = build_supervisor_graph(
+            FakeModel([
+                SupervisorPlan(
+                    selected_agents=["jd", "position", "news"], reason="모두 필요"
+                )
+            ]),
+            AgentRegistry(adapters),
+        )
+
+        output = graph.invoke({
+            "instruction": "함께 검토해줘",
+            "documents": [{
+                "document_id": "essay",
+                "document_type": "SELF_INTRO",
+                "text": "내용",
+            }],
+            "conversation": [],
+            "agent_contexts": {
+                "jd": {"job_context_id": "jctx"},
+                "position": {"rubric_id": "experience-depth-v1", "position_context": {}},
+                "news": {"job_context_id": "jctx", "corp_code": "00126380"},
+            },
+            "agent_results": [],
+        })
+
+        self.assertEqual(
+            {item.agent for item in output["agent_results"]},
+            {"jd", "position", "news"},
+        )
+        self.assertTrue(
+            all(item.status == "SUCCESS" for item in output["agent_results"])
+        )
+        self.assertTrue(all(adapter.passed_barrier for adapter in adapters))
+
     def test_rejects_duplicate_unknown_and_unavailable_selections(self):
         with self.assertRaises(ValueError):
             validate_selected_agents(

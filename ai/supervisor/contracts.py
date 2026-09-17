@@ -46,6 +46,18 @@ class JdAgentContext(StrictModel):
         return value
 
 
+class NewsAgentContext(StrictModel):
+    job_context_id: str = Field(min_length=1, max_length=80)
+    corp_code: str = Field(pattern=r"^[0-9]{8}$")
+
+    @field_validator("job_context_id")
+    @classmethod
+    def reject_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be blank")
+        return value
+
+
 class PositionContext(StrictModel):
     position_name: str = Field(min_length=1, max_length=200)
     priority_requirements: list[
@@ -87,6 +99,7 @@ class WritingAgentContext(StrictModel):
 class AgentContexts(StrictModel):
     jd: JdAgentContext | None = None
     position: PositionAgentContext | None = None
+    news: NewsAgentContext | None = None
     writing: WritingAgentContext | None = None
 
 
@@ -115,12 +128,12 @@ class SupervisorRunRequest(StrictModel):
 
 
 class SupervisorPlan(StrictModel):
-    selected_agents: list[Literal["jd", "position", "writing"]] = Field(min_length=1)
+    selected_agents: list[Literal["jd", "position", "news", "writing"]] = Field(min_length=1)
     reason: str = Field(min_length=1, max_length=2_000)
 
 
 class AgentResult(StrictModel):
-    agent: Literal["jd", "position", "writing"]
+    agent: Literal["jd", "position", "news", "writing"]
     status: Literal["SUCCESS", "FAILED"]
     result: dict[str, Any] | None = None
     error: str | None = None

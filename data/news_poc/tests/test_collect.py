@@ -1,4 +1,5 @@
 """실제 네트워크 없이 검색 구간과 서버 오류 처리 규칙을 검증한다."""
+import importlib
 import sys
 import unittest
 import tempfile
@@ -96,6 +97,20 @@ class CollectionTests(unittest.TestCase):
         with self.assertRaises(HTTPError):
             fetch('https://news.google.com', opener=opener, sleep=Mock())
         self.assertEqual(opener.call_count, 1)
+
+    def test_runtime_provider_import_does_not_run_collector_cli(self):
+        """런타임 provider를 새로 import해도 PoC 수집 CLI나 파일 경로를 건드리지 않는다."""
+        sys.modules.pop("ai.news_intelligence.search_provider", None)
+        with patch("data.news_poc.pipeline.collect.main") as main, \
+             patch("pathlib.Path.write_text") as write_text, \
+             patch("pathlib.Path.write_bytes") as write_bytes:
+            provider = importlib.import_module("ai.news_intelligence.search_provider")
+
+        self.assertIsNotNone(provider.GoogleNewsRssProvider)
+        main.assert_not_called()
+        write_text.assert_not_called()
+        write_bytes.assert_not_called()
+        self.assertEqual(len(build_plan(date(2026, 9, 1), date(2026, 9, 2))), 2)
 
     def test_server_failure_has_bounded_backoff(self):
         """5xx가 지속되면 총 3회 시도 후 실패를 반환한다."""

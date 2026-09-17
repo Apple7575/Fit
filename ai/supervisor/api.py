@@ -8,10 +8,12 @@ from fastapi import Depends, FastAPI, HTTPException
 
 from ai.jd_coaching.api import get_analysis_service
 from ai.jd_coaching.baseline import load_qwen_config
+from ai.news_intelligence.api import get_news_service
 from ai.position_coaching.api import get_position_service
 from ai.supervisor.adapters import (
     AgentRegistry,
     JdAgentAdapter,
+    NewsAgentAdapter,
     PositionAgentAdapter,
     WritingAgentAdapter,
 )
@@ -35,11 +37,13 @@ def assemble_supervisor_service(
     jd_provider: Callable[[], Any],
     position_provider: Callable[[], Any],
     writing_provider: Callable[[], Any],
+    news_provider: Callable[[], Any] = get_news_service,
 ) -> SupervisorService:
     registry = AgentRegistry(
         [
             JdAgentAdapter(jd_provider),
             PositionAgentAdapter(position_provider),
+            NewsAgentAdapter(news_provider),
             WritingAgentAdapter(writing_provider),
         ]
     )
@@ -63,6 +67,7 @@ def get_supervisor_service() -> SupervisorService:
         jd_provider=get_analysis_service,
         position_provider=get_position_service,
         writing_provider=get_writing_service,
+        news_provider=get_news_service,
     )
 
 
@@ -89,6 +94,7 @@ def create_run(
         if (
             request.agent_contexts.jd is None
             and request.agent_contexts.position is None
+            and request.agent_contexts.news is None
             and request.agent_contexts.writing is None
         ):
             raise NoAvailableAgentError("no agent context was provided")

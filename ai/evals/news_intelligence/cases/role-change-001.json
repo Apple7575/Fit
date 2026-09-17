@@ -1,0 +1,7 @@
+{
+  "status": "DRAFT",
+  "request": {"instruction": "최근 직무 변화가 무엇인지 알려줘", "job_context_id": "fixture-context-3", "corp_code": "00126380", "conversation": []},
+  "stored_candidates": [{"article_id": "stored:role-1", "origin": "STORED", "title": "AI 반도체 검증 인력 수요 확대", "publisher": "테크데일리", "published_at": "2026-07-01T09:00:00+09:00", "url": "https://news.example.test/role-1"}],
+  "external_candidates": [],
+  "expected_response": {"message": "[ROLE] AI 반도체 검증 수요 확대\n검증 자동화 경험을 직무 요구와 연결한다.", "analysis": {"analysis_status": "COMPLETED", "company": {"corp_code": "00126380", "corp_name": "삼성전자"}, "window": {"from": "2026-06-18", "to": "2026-09-16"}, "signals": [{"signal_id": "signal-001", "scope": "ROLE", "title": "AI 반도체 검증 수요 확대", "summary": "AI 반도체 검증 인력 수요가 확대되고 있다.", "jd_relevance": "검증 자동화 경험을 직무 요구와 연결한다.", "preparation_checks": ["테스트 자동화 사례를 정리한다."], "evidence_level": "LOW", "sources": [{"article_id": "stored:role-1", "origin": "STORED", "title": "AI 반도체 검증 인력 수요 확대", "publisher": "테크데일리", "published_at": "2026-07-01T09:00:00+09:00", "url": "https://news.example.test/role-1"}]}], "coverage": {"company": "INSUFFICIENT", "industry": "INSUFFICIENT", "role": "INSUFFICIENT"}, "external_search": {"used": true, "reason": "유효 기사 5건 미만"}}}
+}
