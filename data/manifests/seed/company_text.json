@@ -1,6 +1,6 @@
 {
   "table": "company_text",
-  "generated_at": "2026-09-16T10:22:04.294151+00:00",
+  "generated_at": "2026-09-17T04:02:48.541582+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -37,17 +37,18 @@
     "V20__jd_ai_analysis.sql",
     "V21__jd_ai_conversation.sql",
     "V22__agent_room.sql",
-    "V23__agent_message.sql"
+    "V23__agent_message.sql",
+    "V24__agent_room_job_context.sql"
   ],
   "source": "staged/business_report/main_product.csv (표 파싱) + staged/business_report/text_llm.csv (LLM 추출)",
-  "seed_rows": 29215,
+  "seed_rows": 47896,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "attr_key": 0,
     "seq": 0,
     "value_text": 0,
-    "generated_at": 10285
+    "generated_at": 28966
   },
   "notes": [
     "main_product 는 '주요 제품' 열을 그대로 옮긴 것이라 generated_at 이 비어 있다 (V13 주석)",
@@ -55,7 +56,7 @@
     "seq 는 사업보고서 기재 순서다. 글 항목은 늘 0 이다",
     "근거가 없으면 행을 만들지 않는다 (팀장 기준 4항)"
   ],
-  "distinct_corp_codes": 300,
+  "distinct_corp_codes": 950,
   "fiscal_years": [
     2021,
     2025
@@ -63,10 +64,10 @@
   "build_stats": {
     "business_keyword": 10419,
     "main_business": 1445,
-    "main_product": 10285,
+    "main_product": 28966,
     "new_business": 816,
     "rd_field": 5977,
     "strategy_change": 273,
-    "행": 29215
+    "행": 47896
   }
 }
