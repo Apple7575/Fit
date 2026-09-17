@@ -64,11 +64,11 @@ describe('HomePage', () => {
     renderHome();
 
     expect(
-      screen.getByRole('heading', { level: 1, name: /회사를 고르면, 준비가 시작됩니다/ }),
+      screen.getByRole('heading', { level: 1, name: /기업의 눈으로 보는 나의 Fit/ }),
     ).toBeInTheDocument();
 
     // 배경 영상은 자동재생·반복·무음
-    const video = screen.getByLabelText('기분 서비스 소개 영상') as HTMLVideoElement;
+    const video = screen.getByLabelText('Fit 서비스 소개 영상') as HTMLVideoElement;
     expect(video).toHaveAttribute('autoplay');
     expect(video).toHaveAttribute('loop');
     expect(video.muted).toBe(true);
@@ -95,7 +95,7 @@ describe('HomePage', () => {
     const cta = screen.getByRole('list', { name: '분석 가능한 기업' });
     expect(within(cta).getByRole('link', { name: 'NAVER' })).toHaveAttribute(
       'href',
-      '/companies/90000004/overview',
+      '/companies/00266961/overview',
     );
   });
 

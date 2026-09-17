@@ -16,14 +16,14 @@ export const mockCompanyProfiles: Record<string, CompanyProfile> = {
     totalRevenue: 400000000000000,
     products: ['HBM', 'DRAM', 'NAND', '스마트폰', 'TV', '모니터'],
   },
-  '90000002': {
+  '00164742': {
     year: 2025,
     businesses: ['완성차', '모빌리티 서비스'],
     segments: [],
     totalRevenue: null,
     products: [],
   },
-  '90000004': {
+  '00266961': {
     year: 2025,
     businesses: [],
     segments: [],

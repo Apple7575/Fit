@@ -1,0 +1,23 @@
+{
+  "hero": {
+    "title": "Financial District Skyline",
+    "author": "Josh B",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Financial_District_Skyline.jpg"
+  },
+  "point-momentum": {
+    "title": "View of Manhattan Financial District Skyline from the Fulton Ferry Landing",
+    "author": "Demetri Andriani",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:View_of_Manhattan_Financial_District_Skyline_from_the_Fulton_Ferry_Landing.jpg"
+  },
+  "point-rank": {
+    "title": "Skyline of Financial District, Manhattan, 2025",
+    "author": "Julian Lupyan",
+    "license": "CC0",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Skyline_of_Financial_District,_Manhattan,_2025.jpg"
+  }
+}

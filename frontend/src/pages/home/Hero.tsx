@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
+import { BRAND_NAME, BRAND_TAGLINE } from '../../components/layout/brand';
 import { MediaSlot } from '../../components/brand/MediaSlot';
 import { usePointerVars } from '../../hooks/usePointerVars';
 import { FEATURED_COMPANIES } from './featuredCompanies';
@@ -42,7 +43,7 @@ export const Hero = forwardRef<HTMLElement, HeroProps>(function Hero({ search, o
     >
       <div className="absolute inset-0">
         <MediaSlot
-          label="기분 서비스 소개 영상"
+          label={`${BRAND_NAME} 서비스 소개 영상`}
           spec="자소서 쓰는 장면 · 1920×1080 · 8~12초 루프 · 무음 · 4MB 이하"
           src="/landing-scrub.mp4"
         />
@@ -94,10 +95,10 @@ export const Hero = forwardRef<HTMLElement, HeroProps>(function Hero({ search, o
         </p>
 
         <h1 className="display-xl max-w-[16ch] text-balance" id="hero-title">
-          회사를 고르면, 준비가 시작됩니다.
+          {BRAND_TAGLINE}
         </h1>
         <p className="body-lg mt-5 max-w-[34ch] text-balance text-slate-200">
-          기업 분석으로 근거를 모으고, 코치 다섯과 자소서를 다듬고, 모의 면접까지.
+          회사가 나를 어떻게 볼지 먼저 봅니다. 기업 분석, 코치 다섯의 자소서 검토, 모의 면접까지.
         </p>
 
         <div className="mt-10 w-full max-w-2xl text-left text-slate-900">{search}</div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { SiteHeader } from '../../components/layout/SiteHeader';
+import { COMPANY_QUESTIONS } from '../../features/company-detail/questions';
 import { searchCompanies } from '../../features/company-search/api';
 import { CompanySearchForm } from '../../features/company-search/CompanySearchForm';
 import {
@@ -16,30 +17,6 @@ import {
 } from '../../features/company-search/recent';
 import type { Company } from '../../types/company';
 import { FEATURED_COMPANIES } from '../home/featuredCompanies';
-
-/** 다섯 탭이 각각 무엇에 답하는지. 코치가 한 줄씩 맡는다 */
-const LENSES = [
-  { tab: 'overview', title: '어떤 회사인가', body: '사업·제품·사업부 매출 구성', coach: 'otter' },
-  {
-    tab: 'growth',
-    title: '얼마나 컸나',
-    body: '5년 매출·이익·인력 추이와 전년 대비',
-    coach: 'otter',
-  },
-  {
-    tab: 'focus',
-    title: '어디에 힘을 싣나',
-    body: 'AI 키워드 · R&D · 투자 · 인력 변화',
-    coach: 'owl',
-  },
-  {
-    tab: 'comparison',
-    title: '업계에서 어디쯤',
-    body: '동종 4개사 지표 7종 5개년 비교',
-    coach: 'hamster',
-  },
-  { tab: 'issues', title: '요즘 무슨 일', body: '최근 뉴스와 중요 이슈 분류', coach: 'fox' },
-] as const;
 
 /**
  * 기업 분석 시작 페이지. 랜딩(/)과 달리 설명 없이 검색부터 한다.
@@ -174,7 +151,7 @@ export function CompanySearchPage() {
             회사 하나에 다섯 가지 질문을 던집니다
           </h2>
           <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {LENSES.map((lens, i) => (
+            {COMPANY_QUESTIONS.map((lens, i) => (
               <li
                 className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-white p-4 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
                 key={lens.tab}
