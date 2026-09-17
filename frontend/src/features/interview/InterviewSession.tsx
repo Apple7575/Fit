@@ -17,6 +17,7 @@ interface InterviewSessionProps {
 }
 
 type Phase = 'ready' | 'prep' | 'recording' | 'reviewing';
+type FupStatus = 'idle' | 'loading' | 'result' | 'empty' | 'error';
 
 const PREP_SECONDS = 3;
 
@@ -36,7 +37,9 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
   const [prep, setPrep] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [fup, setFup] = useState<Followup | null>(null);
-  const [fupLoading, setFupLoading] = useState(false);
+  // 꼬리질문 요청 상태. idle=아직 요청 안 함, loading=요청 중, result=질문 받음(fup),
+  // empty=더 물을 게 없음(needed=false), error=요청 실패(재시도 가능).
+  const [fupStatus, setFupStatus] = useState<FupStatus>('idle');
   const followed = useRef<Set<number>>(new Set());
   const timerRef = useRef<number | null>(null);
   // 진행 중인 꼬리질문 요청이 어느 문항 것인지. 응답이 늦게 와도 이미 다음으로 넘어갔으면 버린다.
@@ -118,33 +121,47 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
     } catch {
       /* 저장 실패(용량 초과 등)는 무시 — 분석에는 영향 없음 */
     }
+    // 꼬리질문은 자동 생성하지 않는다. 사용자가 음성 인식 오류를 직접 고친 뒤 버튼으로 요청한다(requestFollowupNow).
+  };
 
-    if (config.followupEnabled && !current.isFollowup && answer.length > 0 && !followed.current.has(idx)) {
-      const reqIdx = idx;
-      fupReqIdx.current = reqIdx;
-      setFupLoading(true);
-      try {
-        const followup = await requestFollowup({
-          question: current.question,
-          transcript: answer,
-          targetPosition: config.targetPosition,
-        });
-        // 응답을 기다리는 동안 사용자가 다음 문항으로 넘어갔다면 무시한다.
-        // 더 물을 가치가 없다고 판단되면 서버가 question 을 비워 보내므로(needed=false) 표시하지 않는다.
-        if (fupReqIdx.current === reqIdx) setFup(followup.question ? followup : null);
-      } catch {
-        if (fupReqIdx.current === reqIdx) setFup(null);
-      } finally {
-        if (fupReqIdx.current === reqIdx) setFupLoading(false);
+  // 이 문항에 꼬리질문을 붙일 수 있는지. followupEnabled 이고, 꼬리질문 자체가 아니며, 아직 안 붙였을 때.
+  const canFollowup = config.followupEnabled && !current.isFollowup && !followed.current.has(idx);
+  // '다음 문항'을 주 버튼으로 강조할지. 꼬리질문 대상이 아니거나, 요청이 끝나(더 물을 게 없음) 다음이 자연스러운 상태일 때.
+  const nextIsPrimary = !canFollowup || fupStatus === 'empty' || fupStatus === 'result';
+
+  // 사용자가 트랜스크립트를 확정한 뒤 누른다. 수정된 최신 답변으로 꼬리질문을 요청한다.
+  const requestFollowupNow = async () => {
+    const answer = current.transcript.trim();
+    if (!canFollowup || answer.length === 0) return;
+    const reqIdx = idx;
+    fupReqIdx.current = reqIdx;
+    setFup(null);
+    setFupStatus('loading');
+    try {
+      const followup = await requestFollowup({
+        question: current.question,
+        transcript: answer,
+        targetPosition: config.targetPosition,
+      });
+      // 응답을 기다리는 동안 다음 문항으로 넘어갔다면 무시한다.
+      if (fupReqIdx.current !== reqIdx) return;
+      // 더 물을 가치가 없으면 서버가 question 을 비워 보낸다(needed=false).
+      if (followup.question) {
+        setFup(followup);
+        setFupStatus('result');
+      } else {
+        setFupStatus('empty');
       }
+    } catch {
+      if (fupReqIdx.current === reqIdx) setFupStatus('error');
     }
   };
 
-  // 진행 중인 꼬리질문 요청·표시를 취소한다. 문항을 넘기거나 다시 녹화할 때 호출한다.
+  // 진행 중인 꼬리질문 요청·표시를 취소하고 초기 상태로 되돌린다. 문항을 넘기거나 다시 녹화할 때 호출한다.
   const cancelFollowup = () => {
     fupReqIdx.current = null;
     setFup(null);
-    setFupLoading(false);
+    setFupStatus('idle');
   };
 
   const askFollowup = () => {
@@ -315,8 +332,30 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
             />
           </div>
 
-          {phase === 'reviewing' && fupLoading && (
-            <p className="mt-3 text-xs text-slate-400">면접관이 추가 질문을 준비 중… (기다리지 않고 넘어가도 됩니다)</p>
+          {phase === 'reviewing' && canFollowup && fupStatus === 'idle' && (
+            <p className="mt-3 text-xs text-slate-400">
+              음성 인식이 잘못됐다면 수정 후{' '}
+              <span className="font-medium text-slate-500">‘답변 확정’</span>을 눌러주세요.
+            </p>
+          )}
+
+          {phase === 'reviewing' && fupStatus === 'loading' && (
+            <p className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-blue-500" />
+              면접관이 추가 질문을 준비 중…
+            </p>
+          )}
+
+          {phase === 'reviewing' && fupStatus === 'empty' && (
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] text-slate-500">
+              이 답변에는 꼬리질문이 없습니다. 다음 문항으로 넘어가세요.
+            </div>
+          )}
+
+          {phase === 'reviewing' && fupStatus === 'error' && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] text-amber-700">
+              꼬리질문을 불러오지 못했습니다. ‘답변 확정’으로 다시 시도해 주세요.
+            </div>
           )}
 
           {phase === 'reviewing' && fup && (
@@ -367,28 +406,40 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
                 ■ 답변 종료
               </button>
             )}
-            {phase === 'reviewing' && fupLoading && (
-              <button
-                onClick={next}
-                type="button"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                {isLast ? '기다리지 않고 AI 분석 요청' : '기다리지 않고 다음 문항 →'}
-              </button>
-            )}
-            {phase === 'reviewing' && !fup && !fupLoading && (
+            {phase === 'reviewing' && !fup && (
               <>
                 <button
-                  onClick={() => setPhase('ready')}
+                  onClick={() => {
+                    cancelFollowup();
+                    setPhase('ready');
+                  }}
                   type="button"
                   className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
                 >
                   다시 녹화
                 </button>
+                {canFollowup && (
+                  <button
+                    onClick={() => void requestFollowupNow()}
+                    // 요청 전(idle)·실패(error) 에만 누를 수 있다. 한 번 누르면 로딩·결과 동안 비활성.
+                    disabled={
+                      current.transcript.trim().length === 0 ||
+                      (fupStatus !== 'idle' && fupStatus !== 'error')
+                    }
+                    type="button"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    답변 확정
+                  </button>
+                )}
                 <button
                   onClick={next}
                   type="button"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  className={
+                    nextIsPrimary
+                      ? 'rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700'
+                      : 'rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
+                  }
                 >
                   {isLast ? 'AI 분석 요청' : '다음 문항 →'}
                 </button>
