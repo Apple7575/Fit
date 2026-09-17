@@ -12,8 +12,7 @@ from pydantic import ValidationError
 
 from ai.news_intelligence.budget import remaining_timeout
 from ai.news_intelligence.contracts import NewsCandidate, Scope
-from data.news_poc.pipeline.collect import screen_quality
-from data.news_poc.pipeline.normalize import parse_feed, valid_url
+from ai.news_intelligence.rss_feed import parse_feed, screen_quality, valid_url
 
 
 MAX_EXTERNAL_CANDIDATES = 20
