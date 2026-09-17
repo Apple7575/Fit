@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import html
 import io
@@ -16,14 +17,15 @@ from datetime import date
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Protocol
-from urllib.parse import urlparse
+from urllib.parse import quote, urljoin, urlparse, urlsplit, urlunsplit
 from xml.etree import ElementTree
 
+from PIL import Image, UnidentifiedImageError
 from pypdf import PdfReader
 
 
 DEFAULT_MAX_SOURCE_BYTES = 10 * 1024 * 1024
-DEFAULT_MAX_TEXT_CHARS = 50_000
+DEFAULT_MAX_TEXT_CHARS = 100_000
 # LLM으로 회사명·직무명을 보완할 때 프롬프트에 넣는 본문 길이 상한.
 COMPANY_POSITION_GUESS_MAX_CHARS = 4_000
 
@@ -100,6 +102,137 @@ def _call_gms_company_position(key: str, text: str) -> dict[str, Any]:
     if not isinstance(output, dict):
         raise ValueError("GMS response is not a JSON object")
     return output
+
+
+# 공고 본문이 이미지 한 장(플라이어 등)으로만 올라온 페이지용. 별도 OCR
+# 라이브러리 없이 GMS의 비전 지원 모델로 이미지 안 글자를 그대로 옮긴다.
+#
+# 스타트업 채용 플라이어는 세로로 아주 긴 스크롤형 인포그래픽이 흔하다(수천~2만
+# px). 이걸 통째로 모델에 넘기면 내부적으로 크게 축소되면서 글자가 뭉개지고,
+# 모델이 "안 보인다"고 하는 대신 그럴듯한 일반 채용공고 양식을 지어내는 걸
+# 실제로 확인했다. 그래서 세로로 잘라(타일) 각 조각을 따로 읽힌다.
+GMS_OCR_MODEL = "gemini-2.5-flash-lite"
+_OCR_TIMEOUT_SECONDS = 30
+_OCR_MAX_OUTPUT_TOKENS = 4_000
+IMAGE_OCR_MAX_CANDIDATES = 3
+IMAGE_OCR_MAX_IMAGE_BYTES = 8 * 1024 * 1024
+# 사이트 공통 UI 요소(로고·공유 버튼·아이콘 등)는 후보에서 제외한다. 개인정보
+# 동의 문구 등 사이트 상용구 텍스트가 길어서 본문이 200자를 넘는 페이지도
+# 실제 공고 이미지 하나로만 채워진 경우가 있어(예: CJ 채용), 본문 길이로
+# OCR 시도 여부를 거르지 않는다 — _looks_like_job_posting 실패 여부만 본다.
+_IMAGE_SKIP_HINTS = (
+    "logo", "icon", "favicon", "sprite", "badge", "btn", "button",
+    "share", "close", "arrow", "spinner", "loading", "banner", "nav",
+)
+# 타일 높이. 너무 크면 다시 뭉개지고, 너무 작으면 호출 수만 늘어난다.
+IMAGE_OCR_TILE_MAX_HEIGHT_PX = 4_000
+# 이미지 하나당 최대 조각 수 — 끝없이 긴 이미지라도 호출 수를 여기서 막는다.
+IMAGE_OCR_MAX_TILES_PER_IMAGE = 6
+# 이미지·조각을 합쳐 요청 하나에서 GMS 비전 호출 총량 상한.
+IMAGE_OCR_MAX_CALLS = 6
+
+_OCR_SYSTEM_PROMPT = """
+너는 채용공고 이미지 조각에서 실제로 보이는 글자만 그대로 옮겨 적는다. 이
+이미지는 세로로 긴 공고 이미지를 잘라낸 조각 중 하나이므로 문장이 위아래로
+끊겨 보일 수 있다. 끊긴 문장을 이어 붙이거나 앞뒤 맥락을 추측해서 채우지
+않는다.
+
+이미지에 없는 내용을 절대 추가·요약·일반화하지 않는다. 회사명, 이메일,
+연락처, 담당자 이름, 마감일 등 어떤 정보든 이 이미지 조각에서 실제로 읽히지
+않으면 만들어 내지 않는다. "[이메일 주소]"나 "[담당자 이름]" 같은 빈 자리
+표시자(placeholder)를 절대 쓰지 않는다 — 안 보이면 그 항목 자체를 통째로
+건너뛴다.
+
+읽을 수 있는 텍스트를 위에서 아래, 왼쪽에서 오른쪽 순서로 그대로 옮긴다.
+로고나 순수 장식용 텍스트는 건너뛰고 회사 소개, 담당 업무, 자격 요건, 우대
+사항, 근무 조건 같은 본문 내용을 빠짐없이 옮긴다. 이 조각에 읽을 수 있는
+글자가 전혀 없으면 빈 문자열만 돌려준다.
+""".strip()
+
+# 모델이 프롬프트를 어기고 빈 자리 표시자를 만들어 내면 그 결과를 통째로 버린다.
+_OCR_PLACEHOLDER_PATTERN = re.compile(
+    r"\[[^\[\]]{0,20}(이메일|담당자|연락처|전화번호|성명|주소)[^\[\]]{0,20}\]"
+)
+
+
+def _call_gms_image_ocr(key: str, image_bytes: bytes, mime_type: str) -> str:
+    """GMS 경유 Gemini 비전 호출로 이미지 속 글자를 그대로 옮겨 받는다."""
+    url = (
+        f"{GMS_BASE_URL}/generativelanguage.googleapis.com/v1beta/models/"
+        f"{GMS_OCR_MODEL}:generateContent"
+    )
+    body = {
+        "systemInstruction": {"parts": [{"text": _OCR_SYSTEM_PROMPT}]},
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": base64.b64encode(image_bytes).decode("ascii"),
+                        }
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {"temperature": 0, "maxOutputTokens": _OCR_MAX_OUTPUT_TOKENS},
+    }
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": key},
+        method="POST",
+    )
+    opener = urllib.request.build_opener(_NoRedirectOpener())
+    with opener.open(request, timeout=_OCR_TIMEOUT_SECONDS) as response:
+        raw = json.loads(response.read().decode("utf-8"))
+    text = raw["candidates"][0]["content"]["parts"][0]["text"]
+    if not isinstance(text, str):
+        raise ValueError("GMS OCR response is not text")
+    return text
+
+
+def _split_image_into_tiles(image_bytes: bytes, media_type: str) -> list[tuple[bytes, str]]:
+    """세로로 긴 이미지를 IMAGE_OCR_TILE_MAX_HEIGHT_PX 단위로 잘라 PNG 조각들로 만든다.
+
+    열 수 없는 이미지거나 이미 충분히 작으면 원본을 조각 하나로 그대로 돌려준다.
+    """
+    try:
+        image = Image.open(io.BytesIO(image_bytes))
+        image.load()
+    except (UnidentifiedImageError, OSError):
+        return [(image_bytes, media_type)]
+    width, height = image.size
+    if height <= IMAGE_OCR_TILE_MAX_HEIGHT_PX:
+        return [(image_bytes, media_type)]
+    if image.mode not in ("RGB", "RGBA"):
+        image = image.convert("RGB")
+    tiles: list[tuple[bytes, str]] = []
+    top = 0
+    while top < height and len(tiles) < IMAGE_OCR_MAX_TILES_PER_IMAGE:
+        bottom = min(top + IMAGE_OCR_TILE_MAX_HEIGHT_PX, height)
+        buffer = io.BytesIO()
+        image.crop((0, top, width, bottom)).save(buffer, format="PNG")
+        tiles.append((buffer.getvalue(), "image/png"))
+        top = bottom
+    return tiles
+
+
+def _safe_absolute_url(page_url: str, src: str) -> str | None:
+    """HTML의 img src(퍼센트 인코딩 안 된 한글·괄호 등 포함 가능)를 요청 가능한
+    절대 URL로 만든다. urllib.request는 URL에 non-ASCII 문자가 있으면 그대로
+    실패하므로 경로·쿼리만 퍼센트 인코딩한다. 이미 인코딩된 %XX는 다시
+    인코딩하지 않는다."""
+    try:
+        absolute = urljoin(page_url, src)
+        parts = urlsplit(absolute)
+    except ValueError:
+        return None
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return None
+    encoded_path = quote(parts.path, safe="/%:@!$&'()*+,;=")
+    encoded_query = quote(parts.query, safe="=&%:@!$'()*+,;")
+    return urlunsplit((parts.scheme, parts.netloc, encoded_path, encoded_query, ""))
 
 
 WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -230,6 +363,7 @@ class _JobPostingHtmlParser(HTMLParser):
         self.json_ld_documents: list[str] = []
         self.title_parts: list[str] = []
         self.og_description: str | None = None
+        self.image_srcs: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = {key.lower(): (value or "") for key, value in attrs}
@@ -240,6 +374,10 @@ class _JobPostingHtmlParser(HTMLParser):
                     self.og_description = content
         if tag == "title":
             self._in_title = True
+        if tag == "img" and not self._skip_depth and len(self.image_srcs) < 20:
+            src = attributes.get("src", "").strip()
+            if src:
+                self.image_srcs.append(src)
         if (
             tag == "script"
             and attributes.get("type", "").lower() == "application/ld+json"
@@ -313,6 +451,7 @@ class JdSourceIngestor:
         max_text_chars: int = DEFAULT_MAX_TEXT_CHARS,
         gms_key: str | None = None,
         company_position_caller: Callable[[str, str], dict[str, Any]] | None = None,
+        image_ocr_caller: Callable[[str, bytes, str], str] | None = None,
     ) -> None:
         self._max_source_bytes = max_source_bytes
         self._max_text_chars = max_text_chars
@@ -321,6 +460,7 @@ class JdSourceIngestor:
         # (로컬·테스트 등) 기존처럼 구조화 데이터만으로 판단한다.
         self._gms_key = gms_key
         self._company_position_caller = company_position_caller or _call_gms_company_position
+        self._image_ocr_caller = image_ocr_caller or _call_gms_image_ocr
 
     def from_url(self, url: str) -> IngestedJd:
         fetched = self._fetcher.fetch(url)
@@ -342,30 +482,55 @@ class JdSourceIngestor:
         parser.feed(decoded)
         metadata = _extract_job_posting_metadata(parser.json_ld_documents)
         body_text = _normalize_text("".join(parser.text_parts))
+        # OCR 후보 이미지 주소와, 그 주소를 절대경로로 풀 때 기준으로 쓸 페이지 주소.
+        # 사람인 상세 페이지를 따로 받으면 진짜 이미지는 거기 있으므로 그쪽으로 바꾼다.
+        image_srcs = parser.image_srcs
+        image_page_url = fetched.final_url
 
         # 사람인은 받은 주소에 틀만 있고 담당업무·자격요건 같은 실제 본문은
         # view-detail?rec_idx=... 주소에 따로 있다. 있으면 그 본문으로 바꿔치기한다.
         detail_url = _saramin_detail_url(fetched.final_url) or _saramin_detail_url(url)
         if detail_url:
             try:
-                detail_text = self._fetch_visible_text(detail_url)
+                detail_text, detail_image_srcs = self._fetch_visible_text(detail_url)
             except SourceIngestionError:
-                detail_text = ""
+                detail_text, detail_image_srcs = "", []
             if detail_text:
                 body_text = detail_text
+                image_srcs = detail_image_srcs
+                image_page_url = detail_url
 
         # <title>과 og:description 메타에도 회사·직무·경력·마감일이 들어 있어 본문 앞에 붙인다.
         title_text = _normalize_text("".join(parser.title_parts))
         og_description_text = _normalize_text(parser.og_description or "")
         description = _html_fragment_to_text(metadata.get("description"))
-        text = self._validate_text(
+        # 길이 검증(_validate_text)은 OCR까지 끝난 뒤 최종 본문에 한 번만 적용한다.
+        # 여기서 먼저 걸면 이미지 한 장뿐인 페이지(볼 수 있는 글자가 10자도 안
+        # 되는 게 정상)가 OCR 분기에 도달하기도 전에 거절된다 — 이 기능을 만든
+        # 이유 자체가 그런 페이지를 다루는 거라 앞뒤가 바뀌면 안 된다.
+        text = _normalize_text(
             _join_all(title_text, og_description_text, body_text, description)
         )
         if not metadata and not _looks_like_job_posting(text):
-            raise SourceIngestionError(
-                "URL에서 채용공고 본문을 확인하지 못했습니다. "
-                "JavaScript 기반 페이지라면 파일 또는 직접 입력을 사용해 주세요."
+            # 공고가 이미지 한 장(플라이어 등)으로만 올라온 페이지일 수 있다. 본문이
+            # 길어도(개인정보 동의 문구 등 상용구) 실제 공고 마커가 없으면 마찬가지라,
+            # 본문 길이가 아니라 이 마커 판정 결과만으로 OCR 시도 여부를 정한다.
+            ocr_text = ""
+            if self._gms_key and image_srcs:
+                ocr_text = self._ocr_images(image_page_url, image_srcs)
+            # OCR 결과도 일반 본문과 똑같은 기준(JD 마커)을 통과해야 받아들인다.
+            # 모델이 안 보이는 걸 그럴듯한 일반 채용공고로 지어내는 경우가 실제로
+            # 있어서, 길이만으로는 실제 내용인지 지어낸 건지 구분할 수 없다.
+            candidate_text = (
+                _normalize_text(_join_all(text, ocr_text)) if ocr_text.strip() else text
             )
+            if not ocr_text.strip() or not _looks_like_job_posting(candidate_text):
+                raise SourceIngestionError(
+                    "URL에서 채용공고 본문을 확인하지 못했습니다. "
+                    "JavaScript 기반 페이지라면 파일 또는 직접 입력을 사용해 주세요."
+                )
+            text = candidate_text
+        text = self._validate_text(text)
         company_name = _optional_text(metadata.get("company_name"))
         position_name = _optional_text(metadata.get("position_name"))
         if not company_name or not position_name:
@@ -394,7 +559,7 @@ class JdSourceIngestor:
         except (
             RuntimeError,
             ValueError,
-            KeyError,
+            LookupError,  # KeyError·IndexError — candidates가 빈 배열일 수 있음
             TypeError,
             urllib.error.URLError,
             TimeoutError,
@@ -405,20 +570,93 @@ class JdSourceIngestor:
             "position_name": _optional_text(output.get("position_name")),
         }
 
-    def _fetch_visible_text(self, url: str) -> str:
-        """보조 주소(예: 사람인 상세)를 받아 본문 텍스트만 뽑는다. 실패하면 빈 문자열."""
+    def _ocr_images(self, page_url: str, image_srcs: list[str]) -> str:
+        """공고 이미지 후보를 내려받아 GMS 비전으로 글자를 옮긴다. 실패해도 빈 문자열.
+
+        세로로 긴 이미지는 조각내어 따로 읽히고, 요청 하나당 호출 수는
+        IMAGE_OCR_MAX_CALLS로 제한한다.
+        """
+        collected: list[str] = []
+        calls_made = 0
+        for image_url in self._select_image_candidates(page_url, image_srcs):
+            if calls_made >= IMAGE_OCR_MAX_CALLS:
+                break
+            try:
+                fetched = self._fetcher.fetch(image_url)
+            except SourceIngestionError:
+                continue
+            media_type = fetched.content_type.split(";", 1)[0].strip().lower()
+            if not media_type.startswith("image/"):
+                continue
+            if len(fetched.content) > IMAGE_OCR_MAX_IMAGE_BYTES:
+                continue
+            # 이 이미지(조각들 합)가 실제 공고인지는 이미지 단위로 따로 판정한다.
+            # 후보가 여러 장일 때 관련 없는 작은 이미지(국기 아이콘 등)가 진짜
+            # 공고 이미지 옆에서 지어낸 내용을 얹는 걸 막기 위해서다.
+            image_texts: list[str] = []
+            for tile_bytes, tile_mime in _split_image_into_tiles(fetched.content, media_type):
+                if calls_made >= IMAGE_OCR_MAX_CALLS:
+                    break
+                calls_made += 1
+                try:
+                    text = self._image_ocr_caller(self._gms_key, tile_bytes, tile_mime)
+                except (
+                    RuntimeError,
+                    ValueError,
+                    LookupError,  # KeyError·IndexError — candidates가 빈 배열일 수 있음
+                    TypeError,
+                    urllib.error.URLError,
+                    TimeoutError,
+                ):
+                    continue
+                text = text.strip()
+                if not text or _OCR_PLACEHOLDER_PATTERN.search(text):
+                    # 모델이 프롬프트를 어기고 빈 자리 표시자를 지어냈다는 신호.
+                    # 이 조각은 신뢰하지 않고 버린다.
+                    continue
+                image_texts.append(text)
+            image_text = "\n".join(image_texts)
+            if _looks_like_job_posting(image_text):
+                collected.append(image_text)
+        return "\n".join(collected)
+
+    @staticmethod
+    def _select_image_candidates(page_url: str, image_srcs: list[str]) -> list[str]:
+        seen: set[str] = set()
+        candidates: list[str] = []
+        for src in image_srcs:
+            if src.startswith("data:"):
+                continue
+            if any(hint in src.lower() for hint in _IMAGE_SKIP_HINTS):
+                continue
+            absolute = _safe_absolute_url(page_url, src)
+            if absolute is None or absolute in seen:
+                continue
+            seen.add(absolute)
+            candidates.append(absolute)
+            if len(candidates) >= IMAGE_OCR_MAX_CANDIDATES:
+                break
+        return candidates
+
+    def _fetch_visible_text(self, url: str) -> tuple[str, list[str]]:
+        """보조 주소(예: 사람인 상세)를 받아 본문 텍스트와 이미지 주소를 뽑는다.
+
+        실패하면 (빈 문자열, 빈 목록). 진짜 공고 내용(과 이미지 플라이어)은
+        이 보조 주소 쪽에 있을 때가 많아서, 첫 페이지 파서의 image_srcs가 아니라
+        이 결과의 image_srcs를 OCR 후보로 써야 한다.
+        """
         fetched = self._fetcher.fetch(url)
         if len(fetched.content) > self._max_source_bytes:
-            return ""
+            return "", []
         media_type = fetched.content_type.split(";", 1)[0].strip().lower()
         if media_type not in {"text/html", "application/xhtml+xml", "text/plain"}:
-            return ""
+            return "", []
         decoded = _decode_text(fetched.content, fetched.content_type)
         if media_type == "text/plain":
-            return _normalize_text(decoded)
+            return _normalize_text(decoded), []
         detail_parser = _JobPostingHtmlParser()
         detail_parser.feed(decoded)
-        return _normalize_text("".join(detail_parser.text_parts))
+        return _normalize_text("".join(detail_parser.text_parts)), detail_parser.image_srcs
 
     def from_file(
         self,
