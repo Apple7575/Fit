@@ -96,6 +96,24 @@ const TONE_CHIP: Record<'good' | 'warn', string> = {
 };
 
 /**
+ * 문항 표시 번호를 매긴다. 정식 문항은 1, 2, 3…, 꼬리질문은 직전 정식 문항 기준 1-1, 1-2… 로 표기한다.
+ * 꼬리질문은 부모 문항 바로 뒤에 삽입돼 있어(InterviewSession) 순서만으로 계산할 수 있다.
+ */
+function numberItems(items: ReportItem[]): Array<ReportItem & { no: string }> {
+  let main = 0;
+  let sub = 0;
+  return items.map((item) => {
+    if (item.sourceType === 'followup' && main > 0) {
+      sub += 1;
+      return { ...item, no: `${main}-${sub}` };
+    }
+    main += 1;
+    sub = 0;
+    return { ...item, no: `${main}` };
+  });
+}
+
+/**
  * MediaRecorder webm 은 헤더에 Duration 이 없어 length/탐색바가 깨진다(duration=Infinity).
  * 끝까지 seek 했다 되돌리면 브라우저가 실제 길이를 계산한다(잘 알려진 우회).
  */
@@ -121,13 +139,13 @@ function extForMime(mime: string | null): string {
 function SelfReview({
   url,
   mime,
-  seq,
+  label,
   durationMs,
   events,
 }: {
   url: string;
   mime: string | null;
-  seq: number;
+  label: string;
   durationMs: number;
   events: ClipEvent[] | null;
 }) {
@@ -149,7 +167,7 @@ function SelfReview({
       <div className="mt-2 flex justify-end">
         <a
           href={url}
-          download={`모의면접_Q${seq}.${extForMime(mime)}`}
+          download={`모의면접_Q${label}.${extForMime(mime)}`}
           className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
         >
           ⬇ 영상 다운로드
@@ -292,7 +310,7 @@ export function InterviewReport({
       )}
 
       <div className="mt-6 space-y-4">
-        {items.map((item) => {
+        {numberItems(items).map((item) => {
           const badge = SOURCE_BADGE[item.sourceType];
           const localItem = local.get(item.seq);
           return (
@@ -303,7 +321,7 @@ export function InterviewReport({
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-300">Q{item.seq}</span>
+                <span className="text-xs font-bold text-slate-300">Q{item.no}</span>
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${badge.className}`}>
                   {badge.label}
                 </span>
@@ -328,7 +346,7 @@ export function InterviewReport({
                 <SelfReview
                   url={localItem.url}
                   mime={localItem.mime}
-                  seq={item.seq}
+                  label={item.no}
                   durationMs={localItem.durationMs}
                   events={localItem.events}
                 />
