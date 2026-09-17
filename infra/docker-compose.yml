@@ -72,6 +72,7 @@ services:
       # Vector DB 가 만들어진 기업(corpCode). 비우면 기업 선택을 막지 않는다.
       - APP_AGENT_RAG_INDEXED_CORP_CODES=${APP_AGENT_RAG_INDEXED_CORP_CODES:-}
       - TZ=${TZ:-Asia/Seoul}
+      - AGENT_AI_BASE_URL=${AGENT_AI_BASE_URL:-http://ai:8000}
     # 배포에서 vLLM 은 호스트의 리버스터널 포트(host.docker.internal:18000)로 닿는다. infra/tunnel 참고.
     extra_hosts:
       - "host.docker.internal:host-gateway"
