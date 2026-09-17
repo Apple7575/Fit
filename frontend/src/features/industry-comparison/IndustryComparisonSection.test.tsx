@@ -278,7 +278,7 @@ const candidatesBody = {
       { corpCode: '00164779', corpName: 'SK하이닉스' },
       { corpCode: '00401731', corpName: 'LG전자' },
       { corpCode: '00113058', corpName: 'DB하이텍' },
-      { corpCode: '90000009', corpName: '리노공업' },
+      { corpCode: '00369657', corpName: '리노공업' },
     ],
   },
 };

@@ -25,7 +25,7 @@ export const mockCompanyDetailExtras: Record<string, DetailExtras> = {
     homepageUrl: 'https://www.samsung.com',
     dataYear: 2025,
   },
-  '90000002': {
+  '00164742': {
     ceo: '정의선',
     establishedDate: null,
     address: '서울특별시 서초구 헌릉로 12',

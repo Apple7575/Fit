@@ -47,7 +47,7 @@ describe('CompanySearchPage', () => {
     const featured = screen.getByRole('region', { name: '바로 볼 수 있는 기업' });
     expect(within(featured).getByRole('link', { name: 'NAVER' })).toHaveAttribute(
       'href',
-      '/companies/90000004/overview',
+      '/companies/00266961/overview',
     );
     // 다섯 탭이 답하는 질문
     expect(screen.getByText('업계에서 어디쯤')).toBeInTheDocument();
