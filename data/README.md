@@ -93,6 +93,38 @@ python scripts/build_rag_corpus.py \
 `record_count × embedding_dimension × 4`로 계산한 float32 벡터 본문 예상 바이트다.
 차원은 양수만 허용하며 기본값은 `1024`; 테이블·인덱스·메타데이터 저장량은 포함하지 않는다.
 
+### RAG 문서 임베딩 증분 구축
+
+Flyway V20 적용과 `DATABASE_URL` 설정이 필요하다. 데이터 의존성에 더해
+`python -m pip install -r ../ai/requirements.txt`로 NumPy와 FastEmbed를 설치한다.
+문서 입력은 API의 `document_embedding_text` 계약을 공유하고 FastEmbed의
+`passage_embed`로 계산한다. 실제 구축은 모델 파일이 캐시에 없으면 다운로드할 수 있다.
+
+```bash
+# 선택 건수만 조회한다. 모델 생성·다운로드·임베딩 저장은 하지 않는다.
+python scripts/build_rag_embeddings.py --corp-code 00126380 --dry-run
+
+# 지정한 두 기업의 누락·변경 근거를 최대 64개씩 임베딩한다.
+python scripts/build_rag_embeddings.py --corp-code 00126380 --corp-code 00164779 --batch-size 64
+
+# 모델 또는 문서 입력 계약을 바꾸면 별도 모델·버전으로 구축한다.
+python scripts/build_rag_embeddings.py --model intfloat/multilingual-e5-large --version document-v1
+```
+
+기본 모델은 `intfloat/multilingual-e5-large`, 버전은 `document-v1`, 배치는 `64`다.
+기업 코드 생략 시 전체 기업을 대상으로 하며, 알 수 없는 기업 코드는 모델 로드·저장 전에
+거부한다. 정확히 같은 모델·버전에 벡터가 없거나 근거의 `content_hash`가 다른 행만
+`corp_code, evidence_id` 순서로 선택한다. 조회 연결을 닫은 뒤 임베딩하며, 저장은 배치별
+독립 트랜잭션이다. 실패한 배치는 롤백되고 이전 커밋은 남으므로 같은 명령으로 재실행한다.
+
+성공·실패는 stdout 한 줄 JSON이며 실패 종료 코드는 `1`이다. `selected`는 시작 시점의
+변경 대상 수, `unchanged`는 같은 모델·버전·해시로 이미 저장된 수, `embedded`는 이번 실행의
+커밋된 수, `failed`는 실패 배치의 행 수다. 배치 처리 중 오류 JSON에도 이 집계가 포함된다.
+오류 원문은 DB 인증정보 유출을 피하려고 출력하지 않는다. `dimension`은 실제 임베딩 차원이며,
+dry-run에서는 기본 E5 모델의 알려진 차원 `1024`를 쓰고 그 외 모델은 `null`로 표시한다.
+dry-run의 `embedded`와 `failed`는 `0`이다. 동시 코퍼스 수정이 있으면 시작 집계와 처리량은
+달라질 수 있으며, 이미 읽은 행의 수정은 다음 실행에서 해시 불일치로 다시 선택된다.
+
 뉴스는 별도 흐름이다. 수집기는 `news_poc/pipeline/collect.py` 이고, 그 원본을 표준 구조로
 정제·적재본으로 만드는 것은 아래 네 CLI 다. 네트워크를 호출하지 않는다.
 
