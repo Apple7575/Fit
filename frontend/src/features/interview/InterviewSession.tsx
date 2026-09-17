@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestFollowup } from './api';
-import { useSpeech, useWebcam } from './hooks';
+import { computeDelivery, countSyllables, PACE_MAX, PACE_MIN, type ClipEvent } from './delivery';
+import { useAudioMeter, useRecorder, useSpeech, useWebcam } from './hooks';
+import { saveItem } from './localVideo';
 import { SOURCE_BADGE } from './styles';
+import { useVision } from './vision';
 import type { Followup, GeneratedQuestion, InterviewConfig, SessionItem } from './types';
 
 interface InterviewSessionProps {
   config: InterviewConfig;
   questions: GeneratedQuestion[];
+  /** 로컬 녹화를 묶는 세션 id. 저장 후 서버 면접 id 와 매칭한다. */
+  localSessionId: string;
   onFinish: (items: SessionItem[]) => void;
   onExit: () => void;
 }
@@ -15,10 +20,13 @@ type Phase = 'ready' | 'prep' | 'recording' | 'reviewing';
 
 const PREP_SECONDS = 3;
 
-/** 영상 면접 진행. 문항별 웹캠 녹화 + 실시간 STT. 답변 후 옵션으로 꼬리질문을 받는다. 영상은 저장하지 않는다. */
-export function InterviewSession({ config, questions, onFinish, onExit }: InterviewSessionProps) {
-  const { videoRef, status } = useWebcam();
+/** 영상 면접 진행. 문항별 웹캠 녹화 + 실시간 STT. 답변 후 옵션으로 꼬리질문을 받는다. 영상은 이 브라우저에만 저장된다. */
+export function InterviewSession({ config, questions, localSessionId, onFinish, onExit }: InterviewSessionProps) {
+  const { videoRef, status, stream } = useWebcam();
   const speech = useSpeech();
+  const recorder = useRecorder(stream);
+  const meter = useAudioMeter(stream);
+  const vision = useVision(videoRef);
 
   const [queue, setQueue] = useState<SessionItem[]>(() =>
     questions.map((q) => ({ question: q.question, sourceType: q.sourceType, transcript: '', isFollowup: false })),
@@ -31,6 +39,8 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
   const [fupLoading, setFupLoading] = useState(false);
   const followed = useRef<Set<number>>(new Set());
   const timerRef = useRef<number | null>(null);
+  // 진행 중인 꼬리질문 요청이 어느 문항 것인지. 응답이 늦게 와도 이미 다음으로 넘어갔으면 버린다.
+  const fupReqIdx = useRef<number | null>(null);
 
   const current = queue[idx];
   const isLast = idx + 1 >= queue.length;
@@ -72,14 +82,46 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
     setPhase('recording');
     timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
     speech.start(setTranscript);
+    recorder.start();
+    meter.start();
+    vision.start();
   };
 
   const stopRecording = async () => {
     stopTimer();
     speech.stop();
     setPhase('reviewing');
+
+    // 녹화·음성·영상 계측 종료 → 전달·비언어 지표 계산 후 이 브라우저(IndexedDB)에만 저장. 실패해도 면접 흐름은 계속된다.
+    const visionResult = vision.stop();
+    const clip = await recorder.stop();
+    const audio = meter.stop();
     const answer = queue[idx].transcript.trim();
+    const durationSec = (clip?.durationMs ?? audio?.durationMs ?? elapsed * 1000) / 1000;
+    const metrics = computeDelivery(answer, durationSec, audio);
+    // 공백(오디오) + 프레임/정면/시선 이탈(비전) 을 하나의 타임라인 이벤트 목록으로 합친다.
+    const events: ClipEvent[] = [
+      ...(audio?.silences ?? []).map((s) => ({ kind: 'silence' as const, startMs: s.startMs, endMs: s.endMs })),
+      ...(visionResult?.events ?? []),
+    ].sort((a, b) => a.startMs - b.startMs);
+    try {
+      await saveItem({
+        localSessionId,
+        seq: idx + 1,
+        question: current.question,
+        isFollowup: current.isFollowup,
+        clip,
+        metrics,
+        nonverbal: visionResult?.metrics ?? null,
+        events,
+      });
+    } catch {
+      /* 저장 실패(용량 초과 등)는 무시 — 분석에는 영향 없음 */
+    }
+
     if (config.followupEnabled && !current.isFollowup && answer.length > 0 && !followed.current.has(idx)) {
+      const reqIdx = idx;
+      fupReqIdx.current = reqIdx;
       setFupLoading(true);
       try {
         const followup = await requestFollowup({
@@ -87,13 +129,22 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
           transcript: answer,
           targetPosition: config.targetPosition,
         });
-        setFup(followup);
+        // 응답을 기다리는 동안 사용자가 다음 문항으로 넘어갔다면 무시한다.
+        // 더 물을 가치가 없다고 판단되면 서버가 question 을 비워 보내므로(needed=false) 표시하지 않는다.
+        if (fupReqIdx.current === reqIdx) setFup(followup.question ? followup : null);
       } catch {
-        setFup(null);
+        if (fupReqIdx.current === reqIdx) setFup(null);
       } finally {
-        setFupLoading(false);
+        if (fupReqIdx.current === reqIdx) setFupLoading(false);
       }
     }
+  };
+
+  // 진행 중인 꼬리질문 요청·표시를 취소한다. 문항을 넘기거나 다시 녹화할 때 호출한다.
+  const cancelFollowup = () => {
+    fupReqIdx.current = null;
+    setFup(null);
+    setFupLoading(false);
   };
 
   const askFollowup = () => {
@@ -105,13 +156,13 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
       next.splice(idx + 1, 0, item);
       return next;
     });
-    setFup(null);
+    cancelFollowup();
     setIdx(idx + 1);
     setPhase('ready');
   };
 
   const next = () => {
-    setFup(null);
+    cancelFollowup();
     if (isLast) {
       onFinish(queue);
     } else {
@@ -121,6 +172,11 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
   };
 
   const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  // 실시간 말속도 힌트(대략치). 3초 이상 말했을 때만 노출한다.
+  const liveWpm = elapsed > 0 ? Math.round((countSyllables(current.transcript) / elapsed) * 60) : 0;
+  const paceOff = liveWpm > 0 && (liveWpm < PACE_MIN || liveWpm > PACE_MAX);
+  const paceLabel = liveWpm === 0 ? '' : liveWpm < PACE_MIN ? '조금 빠르게' : liveWpm > PACE_MAX ? '천천히' : '좋은 속도';
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
@@ -175,6 +231,11 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
                 <span className="h-2 w-2 animate-pulse rounded-full bg-white" /> REC {mmss(elapsed)}
               </div>
             )}
+            {phase === 'recording' && vision.warn && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-500/90 px-3 py-1 text-xs font-semibold text-white shadow">
+                ⚠ {vision.warn}
+              </div>
+            )}
             {phase === 'prep' && (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-900/70">
                 <div className="text-center text-white">
@@ -183,9 +244,42 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
                 </div>
               </div>
             )}
+            {phase === 'recording' && meter.supported && (
+              <div className="absolute inset-x-3 bottom-3 flex items-center gap-3 rounded-xl bg-slate-900/55 px-3 py-2 backdrop-blur-sm">
+                <span className="text-[11px] text-slate-200">🔊</span>
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
+                  <div
+                    className="h-full rounded-full bg-emerald-400 transition-[width] duration-100"
+                    style={{ width: `${Math.round(meter.level * 100)}%` }}
+                  />
+                </div>
+                {elapsed >= 3 && paceLabel && (
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${
+                      paceOff ? 'bg-amber-500/85' : 'bg-emerald-500/85'
+                    }`}
+                  >
+                    {liveWpm} · {paceLabel}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center justify-between px-4 py-2 text-xs text-slate-400">
-            <span>🎥 영상은 저장되지 않습니다 · 답변 텍스트만 분석에 사용됩니다</span>
+            <span>
+              {recorder.supported
+                ? '🎥 영상은 이 브라우저에만 저장됩니다 · 서버로 전송되지 않아요'
+                : '🎥 이 브라우저는 녹화를 지원하지 않아요 · 답변 텍스트만 분석에 사용됩니다'}
+            </span>
+            <span>
+              {vision.status === 'loading'
+                ? '🧠 표정·자세 분석 준비 중…'
+                : vision.status === 'ready'
+                  ? '🧠 표정·자세 분석 켜짐'
+                  : vision.status === 'unsupported' || vision.status === 'error'
+                    ? '🧠 표정·자세 분석 미사용'
+                    : ''}
+            </span>
             <span>{speech.supported ? '🎙 실시간 음성인식' : '🎙 음성인식 미지원 — 직접 입력'}</span>
           </div>
         </div>
@@ -222,7 +316,7 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
           </div>
 
           {phase === 'reviewing' && fupLoading && (
-            <p className="mt-3 text-xs text-slate-400">면접관이 추가 질문을 준비 중…</p>
+            <p className="mt-3 text-xs text-slate-400">면접관이 추가 질문을 준비 중… (기다리지 않고 넘어가도 됩니다)</p>
           )}
 
           {phase === 'reviewing' && fup && (
@@ -271,6 +365,15 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
                 className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50"
               >
                 ■ 답변 종료
+              </button>
+            )}
+            {phase === 'reviewing' && fupLoading && (
+              <button
+                onClick={next}
+                type="button"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                {isLast ? '기다리지 않고 AI 분석 요청' : '기다리지 않고 다음 문항 →'}
               </button>
             )}
             {phase === 'reviewing' && !fup && !fupLoading && (

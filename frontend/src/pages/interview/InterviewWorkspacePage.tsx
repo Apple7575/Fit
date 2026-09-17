@@ -5,6 +5,7 @@ import { ApiError } from '../../api/client';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { analyzeAnswers, createInterview, generateQuestions } from '../../features/interview/api';
+import { attachServerId } from '../../features/interview/localVideo';
 import { InterviewReport, type ReportItem } from '../../features/interview/InterviewReport';
 import { InterviewSession } from '../../features/interview/InterviewSession';
 import { InterviewSetup } from '../../features/interview/InterviewSetup';
@@ -37,19 +38,19 @@ function Loading({ message }: { message: string }) {
   return <LoadingScreen message={message.replace(/…$/, '')} />;
 }
 
-type Phase = 'setup' | 'generating' | 'session' | 'analyzing' | 'report';
+type Phase = 'setup' | 'generating' | 'session' | 'analyzing' | 'saving' | 'report';
 
 function NewInterview() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   const [phase, setPhase] = useState<Phase>('setup');
+  const [localSessionId] = useState(() => crypto.randomUUID());
   const [config, setConfig] = useState<InterviewConfig | null>(null);
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [sessionItems, setSessionItems] = useState<SessionItem[]>([]);
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
   if (loading) {
@@ -83,49 +84,65 @@ function NewInterview() {
     }
   };
 
+  // 서버 저장 + 로컬 녹화에 서버 id 연결 후 저장본 리포트로 이동. 자동/수동 저장이 공유한다.
+  const persist = async (cfg: InterviewConfig, items: SessionItem[], result: AnalyzeResult) => {
+    const input: InterviewSaveInput = {
+      targetCompany: cfg.targetCompany,
+      targetPosition: cfg.targetPosition,
+      interviewType: cfg.interviewType,
+      coverLetterId: cfg.coverLetterId,
+      overallSummary: result.overallSummary,
+      items: items.map((it, i) => {
+        const evaluated = result.items[i];
+        return {
+          question: it.question,
+          sourceType: it.sourceType,
+          transcript: it.transcript,
+          feedbackSummary: evaluated?.feedbackSummary ?? null,
+          points: evaluated?.points ?? [],
+        };
+      }),
+    };
+    const created = await createInterview(input);
+    // 로컬 녹화에 서버 면접 id 를 새겨, 저장본 리포트에서 되돌려볼 수 있게 한다.
+    await attachServerId(localSessionId, created.id).catch(() => {});
+    navigate(`/interviews/${created.id}`);
+  };
+
   const finish = async (items: SessionItem[]) => {
     if (!config) return;
     setSessionItems(items);
     setError(null);
     setPhase('analyzing');
+    let result: AnalyzeResult;
     try {
-      const result = await analyzeAnswers({
+      result = await analyzeAnswers({
         interviewType: config.interviewType,
         targetPosition: config.targetPosition,
         items: items.map((it) => ({ question: it.question, sourceType: it.sourceType, transcript: it.transcript })),
       });
       setAnalysis(result);
-      setSaved(false);
-      setPhase('report');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '답변 분석에 실패했습니다.');
       setPhase('report'); // 리포트 화면에서 재시도 노출
+      return;
+    }
+    // 분석이 끝나면 자동으로 저장한다. 실패하면 리포트에서 수동 저장(저장 버튼)으로 폴백한다.
+    setPhase('saving');
+    try {
+      await persist(config, items, result);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : '자동 저장에 실패했습니다. 저장 버튼으로 다시 시도해 주세요.');
+      setPhase('report');
     }
   };
 
   const save = async () => {
     if (!config || !analysis) return;
     setSaving(true);
+    setError(null);
     try {
-      const input: InterviewSaveInput = {
-        targetCompany: config.targetCompany,
-        targetPosition: config.targetPosition,
-        interviewType: config.interviewType,
-        coverLetterId: config.coverLetterId,
-        overallSummary: analysis.overallSummary,
-        items: sessionItems.map((it, i) => {
-          const evaluated = analysis.items[i];
-          return {
-            question: it.question,
-            sourceType: it.sourceType,
-            transcript: it.transcript,
-            feedbackSummary: evaluated?.feedbackSummary ?? null,
-            points: evaluated?.points ?? [],
-          };
-        }),
-      };
-      const created = await createInterview(input);
-      navigate(`/interviews/${created.id}`);
+      await persist(config, sessionItems, analysis);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '저장에 실패했습니다.');
       setSaving(false);
@@ -135,11 +152,18 @@ function NewInterview() {
   if (phase === 'generating') return <Shell><Loading message="면접 질문을 구성하고 있습니다…" /></Shell>;
   if (phase === 'analyzing')
     return <Shell><Loading message="AI가 답변 내용을 분석하고 있습니다… (최대 1분 정도 걸릴 수 있어요)" /></Shell>;
+  if (phase === 'saving') return <Shell><Loading message="면접 결과를 저장하고 있습니다…" /></Shell>;
 
   if (phase === 'session' && config) {
     return (
       <Shell>
-        <InterviewSession config={config} questions={questions} onFinish={finish} onExit={() => setPhase('setup')} />
+        <InterviewSession
+          config={config}
+          questions={questions}
+          localSessionId={localSessionId}
+          onFinish={finish}
+          onExit={() => setPhase('setup')}
+        />
       </Shell>
     );
   }
@@ -163,15 +187,22 @@ function NewInterview() {
         </Shell>
       );
     }
+    // 여기 도달하면 자동 저장이 실패한 경우다. 안내와 함께 수동 저장(저장 버튼)으로 폴백한다.
     return (
       <Shell>
+        {error && (
+          <div className="mx-auto max-w-4xl px-6 pt-6">
+            <InlineNotice>{error}</InlineNotice>
+          </div>
+        )}
         <InterviewReport
           company={config.targetCompany}
           position={config.targetPosition}
           interviewType={config.interviewType}
           overallSummary={analysis.overallSummary}
           items={toReportItems(sessionItems, analysis)}
-          saved={saved}
+          localSessionId={localSessionId}
+          saved={false}
           saving={saving}
           onSave={() => void save()}
           onRestart={() => void start(config)}
@@ -274,6 +305,7 @@ function SavedReport({ interview }: { interview: Interview }) {
           feedbackSummary: it.feedbackSummary ?? '',
           points: it.points,
         }))}
+        serverInterviewId={interview.id}
         saved
         onRestart={() => navigate('/interviews/new')}
       />

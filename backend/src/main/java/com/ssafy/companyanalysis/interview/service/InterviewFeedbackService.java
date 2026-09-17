@@ -24,7 +24,7 @@ public class InterviewFeedbackService {
             너는 한국어 면접 코치다. 아래 문항별 답변(트랜스크립트)의 '내용'을 평가한다.
             규칙:
             - items 는 입력 문항과 같은 순서·같은 개수로 만든다.
-            - 각 문항마다 강점(STRENGTH) 1개 이상과 개선점(IMPROVEMENT)을 함께 제시한다. point 는 문항당 최대 4개.
+            - point 는 문항당 1~4개. 답변에서 실제로 의미 있는 강점(STRENGTH)·개선점(IMPROVEMENT)만 담고, 개수를 억지로 채우지 않는다. 강점·개선점의 개수와 비율은 답변에 따라 달라질 수 있다.
             - kind 는 STRENGTH / IMPROVEMENT 중 하나.
             - category 는 [질문적합성, 구체성, 논리성, 기업직무이해, 전달력] 중 하나.
             - message 는 무엇이 좋은지/부족한지, suggestion 은 어떻게 고치면 좋은지(개선점일 때).
@@ -33,9 +33,12 @@ public class InterviewFeedbackService {
             """;
 
     private static final String FOLLOWUP_SYSTEM = """
-            너는 한국어 면접관이다. 지원자의 직전 답변을 듣고 그 내용을 파고드는 꼬리질문 1개를 만든다.
+            너는 한국어 면접관이다. 지원자의 직전 답변을 듣고, 더 깊이 파고들 가치가 있을 때만 꼬리질문 1개를 만든다.
             규칙:
-            - question 은 답변에서 실제로 언급된 경험·기술·의사결정을 구체적으로 더 깊이 묻는 한 문장.
+            - needed 는 이 답변에 추가로 더 물을 가치가 있으면 true, 아니면 false.
+            - 답변이 너무 짧거나 무응답이거나 질문과 무관하거나, 더 캐물어도 의미 있는 내용이 없으면
+              needed=false 로 하고 question 은 빈 문자열로 둔다. 억지로 질문을 만들지 않는다.
+            - question 은 needed=true 일 때만, 답변에서 실제로 언급된 경험·기술·의사결정을 구체적으로 더 깊이 묻는 한 문장.
             - basis 는 답변의 어떤 부분에서 이 질문이 나왔는지 짧은 근거.
             - 답변에 없는 내용을 지어내지 않는다.
             """;
@@ -62,6 +65,10 @@ public class InterviewFeedbackService {
         String userText = "질문: " + request.question() + "\n답변: " + request.transcript()
                 + "\n지원 직무: " + blankToDash(request.targetPosition());
         AiFollowup ai = llmClient.generateFollowup(FOLLOWUP_SYSTEM, userText);
+        // 더 물을 가치가 없다고 판단(needed=false)했거나 질문이 비면 꼬리질문을 만들지 않는다(question=null).
+        if (Boolean.FALSE.equals(ai.needed()) || ai.question() == null || ai.question().isBlank()) {
+            return new FollowupResponse(null, null);
+        }
         return new FollowupResponse(ai.question(), ai.basis());
     }
 
