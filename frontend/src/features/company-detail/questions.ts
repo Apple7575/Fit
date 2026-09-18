@@ -11,7 +11,7 @@ export interface CompanyQuestion {
   title: string;
   /** 그 탭이 무엇으로 답하는지 */
   body: string;
-  /** 이 질문을 맡은 코치 */
+  /** 이 질문을 맡은 코치. 다섯 질문이 서로 다른 코치를 하나씩 맡는다 */
   coach: CharacterKey;
 }
 
@@ -32,7 +32,7 @@ export const COMPANY_QUESTIONS: readonly CompanyQuestion[] = [
     short: '성장',
     title: '얼마나 컸나',
     body: '5년 매출·이익·인력 추이와 전년 대비',
-    coach: 'otter',
+    coach: 'chick',
   },
   {
     tab: 'focus',
