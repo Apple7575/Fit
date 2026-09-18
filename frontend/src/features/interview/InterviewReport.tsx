@@ -8,9 +8,12 @@ import {
 } from './delivery';
 import { EvidenceRows } from './Evidence';
 import { getClipsByLocalSession, getClipsByServerId } from './localVideo';
-import { NonverbalOverview } from './NonverbalOverview';
-import { DeliveryOverview, Highlights } from './ReportBody';
-import { buildHighlights } from './reportSummary';
+import { NonverbalDetail } from './NonverbalOverview';
+import { nonverbalGauges } from './nonverbalGauges';
+import { DeliveryDetail } from './ReportBody';
+import { ReportOverview, type OverviewRow } from './ReportOverview';
+import { buildAxes, buildHighlights } from './reportSummary';
+import { CARD, T } from './reportTokens';
 import { KIND_STYLE, SOURCE_BADGE, TYPE_LABEL } from './styles';
 import type { FeedbackPoint, InterviewType, QuestionSource } from './types';
 import { averageNonverbal, describeNonverbal, type NonverbalMetrics } from './vision';
@@ -162,11 +165,51 @@ export function InterviewReport({
   const numbered = numberItems(items);
   // 문항별 타임라인 이벤트를 세션 단위로 모은다 (시선·프레임 이탈, 고개 떨굼, 구부정, 긴 공백)
   const allEvents = values.flatMap((v) => v.events ?? []);
+  const deliveryRows = deliveryRollup ? describeDelivery(deliveryRollup) : [];
   const highlights = buildHighlights(
     numbered,
-    deliveryRollup ? describeDelivery(deliveryRollup) : [],
+    deliveryRows,
     nonverbalRollup ? describeNonverbal(nonverbalRollup) : [],
   );
+  const mannerGauges = nonverbalRollup ? nonverbalGauges(nonverbalRollup) : [];
+  const axes = buildAxes(
+    numbered,
+    deliveryRows,
+    mannerGauges.length > 0 ? { ok: mannerGauges.filter((g) => g.ok).length, total: mannerGauges.length } : null,
+  );
+
+  const focus = highlights.find((h) => h.tone === 'fix') ?? null;
+  const next = highlights.find((h) => h.tone === 'next') ?? null;
+  const praise = highlights.find((h) => h.tone === 'good') ?? null;
+  // "그 답변 보기" 가 가리킬 문항. 고칠 것이 특정 문항에서 나왔을 때만 쓴다 (예: "Q2 · 구체성")
+  const focusNo = focus?.source.match(/^Q([\d-]+)/)?.[1];
+  const focusSeq = numbered.find((item) => item.no === focusNo)?.seq ?? null;
+
+  const rows: OverviewRow[] = numbered.map((item) => {
+    const clip = local.get(item.seq);
+    const clipRows = clip?.metrics ? describeDelivery(clip.metrics) : [];
+    const clipGauges = clip?.nonverbal ? nonverbalGauges(clip.nonverbal) : [];
+    return {
+      seq: item.seq,
+      no: item.no,
+      question: item.question,
+      badge: SOURCE_BADGE[item.sourceType],
+      tones: [
+        {
+          label: '답변 내용',
+          tone: item.points.length === 0 ? 'none' : item.points.some((p) => p.kind === 'IMPROVEMENT') ? 'warn' : 'good',
+        },
+        {
+          label: '말하기',
+          tone: clipRows.length === 0 ? 'none' : clipRows.some((r) => r.tone === 'warn') ? 'warn' : 'good',
+        },
+        {
+          label: '태도 · 시선',
+          tone: clipGauges.length === 0 ? 'none' : clipGauges.some((g) => !g.ok) ? 'warn' : 'good',
+        },
+      ],
+    };
+  });
 
   // 'all' = 전체 탭, 그 외에는 문항 seq
   const [tab, setTab] = useState<'all' | number>('all');
@@ -178,19 +221,19 @@ export function InterviewReport({
       <div className="sticky top-14 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
         <div className="mx-auto max-w-[1320px] px-5 lg:px-8">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-2">
-            <h1 className="text-sm font-extrabold text-slate-950">
+            <h1 className="text-[14px] font-extrabold text-slate-950">
               {company ?? '모의 면접'}
               {position ? ` · ${position}` : ''}
             </h1>
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-blue-100">
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[12px] font-semibold text-blue-700 ring-1 ring-blue-100">
               {TYPE_LABEL[interviewType]}
             </span>
-            <span className="text-[11px] text-slate-400">문항 {numbered.length}개 · 나에게만 보입니다</span>
+            <span className={T.caption}>문항 {numbered.length}개 · 나에게만 보입니다</span>
 
             <div className="ml-auto flex shrink-0 items-center gap-1.5">
               {onBack && (
                 <button
-                  className="rounded-lg px-2.5 py-1.5 text-[13px] font-semibold text-slate-400 transition hover:text-slate-700"
+                  className="rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-slate-400 transition hover:text-slate-700"
                   onClick={onBack}
                   type="button"
                 >
@@ -198,7 +241,7 @@ export function InterviewReport({
                 </button>
               )}
               <button
-                className="rounded-lg bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
+                className="rounded-lg bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
                 onClick={onRestart}
                 type="button"
               >
@@ -206,7 +249,7 @@ export function InterviewReport({
               </button>
               {onSave && (
                 <button
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-40"
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-40"
                   disabled={saved || saving}
                   onClick={onSave}
                   type="button"
@@ -232,24 +275,20 @@ export function InterviewReport({
 
       <div className="mx-auto max-w-[1320px] px-5 py-6 lg:px-8">
       {tab === 'all' ? (
-        <div className="space-y-4" role="tabpanel">
-          <Highlights highlights={highlights} />
-          {overallSummary && (
-            <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <summary className="cursor-pointer text-sm font-bold text-slate-700">총평 전문 보기</summary>
-              <p className="mt-3 text-[15px] leading-7 text-slate-700 break-keep">{overallSummary}</p>
-            </details>
-          )}
-          <NonverbalOverview
-            events={allEvents}
-            metrics={nonverbalRollup}
-            questionCount={values.length || numbered.length}
-          />
-          <DeliveryOverview delivery={deliveryRollup} nonverbalRows={[]} />
-          <p className="text-xs text-slate-400">
-            문항 탭을 누르면 그 답변의 영상과 개선 문장을 볼 수 있습니다.
-          </p>
-        </div>
+        <ReportOverview
+          axes={axes}
+          details={{
+            content: overallSummary ? <p className={T.body}>{overallSummary}</p> : null,
+            delivery: <DeliveryDetail delivery={deliveryRollup} />,
+            manner: <NonverbalDetail events={allEvents} metrics={nonverbalRollup} />,
+          }}
+          focus={focus}
+          focusSeq={focusSeq}
+          next={next}
+          onOpen={setTab}
+          praise={praise}
+          rows={rows}
+        />
       ) : (
         current && <QuestionPanel item={current} local={local.get(current.seq)} />
       )}
@@ -270,7 +309,7 @@ function TabButton({
   return (
     <button
       aria-selected={selected}
-      className={`-mb-px shrink-0 border-b-2 px-3.5 py-2 text-[13px] font-bold transition ${
+      className={`-mb-px shrink-0 border-b-2 px-3.5 py-2 text-[14px] font-extrabold transition ${
         selected
           ? 'border-slate-900 text-slate-950'
           : 'border-transparent text-slate-400 hover:border-slate-200 hover:text-slate-700'
@@ -313,8 +352,8 @@ function QuestionPanel({
 
   return (
     <div className="space-y-4" role="tabpanel">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+      <section className={`${CARD} p-5`}>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           {/* 내 영상: 가장 먼저 눈이 가는 자리 */}
           <div>
             {local?.url ? (
@@ -344,7 +383,7 @@ function QuestionPanel({
                       {marks.slice(0, 8).map((e, i) => (
                         <li key={i}>
                           <button
-                            className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                            className="rounded-full bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-100"
                             onClick={() => seek(e.startMs)}
                             type="button"
                           >
@@ -356,7 +395,7 @@ function QuestionPanel({
                     </ul>
                   </div>
                 )}
-                <p className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                <p className={`mt-2 flex items-center justify-between ${T.caption}`}>
                   <span>이 브라우저에만 저장된 녹화</span>
                   <a
                     className="font-semibold text-slate-500 hover:text-slate-700"
@@ -368,7 +407,7 @@ function QuestionPanel({
                 </p>
               </>
             ) : (
-              <p className="rounded-xl border border-dashed border-slate-300 p-5 text-[13px] text-slate-500">
+              <p className={`rounded-xl border border-dashed border-slate-300 p-5 ${T.body}`}>
                 이 문항의 녹화가 이 브라우저에 없습니다. 다른 기기에서 진행했거나 저장 공간이 부족했을 수 있어요.
               </p>
             )}
@@ -376,40 +415,37 @@ function QuestionPanel({
 
           <div>
             <p className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-extrabold text-slate-300">Q{item.no}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${badge.className}`}>
+              <span className="text-[12px] font-extrabold text-slate-300">Q{item.no}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${badge.className}`}>
                 {badge.label}
               </span>
             </p>
-            <p className="mt-2 text-[17px] font-bold leading-7 text-slate-900 break-keep">{item.question}</p>
+            <p className={`mt-2 ${T.section}`}>{item.question}</p>
 
-            <p className="mt-4 text-[11px] font-bold text-slate-400">내 답변</p>
-            <p className="mt-1.5 text-[13.5px] leading-6 text-slate-600 break-keep">
+            <p className={`mt-4 ${T.label}`}>내 답변</p>
+            <p className={`mt-1.5 ${T.body}`}>
               {item.transcript || <span className="text-slate-400">답변 없음</span>}
             </p>
             {item.feedbackSummary && (
-              <p className="mt-3 rounded-xl bg-slate-50 p-3 text-[13px] leading-6 text-slate-600">
-                {item.feedbackSummary}
-              </p>
+              <p className={`mt-3 rounded-xl bg-slate-50 p-3 ${T.body}`}>{item.feedbackSummary}</p>
             )}
           </div>
         </div>
       </section>
 
+      {/* 한쪽만 있을 때 반쪽짜리 카드가 덩그러니 남지 않게, 둘 다 있을 때만 두 칸으로 나눈다 */}
       {(improvements.length > 0 || strengths.length > 0) && (
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section className={`grid gap-4 ${improvements.length > 0 && strengths.length > 0 ? 'lg:grid-cols-2' : ''}`}>
           {improvements.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-[11px] font-bold text-amber-700">이렇게 말해 보세요</p>
-              <ul className="mt-2 space-y-2">
+            <div className={`${CARD} p-5`}>
+              <p className={T.section}>이렇게 말해 보세요</p>
+              <ul className="mt-3 space-y-2">
                 {improvements.map((point, i) => (
                   <li className="rounded-xl bg-amber-50/70 p-3" key={i}>
-                    <p className="text-[11px] font-semibold text-amber-700">{point.category}</p>
-                    <p className="mt-1 text-[13.5px] leading-6 text-slate-700 break-keep">{point.message}</p>
+                    <p className="text-[12px] font-semibold text-amber-700">{point.category}</p>
+                    <p className={`mt-1 ${T.body}`}>{point.message}</p>
                     {point.suggestion && (
-                      <p className="mt-2 border-l-2 border-amber-300 pl-2.5 text-[13.5px] leading-6 font-medium text-slate-900 break-keep">
-                        {point.suggestion}
-                      </p>
+                      <p className={`mt-2 border-l-2 border-amber-300 pl-2.5 ${T.bodyStrong}`}>{point.suggestion}</p>
                     )}
                   </li>
                 ))}
@@ -417,12 +453,12 @@ function QuestionPanel({
             </div>
           )}
           {strengths.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-[11px] font-bold text-emerald-700">이건 좋았어요</p>
-              <ul className="mt-2 space-y-1.5">
+            <div className={`${CARD} p-5`}>
+              <p className={T.section}>이건 좋았어요</p>
+              <ul className="mt-3 space-y-1.5">
                 {strengths.map((point, i) => (
-                  <li className="text-[13.5px] leading-6 text-slate-600 break-keep" key={i}>
-                    <span className={`mr-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${KIND_STYLE.STRENGTH.chip}`}>
+                  <li className={T.body} key={i}>
+                    <span className={`mr-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold ${KIND_STYLE.STRENGTH.chip}`}>
                       {point.category}
                     </span>
                     {point.message}
@@ -435,9 +471,9 @@ function QuestionPanel({
       )}
 
       {rows.length > 0 && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-bold text-slate-700">이 답변의 태도·전달</p>
-          <p className="mt-1 text-xs text-slate-400">
+        <section className={`${CARD} p-5`}>
+          <p className={T.section}>이 답변의 태도 · 전달</p>
+          <p className={`mt-1 ${T.caption}`}>
             항목을 누르면 어떻게 잰 값인지와 그때 화면·음성을 보여줍니다. 모두 이 브라우저에서 계산했어요.
           </p>
           <div className="mt-3">

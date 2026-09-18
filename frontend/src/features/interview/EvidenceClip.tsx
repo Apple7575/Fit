@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { EVENT_META, type ClipEvent } from './delivery';
+import { T } from './reportTokens';
 
 interface EvidenceClipProps {
   url: string;
@@ -93,7 +94,7 @@ export function EvidenceClip({ url, events }: EvidenceClipProps) {
           {events.slice(0, 8).map((e, i) => (
             <li key={i}>
               <button
-                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 transition ${
+                className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ring-1 transition ${
                   i === index
                     ? 'bg-slate-900 text-white ring-slate-900'
                     : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-100'
@@ -107,7 +108,7 @@ export function EvidenceClip({ url, events }: EvidenceClipProps) {
           ))}
         </ul>
       )}
-      <p className="mt-1.5 text-[11px] text-slate-400">
+      <p className={`mt-1.5 ${T.caption}`}>
         노란 네모가 그때 프로그램이 인식한 얼굴 자리예요. 네모가 없으면 얼굴을 찾지 못한 구간입니다.
       </p>
     </div>
