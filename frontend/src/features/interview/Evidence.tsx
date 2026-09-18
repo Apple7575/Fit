@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EVENT_META, type ClipEvent, type ClipEventKind, type MetricRow } from './delivery';
 import { EvidenceClip } from './EvidenceClip';
+import { T } from './reportTokens';
 
 /** 지표가 무엇을 어떻게 잰 값인지. 사용자가 "이게 뭐지?" 하지 않도록 한 줄로 설명한다. */
 const HOW: Record<string, string> = {
@@ -76,8 +77,8 @@ export function EvidenceRows({
               onClick={() => setOpen(isOpen ? null : r.key)}
               type="button"
             >
-              <span className="text-[13px] font-semibold text-slate-700">{r.key}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${TONE_CHIP[r.tone]}`}>
+              <span className={T.label}>{r.key}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${TONE_CHIP[r.tone]}`}>
                 {r.value}
               </span>
               {r.hint && <span className="min-w-0 flex-1 truncate text-[12px] text-amber-700">{r.hint}</span>}
@@ -88,12 +89,12 @@ export function EvidenceRows({
 
             {isOpen && (
               <div className="space-y-3 bg-slate-50/60 px-4 py-3">
-                <p className="text-[12px] leading-5 text-slate-500">{HOW[r.key] ?? '이 브라우저에서 계산한 값이에요.'}</p>
+                <p className={T.caption}>{HOW[r.key] ?? '이 브라우저에서 계산한 값이에요.'}</p>
 
                 {kind &&
                   (events.length > 0 && clip?.url ? (
                     <div>
-                      <p className="text-[11px] font-bold text-slate-400">
+                      <p className={T.label}>
                         {EVENT_META[kind].label} {events.length}회 · 그 구간 다시 보기
                       </p>
                       <div className="mt-2">
@@ -101,7 +102,7 @@ export function EvidenceRows({
                       </div>
                     </div>
                   ) : (
-                    <p className="text-[12px] text-slate-400">
+                    <p className={T.caption}>
                       {events.length === 0
                         ? `1초 이상 이어진 ${EVENT_META[kind].label} 구간은 없었어요.`
                         : "이 문항의 녹화가 없어 구간을 보여줄 수 없어요."}
@@ -112,7 +113,7 @@ export function EvidenceRows({
                   (clip?.wave && clip.wave.length > 0 ? (
                     <WaveStrip clip={clip} onSeek={onSeek} />
                   ) : (
-                    <p className="text-[12px] text-slate-400">이 답변에는 저장된 음성 파형이 없어요.</p>
+                    <p className={T.caption}>이 답변에는 저장된 음성 파형이 없어요.</p>
                   ))}
               </div>
             )}
@@ -131,7 +132,7 @@ function WaveStrip({ clip, onSeek }: { clip: Clip; onSeek?: (ms: number) => void
 
   return (
     <div>
-      <p className="text-[11px] font-bold text-slate-400">음량 흐름 · 회색은 소리가 없던 구간</p>
+      <p className={T.label}>음량 흐름 · 회색은 소리가 없던 구간</p>
       <div className="relative mt-2 h-16 w-full">
         <div className="flex h-full items-end gap-[2px]">
           {wave.map((v, i) => {
@@ -154,7 +155,7 @@ function WaveStrip({ clip, onSeek }: { clip: Clip; onSeek?: (ms: number) => void
           })}
         </div>
       </div>
-      <p className="mt-1 text-[11px] text-slate-400">
+      <p className={`mt-1 ${T.caption}`}>
         막대를 누르면 그 시점부터 재생돼요 · 0초 ~ {Math.round((wave.length * step) / 1000)}초
       </p>
     </div>

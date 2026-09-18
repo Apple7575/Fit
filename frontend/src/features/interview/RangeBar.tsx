@@ -1,8 +1,10 @@
+import { T, TONE } from './reportTokens';
+
 interface RangeBarProps {
   label: string;
   /** 측정값 */
   value: number;
-  /** 화면에 쓸 표기 (예: "312 음절/분") */
+  /** 화면에 쓸 표기 (예: "1분에 312자") */
   display: string;
   /** 막대 전체 범위 */
   scaleMax: number;
@@ -20,17 +22,13 @@ interface RangeBarProps {
 export function RangeBar({ label, value, display, scaleMax, okFrom, okTo, hint }: RangeBarProps) {
   const pct = (v: number) => `${Math.max(0, Math.min(100, (v / scaleMax) * 100))}%`;
   const ok = value >= okFrom && value <= okTo;
+  const tone = ok ? TONE.good : TONE.warn;
 
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[13px] font-semibold text-slate-700">{label}</span>
-        <span
-          className={`text-[13px] font-bold tabular-nums ${ok ? 'text-emerald-700' : 'text-amber-700'}`}
-        >
-          {display}
-          <span className="ml-1 text-[11px] font-semibold">{ok ? '적정' : '확인'}</span>
-        </span>
+        <span className={T.label}>{label}</span>
+        <span className={`text-[14px] font-extrabold tabular-nums ${tone.text}`}>{display}</span>
       </div>
       <div aria-hidden="true" className="relative mt-2 h-2.5 rounded-full bg-slate-100">
         <span
@@ -44,7 +42,7 @@ export function RangeBar({ label, value, display, scaleMax, okFrom, okTo, hint }
           style={{ left: pct(value) }}
         />
       </div>
-      <p className="mt-1.5 text-[11px] text-slate-400">
+      <p className={`mt-1.5 ${T.caption}`}>
         적정 {okFrom}–{okTo}
         {!ok && hint ? ` · ${hint}` : ''}
       </p>
