@@ -60,14 +60,15 @@ describe('application routes', () => {
     );
   });
 
-  it('renders the company search home at the root path', () => {
+  it('renders the landing at the root path', () => {
     renderRoute('/');
 
     expect(
       screen.getByRole('heading', { level: 1, name: /기업의 눈으로 보는 나의 Fit/ }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('searchbox', { name: '기업명' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '검색' })).toBeInTheDocument();
+    // 기업 검색은 랜딩이 아니라 '기업 분석'(/companies) 이 맡는다
+    expect(screen.queryByRole('searchbox', { name: '기업명' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '기업 분석 시작하기' })).toHaveAttribute('href', '/companies');
   });
 
   it('renders the company search page at /companies', () => {

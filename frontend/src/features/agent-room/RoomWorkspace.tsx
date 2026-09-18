@@ -1,10 +1,12 @@
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { characterForAgent } from '../../components/brand/characters';
 import { useState } from 'react';
-import { AgentConfigPanel } from './AgentConfigPanel';
+import { Link } from 'react-router-dom';
+import { isNotFound } from '../../api/client';
 import { MessageComposer } from './MessageComposer';
 import { MessageThread } from './MessageThread';
-import { useAgents, useMessages, useRoom } from './queries';
+import { useRoom } from './queries';
+import { useLiveMessages } from './useLiveMessages';
 import { useTurnPolling } from './useTurnPolling';
 import type { RoomAgent } from './types';
 
@@ -23,12 +25,10 @@ interface RoomWorkspaceProps {
   onConversationChanged?: () => void;
 }
 
-/** 검토 방 한 개. 참여 에이전트, 설정, 그리고 대화. */
+/** 검토 방 한 개. 참여 에이전트와 대화. */
 export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspaceProps) {
   const { state: room, retry: reloadRoom } = useRoom(roomId);
-  const { state: agents } = useAgents();
-  const { state: messages, retry: reloadMessages } = useMessages(roomId);
-  const [openAgentKey, setOpenAgentKey] = useState<string | null>(null);
+  const { state: messages, reload: reloadMessages } = useLiveMessages(roomId);
   const [activeTurnId, setActiveTurnId] = useState<number | null>(null);
 
   const turn = useTurnPolling(roomId, activeTurnId, () => {
@@ -47,6 +47,20 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
     );
   }
   if (room.status === 'error') {
+    // 없거나 접근 불가한 방(404 ROOM_NOT_FOUND)은 재시도해도 같은 404 → 목록으로 유도한다.
+    if (isNotFound(room.error)) {
+      return (
+        <div role="alert" className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-[14px] font-medium text-slate-700">검토 방을 찾을 수 없습니다.</p>
+          <Link
+            to="/agent-rooms"
+            className="mt-2 inline-block text-[13px] font-semibold text-blue-600 underline"
+          >
+            검토 방 목록으로
+          </Link>
+        </div>
+      );
+    }
     return (
       <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4">
         <p className="text-[14px] font-medium text-red-700">{room.error.message}</p>
@@ -62,13 +76,14 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
   }
 
   const data = room.data;
-  const open = data.agents.find((agent) => agent.agentKey === openAgentKey);
-  const catalog = agents.status === 'success' ? agents.data : [];
   const agentNames = Object.fromEntries(data.agents.map((agent) => [agent.agentKey, agent.name]));
 
   // 서버는 최신순으로 주는데 화면은 위에서 아래로 읽는다.
   const thread = messages.status === 'success' ? [...messages.data.messages].reverse() : [];
-  const busy = activeTurnId !== null;
+  // 자동 검토가 도는 중일 수도 있다. 그때 말을 걸면 서버가 409 로 막으므로 미리 잠근다.
+  const busy =
+    activeTurnId !== null ||
+    thread.some((message) => message.status === 'PENDING' || message.status === 'RUNNING');
 
   return (
     <div className="flex flex-col gap-4">
@@ -90,50 +105,26 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
       <ul aria-label="참여 에이전트" className="flex flex-wrap gap-1.5">
         {data.agents.map((agent) => {
           const summary = summarize(agent);
-          const selectable = !agent.auto;
           return (
-            <li key={agent.agentKey}>
-              <button
-                type="button"
-                disabled={!selectable || busy}
-                aria-pressed={openAgentKey === agent.agentKey}
-                onClick={() =>
-                  setOpenAgentKey(openAgentKey === agent.agentKey ? null : agent.agentKey)
-                }
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] transition ${
-                  openAgentKey === agent.agentKey
-                    ? 'border-blue-400 bg-blue-50 text-blue-800'
-                    : 'border-slate-200 bg-white text-slate-700'
-                } ${selectable && !busy ? 'hover:bg-slate-50' : 'cursor-default opacity-80'}`}
-              >
-                <CharacterSlot
-                  character={characterForAgent(agent.agentKey)}
-                  interactive={false}
-                  size={18}
-                />
-                {agent.name}
-                {summary && <span className="text-slate-500">· {summary}</span>}
-                {agent.auto && <span className="text-[11px] text-slate-400">자동</span>}
-                {!agent.ready && (
-                  <span className="text-[11px] font-medium text-amber-700">준비 안 됨</span>
-                )}
-              </button>
+            <li
+              key={agent.agentKey}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] text-slate-700"
+            >
+              <CharacterSlot
+                character={characterForAgent(agent.agentKey)}
+                interactive={false}
+                size={18}
+              />
+              {agent.name}
+              {summary && <span className="text-slate-500">· {summary}</span>}
+              {agent.auto && <span className="text-[11px] text-slate-400">자동</span>}
+              {!agent.ready && (
+                <span className="text-[11px] font-medium text-amber-700">준비 안 됨</span>
+              )}
             </li>
           );
         })}
       </ul>
-
-      {open && (
-        <AgentConfigPanel
-          roomId={roomId}
-          agent={open}
-          catalog={catalog.find((entry) => entry.agentKey === open.agentKey)}
-          onSaved={() => {
-            setOpenAgentKey(null);
-            reloadRoom();
-          }}
-        />
-      )}
 
       {messages.status === 'error' && (
         <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3">
@@ -150,7 +141,12 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
 
       <MessageThread messages={thread} running={turn} agentNames={agentNames} />
 
-      <MessageComposer roomId={roomId} busy={busy} onStarted={setActiveTurnId} />
+      <MessageComposer
+        roomId={roomId}
+        busy={busy}
+        onStarted={setActiveTurnId}
+        onConflict={reloadMessages}
+      />
     </div>
   );
 }

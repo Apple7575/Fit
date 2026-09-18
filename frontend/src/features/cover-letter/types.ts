@@ -9,6 +9,8 @@ export interface CoverLetterInput {
   title: string;
   targetCompany?: string | null;
   targetPosition?: string | null;
+  /** 등록된 채용공고 분석. 공고를 넣지 않았으면 null. 검토 방이 이 값을 물려받는다. */
+  jobContextId?: string | null;
   items: CoverLetterItem[];
 }
 
@@ -36,4 +38,17 @@ export interface JobPostingParseResult {
   companyName: string | null;
   positions: string[];
   sourceUrl: string;
+  /** 서버가 방금 긁은 본문을 들고 있다는 표시. 등록할 때 돌려주면 다시 긁지 않는다(30분). */
+  sourceKey: string | null;
+}
+
+/**
+ * 등록된 채용공고 분석. 이 식별자를 자소서에 저장해 두면 검토 방이 물려받는다.
+ * 확인(parse)과 달리 요구사항까지 정리하므로 수십 초 걸린다.
+ */
+export interface JobPostingContext {
+  jobContextId: string;
+  companyName: string | null;
+  positionName: string | null;
+  sourceUrl: string | null;
 }

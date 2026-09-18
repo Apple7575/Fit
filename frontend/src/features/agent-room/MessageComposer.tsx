@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ApiError } from '../../api/client';
+import { ApiError, isRateLimited } from '../../api/client';
 import { sendMessage } from './api';
 
 interface MessageComposerProps {
@@ -7,6 +7,8 @@ interface MessageComposerProps {
   /** 턴이 도는 동안에는 새 발화를 막는다. 서버도 409 로 막는다. */
   busy: boolean;
   onStarted: (turnId: number) => void;
+  /** 이미 검토 턴이 진행 중(409)일 때. 대화를 다시 읽어 busy 로 전환하게 한다. */
+  onConflict?: () => void;
 }
 
 /**
@@ -15,7 +17,7 @@ interface MessageComposerProps {
  * <p>지금은 자소서 전체만 본다. 서버는 문항 하나만 보는 것도 받지만
  * (coverLetterItemId), 자소서 상세 응답이 문항 id 를 내려주지 않아 화면이 가리킬 수가 없다.
  */
-export function MessageComposer({ roomId, busy, onStarted }: MessageComposerProps) {
+export function MessageComposer({ roomId, busy, onStarted, onConflict }: MessageComposerProps) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +35,19 @@ export function MessageComposer({ roomId, busy, onStarted }: MessageComposerProp
       setContent('');
       onStarted(started.turnId);
     } catch (caught) {
-      setError(
-        caught instanceof ApiError
-          ? caught.message
-          : '보내지 못했습니다. 잠시 후 다시 시도해 주세요.',
-      );
+      if (caught instanceof ApiError && caught.code === 'TURN_IN_PROGRESS') {
+        // 이미 도는 턴은 재전송으로 풀리지 않는다. 대화를 다시 읽어 busy 로 전환한다(입력은 보존).
+        setError('이미 검토가 진행 중입니다. 끝나면 이어집니다.');
+        onConflict?.();
+      } else if (caught instanceof ApiError && isRateLimited(caught)) {
+        setError('요청이 많습니다. 잠시 후 다시 시도해 주세요.');
+      } else {
+        setError(
+          caught instanceof ApiError
+            ? caught.message
+            : '보내지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        );
+      }
     } finally {
       setSending(false);
     }
