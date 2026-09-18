@@ -93,16 +93,20 @@ public class RoomService {
                 .filter(AgentType::selectable)
                 .toList();
 
+        // 자소서에 붙은 공고를 방마다 물려준다. 공고를 넣지 않은 자소서면 null 이고, 그때는
+        // 채용공고·뉴스 담당이 볼 것이 없어 자기 자리에서 안내로 떨어진다.
+        String contextId = existingContextId(coverLetter.getContextId());
+
         List<Room> created = new ArrayList<>();
         for (AgentType type : selectable) {
             boolean already = existing.stream().anyMatch(room -> isSoloRoomFor(room, type));
             if (!already) {
-                created.add(Room.create(userId, coverLetterId, type.displayName(),
+                created.add(Room.create(userId, coverLetterId, contextId, type.displayName(),
                         List.of(new RoomAgent(type.key(), defaultConfig(type, coverLetter)))));
             }
         }
         if (existing.stream().noneMatch(room -> room.getAgents().size() >= 2)) {
-            created.add(Room.create(userId, coverLetterId, "총괄 논의",
+            created.add(Room.create(userId, coverLetterId, contextId, "총괄 논의",
                     selectable.stream()
                             .map(type -> new RoomAgent(type.key(), defaultConfig(type, coverLetter)))
                             .toList()));
@@ -347,6 +351,22 @@ public class RoomService {
                 .map(JobContext::getContextId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PARAMETER,
                         "채용공고 분석을 찾지 못했습니다."));
+    }
+
+    /**
+     * 자소서가 들고 있는 공고 분석. 사라졌으면 조용히 비운다.
+     *
+     * <p>방을 직접 만들 때({@link #existingJobContextId})와 달리 400 을 내지 않는다. 사용자가
+     * 방금 고른 값이 아니라 전에 저장해 둔 값이고, 그것 하나 때문에 검토 방 화면이 통째로
+     * 막히면 안 된다.
+     */
+    private String existingContextId(String contextId) {
+        if (contextId == null || contextId.isBlank()) {
+            return null;
+        }
+        return jobContextRepository.findById(contextId)
+                .map(JobContext::getContextId)
+                .orElse(null);
     }
 
     /** 저장된 설정을 화면이 쓰기 좋게 바꾼다. corpCodes 는 기업명·ragReady 를 붙인 companies 가 된다. */
