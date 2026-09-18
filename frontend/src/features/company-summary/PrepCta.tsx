@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
-import { COACHES } from '../../components/brand/characters';
+import type { CharacterKey } from '../../components/brand/characters';
 import { useInView } from '../../hooks/useInView';
+
+/** 가운데(제일 큰 자리)에 핑크가 서도록 늘어세운 코치 다섯 */
+const LINEUP: readonly CharacterKey[] = ['hamster', 'otter', 'fox', 'owl', 'chick'];
 
 interface PrepCtaProps {
   corpName: string | null;
@@ -23,19 +26,19 @@ export function PrepCta({ corpName }: PrepCtaProps) {
       <div aria-hidden="true" className="image-fallback absolute inset-0 opacity-90" />
       <div className="relative">
         <ul aria-label="코치 다섯" className="mb-6 flex items-end justify-center gap-2 sm:gap-4">
-          {COACHES.map((coach, i) => (
+          {LINEUP.map((key, i) => (
             <li
               className="reveal"
               data-inview={inView}
-              key={coach.key}
+              key={key}
               style={{ '--reveal-delay': `${i * 80}ms`, transform: `translateY(${i % 2 ? 0 : 8}px)` } as never}
             >
-              <CharacterSlot character={coach.key} size={i === 2 ? 84 : 64} />
+              <CharacterSlot character={key} size={i === 2 ? 84 : 64} />
             </li>
           ))}
         </ul>
         <h2 className="display-lg text-balance" id="prep-cta-title">
-          {corpName ? `${corpName} 기준으로` : '이 회사 기준으로'} 준비해 볼까요?
+          {corpName ? `${corpName}, ` : ''}함께 준비해 볼까요?
         </h2>
         <p className="mt-3 text-white/70">
           위 세 가지를 코치들이 자소서와 면접에서 그대로 물어봐요.

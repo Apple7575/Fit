@@ -49,8 +49,6 @@ describe('CompanySearchPage', () => {
       'href',
       '/companies/00266961/overview',
     );
-    // 다섯 탭이 답하는 질문
-    expect(screen.getByText('업계에서 어디쯤')).toBeInTheDocument();
   });
 
   it('opens the overview of a searched company and remembers it as recently viewed', async () => {

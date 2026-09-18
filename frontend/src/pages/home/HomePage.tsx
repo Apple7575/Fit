@@ -36,7 +36,7 @@ export function HomePage() {
   return (
     <div className="relative h-screen overflow-hidden bg-slate-50">
       {/* 첫 장 위에 흰 유리 헤더로 떠 있는다. 아래 섹션들이 헤더 높이만큼 위 여백을 갖는다 */}
-      <SiteHeader overlay scrolled showSearch={false} />
+      <SiteHeader overlay scrolled />
 
       {/* 화면 높이 그대로 한 장씩 스냅. 각 섹션이 헤더 높이(3.5rem) 만큼 위 여백을 가진다 */}
       <main className="h-screen snap-y snap-mandatory overflow-y-auto scroll-smooth" ref={scrollerRef}>

@@ -9,15 +9,15 @@
     "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
 
-  --color-fox: #f97316;
-  --color-fox-soft: #ffedd5;
-  --color-chick: #facc15;
+  --color-fox: #f9a8d4;
+  --color-fox-soft: #fce7f3;
+  --color-chick: #fde047;
   --color-chick-soft: #fef9c3;
-  --color-hamster: #b45309;
-  --color-hamster-soft: #fde68a;
-  --color-otter: #14b8a6;
-  --color-otter-soft: #ccfbf1;
-  --color-owl: #8b5cf6;
+  --color-hamster: #86efac;
+  --color-hamster-soft: #dcfce7;
+  --color-otter: #93c5fd;
+  --color-otter-soft: #dbeafe;
+  --color-owl: #c4b5fd;
   --color-owl-soft: #ede9fe;
 
   --radius-card: 1.25rem;
@@ -210,6 +210,29 @@ body {
   animation: blob 9s ease-in-out infinite;
 }
 
+/*
+ * 첫 화면(사진 한 장)과 그 아래 내용 사이 딱 한 칸만 스냅한다. 한 번 굴리면 경계까지 내려간다.
+ * 아래 내용 덩어리는 화면보다 크므로, 그 안에서는 평소처럼 자유롭게 스크롤된다.
+ */
+.snap-first-screen {
+  scroll-snap-type: y mandatory;
+}
+@media (prefers-reduced-motion: reduce) {
+  .snap-first-screen {
+    scroll-snap-type: none;
+  }
+}
+
+/*
+ * 첫 화면 등장. 스크롤도, 화면 진입 판정도 기다리지 않고 붙는 순간부터 올라온다.
+ * --reveal-delay 로 차례를 주면 위에서 아래로 하나씩 이어진다.
+ * (reveal 은 전환이라 이미 data-inview="true" 인 채로 붙은 요소는 그냥 나타나 버린다)
+ */
+.anim-rise-in {
+  opacity: 0;
+  animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) var(--reveal-delay, 0ms) both;
+}
+
 /* 스크롤 등장. data-inview="true" 가 되면 올라온다. */
 .reveal {
   opacity: 0;
@@ -327,8 +350,12 @@ body {
   .anim-pop,
   .anim-marquee,
   .anim-blob,
+  .anim-rise-in,
   .media-slot {
     animation: none;
+  }
+  .anim-rise-in {
+    opacity: 1;
   }
   .reveal {
     opacity: 1;
