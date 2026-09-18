@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 
 @Component
@@ -22,6 +23,7 @@ public class VerificationMailSender {
     private static final Logger log = LoggerFactory.getLogger(VerificationMailSender.class);
 
     private static final String SUBJECT = "[Fit] 이메일 인증";
+    private static final String FROM_NAME = "Fit";
     private static final String TEMPLATE_PATH = "mail/verify-email.html";
     private static final String LINK_PLACEHOLDER = "{{VERIFY_URL}}";
 
@@ -81,12 +83,12 @@ public class VerificationMailSender {
         try {
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
-            helper.setFrom(from);
+            helper.setFrom(from, FROM_NAME);
             helper.setTo(toEmail);
             helper.setSubject(SUBJECT);
             helper.setText(text, html); // (plain, html) → multipart/alternative
             sender.send(message);
-        } catch (MessagingException e) {
+        } catch (MessagingException | UnsupportedEncodingException e) {
             log.error("인증 메일 발송에 실패했다. to={}", toEmail, e);
         }
     }
