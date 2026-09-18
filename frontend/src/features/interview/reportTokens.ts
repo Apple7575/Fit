@@ -21,11 +21,32 @@ export const T = {
   caption: 'text-[12px] font-normal leading-5 text-slate-400',
 } as const;
 
-/** 상태 색. 좋음 · 확인 필요 · 측정 없음 세 가지만 쓴다. */
+/**
+ * 상태 색. 좋음 · 고칠 것 · 측정 없음 세 가지만 쓴다.
+ * 고칠 것은 빨강으로 두되 배경은 아주 연하게 깔아, 화면이 경고문처럼 보이지 않게 한다.
+ */
 export const TONE = {
-  good: { text: 'text-emerald-700', dot: 'bg-emerald-500', bar: 'bg-emerald-500', soft: 'bg-emerald-50' },
-  warn: { text: 'text-amber-700', dot: 'bg-amber-500', bar: 'bg-amber-500', soft: 'bg-amber-50' },
-  none: { text: 'text-slate-400', dot: 'bg-slate-300', bar: 'bg-slate-300', soft: 'bg-slate-50' },
+  good: {
+    text: 'text-emerald-700',
+    dot: 'bg-emerald-500',
+    bar: 'bg-emerald-500',
+    soft: 'bg-emerald-50/70',
+    chip: 'bg-emerald-50/70 text-emerald-700 ring-emerald-200',
+  },
+  warn: {
+    text: 'text-red-600',
+    dot: 'bg-red-500',
+    bar: 'bg-red-400',
+    soft: 'bg-red-50/60',
+    chip: 'bg-red-50/60 text-red-600 ring-red-200',
+  },
+  none: {
+    text: 'text-slate-400',
+    dot: 'bg-slate-300',
+    bar: 'bg-slate-300',
+    soft: 'bg-slate-50',
+    chip: 'bg-slate-50 text-slate-500 ring-slate-200',
+  },
 } as const;
 
 export type ToneKey = keyof typeof TONE;
