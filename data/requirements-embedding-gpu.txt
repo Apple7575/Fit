@@ -1,0 +1,3 @@
+-r requirements.txt
+fastembed-gpu>=0.8,<0.9
+onnxruntime-gpu[cuda,cudnn]>=1.27,<2

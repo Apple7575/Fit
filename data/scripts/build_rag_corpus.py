@@ -27,7 +27,9 @@ from pipeline.rag_corpus.load import (  # noqa: E402
 from pipeline.rag_corpus.source import load_company_source_rows  # noqa: E402
 from pipeline.rag_corpus.models import EvidenceRecord  # noqa: E402
 from pipeline.raw_sources.business_report import BusinessReportSource  # noqa: E402
-from pipeline.raw_sources.dart_archive import DartArchive  # noqa: E402
+from pipeline.raw_sources.dart_archive import DartArchive, extract_archive  # noqa: E402
+from pipeline.raw_sources.chunking_profiles import chunking_profile_names  # noqa: E402
+from pipeline.raw_sources.parallel import iter_parallel_batches  # noqa: E402
 from pipeline.raw_sources.models import EvidenceBatch  # noqa: E402
 
 
@@ -199,6 +201,41 @@ def run(
     return add_embedding_estimate(result, embedding_dimension)
 
 
+def run_parallel_business_reports(
+    conn_factory: ConnectionFactory, corp_codes: list[str], *, archive_dir: Path,
+    staging_dir: Path, source_signature: str, dry_run: bool, workers: int,
+    embedding_dimension: int = 1024, profile_name: str = "structural-1500-v2",
+) -> dict[str, object]:
+    """압축 해제된 사업보고서를 기업 단위로 병렬 청킹한다."""
+    summary = BuildSummary()
+    for corp_code, staged in zip(
+        corp_codes, iter_parallel_batches(
+            archive_dir, corp_codes, workers=workers, staging_dir=staging_dir,
+            source_signature=source_signature, profile_name=profile_name,
+        ), strict=True,
+    ):
+        failures = [
+            {**failure, "provider": "BusinessReportSource"}
+            for failure in staged["failures"]
+        ]
+        company = {
+            "company_count": 1, "record_count": int(staged["record_count"]),
+            "input_counts": staged["input_counts"], "excluded_counts": staged["excluded_counts"],
+            "write_status": staged["write_status"], "elapsed_ms": int(staged["elapsed_ms"]),
+            "records_path": staged["records_path"],
+        }
+        if failures:
+            company["failures"] = failures
+            summary.failures.extend(failures)
+        summary.companies[corp_code] = company
+        summary.input_counts.update(staged["input_counts"])
+        summary.excluded_counts.update(staged["excluded_counts"])
+        summary.record_count += int(staged["record_count"])
+    result = add_embedding_estimate(summary.as_dict(), embedding_dimension)
+    result["chunking_profile"] = profile_name
+    return result
+
+
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="기업별 RAG 코퍼스 재구축")
     parser.add_argument("--corp-code", action="append", help="재구축할 8자리 기업 코드 (여러 번 지정 가능)")
@@ -207,11 +244,24 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--business-report-only", action="store_true", help="DART 사업보고서 근거만 동기화")
     parser.add_argument("--embedding-dimension", type=int, default=1024,
                         help="float32 벡터 저장량 추정에 쓸 차원 (기본: 1024)")
+    parser.add_argument("--workers", type=int, default=1,
+                        help="사업보고서 청킹 프로세스 수 (기본: 1)")
+    parser.add_argument("--extract-dir", type=Path,
+                        help="DART ZIP 압축 해제 캐시 디렉터리")
+    parser.add_argument("--staging-dir", type=Path,
+                        help="기업별 압축 JSONL 청크 저장 디렉터리")
+    parser.add_argument(
+        "--chunking-profile", choices=chunking_profile_names(), default="structural-1500-v2",
+        help="사업보고서 청킹 프로필",
+    )
+    parser.add_argument("--output", type=Path, help="전체 실행 결과를 저장할 JSON 경로")
     args = parser.parse_args(argv)
     if args.embedding_dimension <= 0:
         parser.error("--embedding-dimension은 양수여야 합니다")
     if args.business_report_only and args.dart_archive is None:
         parser.error("--business-report-only는 --dart-archive와 함께 사용해야 합니다")
+    if args.workers <= 0:
+        parser.error("--workers는 양수여야 합니다")
     return args
 
 
@@ -220,18 +270,60 @@ def main() -> int:
     try:
         with ExitStack() as stack:
             providers: list[ExternalEvidenceProvider] = []
+            selected_corp_codes = args.corp_code
+            parallel_archive_dir: Path | None = None
             if args.dart_archive:
                 archive = stack.enter_context(DartArchive(args.dart_archive))
-                providers.append(BusinessReportSource(archive))
-            summary = run(
-                connect, args.corp_code, dry_run=args.dry_run, external_providers=providers,
-                embedding_dimension=args.embedding_dimension, business_report_only=args.business_report_only,
-            )
+                if args.business_report_only and selected_corp_codes is None:
+                    selected_corp_codes = list(archive.companies())
+                if args.business_report_only and (args.workers > 1 or args.staging_dir is not None):
+                    parallel_archive_dir = extract_archive(
+                        args.dart_archive,
+                        args.extract_dir or args.dart_archive.with_suffix(".extracted"),
+                    )
+                else:
+                    providers.append(BusinessReportSource(archive))
+            if parallel_archive_dir is not None:
+                staging_dir = args.staging_dir or (
+                    args.output.parent / "company-rag-staging" if args.output
+                    else Path("outputs/company-rag-staging")
+                )
+                source_signature = (
+                    parallel_archive_dir / ".complete"
+                ).read_text(encoding="utf-8")
+                summary = run_parallel_business_reports(
+                    connect, selected_corp_codes or [], archive_dir=parallel_archive_dir,
+                    staging_dir=staging_dir, source_signature=source_signature,
+                    dry_run=args.dry_run, workers=args.workers,
+                    embedding_dimension=args.embedding_dimension,
+                    profile_name=args.chunking_profile,
+                )
+            else:
+                summary = run(
+                    connect, selected_corp_codes, dry_run=args.dry_run, external_providers=providers,
+                    embedding_dimension=args.embedding_dimension, business_report_only=args.business_report_only,
+                )
     except Exception as error:
         print(json.dumps({"status": "failed", "error": str(error)}, ensure_ascii=False))
         return 1
     partial = bool(summary["failures"])
-    print(json.dumps({"status": "partial" if partial else "success", **summary}, ensure_ascii=False, sort_keys=True))
+    payload = {"status": "partial" if partial else "success", **summary}
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        print(json.dumps({
+            "status": payload["status"],
+            "company_count": payload["company_count"],
+            "record_count": payload["record_count"],
+            "failure_count": len(payload["failures"]),
+            "elapsed_ms": payload["elapsed_ms"],
+            "output": str(args.output),
+        }, ensure_ascii=False, sort_keys=True))
+    else:
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
     return 1 if partial else 0
 
 

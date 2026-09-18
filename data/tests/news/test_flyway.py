@@ -139,6 +139,12 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEqual(data_type, "BIGINT[]")
 
+    def test_BYTEA를_명시적으로_읽는다(self):
+        data_type, rest = flyway._parse_type("BYTEA NOT NULL")
+
+        self.assertEqual(data_type, "BYTEA")
+        self.assertEqual(rest, "NOT NULL")
+
     def test_sql_로_시드되는_테이블을_기록한다(self):
         self.assertEqual(self.schema.seeded_tables, {"industry", "metric"})
 
