@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { AgentConfigPanel } from './AgentConfigPanel';
 import { MessageComposer } from './MessageComposer';
 import { MessageThread } from './MessageThread';
-import { useAgents, useMessages, useRoom } from './queries';
+import { useAgents, useRoom } from './queries';
+import { useLiveMessages } from './useLiveMessages';
 import { useTurnPolling } from './useTurnPolling';
 import type { RoomAgent } from './types';
 
@@ -27,7 +28,7 @@ interface RoomWorkspaceProps {
 export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspaceProps) {
   const { state: room, retry: reloadRoom } = useRoom(roomId);
   const { state: agents } = useAgents();
-  const { state: messages, retry: reloadMessages } = useMessages(roomId);
+  const { state: messages, reload: reloadMessages } = useLiveMessages(roomId);
   const [openAgentKey, setOpenAgentKey] = useState<string | null>(null);
   const [activeTurnId, setActiveTurnId] = useState<number | null>(null);
 
@@ -68,7 +69,10 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
 
   // 서버는 최신순으로 주는데 화면은 위에서 아래로 읽는다.
   const thread = messages.status === 'success' ? [...messages.data.messages].reverse() : [];
-  const busy = activeTurnId !== null;
+  // 자동 검토가 도는 중일 수도 있다. 그때 말을 걸면 서버가 409 로 막으므로 미리 잠근다.
+  const busy =
+    activeTurnId !== null ||
+    thread.some((message) => message.status === 'PENDING' || message.status === 'RUNNING');
 
   return (
     <div className="flex flex-col gap-4">

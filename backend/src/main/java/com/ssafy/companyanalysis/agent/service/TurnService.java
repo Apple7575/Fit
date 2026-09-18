@@ -20,7 +20,9 @@ import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,25 +46,36 @@ public class TurnService {
     /** AI 총괄에 실어 보낼 지난 대화 길이. 명세가 정한 상한이다. */
     private static final int CONVERSATION_LIMIT = 20;
 
+    /**
+     * 사용자가 묻기 전에 도는 검토에 쓸 지시문.
+     *
+     * <p>대화에는 남기지 않는다. 사용자가 한 말이 아니라 총괄에게 시킬 일이기 때문이다.
+     */
+    private static final String AUTO_REVIEW_INSTRUCTION =
+            "이 자소서를 담당별 관점에서 처음부터 검토해 주세요.";
+
     private final RoomRepository roomRepository;
     private final MessageRepository messageRepository;
     private final JobContextRepository jobContextRepository;
     private final CoverLetterItemRepository coverLetterItemRepository;
     private final TurnExecutor turnExecutor;
     private final AnalysisRateLimiter rateLimiter;
+    private final TransactionTemplate transactionTemplate;
 
     public TurnService(RoomRepository roomRepository,
                        MessageRepository messageRepository,
                        JobContextRepository jobContextRepository,
                        CoverLetterItemRepository coverLetterItemRepository,
                        TurnExecutor turnExecutor,
-                       AnalysisRateLimiter rateLimiter) {
+                       AnalysisRateLimiter rateLimiter,
+                       PlatformTransactionManager transactionManager) {
         this.roomRepository = roomRepository;
         this.messageRepository = messageRepository;
         this.jobContextRepository = jobContextRepository;
         this.coverLetterItemRepository = coverLetterItemRepository;
         this.turnExecutor = turnExecutor;
         this.rateLimiter = rateLimiter;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     /**
@@ -89,22 +102,80 @@ public class TurnService {
                     "검토할 자소서 답변이 없습니다. 문항을 먼저 작성해 주세요.");
         }
 
-        Message userMessage = messageRepository.save(Message.fromUser(roomId, content));
-        List<Message> slots = agentKeys.stream()
-                .map(key -> Message.pendingAgent(roomId, userMessage.getId(), key))
-                .toList();
-        messageRepository.saveAll(slots);
+        OpenedTurn turn = openTurn(roomId, agentKeys, content);
 
-        turnExecutor.runTurn(userMessage.getId(), context);
+        turnExecutor.runTurn(turn.rootId(), context);
 
         return new TurnStartedResponse(
-                userMessage.getId(),
-                userMessage.getId(),
+                turn.rootId(),
+                turn.rootId(),
                 MessageStatus.PENDING.name(),
-                slots.stream()
+                turn.slots().stream()
                         .map(slot -> new TurnStartedResponse.AgentSlot(
                                 slot.getAgentKey(), slot.getStatus().name()))
                         .toList());
+    }
+
+    /**
+     * 자동 검토. 자소서를 받은 방이 사용자가 묻기를 기다리지 않고 한 바퀴 돈다.
+     *
+     * <p>사용자가 한 말이 없으므로 턴의 뿌리는 내용이 빈 발화다. 하지만 AI 총괄은 지시문 없이는
+     * 무엇을 할지 정하지 못하므로 {@link #AUTO_REVIEW_INSTRUCTION} 을 대신 보낸다. 사용자가 하지
+     * 않은 말을 대화에 남기지 않으면서 총괄에게는 시킬 일을 주는 것이다.
+     *
+     * <p>끝날 때까지 기다린다. 부르는 쪽({@link AutoReviewStarter})이 방을 하나씩 차례로
+     * 돌리기 위한 것이다.
+     *
+     * <p>사용자가 요청한 일이 아니므로 안 될 만한 자리에서는 조용히 물러난다. 이미 말이 오간
+     * 방이나 아직 답변을 쓰지 않은 자소서가 그렇다 — 방이 깔리는 것까지 막을 일이 아니다.
+     */
+    public void autoReview(Long userId, Long roomId) {
+        Room room = ownedRoom(userId, roomId);
+        if (messageRepository.existsByRoomId(roomId)) {
+            return;
+        }
+        rateLimiter.check(userId);
+
+        List<CoverLetterItem> items =
+                coverLetterItemRepository.findByCoverLetterIdOrderBySeqAsc(room.getCoverLetterId());
+        if (items.isEmpty()) {
+            return;
+        }
+        TurnContext context = contextOf(room, items, AUTO_REVIEW_INSTRUCTION);
+        List<String> agentKeys = participants(room, context);
+        if (agentKeys.isEmpty()) {
+            return;
+        }
+
+        OpenedTurn turn = openTurn(roomId, agentKeys, null);
+
+        turnExecutor.runTurnNow(turn.rootId(), context);
+    }
+
+    /** 턴 하나를 여는 데 쓴 행들. 뿌리 발화 하나와 담당마다의 빈 답변 자리. */
+    private record OpenedTurn(Long rootId, List<Message> slots) {
+    }
+
+    /**
+     * 턴의 뿌리와 담당별 답변 자리를 한꺼번에 만든다.
+     *
+     * <p>둘을 한 트랜잭션에 묶는다. 따로 커밋하면 그 사이에 대화를 읽은 화면이 뿌리만 보게 되는데,
+     * 뿌리는 만들어지는 즉시 끝난 상태라 화면은 그것을 "다 끝난 대화" 로 읽는다. 그러면 뒤이어
+     * 들어온 답변을 영영 기다리지 않는다.
+     *
+     * <p>{@code content} 가 null 이면 자동 검토다 — 사용자가 하지 않은 말을 지어내지 않는다.
+     */
+    private OpenedTurn openTurn(Long roomId, List<String> agentKeys, String content) {
+        return transactionTemplate.execute(status -> {
+            Message root = messageRepository.save(content == null
+                    ? Message.autoReview(roomId)
+                    : Message.fromUser(roomId, content));
+            List<Message> slots = agentKeys.stream()
+                    .map(key -> Message.pendingAgent(roomId, root.getId(), key))
+                    .toList();
+            messageRepository.saveAll(slots);
+            return new OpenedTurn(root.getId(), slots);
+        });
     }
 
     /**

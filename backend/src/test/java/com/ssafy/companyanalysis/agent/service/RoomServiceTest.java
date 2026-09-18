@@ -17,6 +17,7 @@ import com.ssafy.companyanalysis.global.error.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -31,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 class RoomServiceTest {
 
@@ -41,6 +43,7 @@ class RoomServiceTest {
     private JobContextRepository jobContextRepository;
     private CoverLetterRepository coverLetterRepository;
     private CompanyRepository companyRepository;
+    private AutoReviewStarter autoReviewStarter;
 
     @BeforeEach
     void setUp() {
@@ -48,8 +51,18 @@ class RoomServiceTest {
         jobContextRepository = Mockito.mock(JobContextRepository.class);
         coverLetterRepository = Mockito.mock(CoverLetterRepository.class);
         companyRepository = Mockito.mock(CompanyRepository.class);
+        autoReviewStarter = Mockito.mock(AutoReviewStarter.class);
 
         given(roomRepository.save(any(Room.class))).willAnswer(call -> call.getArgument(0));
+        // 저장 시점에 DB 가 채우는 id 를 흉내 낸다. 자동 검토가 방 id 로 걸리므로 필요하다.
+        given(roomRepository.saveAll(any())).willAnswer(call -> {
+            List<Room> rooms = call.getArgument(0);
+            long id = 100;
+            for (Room room : rooms) {
+                org.springframework.test.util.ReflectionTestUtils.setField(room, "id", id++);
+            }
+            return rooms;
+        });
         given(companyRepository.findAllById(any())).willAnswer(call -> {
             Iterable<String> codes = call.getArgument(0);
             return java.util.stream.StreamSupport.stream(codes.spliterator(), false)
@@ -85,7 +98,8 @@ class RoomServiceTest {
     private RoomService service(Set<String> indexed) {
         AgentCatalogProperties properties = new AgentCatalogProperties(indexed);
         return new RoomService(roomRepository, jobContextRepository, coverLetterRepository,
-                companyRepository, new RoomAgentValidator(companyRepository, properties), properties);
+                companyRepository, new RoomAgentValidator(companyRepository, properties), properties,
+                autoReviewStarter);
     }
 
     private RoomService service() {
@@ -354,5 +368,49 @@ class RoomServiceTest {
                 .collect(java.util.stream.Collectors.toMap(
                         room -> room.getAgents().get(0).agentKey(),
                         room -> room.getAgents().get(0).config()));
+    }
+
+    @Test
+    @DisplayName("방을 깔면 자동 검토가 걸린다 — 사용자가 무엇을 봐 달라고 적기 전에 결과가 보여야 한다")
+    void defaultRoomsAreReviewedWithoutBeingAsked() {
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+        then(autoReviewStarter).should().startAll(eq(USER), captor.capture());
+        // 전담 방 5개 + 총괄 논의 방 1개
+        assertThat(captor.getValue()).hasSize(6);
+    }
+
+    @Test
+    @DisplayName("총괄 논의 방을 먼저 검토한다 — 화면이 처음 여는 방이 그것이다")
+    void theJointRoomIsReviewedFirst() {
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+        then(autoReviewStarter).should().startAll(eq(USER), captor.capture());
+        // 만들어진 순서는 전담 방이 먼저다. 총괄 논의 방(마지막 id)이 앞으로 당겨져야 한다.
+        assertThat(captor.getValue().get(0)).isEqualTo(105L);
+    }
+
+    @Test
+    @DisplayName("전에 만들어져 비어 있던 방도 검토 후보로 넘긴다 — 언제 만들어졌는지는 사용자와 상관없다")
+    void roomsMadeEarlierAreReviewedToo() {
+        List<Room> already = new java.util.ArrayList<>(java.util.Arrays.stream(
+                        new String[] {"jd", "company", "position", "news", "writing"})
+                .map(key -> Room.create(USER, LETTER, key, List.of(new RoomAgent(key, Map.of()))))
+                .toList());
+        already.add(Room.create(USER, LETTER, "총괄 논의", List.of(
+                new RoomAgent("writing", Map.of()), new RoomAgent("position", Map.of()))));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(already);
+
+        service().ensureDefaults(USER, LETTER);
+
+        ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+        then(autoReviewStarter).should().startAll(eq(USER), captor.capture());
+        assertThat(captor.getValue()).hasSize(6);
     }
 }
