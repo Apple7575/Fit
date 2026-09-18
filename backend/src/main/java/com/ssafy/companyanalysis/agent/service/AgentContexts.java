@@ -11,8 +11,11 @@ import java.util.Map;
 /**
  * 총괄에게 넘길 문서와 담당별 컨텍스트를 만든다.
  *
- * <p>방에서 고른 담당으로 거르지 않는다. 채울 수 있는 컨텍스트를 전부 넣고 무엇을 돌릴지는
- * 총괄의 계획에 맡긴다 — 화면의 담당 선택은 어떤 관점이 붙는지 알려 주는 안내로 남는다.
+ * <p>방에서 고른 담당만 넘긴다. 전담 방은 그 담당의 의견만 보러 들어오는 자리다 — 포지션
+ * 담당 방을 열었는데 글쓰기 담당과 총괄까지 답하면 방을 나눈 뜻이 없어진다. 총괄 논의 방은
+ * 담당을 전부 갖고 있어 이 거르기에 걸리지 않는다.
+ *
+ * <p>고른 담당 중에서 무엇을 실제로 돌릴지는 그다음 총괄의 계획이 정한다.
  *
  * <p>턴이 시작될 때 자리를 만들 때와 실제로 부를 때 두 번 불린다. 같은 {@link TurnContext} 에
  * 대해 늘 같은 결과가 나와야 자리와 결과가 어긋나지 않는다.
@@ -68,6 +71,10 @@ public final class AgentContexts {
                         "char_limit", charLimit(only)));
             }
         }
+        // 방이 안 고른 담당은 재료가 있어도 뺀다. 자리를 만들 때와 실제로 부를 때가 같아야
+        // 하므로 거르기도 여기 한 곳에 둔다.
+        contexts.keySet().retainAll(context.roomAgentKeys());
+
         return new Request(documents, Map.copyOf(contexts), List.copyOf(contexts.keySet()));
     }
 

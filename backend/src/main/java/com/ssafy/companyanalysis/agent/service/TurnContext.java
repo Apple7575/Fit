@@ -5,6 +5,7 @@ import com.ssafy.companyanalysis.agent.domain.AgentType;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 한 턴을 도는 동안 담당들이 함께 보는 재료.
@@ -24,7 +25,8 @@ import java.util.Map;
  * @param jobContextId     방에 붙은 채용공고 분석 식별자. 공고가 없거나 사라졌으면 null
  * @param jobPositionName  공고에 적힌 직무명. 포지션 담당 설정이 비었을 때 대신 쓴다
  * @param conversation     이 턴 앞의 대화. 오래된 것부터 최대 20개
- * @param agentConfigs     agentKey 별 설정(기업 선택·직무 선택)
+ * @param agentConfigs     방이 고른 담당 전부. agentKey 별 설정(기업 선택·직무 선택)이고,
+ *                         설정을 안 적은 담당도 빈 map 으로 들어온다 — 키 자체가 방의 담당 목록이다
  */
 public record TurnContext(List<CoverLetterPart> coverLetterParts,
                           String userMessage,
@@ -39,6 +41,11 @@ public record TurnContext(List<CoverLetterPart> coverLetterParts,
 
     public Map<String, Object> configOf(AgentType type) {
         return agentConfigs.getOrDefault(type.key(), Map.of());
+    }
+
+    /** 이 방이 고른 담당. 전담 방은 하나, 총괄 논의 방은 전부다. */
+    public Set<String> roomAgentKeys() {
+        return agentConfigs.keySet();
     }
 
     /** 아직 안 쓴 문항은 검토할 것이 없다. AI 쪽도 빈 문자열을 받지 않는다. */

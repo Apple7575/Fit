@@ -211,8 +211,8 @@ class TurnServiceTest {
     }
 
     @Test
-    @DisplayName("방에서 고르지 않은 담당도 재료가 있으면 자리를 만든다 — 고르는 일은 AI 총괄이 한다")
-    void everyFillableAgentGetsASlotEvenIfTheRoomDidNotPickIt() {
+    @DisplayName("전담 방은 그 담당 자리만 만든다 — 공고가 붙어 재료가 있어도 다른 담당은 빼놓는다")
+    void aSoloRoomOnlyGetsASlotForItsOwnAgent() {
         roomWithJobContext("ctx-1", "writing");
         JobContext context = jobContext("ctx-1", "백엔드");
         given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
@@ -220,18 +220,31 @@ class TurnServiceTest {
         TurnStartedResponse response = service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
 
         assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
-                .containsExactly("jd", "position", "writing", "supervisor");
+                .containsExactly("writing");
     }
 
     @Test
-    @DisplayName("기업 RAG 담당은 방에서 고른 경우에만 자리를 만든다 — 아직 백엔드가 맡고 있다")
+    @DisplayName("담당을 전부 고른 방은 재료가 있는 담당과 총괄 자리를 만든다")
+    void aRoomThatPickedEveryAgentGetsEverySlot() {
+        roomWithJobContext("ctx-1", "jd", "company", "position", "news", "writing");
+        JobContext context = jobContext("ctx-1", "백엔드");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+
+        TurnStartedResponse response = service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
+
+        assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
+                .containsExactly("jd", "position", "writing", "company", "supervisor");
+    }
+
+    @Test
+    @DisplayName("기업 RAG 담당 전담 방은 그 자리 하나뿐이다 — 아직 백엔드가 맡고 있다")
     void companyAgentStillFollowsTheRoomSelection() {
         roomWith("company");
 
         TurnStartedResponse response = service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
 
         assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
-                .containsExactly("writing", "company", "supervisor");
+                .containsExactly("company");
     }
 
     @Test
