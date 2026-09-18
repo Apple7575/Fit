@@ -54,12 +54,21 @@ MAX_LIST_ITEMS = 8
 # --- 공통 도우미 -----------------------------------------------------------
 
 
+MONEY_CODES = (REVENUE, OPERATING_PROFIT, NET_INCOME, TOTAL_ASSETS, TOTAL_LIABILITIES, TOTAL_EQUITY)
+
+
 def money_unit(facts: CompanyFacts) -> tuple[str, int]:
-    """회사의 최근 매출 규모로 표 단위를 정한다. 1조원 이상이면 조원, 아니면 억원."""
+    """회사 규모로 표 단위를 정한다. 최근 연도 금액 지표 중 하나라도 1조원 이상이면 조원, 아니면 억원.
+
+    매출액만 보면 매출 지표가 없는 금융지주(우리금융지주)가 억원으로 떨어져 자산총계가
+    600만 억원처럼 읽히므로 자산·부채·자본까지 함께 본다.
+    """
     year = facts.latest_year()
-    revenue = facts.metric(year, REVENUE) if year is not None else None
-    if revenue is not None and abs(revenue) >= TRILLION:
-        return "조원", TRILLION
+    if year is not None:
+        for code in MONEY_CODES:
+            value = facts.metric(year, code)
+            if value is not None and abs(value) >= TRILLION:
+                return "조원", TRILLION
     return "억원", HUNDRED_MILLION
 
 
