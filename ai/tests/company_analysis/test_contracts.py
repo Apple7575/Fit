@@ -166,10 +166,19 @@ class ContractsTest(unittest.TestCase):
         self.assertEqual(request.message, "HBM 매출 비중은?")
         with self.assertRaises(ValidationError):
             ChatRequest(corp_code="00164779", message="   ")
-        response = ChatResponse(conversation_id="c1", message="답", needs=["news"])
-        self.assertEqual(response.needs, ["news"])
+        message = {"message_id": "m1", "role": "ASSISTANT", "content": "답", "created_at": NOW.isoformat()}
+        response = ChatResponse(
+            conversation_id="c1", corp_code="00164779", report_stage="FULL",
+            user_message={**message, "role": "USER"},
+            assistant_message={**message, "needs": [{"agent": "news", "reason": "최근 뉴스가 필요합니다."}]},
+        )
+        self.assertEqual(response.assistant_message.needs[0].agent, "news")
         with self.assertRaises(ValidationError):
-            ChatResponse(conversation_id="c1", message="답", needs=["weather"])
+            ChatResponse(
+                conversation_id="c1", corp_code="00164779", report_stage="FULL",
+                user_message={**message, "role": "USER"},
+                assistant_message={**message, "needs": [{"agent": "weather", "reason": "x"}]},
+            )
 
 
 if __name__ == "__main__":

@@ -228,9 +228,10 @@ class ReportGenerateRequest(StrictModel):
 class ChatRequest(StrictModel):
     corp_code: CorpCode
     message: str = Field(min_length=1, max_length=4_000)
-    conversation_id: str | None = Field(default=None, min_length=1, max_length=100)
+    # 없으면 새 대화를 만든다. 있으면 그 대화의 corp_code 와 같아야 한다.
+    conversation_id: str | None = Field(default=None, min_length=1, max_length=80)
     # 지원 직무 맥락이 있으면 직무 관점 답변에 쓴다.
-    job_context_id: str | None = Field(default=None, min_length=1, max_length=100)
+    job_context_id: str | None = Field(default=None, min_length=1, max_length=80)
 
     @field_validator("message")
     @classmethod
@@ -238,10 +239,35 @@ class ChatRequest(StrictModel):
         return _reject_blank(value)
 
 
+class ChatNeed(StrictModel):
+    """공시 근거로 답할 수 없어 총괄에게 다른 담당 호출을 요청한다. 총괄의 AgentNeed 와 같은 모양."""
+
+    agent: Literal["news"]
+    reason: str = Field(min_length=1, max_length=1_000)
+
+
+class ChatMessage(StrictModel):
+    message_id: str
+    role: Literal["USER", "ASSISTANT"]
+    content: str
+    created_at: datetime
+    citations: list[Citation] = Field(default_factory=list, max_length=20)
+    needs: list[ChatNeed] = Field(default_factory=list, max_length=4)
+
+
 class ChatResponse(StrictModel):
     conversation_id: str
-    message: str
-    citations: list[Citation] = Field(default_factory=list, max_length=20)
-    # 리포트·공시 근거로 답할 수 없어 다른 담당(예: 뉴스)이 필요하면 총괄에 알린다.
-    needs: list[Literal["news"]] = Field(default_factory=list)
+    corp_code: CorpCode
+    user_message: ChatMessage
+    assistant_message: ChatMessage
+    follow_up_questions: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(default_factory=list, max_length=3)
+    # 리포트 stage 가 DETERMINISTIC 이면 서술 섹션이 아직 없다는 뜻이다.
+    report_stage: Literal["DETERMINISTIC", "FULL"]
     usage: dict[str, int] | None = None
+
+
+class ConversationHistory(StrictModel):
+    conversation_id: str
+    corp_code: CorpCode
+    job_context_id: str | None
+    messages: list[ChatMessage]

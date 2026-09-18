@@ -101,6 +101,17 @@ class ClaimCheckTest(unittest.TestCase):
         self.assertEqual(share_claim_violations("DRAM 시장 점유율 36.0%를 기록", [market, share]), [])
         self.assertEqual(share_claim_violations("메모리 시장의 65%가 DRAM입니다", [market]), [])
 
+    def test_quantity_copied_verbatim_from_money_table_passes(self):
+        table = CitedText(
+            "t",
+            "표 머리글: 연구과제 | 내용\nHBM4 | 2,048개의 I/O 적용, 11Gbps 구현",
+            is_table=True,
+            unit="백만원",
+            header="표 머리글: 연구과제 | 내용",
+        )
+        self.assertEqual(numeric_claim_violations("HBM4는 2,048개의 I/O를 적용했습니다.", [table]), [])
+        self.assertEqual([v.code for v in numeric_claim_violations("연구비는 2,048입니다.", [table])], ["money_unit_missing"])
+
     def test_malformed_grouping(self):
         self.assertEqual([v.code for v in numeric_claim_violations("-43,0백만원", [CitedText("x", "43,0")])][0], "malformed_number")
 

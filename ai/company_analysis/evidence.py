@@ -176,10 +176,54 @@ SELECT evidence_id, corp_code, title, published_at, content, metadata
 """
 
 
+VECTORS_SQL = """
+SELECT e.evidence_id, re.vector_bytes, re.dimension
+  FROM rag_evidence e
+  JOIN rag_evidence_embedding re
+    ON re.evidence_id = e.evidence_id AND re.content_hash = e.content_hash
+ WHERE e.corp_code = %(corp_code)s AND e.source_type = %(source_type)s
+   AND e.metadata->>'rcept_no' = %(rcept_no)s
+   AND re.embedding_model = %(model)s AND re.embedding_version = %(version)s
+"""
+
+DEFAULT_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
+DEFAULT_EMBEDDING_VERSION = "adaptive-v1"
+
+
 class PostgresBusinessReportRepository:
-    def __init__(self, connect: Callable[[], Any], *, clock: Callable[[], datetime] | None = None) -> None:
+    def __init__(
+        self,
+        connect: Callable[[], Any],
+        *,
+        clock: Callable[[], datetime] | None = None,
+        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+        embedding_version: str = DEFAULT_EMBEDDING_VERSION,
+    ) -> None:
         self._connect = connect
         self._clock = clock or (lambda: datetime.now().astimezone())
+        self._embedding_model = embedding_model
+        self._embedding_version = embedding_version
+
+    def load_vectors(self, report: BusinessReport) -> dict[str, Any]:
+        """저장된 문서 임베딩(little-endian float32)을 evidence_id → 벡터로. 원문 해시가 바뀐 청크는 뺀다."""
+        import numpy as np
+
+        params = {
+            "corp_code": report.corp_code,
+            "source_type": SOURCE_TYPE,
+            "rcept_no": report.rcept_no,
+            "model": self._embedding_model,
+            "version": self._embedding_version,
+        }
+        vectors: dict[str, Any] = {}
+        with self._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(VECTORS_SQL, params)
+            for evidence_id, payload, dimension in cursor.fetchall():
+                raw = bytes(payload)
+                if len(raw) != int(dimension) * 4:
+                    continue
+                vectors[str(evidence_id)] = np.frombuffer(raw, dtype="<f4").copy()
+        return vectors
 
     def latest(self, corp_code: str) -> BusinessReport | None:
         params = {"corp_code": corp_code, "source_type": SOURCE_TYPE, "as_of": self._clock()}

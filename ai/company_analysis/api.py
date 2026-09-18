@@ -4,12 +4,16 @@
     GET  /internal/reports/{corp_code}          저장된 리포트(없으면 지금 만들어) 반환
     GET  /internal/reports/{corp_code}/status   생성 상태만
     POST /internal/reports                      생성 요청 {corp_code, force}
+    POST /internal/chat                         리포트 위 대화 {corp_code, message, conversation_id?, job_context_id?}
+    GET  /internal/conversations/{id}           대화 이력
 
 환경변수(없으면 ai/.env)
 - COMPANY_ANALYSIS_DATABASE_URL, 없으면 JD_DATABASE_URL: 확정 데이터·리포트 저장 DB
 - COMPANY_ANALYSIS_RAG_DATABASE_URL: 사업보고서 청크(rag_evidence) DB. 없으면 위와 같은 DB
 - COMPANY_ANALYSIS_NARRATIVE: `off` 면 LLM 서술 없이 확정 블록만 만든다. 기본 on
 - COMPANY_ANALYSIS_MODEL_TIMEOUT_SECONDS: Qwen 호출 제한. 기본 180
+- COMPANY_ANALYSIS_EMBEDDING_BASE_URL / COMPANY_ANALYSIS_EMBEDDING_API_KEY: 질의 임베딩 서버(OpenAI 호환).
+  없으면 대화 검색은 BM25 만 쓴다. API 키가 비어 있으면 QWEN_API_KEY 를 쓴다
 - QWEN_BASE_URL / QWEN_MODEL / QWEN_API_KEY: 다른 담당과 같은 GPU 서버 설정
 """
 
@@ -23,11 +27,14 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 
-from .contracts import CompanyReport, ReportGenerateRequest, ReportStatus
+from .chat import CompanyChatService, ConversationMismatchError, ConversationNotFoundError
+from .chat_store import PostgresConversationStore
+from .contracts import ChatRequest, ChatResponse, CompanyReport, ConversationHistory, ReportGenerateRequest, ReportStatus
 from .evidence import PostgresBusinessReportRepository
 from .llm import QwenConfig, QwenStructuredClient
 from .narrative import NarrativeEnricher
 from .repository import PostgresCompanyFactsRepository
+from .retrieval import CompanyRetriever, RemoteQueryEncoder
 from .service import CompanyAnalysisService, CompanyNotFoundError
 from .store import PostgresReportStore
 
@@ -79,18 +86,57 @@ def narrative_enabled() -> bool:
     return _env("COMPANY_ANALYSIS_NARRATIVE").lower() not in {"off", "0", "false", "no"}
 
 
+def _qwen_config() -> QwenConfig:
+    timeout = int(_env("COMPANY_ANALYSIS_MODEL_TIMEOUT_SECONDS") or "180")
+    return QwenConfig.from_env_file(_env_file(), timeout_seconds=timeout)
+
+
+def build_business_reports() -> PostgresBusinessReportRepository:
+    return PostgresBusinessReportRepository(_connect_factory(resolve_rag_database_url()))
+
+
+def build_query_encoder() -> RemoteQueryEncoder | None:
+    base_url = _env("COMPANY_ANALYSIS_EMBEDDING_BASE_URL")
+    if not base_url:
+        return None
+    api_key = _env("COMPANY_ANALYSIS_EMBEDDING_API_KEY") or _env("QWEN_API_KEY")
+    if not api_key:
+        LOGGER.warning("embedding api key missing: chat retrieval falls back to BM25")
+        return None
+    return RemoteQueryEncoder(base_url=base_url, api_key=api_key, model=_env("COMPANY_ANALYSIS_EMBEDDING_MODEL") or "main")
+
+
 def build_enrichers() -> tuple:
     """Qwen 설정이 없으면 서술 없이 확정 블록만 만든다. 설정 오류로 리포트 API 전체가 죽지 않게 한다."""
     if not narrative_enabled():
         return ()
     try:
-        timeout = int(_env("COMPANY_ANALYSIS_MODEL_TIMEOUT_SECONDS") or "180")
-        config = QwenConfig.from_env_file(_env_file(), timeout_seconds=timeout)
-        rag_connect = _connect_factory(resolve_rag_database_url())
+        config = _qwen_config()
+        reports = build_business_reports()
     except (OSError, RuntimeError, ValueError) as error:
         LOGGER.warning("narrative disabled: %s", error)
         return ()
-    return (NarrativeEnricher(QwenStructuredClient(config), PostgresBusinessReportRepository(rag_connect)),)
+    return (NarrativeEnricher(QwenStructuredClient(config), reports),)
+
+
+@lru_cache(maxsize=1)
+def get_company_chat_service() -> CompanyChatService:
+    try:
+        analysis = get_company_analysis_service()
+        config = _qwen_config()
+        reports = build_business_reports()
+        connect = _connect_factory(resolve_database_url())
+    except (OSError, RuntimeError, ValueError) as error:
+        raise HTTPException(status_code=503, detail={"code": "COMPANY_ANALYSIS_CONFIGURATION_UNAVAILABLE"}) from error
+    encoder = build_query_encoder()
+    retriever = CompanyRetriever(load_vectors=reports.load_vectors if encoder else None, encoder=encoder)
+    return CompanyChatService(
+        analysis=analysis,
+        reports=reports,
+        retriever=retriever,
+        client=QwenStructuredClient(config),
+        store=PostgresConversationStore(connect),
+    )
 
 
 def _connect_factory(database_url: str):
@@ -120,10 +166,11 @@ def get_company_analysis_service() -> CompanyAnalysisService:
     )
 
 
-def create_app(service_provider=get_company_analysis_service) -> FastAPI:
+def create_app(service_provider=get_company_analysis_service, chat_provider=get_company_chat_service) -> FastAPI:
     app = FastAPI(title="Company Analysis API")
     # `from __future__ import annotations` 아래에서 지역 Annotated 별칭은 FastAPI 가 풀지 못한다.
     service_dependency = Depends(service_provider)
+    chat_dependency = Depends(chat_provider)
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -165,6 +212,24 @@ def create_app(service_provider=get_company_analysis_service) -> FastAPI:
         finished = current.status == "READY" and not service.is_enriching(payload.corp_code)
         response.status_code = 200 if finished else 202
         return stored or current
+
+    @app.post("/internal/chat", response_model=ChatResponse)
+    def chat(payload: ChatRequest, chat_service: CompanyChatService = chat_dependency):
+        try:
+            return chat_service.respond(payload)
+        except CompanyNotFoundError:
+            raise HTTPException(status_code=404, detail={"code": "COMPANY_NOT_FOUND"})
+        except ConversationNotFoundError:
+            raise HTTPException(status_code=404, detail={"code": "CONVERSATION_NOT_FOUND"})
+        except ConversationMismatchError:
+            raise HTTPException(status_code=409, detail={"code": "CONVERSATION_CORP_MISMATCH"})
+
+    @app.get("/internal/conversations/{conversation_id}", response_model=ConversationHistory)
+    def conversation(conversation_id: str, chat_service: CompanyChatService = chat_dependency):
+        try:
+            return chat_service.history(conversation_id)
+        except ConversationNotFoundError:
+            raise HTTPException(status_code=404, detail={"code": "CONVERSATION_NOT_FOUND"})
 
     return app
 

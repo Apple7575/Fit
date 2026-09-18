@@ -92,6 +92,10 @@ def numeric_claim_violations(text: str, cited: Iterable[CitedText]) -> list[Viol
             continue
         if not all(is_money_table(row) for row in holders):
             continue
+        # 금액 표 안의 글 셀에 "2,048개 I/O" 처럼 수량이 적혀 있을 수 있다(SK하이닉스 연구개발 실적 표, 단위 백만원).
+        # 모델이 숫자를 뒤따르는 단위까지 그대로 옮겼으면 금액 규칙을 적용하지 않는다.
+        if _verbatim_with_unit(number, after, holders):
+            continue
         if _QUANTITY_AFTER.match(after):
             violations.append(Violation("amount_as_quantity", f"금액 표의 숫자 {number}를 수량으로 서술: '{number}{after.strip()}'"))
             continue
@@ -147,6 +151,21 @@ def share_claim_violations(text: str, cited: Iterable[CitedText]) -> list[Violat
         if not _ratio_present(token, share_rows):
             violations.append(Violation("share_not_in_evidence", f"점유율 {token}% 를 말하는 근거가 없음"))
     return violations
+
+
+_UNIT_WORD_AFTER = re.compile(r"^\s*([A-Za-z가-힣%㎡㎏]{1,6})")
+
+
+def _verbatim_with_unit(number: str, after: str, holders: Iterable[CitedText]) -> bool:
+    """`숫자 + 바로 뒤 단위 낱말` 이 근거에 그대로 있으면 True. 금액 단위(원)는 제외한다."""
+    match = _UNIT_WORD_AFTER.match(after)
+    if not match:
+        return False
+    unit = match.group(1)
+    if unit.endswith("원") or unit in ("USD", "달러"):
+        return False
+    needle = re.sub(r"\s+", "", f"{number}{unit}")
+    return any(needle in re.sub(r"\s+", "", row.content) for row in holders)
 
 
 def _unit_follows(after: str, unit: str) -> bool:
