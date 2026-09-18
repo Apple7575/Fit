@@ -102,7 +102,10 @@ function extractPose(lm: NormalizedLandmark[]): PoseFrame | null {
   const sl = lm[SHOULDER_L];
   const sr = lm[SHOULDER_R];
   if (!sl || !sr || (sl.visibility ?? 0) < 0.5 || (sr.visibility ?? 0) < 0.5) return null;
-  const tiltDeg = Math.abs((Math.atan2(sr.y - sl.y, sr.x - sl.x) * 180) / Math.PI);
+  // 화면에서는 오른쪽 어깨가 왼쪽에 잡혀 x 차이가 음수가 되기 쉽다.
+  // 그대로 atan2 를 쓰면 반듯하게 앉아도 180도 근처가 나오므로, 가로 성분은 절댓값으로 눕혀
+  // "수평에서 몇 도 벗어났는지"(0~90)만 남긴다.
+  const tiltDeg = Math.abs((Math.atan2(sr.y - sl.y, Math.abs(sr.x - sl.x)) * 180) / Math.PI);
   return { midX: (sl.x + sr.x) / 2, midY: (sl.y + sr.y) / 2, tiltDeg };
 }
 

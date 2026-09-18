@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { requestFollowup } from './api';
 import { computeDelivery, countSyllables, PACE_MAX, PACE_MIN, type ClipEvent } from './delivery';
 import { useAudioMeter, useRecorder, useSpeech, useWebcam } from './hooks';
+import { Icon } from './icons';
 import { saveItem } from './localVideo';
 import { SOURCE_BADGE } from './styles';
 import { useVision } from './vision';
@@ -36,6 +37,8 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
   // 카메라·마이크를 먼저 확인한 뒤 첫 질문으로 넘어간다
   const [checked, setChecked] = useState(false);
   const [phase, setPhase] = useState<Phase>('ready');
+  // 답변을 확정했는지. 확정해야 '다음 문항'이 나온다 (문항마다 새로 시작한다)
+  const [confirmed, setConfirmed] = useState(false);
   const [prep, setPrep] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [fup, setFup] = useState<Followup | null>(null);
@@ -97,6 +100,7 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
 
   const startPrep = () => {
     setFup(null);
+    setConfirmed(false);
     setPrep(PREP_SECONDS);
     setPhase('prep');
   };
@@ -149,8 +153,15 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
 
   // 이 문항에 꼬리질문을 붙일 수 있는지. followupEnabled 이고, 꼬리질문 자체가 아니며, 아직 안 붙였을 때.
   const canFollowup = config.followupEnabled && !current.isFollowup && !followed.current.has(idx);
-  // '다음 문항'을 주 버튼으로 강조할지. 꼬리질문 대상이 아니거나, 요청이 끝나(더 물을 게 없음) 다음이 자연스러운 상태일 때.
-  const nextIsPrimary = !canFollowup || fupStatus === 'empty' || fupStatus === 'result';
+
+  /**
+   * 답변 확정. 여기서부터 '다음 문항'이 열린다.
+   * 꼬리질문을 붙일 수 있는 문항이면 확정과 동시에 꼬리질문도 요청한다.
+   */
+  const confirmAnswer = () => {
+    setConfirmed(true);
+    if (canFollowup && current.transcript.trim().length > 0) void requestFollowupNow();
+  };
 
   // 사용자가 트랜스크립트를 확정한 뒤 누른다. 수정된 최신 답변으로 꼬리질문을 요청한다.
   const requestFollowupNow = async () => {
@@ -197,12 +208,14 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
       return next;
     });
     cancelFollowup();
+    setConfirmed(false);
     setIdx(idx + 1);
     setPhase('ready');
   };
 
   const next = () => {
     cancelFollowup();
+    setConfirmed(false);
     if (isLast) {
       onFinish(queue);
     } else {
@@ -419,7 +432,7 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
           )}
           {phase === 'reviewing' && fupStatus === 'error' && (
             <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] text-amber-700">
-              꼬리질문을 불러오지 못했습니다. ‘답변 확정’으로 다시 시도해 주세요.
+              추가 질문을 불러오지 못했습니다. 그대로 다음 문항으로 넘어가셔도 됩니다.
             </p>
           )}
           {phase === 'reviewing' && fup && (
@@ -449,56 +462,60 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
           <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
             {phase === 'ready' && (
               <button
-                className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-slate-950"
+                className="flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-slate-950"
                 onClick={startPrep}
                 type="button"
               >
+                <Icon name="mic" />
                 답변 시작 (3초 후 녹화)
               </button>
             )}
             {phase === 'prep' && <span className="text-sm font-semibold text-slate-400">{prep}초 뒤 시작합니다…</span>}
             {phase === 'recording' && (
               <button
-                className="rounded-full bg-rose-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700"
+                className="flex items-center gap-2 rounded-full bg-rose-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700"
                 onClick={() => void stopRecording()}
                 type="button"
               >
+                <Icon name="stop" />
                 답변 종료
               </button>
             )}
             {phase === 'reviewing' && !fup && (
               <>
                 <button
-                  className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                  className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
                   onClick={() => {
                     cancelFollowup();
+                    setConfirmed(false);
                     setPhase('ready');
                   }}
                   type="button"
                 >
+                  <Icon name="redo" />
                   다시 녹화
                 </button>
-                {canFollowup && (
+                {/* 답변을 확정해야 다음으로 넘어갈 수 있다. 확정 전에 문항이 넘어가면 부자연스럽다 */}
+                {!confirmed ? (
                   <button
-                    className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    disabled={current.transcript.trim().length === 0 || (fupStatus !== 'idle' && fupStatus !== 'error')}
-                    onClick={() => void requestFollowupNow()}
+                    className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={fupStatus === 'loading'}
+                    onClick={confirmAnswer}
                     type="button"
                   >
+                    <Icon name="check" />
                     답변 확정
                   </button>
+                ) : (
+                  <button
+                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    onClick={next}
+                    type="button"
+                  >
+                    <Icon name="next" />
+                    {isLast ? 'AI 분석 요청' : '다음 문항'}
+                  </button>
                 )}
-                <button
-                  className={
-                    nextIsPrimary
-                      ? 'rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700'
-                      : 'rounded-lg bg-white px-5 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
-                  }
-                  onClick={next}
-                  type="button"
-                >
-                  {isLast ? 'AI 분석 요청' : '다음 문항'}
-                </button>
               </>
             )}
           </div>

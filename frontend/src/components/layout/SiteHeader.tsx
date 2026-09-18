@@ -28,8 +28,8 @@ const LINK_TONE = {
 interface SiteHeaderProps {
   /** 가운데 기업 검색창. 랜딩은 히어로에 큰 검색창이 있어 끈다 */
   showSearch?: boolean;
-  /** 로고 옆 브레드크럼 꼬리 (예: 기업명). md 이상에서만 보인다 */
-  breadcrumb?: string;
+  /** 로고 옆 브레드크럼 꼬리 (예: 기업명). 여러 칸이면 배열로 넘긴다. md 이상에서만 보인다 */
+  breadcrumb?: string | string[];
   /**
    * 랜딩 전용. 헤더를 첫 화면(영상) 위에 투명하게 띄운다. 이때 헤더는 문서 흐름에서 빠지므로
    * 아래 내용이 3.5rem 만큼 여백을 갖는지는 페이지가 책임진다.
@@ -84,8 +84,14 @@ export function SiteHeader({
           {breadcrumb && (
             <nav aria-label="브레드크럼" className="hidden min-w-0 md:block">
               <ol className="flex items-center gap-2 text-sm text-slate-500">
-                <li aria-hidden="true">/</li>
-                <li className="truncate font-bold text-blue-600">{breadcrumb}</li>
+                {(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i, all) => (
+                  <li className="flex min-w-0 items-center gap-2" key={crumb}>
+                    <span aria-hidden="true">/</span>
+                    <span className={`truncate font-bold ${i === all.length - 1 ? 'text-blue-600' : 'text-slate-500'}`}>
+                      {crumb}
+                    </span>
+                  </li>
+                ))}
               </ol>
             </nav>
           )}

@@ -4,9 +4,10 @@ import {
   describeDelivery,
   EVENT_META,
   type ClipEvent,
+  type ClipEventKind,
   type DeliveryMetrics,
 } from './delivery';
-import { EvidenceRows } from './Evidence';
+import { EvidenceCards } from './Evidence';
 import { getClipsByLocalSession, getClipsByServerId } from './localVideo';
 import { NonverbalDetail } from './NonverbalOverview';
 import { nonverbalGauges } from './nonverbalGauges';
@@ -40,9 +41,6 @@ interface InterviewReportProps {
   saved: boolean;
   saving?: boolean;
   onSave?: () => void;
-  onRestart: () => void;
-  /** 목록으로 돌아가기. 헤더 버튼으로 보여준다 (화면 맨 위 한 줄을 쓰지 않는다) */
-  onBack?: () => void;
 }
 
 interface LocalItem {
@@ -153,8 +151,6 @@ export function InterviewReport({
   saved,
   saving,
   onSave,
-  onRestart,
-  onBack,
 }: InterviewReportProps) {
   const local = useLocalItems(localSessionId, serverInterviewId);
   const values = [...local.values()];
@@ -217,50 +213,11 @@ export function InterviewReport({
 
   return (
     <div>
-      {/* 기업분석 화면과 같은 틀: 얇은 서브헤더에 제목·탭·버튼을 모으고 본문은 넓게 */}
+      {/* 면접 제목은 전역 헤더의 브레드크럼이 맡는다. 여기는 문항 탭과 버튼 한 줄만 둔다 */}
       <div className="sticky top-14 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto max-w-[1320px] px-5 lg:px-8">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-2">
-            <h1 className="text-[14px] font-extrabold text-slate-950">
-              {company ?? '모의 면접'}
-              {position ? ` · ${position}` : ''}
-            </h1>
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[12px] font-semibold text-blue-700 ring-1 ring-blue-100">
-              {TYPE_LABEL[interviewType]}
-            </span>
-            <span className={T.caption}>문항 {numbered.length}개 · 나에게만 보입니다</span>
-
-            <div className="ml-auto flex shrink-0 items-center gap-1.5">
-              {onBack && (
-                <button
-                  className="rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-slate-400 transition hover:text-slate-700"
-                  onClick={onBack}
-                  type="button"
-                >
-                  목록
-                </button>
-              )}
-              <button
-                className="rounded-lg bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
-                onClick={onRestart}
-                type="button"
-              >
-                다시 진행
-              </button>
-              {onSave && (
-                <button
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-40"
-                  disabled={saved || saving}
-                  onClick={onSave}
-                  type="button"
-                >
-                  {saved ? '저장됨' : saving ? '저장 중…' : '저장하기'}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-1 overflow-x-auto" role="tablist">
+        <div className="mx-auto flex max-w-[1320px] items-end gap-3 px-5 lg:px-8">
+          {/* overflow-y-hidden: 탭의 -mb-px 때문에 세로 스크롤바가 생기는 걸 막는다 */}
+          <div className="flex gap-1 overflow-x-auto overflow-y-hidden" role="tablist">
             <TabButton onClick={() => setTab('all')} selected={tab === 'all'}>
               전체
             </TabButton>
@@ -270,6 +227,19 @@ export function InterviewReport({
               </TabButton>
             ))}
           </div>
+
+          {onSave && (
+            <div className="ml-auto flex shrink-0 items-center pb-1.5">
+              <button
+                className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-40"
+                disabled={saved || saving}
+                onClick={onSave}
+                type="button"
+              >
+                {saved ? '저장됨' : saving ? '저장 중…' : '저장하기'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -277,6 +247,9 @@ export function InterviewReport({
       {tab === 'all' ? (
         <ReportOverview
           axes={axes}
+          company={company}
+          position={position}
+          typeLabel={TYPE_LABEL[interviewType]}
           details={{
             content: overallSummary ? <p className={T.body}>{overallSummary}</p> : null,
             delivery: <DeliveryDetail delivery={deliveryRollup} />,
@@ -336,6 +309,13 @@ function QuestionPanel({
   const strengths = item.points.filter((p) => p.kind === 'STRENGTH');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const marks = local && local.durationMs > 0 ? (local.events ?? []).filter((e) => EVENT_META[e.kind]) : [];
+  // 종류별로 묶어서 줄을 나눈다. 구간 하나하나는 그대로 눌러서 그 시각으로 갈 수 있다.
+  const grouped = [...marks.reduce((map, e) => {
+    const list = map.get(e.kind);
+    if (list) list.push(e);
+    else map.set(e.kind, [e]);
+    return map;
+  }, new Map<ClipEventKind, ClipEvent[]>())];
 
   const seek = (ms: number) => {
     const v = videoRef.current;
@@ -349,11 +329,13 @@ function QuestionPanel({
     ...(local?.nonverbal ? describeNonverbal(local.nonverbal) : []),
     ...(local?.metrics ? describeDelivery(local.metrics) : []),
   ];
+  // 총평 한 줄도 '고칠 점' 카드에서 함께 보여준다 (답변 옆 회색 박스와 겹쳐 보였다)
+  const hasFeedback = improvements.length > 0 || strengths.length > 0 || item.feedbackSummary.length > 0;
 
   return (
     <div className="space-y-4" role="tabpanel">
       <section className={`${CARD} p-5`}>
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
           {/* 내 영상: 가장 먼저 눈이 가는 자리 */}
           <div>
             {local?.url ? (
@@ -379,17 +361,26 @@ function QuestionPanel({
                         />
                       ))}
                     </div>
-                    <ul className="mt-2 flex flex-wrap gap-1.5">
-                      {marks.slice(0, 8).map((e, i) => (
-                        <li key={i}>
-                          <button
-                            className="rounded-full bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-100"
-                            onClick={() => seek(e.startMs)}
-                            type="button"
-                          >
-                            <span className={`mr-1 inline-block size-2 rounded-full align-middle ${EVENT_META[e.kind].color}`} />
-                            {EVENT_META[e.kind].label} {(e.startMs / 1000).toFixed(1)}초
-                          </button>
+                    {/* 종류마다 한 줄. 구간이 많아지면 그 줄 안에서 옆으로 넘겨 보므로 카드 높이는 그대로다 */}
+                    <ul className="mt-2 space-y-1">
+                      {grouped.map(([kind, list]) => (
+                        <li className="flex items-center gap-2" key={kind}>
+                          <span className="flex w-28 shrink-0 items-center gap-1.5 text-[12px] font-semibold text-slate-600">
+                            <span className={`inline-block size-2 shrink-0 rounded-full ${EVENT_META[kind].color}`} />
+                            <span className="truncate">{EVENT_META[kind].label}</span>
+                          </span>
+                          <span className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+                            {list.map((e, i) => (
+                              <button
+                                className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-100 hover:text-slate-800"
+                                key={i}
+                                onClick={() => seek(e.startMs)}
+                                type="button"
+                              >
+                                {(e.startMs / 1000).toFixed(1)}초
+                              </button>
+                            ))}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -426,61 +417,61 @@ function QuestionPanel({
             <p className={`mt-1.5 ${T.body}`}>
               {item.transcript || <span className="text-slate-400">답변 없음</span>}
             </p>
-            {item.feedbackSummary && (
-              <p className={`mt-3 rounded-xl bg-slate-50 p-3 ${T.body}`}>{item.feedbackSummary}</p>
-            )}
           </div>
         </div>
       </section>
 
-      {/* 한쪽만 있을 때 반쪽짜리 카드가 덩그러니 남지 않게, 둘 다 있을 때만 두 칸으로 나눈다 */}
-      {(improvements.length > 0 || strengths.length > 0) && (
-        <section className={`grid gap-4 ${improvements.length > 0 && strengths.length > 0 ? 'lg:grid-cols-2' : ''}`}>
-          {improvements.length > 0 && (
-            <div className={`${CARD} p-5`}>
-              <p className={T.section}>이렇게 말해 보세요</p>
-              <ul className="mt-3 space-y-2">
-                {improvements.map((point, i) => (
-                  <li className="rounded-xl bg-amber-50/70 p-3" key={i}>
-                    <p className="text-[12px] font-semibold text-amber-700">{point.category}</p>
-                    <p className={`mt-1 ${T.body}`}>{point.message}</p>
-                    {point.suggestion && (
-                      <p className={`mt-2 border-l-2 border-amber-300 pl-2.5 ${T.bodyStrong}`}>{point.suggestion}</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {strengths.length > 0 && (
-            <div className={`${CARD} p-5`}>
-              <p className={T.section}>이건 좋았어요</p>
-              <ul className="mt-3 space-y-1.5">
-                {strengths.map((point, i) => (
-                  <li className={T.body} key={i}>
-                    <span className={`mr-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold ${KIND_STYLE.STRENGTH.chip}`}>
-                      {point.category}
-                    </span>
-                    {point.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-      )}
-
-      {rows.length > 0 && (
-        <section className={`${CARD} p-5`}>
-          <p className={T.section}>이 답변의 태도 · 전달</p>
-          <p className={`mt-1 ${T.caption}`}>
-            항목을 누르면 어떻게 잰 값인지와 그때 화면·음성을 보여줍니다. 모두 이 브라우저에서 계산했어요.
-          </p>
-          <div className="mt-3">
-            <EvidenceRows clip={local} onSeek={seek} rows={rows} />
+      {/* 말할 내용(왼쪽)과 태도·전달(오른쪽)을 나란히 둔다. 한쪽만 있으면 한 칸을 다 쓴다 */}
+      <div className={`grid gap-4 lg:items-start ${hasFeedback && rows.length > 0 ? 'lg:grid-cols-2' : ''}`}>
+        {hasFeedback && (
+          <div className="space-y-4">
+            {(improvements.length > 0 || item.feedbackSummary) && (
+              <section className={`${CARD} p-5`}>
+                <p className={T.section}>이 답변에서 고칠 점</p>
+                {item.feedbackSummary && <p className={`mt-2 ${T.body}`}>{item.feedbackSummary}</p>}
+                <ul className="mt-3 space-y-2">
+                  {improvements.map((point, i) => (
+                    <li className="rounded-xl bg-red-50/60 p-3" key={i}>
+                      <p className="text-[12px] font-semibold text-red-600">{point.category}</p>
+                      <p className={`mt-1 ${T.body}`}>{point.message}</p>
+                      {point.suggestion && (
+                        <p className={`mt-2 border-l-2 border-red-300 pl-2.5 ${T.bodyStrong}`}>{point.suggestion}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {strengths.length > 0 && (
+              <section className={`${CARD} p-5`}>
+                <p className={T.section}>이 답변에서 잘한 점</p>
+                <ul className="mt-3 space-y-1.5">
+                  {strengths.map((point, i) => (
+                    <li className={T.body} key={i}>
+                      <span className={`mr-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold ${KIND_STYLE.STRENGTH.chip}`}>
+                        {point.category}
+                      </span>
+                      {point.message}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </div>
-        </section>
-      )}
+        )}
+
+        {rows.length > 0 && (
+          <section className={`${CARD} p-5`}>
+            <p className={T.section}>말투와 자세</p>
+            <p className={`mt-1 ${T.caption}`}>
+              면접관 눈에 어떻게 보였는지입니다. 카드를 누르면 그렇게 본 근거를 보여드려요.
+            </p>
+            <div className="mt-3">
+              <EvidenceCards clip={local} onSeek={seek} rows={rows} />
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

@@ -25,13 +25,19 @@ export function InterviewWorkspacePage() {
   return id ? <SavedInterview id={Number(id)} /> : <NewInterview />;
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, breadcrumb }: { children: React.ReactNode; breadcrumb?: string | string[] }) {
   return (
     <div className="min-h-screen bg-slate-50">
-      <InterviewHeader />
+      <InterviewHeader breadcrumb={breadcrumb} />
       {children}
     </div>
   );
+}
+
+/** 헤더 브레드크럼에 쓸 면접 이름. 회사·직무가 없으면 화면 이름만 남긴다. */
+function crumbs(company: string | null | undefined, position: string | null | undefined): string[] {
+  const title = [company, position].filter(Boolean).join(' · ');
+  return title ? ['모의 면접', title] : ['모의 면접'];
 }
 
 function Loading({ message }: { message: string }) {
@@ -205,7 +211,7 @@ function NewInterview() {
     }
     // 여기 도달하면 자동 저장이 실패한 경우다. 안내와 함께 수동 저장(저장 버튼)으로 폴백한다.
     return (
-      <Shell>
+      <Shell breadcrumb={crumbs(config.targetCompany, config.targetPosition)}>
         {error && (
           <div className="mx-auto max-w-4xl px-6 pt-6">
             <InlineNotice>{error}</InlineNotice>
@@ -221,7 +227,6 @@ function NewInterview() {
           saved={false}
           saving={saving}
           onSave={() => void save()}
-          onRestart={() => void start(config)}
         />
       </Shell>
     );
@@ -275,7 +280,7 @@ function SavedLoaded({ id }: { id: number }) {
     state.status === 'error' && (state.error.status === 404 || state.error.code === 'INTERVIEW_NOT_FOUND');
 
   return (
-    <Shell>
+    <Shell breadcrumb={state.status === 'success' ? crumbs(state.data.targetCompany, state.data.targetPosition) : undefined}>
       {state.status === 'loading' && <Loading message="불러오는 중…" />}
 
       {state.status === 'error' && (
@@ -299,11 +304,9 @@ function SavedLoaded({ id }: { id: number }) {
 }
 
 function SavedReport({ interview }: { interview: Interview }) {
-  const navigate = useNavigate();
   return (
     <div>
       <InterviewReport
-        onBack={() => navigate('/interviews')}
         company={interview.targetCompany ?? null}
         position={interview.targetPosition ?? null}
         interviewType={interview.interviewType}
@@ -318,7 +321,6 @@ function SavedReport({ interview }: { interview: Interview }) {
         }))}
         serverInterviewId={interview.id}
         saved
-        onRestart={() => navigate('/interviews/new')}
       />
     </div>
   );

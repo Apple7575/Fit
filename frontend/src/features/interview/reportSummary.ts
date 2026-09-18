@@ -25,6 +25,9 @@ export interface Axis {
   /** 상태 아래 한 줄 */
   detail: string;
   tone: 'good' | 'warn' | 'none';
+  /** 적정으로 나온 항목 수 / 전체 항목 수. 고리 그래프로 보여준다 (측정이 없으면 total 0) */
+  ok: number;
+  total: number;
 }
 
 /**
@@ -42,42 +45,71 @@ export function buildAxes(
 
   const content: Axis =
     points.length === 0
-      ? { key: 'content', title: '답변 내용', status: '분석 없음', detail: '총평만 있습니다', tone: 'none' }
+      ? { key: 'content', title: '답변 내용', status: '분석 없음', detail: '총평만 있습니다', tone: 'none', ok: 0, total: 0 }
       : improvements === 0
-        ? { key: 'content', title: '답변 내용', status: '좋아요', detail: `강점 ${strengths}개`, tone: 'good' }
+        ? {
+            key: 'content',
+            title: '답변 내용',
+            status: '좋아요',
+            detail: `강점 ${strengths}개`,
+            tone: 'good',
+            ok: strengths,
+            total: points.length,
+          }
         : {
             key: 'content',
             title: '답변 내용',
             status: `고칠 점 ${improvements}개`,
             detail: strengths > 0 ? `강점 ${strengths}개도 있어요` : '강점으로 꼽힌 답변은 없어요',
             tone: 'warn',
+            ok: strengths,
+            total: points.length,
           };
 
   const warnRows = deliveryRows.filter((r) => r.tone === 'warn');
+  const okRows = deliveryRows.length - warnRows.length;
   const delivery: Axis =
     deliveryRows.length === 0
-      ? { key: 'delivery', title: '말하기', status: '측정 없음', detail: '마이크가 꺼져 있었어요', tone: 'none' }
+      ? { key: 'delivery', title: '말하기', status: '측정 없음', detail: '마이크가 꺼져 있었어요', tone: 'none', ok: 0, total: 0 }
       : warnRows.length === 0
-        ? { key: 'delivery', title: '말하기', status: '좋아요', detail: `${deliveryRows.length}개 항목 모두 적정`, tone: 'good' }
+        ? {
+            key: 'delivery',
+            title: '말하기',
+            status: '좋아요',
+            detail: `${deliveryRows.length}개 항목 모두 적정`,
+            tone: 'good',
+            ok: okRows,
+            total: deliveryRows.length,
+          }
         : {
             key: 'delivery',
             title: '말하기',
             status: `${warnRows.length}개 확인`,
             detail: warnRows.map((r) => r.key).join(' · '),
             tone: 'warn',
+            ok: okRows,
+            total: deliveryRows.length,
           };
 
   const mannerAxis: Axis =
     manner == null || manner.total === 0
-      ? { key: 'manner', title: '태도 · 시선', status: '측정 없음', detail: '카메라를 켜면 봐 드려요', tone: 'none' }
+      ? { key: 'manner', title: '태도 · 시선', status: '측정 없음', detail: '카메라를 켜면 봐 드려요', tone: 'none', ok: 0, total: 0 }
       : manner.ok === manner.total
-        ? { key: 'manner', title: '태도 · 시선', status: '좋아요', detail: `${manner.total}개 항목 모두 적정`, tone: 'good' }
+        ? {
+            key: 'manner',
+            title: '태도 · 시선',
+            status: '좋아요',
+            detail: `${manner.total}개 항목 모두 적정`,
+            tone: 'good',
+            ...manner,
+          }
         : {
             key: 'manner',
             title: '태도 · 시선',
             status: `${manner.total - manner.ok}개 확인`,
             detail: `${manner.total}개 중 ${manner.ok}개가 적정`,
             tone: 'warn',
+            ...manner,
           };
 
   return [content, delivery, mannerAxis];
