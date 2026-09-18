@@ -1,6 +1,8 @@
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { characterForAgent } from '../../components/brand/characters';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { isNotFound } from '../../api/client';
 import { AgentConfigPanel } from './AgentConfigPanel';
 import { MessageComposer } from './MessageComposer';
 import { MessageThread } from './MessageThread';
@@ -48,6 +50,20 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
     );
   }
   if (room.status === 'error') {
+    // 없거나 접근 불가한 방(404 ROOM_NOT_FOUND)은 재시도해도 같은 404 → 목록으로 유도한다.
+    if (isNotFound(room.error)) {
+      return (
+        <div role="alert" className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-[14px] font-medium text-slate-700">검토 방을 찾을 수 없습니다.</p>
+          <Link
+            to="/agent-rooms"
+            className="mt-2 inline-block text-[13px] font-semibold text-blue-600 underline"
+          >
+            검토 방 목록으로
+          </Link>
+        </div>
+      );
+    }
     return (
       <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4">
         <p className="text-[14px] font-medium text-red-700">{room.error.message}</p>
@@ -154,7 +170,12 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
 
       <MessageThread messages={thread} running={turn} agentNames={agentNames} />
 
-      <MessageComposer roomId={roomId} busy={busy} onStarted={setActiveTurnId} />
+      <MessageComposer
+        roomId={roomId}
+        busy={busy}
+        onStarted={setActiveTurnId}
+        onConflict={reloadMessages}
+      />
     </div>
   );
 }

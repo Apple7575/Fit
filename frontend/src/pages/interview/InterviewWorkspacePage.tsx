@@ -1,7 +1,7 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ApiError } from '../../api/client';
+import { ApiError, isRateLimited, isRetryable } from '../../api/client';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { analyzeAnswers, createInterview, generateQuestions } from '../../features/interview/api';
@@ -53,6 +53,8 @@ function NewInterview() {
   const [sessionItems, setSessionItems] = useState<SessionItem[]>([]);
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 분석 실패의 성격(재시도 가능/한도초과/입력오류)을 리포트 화면에서 판정하기 위해 에러 객체를 보관한다.
+  const [analyzeError, setAnalyzeError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
 
   if (loading) {
@@ -115,6 +117,7 @@ function NewInterview() {
     if (!config) return;
     setSessionItems(items);
     setError(null);
+    setAnalyzeError(null);
     setPhase('analyzing');
     let result: AnalyzeResult;
     try {
@@ -126,7 +129,8 @@ function NewInterview() {
       setAnalysis(result);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '답변 분석에 실패했습니다.');
-      setPhase('report'); // 리포트 화면에서 재시도 노출
+      setAnalyzeError(e instanceof ApiError ? e : null);
+      setPhase('report'); // 리포트 화면에서 성격에 맞는 복구 수단을 노출
       return;
     }
     // 분석이 끝나면 자동으로 저장한다. 실패하면 리포트에서 수동 저장(저장 버튼)으로 폴백한다.
@@ -172,12 +176,22 @@ function NewInterview() {
 
   if (phase === 'report' && config) {
     if (!analysis) {
+      // 한도초과(429)는 즉시 재시도해도 또 실패하고 LLM 쿼터만 태운다 → 재시도 버튼을 숨긴다.
+      // 5xx·네트워크 등 일시적 오류만 재시도를 노출하고, 그 외 4xx(입력 문제)는 설정으로 유도한다.
+      const rateLimited = analyzeError !== null && isRateLimited(analyzeError);
+      const canRetry = analyzeError === null || isRetryable(analyzeError);
       return (
         <Shell>
           <div className="mx-auto max-w-4xl px-6 py-8">
-            <InlineNotice onRetry={() => void finish(sessionItems)}>
-              {error ?? '답변 분석에 실패했습니다.'}
-            </InlineNotice>
+            {rateLimited ? (
+              <InlineNotice>{error ?? '요청이 많습니다. 잠시 후 다시 시도해 주세요.'}</InlineNotice>
+            ) : canRetry ? (
+              <InlineNotice onRetry={() => void finish(sessionItems)}>
+                {error ?? '답변 분석에 실패했습니다.'}
+              </InlineNotice>
+            ) : (
+              <InlineNotice>{error ?? '분석할 수 없는 요청입니다. 답변을 확인해 주세요.'}</InlineNotice>
+            )}
             <button
               onClick={() => setPhase('setup')}
               className="mt-4 text-sm text-slate-500 hover:text-slate-700"

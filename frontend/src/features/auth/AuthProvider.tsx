@@ -3,10 +3,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { ApiError } from '../../api/client';
+import { ApiError, setUnauthenticatedHandler } from '../../api/client';
 import * as authApi from './api';
 import type { AuthUser } from './types';
 
@@ -31,6 +32,31 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // 핸들러(전역 401)에서 최신 로그인 여부를 읽기 위한 ref. 리다이렉트는 1회만.
+  const userRef = useRef<AuthUser | null>(user);
+  const redirectingRef = useRef(false);
+
+  // 렌더 중 ref 접근을 피하려고 이펙트에서 동기화한다.
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  // 세션 만료(401 UNAUTHENTICATED) 전역 처리: 로그인 상태였다면 세션을 비우고 재로그인으로 보낸다.
+  // 익명 부트스트랩(/me 401)·비로그인 접근은 userRef 가 비어 있어 무시된다.
+  useEffect(() => {
+    setUnauthenticatedHandler(() => {
+      if (!userRef.current || redirectingRef.current) return;
+      redirectingRef.current = true;
+      setUser(null);
+      if (window.location.pathname === '/login') return;
+      const here = window.location.pathname + window.location.search;
+      const params = new URLSearchParams({ expired: '1', redirect: here });
+      // 하드 리다이렉트로 stale 상태(헤더 등)를 새로고침해 깔끔히 정리한다.
+      window.location.assign(`/login?${params.toString()}`);
+    });
+    return () => setUnauthenticatedHandler(null);
+  }, []);
 
   // 앱 로드 시 세션을 복원한다. 이 GET 이 XSRF-TOKEN 쿠키도 함께 받아 온다.
   useEffect(() => {
