@@ -33,6 +33,9 @@ export interface ClipRecord {
   nonverbal: NonverbalMetrics | null;
   /** 영상 타임라인 마커용 이벤트(공백·프레임/정면/시선 이탈). 옛 기록엔 없을 수 있다. */
   events: ClipEvent[] | null;
+  /** 음량 파형(0~1)과 한 칸 길이(ms). 리포트의 음성 근거에 쓴다. 옛 기록엔 없다. */
+  wave: number[] | null;
+  waveStepMs: number | null;
 }
 
 export function clipStorageSupported(): boolean {
@@ -97,6 +100,8 @@ export interface SaveItemInput {
   metrics?: DeliveryMetrics | null;
   nonverbal?: NonverbalMetrics | null;
   events?: ClipEvent[] | null;
+  wave?: number[] | null;
+  waveStepMs?: number | null;
 }
 
 /** 문항의 녹화·지표를 저장한다(같은 문항 재녹화면 덮어씀). 저장 후 오래된 세션을 정리한다. */
@@ -120,6 +125,8 @@ export async function saveItem(input: SaveItemInput): Promise<void> {
       metrics: input.metrics ?? null,
       nonverbal: input.nonverbal ?? null,
       events: input.events ?? null,
+      wave: input.wave ?? null,
+      waveStepMs: input.waveStepMs ?? null,
     };
     const store = db.transaction(STORE, 'readwrite').objectStore(STORE);
     await reqToPromise(store.put(record));

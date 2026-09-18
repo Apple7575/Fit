@@ -4,6 +4,7 @@ import com.ssafy.companyanalysis.agent.ai.SupervisorClient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -12,8 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AgentContextsTest {
 
     @Test
-    @DisplayName("재료가 있는 담당은 방에서 고르지 않았어도 전부 넘긴다 — 고르는 일은 총괄이 한다")
-    void everyFillableAgentIsSentRegardlessOfTheRoomSelection() {
+    @DisplayName("담당을 전부 고른 방은 재료가 있는 담당을 전부 넘긴다")
+    void aRoomThatPickedEveryAgentSendsEveryFillableAgent() {
         AgentContexts.Request request = AgentContexts.of(context(
                 "ctx-1", "백엔드",
                 Map.of("news", Map.of("corpCodes", List.of("00126380"))),
@@ -21,6 +22,27 @@ class AgentContextsTest {
 
         assertThat(request.agentKeys()).containsExactly("jd", "position", "news", "writing");
         assertThat(request.lead()).isNull();
+    }
+
+    @Test
+    @DisplayName("전담 방은 그 담당만 넘긴다 — 재료가 있어도 방이 안 고른 담당은 빠진다")
+    void aSoloRoomSendsOnlyItsOwnAgent() {
+        AgentContexts.Request request = AgentContexts.of(soloRoom(
+                "position", Map.of("jobRole", "백엔드"), "ctx-1",
+                part(1, "지원동기를 쓰세요", "저는 Spring 기반 API 를 만들었습니다.", 1000)));
+
+        assertThat(request.agentKeys()).containsExactly("position");
+        assertThat(request.lead()).isEqualTo("position");
+    }
+
+    @Test
+    @DisplayName("기업 RAG 담당 전담 방은 총괄에게 넘길 것이 없다 — 그 담당은 백엔드가 돌린다")
+    void aCompanyOnlyRoomHasNothingForTheSupervisor() {
+        AgentContexts.Request request = AgentContexts.of(soloRoom(
+                "company", Map.of("corpCodes", List.of("00126380")), "ctx-1",
+                part(1, "문항 1", "답변 1", 500)));
+
+        assertThat(request.isEmpty()).isTrue();
     }
 
     @Test
@@ -128,12 +150,26 @@ class AgentContextsTest {
         assertThat(request.isEmpty()).isTrue();
     }
 
+    /** 담당을 전부 고른 방(총괄 논의). 넘긴 설정만 채우고 나머지는 빈 설정으로 둔다. */
     private static TurnContext context(String jobContextId,
                                        String jobPositionName,
                                        Map<String, Map<String, Object>> configs,
                                        TurnContext.CoverLetterPart... parts) {
+        Map<String, Map<String, Object>> everyAgent = new LinkedHashMap<>();
+        for (String key : List.of("jd", "company", "position", "news", "writing")) {
+            everyAgent.put(key, configs.getOrDefault(key, Map.of()));
+        }
         return new TurnContext(List.of(parts), "봐줘", jobContextId, jobPositionName,
-                List.of(), configs);
+                List.of(), everyAgent);
+    }
+
+    /** 담당 하나만 있는 전담 방. */
+    private static TurnContext soloRoom(String agentKey,
+                                        Map<String, Object> config,
+                                        String jobContextId,
+                                        TurnContext.CoverLetterPart... parts) {
+        return new TurnContext(List.of(parts), "봐줘", jobContextId, "백엔드",
+                List.of(), Map.of(agentKey, config));
     }
 
     private static TurnContext.CoverLetterPart part(int seq, String question, String answer,

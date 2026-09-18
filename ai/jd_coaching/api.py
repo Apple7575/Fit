@@ -334,8 +334,18 @@ def _read_env_value(path: Path, key: str) -> str:
 def get_source_ingestor() -> JdSourceIngestor:
     env_file = Path(os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env")))
     gms_key = os.environ.get("GMS_KEY", "").strip() or _read_env_value(env_file, "GMS_KEY")
+    clova_ocr_endpoint = os.environ.get("CLOVA_OCR_ENDPOINT", "").strip() or _read_env_value(
+        env_file, "CLOVA_OCR_ENDPOINT"
+    )
+    clova_ocr_secret = os.environ.get("CLOVA_OCR_SECRET", "").strip() or _read_env_value(
+        env_file, "CLOVA_OCR_SECRET"
+    )
     # GMS_KEY가 없으면(로컬 등) 회사명·직무명 보완만 건너뛰고 크롤링 자체는 그대로 동작한다.
-    return JdSourceIngestor(gms_key=gms_key or None)
+    return JdSourceIngestor(
+        gms_key=gms_key or None,
+        clova_ocr_endpoint=clova_ocr_endpoint or None,
+        clova_ocr_secret=clova_ocr_secret or None,
+    )
 
 
 app = FastAPI(title="JD Essay Coaching API", version="0.1.0")

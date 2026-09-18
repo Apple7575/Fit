@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
-import { CHARACTER_BY_KEY } from '../../components/brand/characters';
 import { useInView } from '../../hooks/useInView';
 import { CompanyMedia } from './CompanyMedia';
 import { industryGroupOf } from './industryGroups';
@@ -49,7 +48,6 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
       ) : (
         <ol className="grid gap-4 md:grid-cols-3">
           {points.map((p, i) => {
-            const coach = CHARACTER_BY_KEY[p.coach];
             return (
               <li
                 className="reveal relative"
@@ -73,7 +71,7 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                       }
                       slot={`point-${p.key}`}
                     />
-                    <span className="absolute left-3 top-3 flex size-8 items-center justify-center rounded-full bg-white/90 text-sm font-extrabold text-slate-900 shadow">
+                    <span className="absolute left-3 top-3 flex size-8 items-center justify-center rounded-full bg-white/45 text-sm font-extrabold text-slate-900 ring-1 ring-white/50 backdrop-blur-md">
                       {i + 1}
                     </span>
                   </div>
@@ -82,7 +80,6 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                     <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 break-keep">{p.action}</p>
                     <div className="mt-4 flex items-center gap-2 text-xs font-bold text-slate-400">
                       <CharacterSlot character={p.coach} interactive={false} size={22} />
-                      {coach.name}
                       <span className="ml-auto text-blue-600 transition group-hover:text-blue-700">
                         근거 보기 <span aria-hidden="true">→</span>
                       </span>

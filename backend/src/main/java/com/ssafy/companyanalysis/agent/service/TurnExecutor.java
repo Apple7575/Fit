@@ -53,6 +53,16 @@ public class TurnExecutor {
         });
     }
 
+    /**
+     * 턴을 부른 스레드에서 끝까지 돌린다. 자동 검토가 방을 하나씩 차례로 돌 때 쓴다.
+     *
+     * <p>{@link #runTurn} 과 달리 실행 풀에 이끄는 자리를 만들지 않는다. 방마다 이끄는 자리를
+     * 하나씩 잡으면 기업 담당이 앉을 자리가 없어 풀이 서로를 기다리며 멈춘다.
+     */
+    public void runTurnNow(Long turnId, TurnContext context) {
+        runLocalAgentsAndSupervisor(turnId, context);
+    }
+
     private void runLocalAgentsAndSupervisor(Long turnId, TurnContext context) {
         List<Message> slots = messageRepository.findByParentMessageIdOrderByIdAsc(turnId);
 

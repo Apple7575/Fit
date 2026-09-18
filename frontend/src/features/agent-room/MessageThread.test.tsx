@@ -127,4 +127,63 @@ describe('MessageThread', () => {
 
     expect(screen.queryByText('근거')).not.toBeInTheDocument();
   });
+
+  it('자동 검토 턴은 사용자 말풍선 대신 어디서 나온 답인지 알려준다', () => {
+    const autoRoot: RoomMessage = {
+      ...base,
+      messageId: 200,
+      role: 'user',
+      agentKey: null,
+      agentName: null,
+      content: null,
+      status: 'DONE',
+    };
+
+    render(
+      <MessageThread messages={[autoRoot, writingMessage]} running={null} agentNames={names} />,
+    );
+
+    expect(screen.getByText('자소서를 받아 먼저 검토했습니다')).toBeInTheDocument();
+    expect(screen.getByText('결론이 뒤에 묻혀 있습니다.')).toBeInTheDocument();
+  });
+
+  it('아직 답하지 않은 에이전트 자리가 대화에 있으면 기다리는 중으로 보인다', () => {
+    const pending: RoomMessage = {
+      ...base,
+      messageId: 201,
+      role: 'agent',
+      agentKey: 'news',
+      agentName: '뉴스/트렌드 담당',
+      content: null,
+      status: 'RUNNING',
+    };
+
+    render(<MessageThread messages={[pending]} running={null} agentNames={names} />);
+
+    expect(screen.getByText('살펴보는 중…')).toBeInTheDocument();
+  });
+
+  it('총괄은 한 명의 의견이 아니라 종합이라는 것이 드러난다', () => {
+    render(<MessageThread messages={[supervisor]} running={null} agentNames={names} />);
+
+    expect(screen.getByText('종합')).toBeInTheDocument();
+  });
+
+  it('담당마다 이름표 색이 다르다 — 누가 한 말인지 눈으로 갈린다', () => {
+    const news: RoomMessage = {
+      ...base,
+      messageId: 202,
+      role: 'agent',
+      agentKey: 'news',
+      agentName: '뉴스/트렌드 담당',
+      content: '최근 이슈를 얹어 보세요.',
+      status: 'DONE',
+    };
+
+    render(<MessageThread messages={[writingMessage, news]} running={null} agentNames={names} />);
+
+    const writingName = screen.getByText('글쓰기 담당');
+    const newsName = screen.getByText('뉴스/트렌드 담당');
+    expect(writingName.getAttribute('style')).not.toEqual(newsName.getAttribute('style'));
+  });
 });
