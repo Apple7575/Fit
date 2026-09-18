@@ -1,13 +1,6 @@
 import { useCallback } from 'react';
 import { useApiQuery } from '../../hooks/useApiQuery';
-import { fetchAgents, fetchRoom, fetchRooms } from './api';
-
-/** 에이전트 카탈로그. 설정 UI 를 그리는 근거라 화면마다 필요하다. */
-export function useAgents() {
-  const fetcher = useCallback((signal: AbortSignal) => fetchAgents(signal), []);
-  return useApiQuery('agents', fetcher);
-}
-
+import { fetchRoom, fetchRooms } from './api';
 
 /** 내 검토 방 목록. coverLetterId 를 주면 그 자소서의 방만 본다. */
 export function useRooms(coverLetterId: number | null) {
