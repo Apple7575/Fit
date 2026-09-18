@@ -26,6 +26,7 @@ TEXT_TAGS = ("P", "SPAN", "TU")
 
 # '단위' 표기 바로 뒤 구간만 잘라낸다. 괄호·대괄호가 닫히거나 20자를 넘으면 끊는다.
 _UNIT_SCOPE = re.compile(r"단위\s*[)\]]?\s*[::]?\s*([^)\]|]{0,20})")
+_SPACE = re.compile(r"\s+")
 
 
 def foreign_unit_in_blob(blob: str, markers) -> str | None:
@@ -35,7 +36,7 @@ def foreign_unit_in_blob(blob: str, markers) -> str | None:
     더 거슬러 오르면 남의 표에 붙은 원화 단위를 집는다 (doc.unit 주석 참고).
     """
     for m in _UNIT_SCOPE.finditer(blob):
-        scope = m.group(1)
+        scope = _SPACE.sub("", m.group(1))
         for name in markers:
             if name in scope:
                 return name
@@ -50,9 +51,14 @@ def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
     단위는 '억원' 인데, 전체 검색은 앞의 '조원' 을 먼저 집어 값이 1만 배가 됐다.
 
     units 는 긴 표기가 앞이어야 한다 ('십억원' 이 '억원' 보다 먼저).
+
+    **띄어쓰기를 무시하고 본다.** 회사가 `(단위: 백만 원)` 으로 띄어 적으면 '백만원' 이
+    안 걸리고 뒤의 '원' 이 걸려 **값이 100만분의 1이 된다.** 엔젤로보틱스 2023~2024 가
+    금형투자 5.78억을 578원으로 적어 놓은 꼴이 됐다(3차 확대에서 실측 8행). '십억 원',
+    '억 원' 도 같다. 자릿수가 작아지는 쪽이라 눈으로는 "투자가 적나 보다" 로 보인다.
     """
     for m in _UNIT_SCOPE.finditer(blob):
-        scope = m.group(1)
+        scope = _SPACE.sub("", m.group(1))
         for name, mult in units:
             if name in scope:
                 return name, mult
