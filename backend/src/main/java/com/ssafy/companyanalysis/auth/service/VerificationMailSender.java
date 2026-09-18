@@ -25,12 +25,12 @@ public class VerificationMailSender {
     private static final String TEMPLATE_PATH = "mail/verify-email.html";
     private static final String LINK_PLACEHOLDER = "{{VERIFY_URL}}";
 
-    // 본문 이미지는 CID 인라인 첨부로 붙인다(Gmail 등에서 외부 이미지 차단 없이 표시).
-    private static final String LOGO_CID = "fitLogo";
-    private static final String LOGO_PATH = "mail/logo.png";
-    private static final String CHICK_CID = "fitChick";
-    private static final String CHICK_PATH = "mail/chick.png";
-    private static final String IMAGE_TYPE = "image/png";
+    // 본문 이미지는 프론트가 서빙하는 절대 URL 로 참조한다.
+    // (CID 인라인은 Gmail 웹에서 자주 깨져, 호스팅 이미지가 가장 호환성이 좋다.)
+    private static final String LOGO_PLACEHOLDER = "{{LOGO_URL}}";
+    private static final String CHICK_PLACEHOLDER = "{{CHICK_URL}}";
+    private static final String LOGO_PATH = "/mail/logo.png";
+    private static final String CHICK_PATH = "/mail/chick.png";
 
     /** HTML 을 못 읽는 클라이언트를 위한 대체 본문(multipart/alternative). */
     private static final String PLAIN_TEXT = """
@@ -72,7 +72,10 @@ public class VerificationMailSender {
             return;
         }
 
-        String html = htmlTemplate.replace(LINK_PLACEHOLDER, link);
+        String html = htmlTemplate
+                .replace(LINK_PLACEHOLDER, link)
+                .replace(LOGO_PLACEHOLDER, frontendBaseUrl + LOGO_PATH)
+                .replace(CHICK_PLACEHOLDER, frontendBaseUrl + CHICK_PATH);
         String text = PLAIN_TEXT.formatted(link);
 
         try {
@@ -82,9 +85,6 @@ public class VerificationMailSender {
             helper.setTo(toEmail);
             helper.setSubject(SUBJECT);
             helper.setText(text, html); // (plain, html) → multipart/alternative
-            // setText 이후에 인라인 이미지를 붙여야 cid 참조가 연결된다.
-            helper.addInline(LOGO_CID, new ClassPathResource(LOGO_PATH), IMAGE_TYPE);
-            helper.addInline(CHICK_CID, new ClassPathResource(CHICK_PATH), IMAGE_TYPE);
             sender.send(message);
         } catch (MessagingException e) {
             log.error("인증 메일 발송에 실패했다. to={}", toEmail, e);
