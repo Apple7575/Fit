@@ -54,7 +54,9 @@ class BM25Index:
             raise ValueError("검색 문서가 비어 있습니다")
         self._chunks = list(chunks)
         self._k1, self._b = k1, b
-        self._counts = [Counter(tokenize(f"{c.section_title}\n{c.content}")) for c in self._chunks]
+        # 소속 법인(자회사) 이름은 표 본문에 없고 메타데이터에만 있다. 색인에 넣지 않으면
+        # "우리자산운용 영업이익?" 이 그 표를 찾지 못하고 다른 자회사 표를 고른다(우리금융지주 실측).
+        self._counts = [Counter(tokenize(f"{c.section_title}\n{c.entity_scope or ''}\n{c.content}")) for c in self._chunks]
         self._lengths = [sum(c.values()) for c in self._counts]
         self._avg = sum(self._lengths) / len(self._lengths)
         self._df: Counter[str] = Counter(term for counts in self._counts for term in counts)

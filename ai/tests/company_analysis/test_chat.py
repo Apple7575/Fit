@@ -75,6 +75,21 @@ class RetrievalTest(unittest.TestCase):
         self.assertEqual(fused[0].chunk.evidence_id, "e-risk")
         self.assertEqual(fused[0].retrievers, ("bm25", "vector"))
 
+    def test_bm25_indexes_entity_scope_name(self):
+        from ai.company_analysis.evidence import EvidenceChunk
+
+        base = _business_report().chunks[0]
+        table_a = EvidenceChunk(
+            **{**base.__dict__, "evidence_id": "t-a", "content_type": "TABLE",
+               "content": "표 머리글: 구분 | 2025년\n영업이익 | 22,133", "entity_scope": "우리자산운용", "metadata": {}}
+        )
+        table_b = EvidenceChunk(
+            **{**base.__dict__, "evidence_id": "t-b", "content_type": "TABLE",
+               "content": "표 머리글: 구분 | 2025년\n영업이익 | 18,740", "entity_scope": "우리벤처파트너스", "metadata": {}}
+        )
+        hits = BM25Index([table_a, table_b]).search("우리자산운용 영업이익", top_k=1)
+        self.assertEqual(hits[0].chunk.evidence_id, "t-a", "소속 법인 이름으로 자회사 표를 찾아야 한다")
+
     def test_retriever_falls_back_to_bm25_without_encoder(self):
         hits = CompanyRetriever().search(_business_report(), "환율 위험", top_k=2)
         self.assertEqual(hits[0].chunk.evidence_id, "e-risk")
@@ -122,7 +137,7 @@ class ChatServiceTest(unittest.TestCase):
         ])
         response = service.respond(ChatRequest(corp_code="00164779", message="매출?"))
         self.assertEqual(len(client.calls), 2)
-        self.assertIn("근거와 맞지 않았다", client.calls[1]["messages"][0]["content"])
+        self.assertIn("검증에서 버려졌다", client.calls[1]["messages"][0]["content"])
         self.assertEqual(response.assistant_message.content, INSUFFICIENT_ANSWER)
         self.assertEqual(response.assistant_message.citations, [])
 
@@ -145,6 +160,66 @@ class ChatServiceTest(unittest.TestCase):
         ])
         response = service.respond(ChatRequest(corp_code="00164779", message="HBM?"))
         self.assertEqual(response.assistant_message.content, "HBM4를 공급했습니다.")
+
+    def test_subsidiary_numbers_without_entity_name_are_rejected(self):
+        from ai.company_analysis.evidence import BusinessReport, EvidenceChunk
+
+        base = _business_report()
+        scoped = EvidenceChunk(**{**base.chunks[0].__dict__, "evidence_id": "e-sub", "section_title": "3. 재무상태 및 영업실적",
+                                   "content_type": "TABLE", "content": "표 머리글: 구분 | 2025년\n영업이익 | 22,133", "unit": "백만원",
+                                   "entity_scope": "우리자산운용", "metadata": {}})
+        report = BusinessReport(corp_code="00164779", rcept_no=RCEPT, report_name="r", published_at=base.published_at, chunks=(*base.chunks, scoped))
+        service, client, _ = _service([
+            {"answer": "SK하이닉스의 2025년 영업이익은 22,133백만원입니다.", "citation_ids": ["e-sub"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+            {"answer": "우리자산운용의 2025년 영업이익은 22,133백만원입니다.", "citation_ids": ["e-sub"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        service._reports = FakeReports(report)
+        response = service.respond(ChatRequest(corp_code="00164779", message="영업이익 22,133?"))
+        self.assertEqual(len(client.calls), 2, "주체 오류는 다시 묻는다")
+        self.assertEqual(response.assistant_message.content, "우리자산운용의 2025년 영업이익은 22,133백만원입니다.")
+        payload = _payload(client)
+        entry = next(e for e in payload["evidence"] if e["evidence_id"] == "e-sub")
+        self.assertTrue(entry["content"].startswith("소속 법인: 우리자산운용"))
+
+    def test_wrong_unit_is_repaired_without_retry(self):
+        from ai.company_analysis.evidence import BusinessReport, EvidenceChunk
+
+        base = _business_report()
+        scoped = EvidenceChunk(**{**base.chunks[0].__dict__, "evidence_id": "e-sub", "content_type": "TABLE", "content": "표 머리글: 구분 | 2025년\n영업이익 | 22,133", "unit": "백만원", "entity_scope": "우리자산운용", "metadata": {}})
+        report = BusinessReport(corp_code="00164779", rcept_no=RCEPT, report_name="r", published_at=base.published_at, chunks=(*base.chunks, scoped))
+        service, client, _ = _service([
+            {"answer": "우리자산운용의 2025년 영업이익은 22,133억원입니다.", "citation_ids": ["e-sub"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        service._reports = FakeReports(report)
+        response = service.respond(ChatRequest(corp_code="00164779", message="우리자산운용 영업이익?"))
+        self.assertEqual(len(client.calls), 1, "단위만 틀리면 다시 묻지 않는다")
+        self.assertEqual(response.assistant_message.content, "우리자산운용의 2025년 영업이익은 22,133백만원입니다.")
+
+    def test_retry_note_carries_violation_details(self):
+        service, client, _ = _service([
+            {"answer": "매출은 95.3조원입니다.", "citation_ids": ["report:financials:0"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+            {"answer": "매출은 97.1조원입니다.", "citation_ids": ["report:financials:0"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        response = service.respond(ChatRequest(corp_code="00164779", message="매출?"))
+        self.assertEqual(response.assistant_message.content, "매출은 97.1조원입니다.")
+        note = client.calls[1]["messages"][0]["content"]
+        self.assertIn("95.3", note, "무엇이 어긋났는지 구체적으로 알려 준다")
+
+    def test_parent_numbers_attributed_to_subsidiary_are_rejected(self):
+        from ai.company_analysis.evidence import BusinessReport, EvidenceChunk
+
+        base = _business_report()
+        scoped = EvidenceChunk(**{**base.chunks[0].__dict__, "evidence_id": "e-sub", "content_type": "TABLE", "content": "표 머리글: 구분 | 2025년\n영업이익 | 22,133", "unit": "백만원", "entity_scope": "우리은행", "metadata": {}})
+        report = BusinessReport(corp_code="00164779", rcept_no=RCEPT, report_name="r", published_at=base.published_at, chunks=(*base.chunks, scoped))
+        service, client, _ = _service([
+            {"answer": "우리은행의 2025년 매출은 97.1조원입니다.", "citation_ids": ["report:financials:0"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+            {"answer": "우리은행의 2025년 영업이익은 22,133백만원입니다.", "citation_ids": ["e-sub"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        service._reports = FakeReports(report)
+        response = service.respond(ChatRequest(corp_code="00164779", message="우리은행 실적?"))
+        self.assertEqual(len(client.calls), 2)
+        self.assertIn("우리은행 주어 문장의 숫자", client.calls[1]["messages"][0]["content"])
+        self.assertEqual(response.assistant_message.content, "우리은행의 2025년 영업이익은 22,133백만원입니다.")
 
     def test_needs_news_is_recorded(self):
         service, _, _ = _service([
