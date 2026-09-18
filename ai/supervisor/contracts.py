@@ -9,7 +9,7 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
-AgentName = Literal["jd", "position", "writing", "news"]
+AgentName = Literal["jd", "position", "writing", "news", "company"]
 
 
 class SupervisorDocument(StrictModel):
@@ -61,6 +61,14 @@ class NewsAgentContext(StrictModel):
         return value
 
 
+class CompanyAgentContext(StrictModel):
+    """기업 분석 담당. 공시(사업보고서·확정 지표) 리포트 위에서 답한다. 제출 문서가 없어도 된다."""
+
+    corp_code: str = Field(pattern=r"^[0-9]{8}$")
+    # 지원 직무 맥락이 있으면 직무 관점 답변에 쓴다.
+    job_context_id: str | None = Field(default=None, min_length=1, max_length=80)
+
+
 class PositionContext(StrictModel):
     position_name: str = Field(min_length=1, max_length=200)
     priority_requirements: list[
@@ -104,6 +112,7 @@ class AgentContexts(StrictModel):
     position: PositionAgentContext | None = None
     writing: WritingAgentContext | None = None
     news: NewsAgentContext | None = None
+    company: CompanyAgentContext | None = None
 
 
 class SupervisorRunRequest(StrictModel):
@@ -167,7 +176,7 @@ ToolName = Literal[
 ]
 
 
-ToolCaller = Literal["jd", "position", "writing", "news", "supervisor"]
+ToolCaller = Literal["jd", "position", "writing", "news", "company", "supervisor"]
 
 
 class ToolCall(StrictModel):

@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -144,8 +144,43 @@ def chat_schema(citation_ids: list[str]) -> dict[str, Any]:
 _ID_LEAK = re.compile(r"\s*\(?\s*(?:evidence_id\s*[:：]\s*)?(?:dart-[A-Za-z0-9_\-]+|report:[a-z_]+(?::\d+)?)(?:\s*,\s*(?:dart-[A-Za-z0-9_\-]+|report:[a-z_]+(?::\d+)?))*\s*\)?")
 
 
+_FOOTNOTE_TAIL = re.compile(r"(?<=[.다요!?])\s*\d{1,2}\s*$")
+_NUMBER_TOKEN = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
+
+
 def _clean(text: Any) -> str:
-    return _ID_LEAK.sub("", re.sub(r"[ \t]+", " ", str(text or ""))).strip()
+    cleaned = _ID_LEAK.sub("", re.sub(r"[ \t]+", " ", str(text or ""))).strip()
+    # 모델이 문장 끝에 각주 번호("…있습니다.1")를 붙이는 일이 있다(총괄 lead 실측).
+    return _FOOTNOTE_TAIL.sub("", cleaned).strip()
+
+
+MAX_EXTRA_HOLDERS = 4
+
+
+def _holders_of(text: str, bundle: ChatEvidence, cited_ids: Sequence[str] = ()) -> list[str]:
+    """인용에 없는 숫자를 담은 근거 ID(최대 4건). 인용을 빠뜨린 문장에 근거를 보태는 데 쓴다.
+
+    숫자는 온전한 토큰으로만 맞춘다("35.5" 가 "135.5" 에 맞지 않게). 이미 인용한 근거에 있는 숫자는 건너뛴다.
+    """
+    already = " ".join(bundle.cited_texts[i].content for i in cited_ids if i in bundle.cited_texts).replace(",", "")
+    numbers = {
+        m.group(0).replace(",", "")
+        for m in _NUMBER_TOKEN.finditer(text)
+        if not re.fullmatch(r"(?:19|20)\d{2}", m.group(0))
+    }
+    missing = [n for n in numbers if not re.search(rf"(?<![\d.]){re.escape(n)}(?![\d.])", already)]
+    if not missing:
+        return []
+    holders: list[str] = []
+    for evidence_id, cited in bundle.cited_texts.items():
+        if evidence_id in cited_ids:
+            continue
+        plain = cited.content.replace(",", "")
+        if any(re.search(rf"(?<![\d.]){re.escape(n)}(?![\d.])", plain) for n in missing):
+            holders.append(evidence_id)
+        if len(holders) >= MAX_EXTRA_HOLDERS:
+            break
+    return holders
 
 
 class CompanyChatService:
@@ -232,6 +267,50 @@ class CompanyChatService:
             usage=usage,
         )
 
+    def answer(
+        self,
+        *,
+        corp_code: str,
+        message: str,
+        history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """저장 없이 한 번 답한다. 총괄(supervisor)이 담당으로 호출할 때 쓴다.
+
+        총괄은 대화를 스스로 들고 있으므로 여기서는 저장하지 않고, 결과를 총괄 규격에 맞는
+        평범한 dict 로 돌려준다: message, citations, needs, follow_up_questions, report_stage.
+        """
+        stored = self._analysis.get_or_generate(corp_code)
+        report = stored.report
+        if report is None:
+            raise RuntimeError(f"리포트를 만들 수 없습니다: {corp_code}")
+        bundle = ChatEvidence()
+        report_evidence(report, bundle)
+        business_report = self._reports.latest(corp_code)
+        if business_report is not None:
+            chunk_evidence(self._retriever.search(business_report, message, top_k=MAX_EVIDENCE), bundle)
+        turns = [
+            StoredMessage("h", "h", str(item.get("role", "USER")).upper(), str(item.get("content", "")), self._clock())
+            for item in (history or [])[-MAX_HISTORY:]
+            if str(item.get("content", "")).strip()
+        ]
+        output, usage = self._ask(report, bundle, turns, message)
+        answer, citations, needs = self._verify(output, bundle)
+        if answer is None:
+            output, usage = self._ask(report, bundle, turns, message, retry_note=True)
+            answer, citations, needs = self._verify(output, bundle)
+        if answer is None:
+            answer, citations = INSUFFICIENT_ANSWER, []
+        return {
+            "corp_code": corp_code,
+            "corp_name": report.corp_name,
+            "message": answer,
+            "citations": [c.model_dump(mode="json", exclude_none=True) for c in citations],
+            "needs": [n.model_dump(mode="json") for n in needs],
+            "follow_up_questions": [q.strip()[:200] for q in output.get("follow_up_questions") or [] if isinstance(q, str) and q.strip()][:3],
+            "report_stage": report.stage,
+            "usage": usage,
+        }
+
     def _conversation(self, request: ChatRequest) -> Conversation:
         if request.conversation_id is None:
             now = self._clock()
@@ -272,7 +351,12 @@ class CompanyChatService:
             return None, [], needs
         cited = [bundle.cited_texts[i] for i in ids]
         if numeric_claim_violations(answer, cited) or share_claim_violations(answer, cited):
-            return None, [], needs
+            # 모델이 인용을 빠뜨렸을 수 있다(실측: 재무 표만 인용하고 이익률 표는 안 인용). 이번에 넣어 준
+            # 근거 전체에서 다시 찾아 통과하면 숫자를 담은 근거를 인용에 보태고, 그래도 안 되면 버린다.
+            everything = list(bundle.cited_texts.values())
+            if numeric_claim_violations(answer, everything) or share_claim_violations(answer, everything):
+                return None, [], needs
+            ids = ids + _holders_of(answer, bundle, ids)
         citations: list[Citation] = []
         seen: set[str] = set()
         for i in ids:

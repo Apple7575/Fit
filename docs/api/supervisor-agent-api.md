@@ -1,7 +1,7 @@
 # Supervisor Agent API v1
 
 이 문서는 Spring 백엔드가 호출하는 Python 총괄(supervisor) 에이전트의 계약이다.
-총괄은 한 요청 안에서 `jd`, `position`, `writing`, `news` 담당 중 필요한 것을 선택해
+총괄은 한 요청 안에서 `jd`, `position`, `writing`, `news`, `company` 담당 중 필요한 것을 선택해
 실행하고 결과를 종합한다. 총괄은 대화·문서·결과를 저장하지 않는 무상태 서비스다.
 
 > **버전 안정성**: 요청 형식과 응답의 기존 필드는 고정이다. 이후 작업에서 응답에
@@ -69,6 +69,7 @@ Content-Type: application/json
 | `position` | `rubric_id` = `"experience-depth-v1"`, `position_context.position_name` (1~200자), `position_context.priority_requirements[]` (최대 20개, 각 1~500자) | 직무 경험 구체성 검토 |
 | `writing` | `question` (1~500자), `char_limit` (정수 1~50,000) | 자소서 첨삭. 다른 담당 결과를 피드백으로 받아 **분석 담당 뒤에** 실행 |
 | `news` | `job_context_id` (1~80자), `corp_code` (숫자 8자리) | 기업·산업·직무 변화의 기사 근거 분석 |
+| `company` | `corp_code` (숫자 8자리), `job_context_id` (선택) | 공시(사업보고서·확정 지표) 기반 기업 분석 리포트와 질의응답. 제출 문서 없이 실행 가능. 뉴스가 필요하면 `needs: news` 를 내어 총괄이 뉴스 담당에 1홉 위임. 상세: `docs/api/company-analysis-agent.md` |
 
 ```json
 {

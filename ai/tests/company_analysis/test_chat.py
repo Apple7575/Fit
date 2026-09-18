@@ -126,6 +126,26 @@ class ChatServiceTest(unittest.TestCase):
         self.assertEqual(response.assistant_message.content, INSUFFICIENT_ANSWER)
         self.assertEqual(response.assistant_message.citations, [])
 
+    def test_uncited_numbers_present_elsewhere_in_bundle_are_accepted_and_cited(self):
+        # 매출은 report:financials:0(재무 표), 이익률 48.6% 는 report:financials:1(산출 지표)에 있다. 모델이 후자를 빠뜨렸다.
+        service, client, _ = _service([
+            {"answer": "2025년 매출 97.1조원, 영업이익률 48.6%입니다.", "citation_ids": ["report:financials:0"],
+             "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        response = service.respond(ChatRequest(corp_code="00164779", message="매출과 이익률?"))
+        self.assertEqual(len(client.calls), 1, "전체 근거에 있으면 다시 묻지 않는다")
+        self.assertEqual(response.assistant_message.content, "2025년 매출 97.1조원, 영업이익률 48.6%입니다.")
+        sources = [c.source_id for c in response.assistant_message.citations]
+        self.assertTrue(any(src.endswith(":revenue") for src in sources), "확정 지표 인용이 남는다")
+        self.assertGreaterEqual(len(sources), 1)
+
+    def test_footnote_marker_is_stripped(self):
+        service, _, _ = _service([
+            {"answer": "HBM4를 공급했습니다.1", "citation_ids": ["report:intro"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        response = service.respond(ChatRequest(corp_code="00164779", message="HBM?"))
+        self.assertEqual(response.assistant_message.content, "HBM4를 공급했습니다.")
+
     def test_needs_news_is_recorded(self):
         service, _, _ = _service([
             {"answer": "공시에는 최근 주가 정보가 없습니다.", "citation_ids": [], "needs_news": True,

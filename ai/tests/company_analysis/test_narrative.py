@@ -253,6 +253,23 @@ class EnricherTest(unittest.TestCase):
         self.assertEqual([s.type for s in report.sections], ["BUSINESS", "FINANCIALS", "COMPETITORS", "SWOT"])
         CompanyReport.model_validate_json(report.model_dump_json())
 
+    def test_uncited_numbers_from_other_bundle_evidence_are_accepted(self):
+        outputs = {
+            "FINANCIALS": {
+                "status": "AVAILABLE",
+                "summary": {"text": "2025년 매출 97.1조원, 영업이익률 48.6%입니다.", "citation_ids": ["metrics:00164779:financials"]},
+                "growth": {"items": []}, "profitability": {"items": []}, "health": {"items": []},
+            },
+        }
+        enricher, _ = self._enricher(outputs)
+        enricher._plans = (PLANS["FINANCIALS"],)
+        base = build_deterministic_report(_facts(), generated_at=NOW)
+        report = enricher.enrich(_facts(), base)
+        financials = next(s for s in report.sections if s.type == "FINANCIALS")
+        self.assertEqual(financials.blocks[0].kind, "text")
+        self.assertLessEqual({"00164779:financials", "00164779:ratios"}, {c.source_id for c in financials.blocks[0].citations}, "이익률 표가 인용에 보태진다")
+        self.assertFalse(any("숫자가 근거와 맞지 않는" in w for w in report.warnings))
+
     def test_llm_failure_in_one_section_keeps_others(self):
         outputs = {"INTRO": {"status": "AVAILABLE", "intro": {"text": "소개 문장입니다.", "citation_ids": ["e-overview"]}}}
         enricher, _ = self._enricher(outputs)

@@ -39,6 +39,7 @@ DEFAULT_TOOL_POLICY: dict[str, frozenset[str]] = {
     "news": frozenset({"get_job_context", "list_news", "search_news_external"}),
     "position": frozenset(),  # 제출 문서만 사용
     "writing": frozenset(),  # 다른 담당의 피드백만 사용
+    "company": frozenset(),  # 자기 리포트 저장소와 공시 청크만 사용(총괄 도구 없음)
     "supervisor": frozenset({"get_conversation"}),
 }
 

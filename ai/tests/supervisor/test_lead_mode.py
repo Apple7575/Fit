@@ -92,7 +92,7 @@ class LeadModeContractTest(unittest.TestCase):
         self.assertIsNone(SupervisorRunRequest.model_validate(base).lead)
         self.assertEqual(SupervisorRunRequest.model_validate({**base, "lead": "jd"}).lead, "jd")
         with self.assertRaises(ValueError):
-            SupervisorRunRequest.model_validate({**base, "lead": "company"})
+            SupervisorRunRequest.model_validate({**base, "lead": "unknown"})
 
 
 class LeadModeApiTest(unittest.TestCase):

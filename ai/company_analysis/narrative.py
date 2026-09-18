@@ -442,15 +442,38 @@ def _clean(text: Any, title: str | None = None) -> str:
     return cleaned
 
 
+_NUMBER_TOKEN = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
+
+
 def _check(text: str, ids: Sequence[str], bundle: EvidenceBundle) -> list[Citation]:
-    """숫자 검사를 통과하면 인용 목록을, 아니면 빈 목록을 돌려준다."""
+    """숫자 검사를 통과하면 인용 목록을, 아니면 빈 목록을 돌려준다.
+
+    인용한 근거에 숫자가 없어도 이번 호출에 넣어 준 근거 전체에는 있을 수 있다(모델이 인용을 빠뜨린 경우,
+    실측: 재무 표만 인용하고 이익률 표는 안 인용). 그때는 숫자를 담은 근거를 인용에 보태고 통과시킨다.
+    """
     cited = [bundle.cited_texts[i] for i in ids if i in bundle.cited_texts]
     citations = [bundle.citations[i] for i in ids if i in bundle.citations]
     if not citations:
         return []
-    if numeric_claim_violations(text, cited) or share_claim_violations(text, cited):
+    if not (numeric_claim_violations(text, cited) or share_claim_violations(text, cited)):
+        return citations
+    everything = list(bundle.cited_texts.values())
+    if numeric_claim_violations(text, everything) or share_claim_violations(text, everything):
         return []
-    return citations
+    # 인용한 근거에 없는 숫자만, 온전한 토큰으로 맞는 근거만, 최대 4건 보탠다("35.5" 가 "135.5" 에 맞지 않게).
+    already = " ".join(row.content for row in cited).replace(",", "")
+    numbers = {m.group(0).replace(",", "") for m in _NUMBER_TOKEN.finditer(text) if not re.fullmatch(r"(?:19|20)\d{2}", m.group(0))}
+    missing = [n for n in numbers if not re.search(rf"(?<![\d.]){re.escape(n)}(?![\d.])", already)]
+    extra: list[Citation] = []
+    for evidence_id, row in bundle.cited_texts.items():
+        if evidence_id in ids:
+            continue
+        plain = row.content.replace(",", "")
+        if any(re.search(rf"(?<![\d.]){re.escape(n)}(?![\d.])", plain) for n in missing):
+            extra.append(bundle.citations[evidence_id])
+        if len(extra) >= 4:
+            break
+    return citations + extra
 
 
 def _dedupe_citations(citations: Sequence[Citation]) -> list[Citation]:
