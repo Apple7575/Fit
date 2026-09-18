@@ -132,6 +132,41 @@ class EndToEndTest(unittest.TestCase):
         after = {p.name: p.read_bytes() for p in (self.raw / RUN_ID).glob("*.xml")}
         self.assertEqual(before, after)
 
+    def test_다음_수집에서_같은_기사를_다시_봐도_4번은_통과한다(self):
+        """증분 수집의 정상 동작이다. 실행 간 재관측을 실패로 보면 안 된다.
+
+        실제로 2026-09-18 증분 수집에서 재관측 2,487건이 전부 실패로 잡혔다.
+        기사 식별자는 내용으로 만들므로 같은 기사에 같은 키가 붙는 것이 맞다.
+        """
+        plan = fixtures.daily_plan(TARGET_START, TARGET_END)
+        # 같은 기사(g1)를 다음 실행에서 다시 관측한다. 새 기사 g8 도 하나 들어온다.
+        fixtures.write_run(
+            self.raw / "20260907T001000Z-abcdef03",
+            [("day0", fixtures.feed([]), plan[0][0], plan[0][1]),
+             ("day1", fixtures.feed([
+                 fixtures.item("삼성전자 테일러 공장 가동", "https://n1.test/a1", "g1", IN_WINDOW),
+                 fixtures.item("삼성전자 새 기사", "https://n8.test/a8", "g8", IN_WINDOW)]),
+              plan[1][0], plan[1][1])],
+        )
+        for run_id in rawstore.list_runs():
+            run = rawstore.load_run(run_id)
+            manifest.write(manifest.build(run, TARGET_START, TARGET_END))
+            stage.write(stage.stage_run(run, self.mapper, TARGET_START, TARGET_END))
+
+        check = verify.check_04_article_key_unique()
+        self.assertEqual(check.status, "pass", check.detail)
+        self.assertEqual(check.detail["runs"], 2)
+        self.assertEqual(check.detail["duplicate_keys_by_run"], {})
+        self.assertEqual(check.detail["reobserved_across_runs"], 1)
+
+        # 한 실행 안의 중복은 여전히 실패다 — 정제 단계가 대표 1건으로 접어야 한다.
+        staged = self.staged / RUN_ID / "articles.csv"
+        lines = staged.read_text(encoding="utf-8").splitlines(keepends=True)
+        staged.write_text("".join(lines + [lines[1]]), encoding="utf-8")
+        repeated = verify.check_04_article_key_unique()
+        self.assertEqual(repeated.status, "fail")
+        self.assertEqual(list(repeated.detail["duplicate_keys_by_run"]), [RUN_ID])
+
     def test_매핑_실패가_섞이면_시드에서_빠진다(self):
         # 검색어를 기업 마스터에 없는 이름으로 바꿔 다시 정제한다.
         plan = fixtures.daily_plan(TARGET_START, TARGET_END)
