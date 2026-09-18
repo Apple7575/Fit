@@ -25,4 +25,25 @@ public class AgentExecutorConfig {
         executor.setAwaitTerminationSeconds(30);
         return executor;
     }
+
+    /**
+     * 자동 검토가 방을 하나씩 도는 자리.
+     *
+     * <p>스레드 하나뿐이다. 자동 검토는 방 여러 개를 연달아 도는데, 한 방을 이끄는 스레드는
+     * 그 방 에이전트가 끝날 때까지 기다린다. 이끄는 스레드가 여럿이면 위 풀의 자리를 모두
+     * 차지해 에이전트가 시작조차 못 하고, 서로를 기다리며 멈춘다.
+     *
+     * <p>이끄는 일을 위 풀과 나눠 둔 것도 같은 이유다. 같은 풀에 섞으면 자리 다툼이 그대로다.
+     */
+    @Bean(name = "autoReviewExecutor")
+    public ThreadPoolTaskExecutor autoReviewExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        // 자소서 하나가 방 여섯을 깔고, 그 사이 다른 자소서를 열 수도 있다.
+        executor.setQueueCapacity(64);
+        executor.setThreadNamePrefix("auto-review-");
+        executor.setWaitForTasksToCompleteOnShutdown(false);
+        return executor;
+    }
 }

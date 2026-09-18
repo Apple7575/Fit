@@ -21,10 +21,13 @@ import com.ssafy.companyanalysis.global.error.ErrorCode;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,19 +50,22 @@ public class RoomService {
     private final CompanyRepository companyRepository;
     private final RoomAgentValidator validator;
     private final AgentCatalogProperties properties;
+    private final AutoReviewStarter autoReviewStarter;
 
     public RoomService(RoomRepository roomRepository,
                        JobContextRepository jobContextRepository,
                        CoverLetterRepository coverLetterRepository,
                        CompanyRepository companyRepository,
                        RoomAgentValidator validator,
-                       AgentCatalogProperties properties) {
+                       AgentCatalogProperties properties,
+                       AutoReviewStarter autoReviewStarter) {
         this.roomRepository = roomRepository;
         this.jobContextRepository = jobContextRepository;
         this.coverLetterRepository = coverLetterRepository;
         this.companyRepository = companyRepository;
         this.validator = validator;
         this.properties = properties;
+        this.autoReviewStarter = autoReviewStarter;
     }
 
     @Transactional
@@ -103,7 +109,46 @@ public class RoomService {
         }
         roomRepository.saveAll(created);
 
+        // 갓 깔린 방뿐 아니라 전에 만들어져 아직 비어 있는 방도 검토한다. 방이 언제 만들어졌는지는
+        // 사용자에게 아무 의미가 없다 — 들어가서 비어 있으면 안 되는 것은 마찬가지다.
+        List<Room> all = new ArrayList<>(existing);
+        all.addAll(created);
+        startAutoReviewAfterCommit(userId, all);
+
         return list(userId, coverLetterId);
+    }
+
+    /**
+     * 아직 아무 말도 오가지 않은 방을 미리 검토해 둔다. 사용자가 무엇을 봐 달라고 적기 전에
+     * 결과가 먼저 보여야 한다.
+     *
+     * <p>말이 오간 방을 거르는 일은 여기서 하지 않는다. 지금 도는 중인 턴까지 봐야 하는데 그것은
+     * 대화를 들고 있는 {@link TurnService} 의 몫이다. 여기서는 후보만 넘긴다.
+     *
+     * <p>커밋한 뒤에 띄운다. 검토 스레드가 곧바로 방과 자소서를 읽는데, 열린 트랜잭션 안에서
+     * 띄우면 아직 커밋되지 않은 행을 못 본다.
+     *
+     * <p>총괄 논의 방을 먼저 돌린다. 화면이 처음 여는 방이 그것이라 거기부터 차야 한다.
+     */
+    private void startAutoReviewAfterCommit(Long userId, List<Room> candidates) {
+        if (candidates.isEmpty()) {
+            return;
+        }
+        List<Long> roomIds = candidates.stream()
+                .sorted(Comparator.comparingInt((Room room) -> room.getAgents().size()).reversed())
+                .map(Room::getId)
+                .toList();
+
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            autoReviewStarter.startAll(userId, roomIds);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                autoReviewStarter.startAll(userId, roomIds);
+            }
+        });
     }
 
     /**

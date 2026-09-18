@@ -1,16 +1,21 @@
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { characterForAgent } from '../../components/brand/characters';
 import { useEffect, useRef, useState } from 'react';
+import { agentPalette } from './agentStyle';
 import type { RoomMessage, TurnStatus } from './types';
 
 interface MessageThreadProps {
   messages: RoomMessage[];
-  /** 도는 중인 턴. 아직 답하지 않은 에이전트를 자리만 먼저 보여준다. */
+  /** 도는 중인 턴. 아직 자리도 생기지 않은 에이전트를 먼저 보여준다. */
   running: TurnStatus | null;
   agentNames: Record<string, string>;
 }
 
 const rowId = (messageId: number) => `room-message-${messageId}`;
+
+/** 자동 검토 턴의 뿌리. 사용자가 한 말이 아니므로 말풍선이 아니라 구분선으로 그린다. */
+const isAutoReview = (message: RoomMessage) =>
+  message.role === 'user' && (message.content === null || message.content.trim() === '');
 
 /**
  * 총괄이 종합에 쓴 메시지로 이동하는 칩.
@@ -56,7 +61,63 @@ function BasedOnChips({
   );
 }
 
-function MessageRow({
+/**
+ * 말풍선 꼬리. 말한 사람 쪽으로 돌린 네모다.
+ *
+ * <p>바탕색이 불투명해야 말풍선과 겹치는 자리가 진해지지 않는다. 그래서 색은 투명도가 아니라
+ * 흰색을 섞어 만든다(agentStyle).
+ */
+function Tail({ side, tint, line }: { side: 'left' | 'right'; tint: string; line: string }) {
+  const place =
+    side === 'left'
+      ? 'left-[-5px] top-[16px] border-b border-l'
+      : 'right-[-5px] top-[16px] border-t border-r';
+  return (
+    <span
+      aria-hidden
+      className={`absolute h-[10px] w-[10px] rotate-45 ${place}`}
+      style={{ backgroundColor: tint, borderColor: line }}
+    />
+  );
+}
+
+/** 사용자가 직접 건 말. 오른쪽에 붙어 에이전트 쪽과 갈린다. */
+function UserRow({ message, ring }: { message: RoomMessage; ring: string }) {
+  return (
+    <li id={rowId(message.messageId)} className="flex justify-end">
+      <div
+        className={`relative max-w-[78%] rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 ${ring}`}
+      >
+        <Tail side="right" tint="#ffffff" line="#e2e8f0" />
+        <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
+          {message.content}
+        </p>
+      </div>
+    </li>
+  );
+}
+
+/**
+ * 자소서를 받아 알아서 검토했다는 표시.
+ *
+ * <p>사용자가 하지 않은 말을 말풍선으로 지어내지 않는다. 대신 아래 답변들이 어디서 나온
+ * 것인지는 알려 줘야 한다 — 묻지도 않았는데 답이 와 있으면 무엇을 본 것인지 모른다.
+ */
+function AutoReviewRow({ message }: { message: RoomMessage }) {
+  return (
+    <li id={rowId(message.messageId)} className="flex items-center gap-3 py-1">
+      <span className="h-px flex-1 bg-slate-200" />
+      <span className="shrink-0 text-[12px] text-slate-400">자소서를 받아 먼저 검토했습니다</span>
+      <span className="h-px flex-1 bg-slate-200" />
+    </li>
+  );
+}
+
+/** 아직 답이 오지 않은 자리에 띄울 한 줄. */
+const waitingText = (status: string) =>
+  status === 'RUNNING' ? '살펴보는 중…' : '차례를 기다리는 중…';
+
+function AgentRow({
   message,
   focused,
   lookup,
@@ -67,42 +128,58 @@ function MessageRow({
   lookup: Map<number, RoomMessage>;
   onJump: (messageId: number) => void;
 }) {
-  const ring = focused ? 'ring-2 ring-blue-300' : '';
-
-  if (message.role === 'user') {
-    return (
-      <li id={rowId(message.messageId)} className="flex justify-end">
-        <div
-          className={`max-w-[78%] rounded-xl border border-slate-200 bg-white px-3 py-2.5 ${ring}`}
-        >
-          <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
-            {message.content}
-          </p>
-        </div>
-      </li>
-    );
-  }
-
+  const palette = agentPalette(message.agentKey);
+  const lead = message.agentKey === 'supervisor';
   const failed = message.status === 'FAILED';
+  const waiting = message.status === 'PENDING' || message.status === 'RUNNING';
+
   return (
-    <li id={rowId(message.messageId)} className={`flex gap-2.5 rounded-lg ${ring}`}>
-      <span className="mt-0.5 shrink-0">
-        <CharacterSlot character={characterForAgent(message.agentKey)} size={28} />
+    <li
+      id={rowId(message.messageId)}
+      className={`flex gap-2.5 rounded-lg ${focused ? 'ring-2 ring-blue-300' : ''}`}
+    >
+      <span className={`mt-0.5 shrink-0 ${waiting ? 'opacity-50' : ''}`}>
+        <CharacterSlot
+          character={characterForAgent(message.agentKey)}
+          mood={message.status === 'RUNNING' ? 'wow' : waiting ? 'sleepy' : 'neutral'}
+          size={28}
+        />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="mb-1 text-[12px] text-slate-500">{message.agentName ?? message.agentKey}</p>
+
+      {/* 총괄은 다른 담당의 말을 모은 것이라 한 명의 의견처럼 좁게 두지 않는다. */}
+      <div className={`min-w-0 ${lead ? 'flex-1' : 'max-w-[82%]'}`}>
+        <p className="mb-1 flex items-center gap-1.5 text-[12px] font-medium">
+          <span style={{ color: palette.ink }}>{message.agentName ?? message.agentKey}</span>
+          {lead && (
+            <span className="rounded-full bg-slate-100 px-1.5 py-px text-[10px] text-slate-500">
+              종합
+            </span>
+          )}
+        </p>
 
         {failed ? (
-          <p
-            role="status"
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] leading-relaxed text-red-700"
-          >
-            {message.error ?? '답하지 못했습니다.'}
-          </p>
+          <div className="relative rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2.5">
+            <Tail side="left" tint="#fef2f2" line="#fecaca" />
+            <p role="status" className="text-[13px] leading-relaxed text-red-700">
+              {message.error ?? '답하지 못했습니다.'}
+            </p>
+          </div>
         ) : (
-          <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
-            {message.content}
-          </p>
+          <div
+            className="relative rounded-2xl border px-3.5 py-2.5"
+            style={{ backgroundColor: palette.tint, borderColor: palette.line }}
+          >
+            <Tail side="left" tint={palette.tint} line={palette.line} />
+            {waiting ? (
+              <p role="status" className="text-[13px] text-slate-400">
+                {waitingText(message.status)}
+              </p>
+            ) : (
+              <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
+                {message.content}
+              </p>
+            )}
+          </div>
         )}
 
         <BasedOnChips basedOn={message.basedOn} lookup={lookup} onJump={onJump} />
@@ -111,7 +188,7 @@ function MessageRow({
   );
 }
 
-/** 아직 답하지 않은 에이전트 자리. 누가 남았는지 보여야 사용자가 기다릴 수 있다. */
+/** 자리조차 아직 생기지 않은 에이전트. 누가 남았는지 보여야 사용자가 기다릴 수 있다. */
 function PendingRow({
   agentKey,
   name,
@@ -121,6 +198,7 @@ function PendingRow({
   name: string;
   status: string;
 }) {
+  const palette = agentPalette(agentKey);
   return (
     <li className="flex gap-2.5">
       <span className="mt-0.5 shrink-0 opacity-50">
@@ -130,11 +208,17 @@ function PendingRow({
           size={28}
         />
       </span>
-      <div>
-        <p className="mb-0.5 text-[12px] text-slate-500">{name}</p>
-        <p className="text-[13px] text-slate-400">
-          {status === 'RUNNING' ? '살펴보는 중…' : '차례를 기다리는 중…'}
+      <div className="max-w-[82%] min-w-0">
+        <p className="mb-1 text-[12px] font-medium" style={{ color: palette.ink }}>
+          {name}
         </p>
+        <div
+          className="relative rounded-2xl border px-3.5 py-2.5"
+          style={{ backgroundColor: palette.tint, borderColor: palette.line }}
+        >
+          <Tail side="left" tint={palette.tint} line={palette.line} />
+          <p className="text-[13px] text-slate-400">{waitingText(status)}</p>
+        </div>
       </div>
     </li>
   );
@@ -174,15 +258,29 @@ export function MessageThread({ messages, running, agentNames }: MessageThreadPr
 
   return (
     <ul aria-label="대화 내역" className="flex flex-col gap-4">
-      {messages.map((message) => (
-        <MessageRow
-          key={message.messageId}
-          message={message}
-          focused={focusedId === message.messageId}
-          lookup={lookup}
-          onJump={jumpTo}
-        />
-      ))}
+      {messages.map((message) => {
+        if (isAutoReview(message)) {
+          return <AutoReviewRow key={message.messageId} message={message} />;
+        }
+        if (message.role === 'user') {
+          return (
+            <UserRow
+              key={message.messageId}
+              message={message}
+              ring={focusedId === message.messageId ? 'ring-2 ring-blue-300' : ''}
+            />
+          );
+        }
+        return (
+          <AgentRow
+            key={message.messageId}
+            message={message}
+            focused={focusedId === message.messageId}
+            lookup={lookup}
+            onJump={jumpTo}
+          />
+        );
+      })}
       {waiting.map((agent) => (
         <PendingRow
           key={agent.agentKey}
