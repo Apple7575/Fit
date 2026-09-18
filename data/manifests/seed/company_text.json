@@ -1,6 +1,6 @@
 {
   "table": "company_text",
-  "generated_at": "2026-09-17T07:04:17.362837+00:00",
+  "generated_at": "2026-09-18T07:34:56.477072+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -43,7 +43,7 @@
     "V26__cover_letter_context_corp.sql"
   ],
   "source": "staged/business_report/main_product.csv (표 파싱) + staged/business_report/text_llm.csv (LLM 추출)",
-  "seed_rows": 80141,
+  "seed_rows": 95526,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
@@ -58,18 +58,18 @@
     "seq 는 사업보고서 기재 순서다. 글 항목은 늘 0 이다",
     "근거가 없으면 행을 만들지 않는다 (팀장 기준 4항)"
   ],
-  "distinct_corp_codes": 2337,
+  "distinct_corp_codes": 2349,
   "fiscal_years": [
     2021,
     2025
   ],
   "build_stats": {
-    "business_keyword": 10419,
-    "main_business": 1445,
+    "business_keyword": 19147,
+    "main_business": 2701,
     "main_product": 61211,
-    "new_business": 816,
-    "rd_field": 5977,
-    "strategy_change": 273,
-    "행": 80141
+    "new_business": 1331,
+    "rd_field": 10647,
+    "strategy_change": 489,
+    "행": 95526
   }
 }
