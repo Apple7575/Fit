@@ -1,24 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestFollowup } from './api';
-import { useSpeech, useWebcam } from './hooks';
+import { computeDelivery, countSyllables, PACE_MAX, PACE_MIN, type ClipEvent } from './delivery';
+import { useAudioMeter, useRecorder, useSpeech, useWebcam } from './hooks';
+import { saveItem } from './localVideo';
 import { SOURCE_BADGE } from './styles';
+import { useVision } from './vision';
 import type { Followup, GeneratedQuestion, InterviewConfig, SessionItem } from './types';
 
 interface InterviewSessionProps {
   config: InterviewConfig;
   questions: GeneratedQuestion[];
+  /** 로컬 녹화를 묶는 세션 id. 저장 후 서버 면접 id 와 매칭한다. */
+  localSessionId: string;
   onFinish: (items: SessionItem[]) => void;
   onExit: () => void;
 }
 
 type Phase = 'ready' | 'prep' | 'recording' | 'reviewing';
+type FupStatus = 'idle' | 'loading' | 'result' | 'empty' | 'error';
 
 const PREP_SECONDS = 3;
 
-/** 영상 면접 진행. 문항별 웹캠 녹화 + 실시간 STT. 답변 후 옵션으로 꼬리질문을 받는다. 영상은 저장하지 않는다. */
-export function InterviewSession({ config, questions, onFinish, onExit }: InterviewSessionProps) {
-  const { videoRef, status } = useWebcam();
+/** 영상 면접 진행. 문항별 웹캠 녹화 + 실시간 STT. 답변 후 옵션으로 꼬리질문을 받는다. 영상은 이 브라우저에만 저장된다. */
+export function InterviewSession({ config, questions, localSessionId, onFinish, onExit }: InterviewSessionProps) {
+  const { videoRef, status, stream } = useWebcam();
   const speech = useSpeech();
+  const recorder = useRecorder(stream);
+  const meter = useAudioMeter(stream);
+  const vision = useVision(videoRef);
 
   const [queue, setQueue] = useState<SessionItem[]>(() =>
     questions.map((q) => ({ question: q.question, sourceType: q.sourceType, transcript: '', isFollowup: false })),
@@ -28,9 +37,13 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
   const [prep, setPrep] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [fup, setFup] = useState<Followup | null>(null);
-  const [fupLoading, setFupLoading] = useState(false);
+  // 꼬리질문 요청 상태. idle=아직 요청 안 함, loading=요청 중, result=질문 받음(fup),
+  // empty=더 물을 게 없음(needed=false), error=요청 실패(재시도 가능).
+  const [fupStatus, setFupStatus] = useState<FupStatus>('idle');
   const followed = useRef<Set<number>>(new Set());
   const timerRef = useRef<number | null>(null);
+  // 진행 중인 꼬리질문 요청이 어느 문항 것인지. 응답이 늦게 와도 이미 다음으로 넘어갔으면 버린다.
+  const fupReqIdx = useRef<number | null>(null);
 
   const current = queue[idx];
   const isLast = idx + 1 >= queue.length;
@@ -72,28 +85,83 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
     setPhase('recording');
     timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
     speech.start(setTranscript);
+    recorder.start();
+    meter.start();
+    vision.start();
   };
 
   const stopRecording = async () => {
     stopTimer();
     speech.stop();
     setPhase('reviewing');
+
+    // 녹화·음성·영상 계측 종료 → 전달·비언어 지표 계산 후 이 브라우저(IndexedDB)에만 저장. 실패해도 면접 흐름은 계속된다.
+    const visionResult = vision.stop();
+    const clip = await recorder.stop();
+    const audio = meter.stop();
     const answer = queue[idx].transcript.trim();
-    if (config.followupEnabled && !current.isFollowup && answer.length > 0 && !followed.current.has(idx)) {
-      setFupLoading(true);
-      try {
-        const followup = await requestFollowup({
-          question: current.question,
-          transcript: answer,
-          targetPosition: config.targetPosition,
-        });
-        setFup(followup);
-      } catch {
-        setFup(null);
-      } finally {
-        setFupLoading(false);
-      }
+    const durationSec = (clip?.durationMs ?? audio?.durationMs ?? elapsed * 1000) / 1000;
+    const metrics = computeDelivery(answer, durationSec, audio);
+    // 공백(오디오) + 프레임/정면/시선 이탈(비전) 을 하나의 타임라인 이벤트 목록으로 합친다.
+    const events: ClipEvent[] = [
+      ...(audio?.silences ?? []).map((s) => ({ kind: 'silence' as const, startMs: s.startMs, endMs: s.endMs })),
+      ...(visionResult?.events ?? []),
+    ].sort((a, b) => a.startMs - b.startMs);
+    try {
+      await saveItem({
+        localSessionId,
+        seq: idx + 1,
+        question: current.question,
+        isFollowup: current.isFollowup,
+        clip,
+        metrics,
+        nonverbal: visionResult?.metrics ?? null,
+        events,
+      });
+    } catch {
+      /* 저장 실패(용량 초과 등)는 무시 — 분석에는 영향 없음 */
     }
+    // 꼬리질문은 자동 생성하지 않는다. 사용자가 음성 인식 오류를 직접 고친 뒤 버튼으로 요청한다(requestFollowupNow).
+  };
+
+  // 이 문항에 꼬리질문을 붙일 수 있는지. followupEnabled 이고, 꼬리질문 자체가 아니며, 아직 안 붙였을 때.
+  const canFollowup = config.followupEnabled && !current.isFollowup && !followed.current.has(idx);
+  // '다음 문항'을 주 버튼으로 강조할지. 꼬리질문 대상이 아니거나, 요청이 끝나(더 물을 게 없음) 다음이 자연스러운 상태일 때.
+  const nextIsPrimary = !canFollowup || fupStatus === 'empty' || fupStatus === 'result';
+
+  // 사용자가 트랜스크립트를 확정한 뒤 누른다. 수정된 최신 답변으로 꼬리질문을 요청한다.
+  const requestFollowupNow = async () => {
+    const answer = current.transcript.trim();
+    if (!canFollowup || answer.length === 0) return;
+    const reqIdx = idx;
+    fupReqIdx.current = reqIdx;
+    setFup(null);
+    setFupStatus('loading');
+    try {
+      const followup = await requestFollowup({
+        question: current.question,
+        transcript: answer,
+        targetPosition: config.targetPosition,
+      });
+      // 응답을 기다리는 동안 다음 문항으로 넘어갔다면 무시한다.
+      if (fupReqIdx.current !== reqIdx) return;
+      // 더 물을 가치가 없으면 서버가 question 을 비워 보낸다(needed=false).
+      if (followup.question) {
+        setFup(followup);
+        setFupStatus('result');
+      } else {
+        setFupStatus('empty');
+      }
+    } catch {
+      if (fupReqIdx.current === reqIdx) setFupStatus('error');
+    }
+  };
+
+  // 진행 중인 꼬리질문 요청·표시를 취소하고 초기 상태로 되돌린다. 문항을 넘기거나 다시 녹화할 때 호출한다.
+  const cancelFollowup = () => {
+    fupReqIdx.current = null;
+    setFup(null);
+    setFupStatus('idle');
   };
 
   const askFollowup = () => {
@@ -105,13 +173,13 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
       next.splice(idx + 1, 0, item);
       return next;
     });
-    setFup(null);
+    cancelFollowup();
     setIdx(idx + 1);
     setPhase('ready');
   };
 
   const next = () => {
-    setFup(null);
+    cancelFollowup();
     if (isLast) {
       onFinish(queue);
     } else {
@@ -121,6 +189,11 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
   };
 
   const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  // 실시간 말속도 힌트(대략치). 3초 이상 말했을 때만 노출한다.
+  const liveWpm = elapsed > 0 ? Math.round((countSyllables(current.transcript) / elapsed) * 60) : 0;
+  const paceOff = liveWpm > 0 && (liveWpm < PACE_MIN || liveWpm > PACE_MAX);
+  const paceLabel = liveWpm === 0 ? '' : liveWpm < PACE_MIN ? '조금 빠르게' : liveWpm > PACE_MAX ? '천천히' : '좋은 속도';
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
@@ -175,6 +248,11 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
                 <span className="h-2 w-2 animate-pulse rounded-full bg-white" /> REC {mmss(elapsed)}
               </div>
             )}
+            {phase === 'recording' && vision.warn && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-500/90 px-3 py-1 text-xs font-semibold text-white shadow">
+                ⚠ {vision.warn}
+              </div>
+            )}
             {phase === 'prep' && (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-900/70">
                 <div className="text-center text-white">
@@ -183,9 +261,42 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
                 </div>
               </div>
             )}
+            {phase === 'recording' && meter.supported && (
+              <div className="absolute inset-x-3 bottom-3 flex items-center gap-3 rounded-xl bg-slate-900/55 px-3 py-2 backdrop-blur-sm">
+                <span className="text-[11px] text-slate-200">🔊</span>
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
+                  <div
+                    className="h-full rounded-full bg-emerald-400 transition-[width] duration-100"
+                    style={{ width: `${Math.round(meter.level * 100)}%` }}
+                  />
+                </div>
+                {elapsed >= 3 && paceLabel && (
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${
+                      paceOff ? 'bg-amber-500/85' : 'bg-emerald-500/85'
+                    }`}
+                  >
+                    {liveWpm} · {paceLabel}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center justify-between px-4 py-2 text-xs text-slate-400">
-            <span>🎥 영상은 저장되지 않습니다 · 답변 텍스트만 분석에 사용됩니다</span>
+            <span>
+              {recorder.supported
+                ? '🎥 영상은 이 브라우저에만 저장됩니다 · 서버로 전송되지 않아요'
+                : '🎥 이 브라우저는 녹화를 지원하지 않아요 · 답변 텍스트만 분석에 사용됩니다'}
+            </span>
+            <span>
+              {vision.status === 'loading'
+                ? '🧠 표정·자세 분석 준비 중…'
+                : vision.status === 'ready'
+                  ? '🧠 표정·자세 분석 켜짐'
+                  : vision.status === 'unsupported' || vision.status === 'error'
+                    ? '🧠 표정·자세 분석 미사용'
+                    : ''}
+            </span>
             <span>{speech.supported ? '🎙 실시간 음성인식' : '🎙 음성인식 미지원 — 직접 입력'}</span>
           </div>
         </div>
@@ -221,8 +332,30 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
             />
           </div>
 
-          {phase === 'reviewing' && fupLoading && (
-            <p className="mt-3 text-xs text-slate-400">면접관이 추가 질문을 준비 중…</p>
+          {phase === 'reviewing' && canFollowup && fupStatus === 'idle' && (
+            <p className="mt-3 text-xs text-slate-400">
+              음성 인식이 잘못됐다면 수정 후{' '}
+              <span className="font-medium text-slate-500">‘답변 확정’</span>을 눌러주세요.
+            </p>
+          )}
+
+          {phase === 'reviewing' && fupStatus === 'loading' && (
+            <p className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-blue-500" />
+              면접관이 추가 질문을 준비 중…
+            </p>
+          )}
+
+          {phase === 'reviewing' && fupStatus === 'empty' && (
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] text-slate-500">
+              이 답변에는 꼬리질문이 없습니다. 다음 문항으로 넘어가세요.
+            </div>
+          )}
+
+          {phase === 'reviewing' && fupStatus === 'error' && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] text-amber-700">
+              꼬리질문을 불러오지 못했습니다. ‘답변 확정’으로 다시 시도해 주세요.
+            </div>
           )}
 
           {phase === 'reviewing' && fup && (
@@ -273,19 +406,40 @@ export function InterviewSession({ config, questions, onFinish, onExit }: Interv
                 ■ 답변 종료
               </button>
             )}
-            {phase === 'reviewing' && !fup && !fupLoading && (
+            {phase === 'reviewing' && !fup && (
               <>
                 <button
-                  onClick={() => setPhase('ready')}
+                  onClick={() => {
+                    cancelFollowup();
+                    setPhase('ready');
+                  }}
                   type="button"
                   className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
                 >
                   다시 녹화
                 </button>
+                {canFollowup && (
+                  <button
+                    onClick={() => void requestFollowupNow()}
+                    // 요청 전(idle)·실패(error) 에만 누를 수 있다. 한 번 누르면 로딩·결과 동안 비활성.
+                    disabled={
+                      current.transcript.trim().length === 0 ||
+                      (fupStatus !== 'idle' && fupStatus !== 'error')
+                    }
+                    type="button"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    답변 확정
+                  </button>
+                )}
                 <button
                   onClick={next}
                   type="button"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  className={
+                    nextIsPrimary
+                      ? 'rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700'
+                      : 'rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
+                  }
                 >
                   {isLast ? 'AI 분석 요청' : '다음 문항 →'}
                 </button>

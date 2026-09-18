@@ -7,9 +7,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface CompanyRepository extends JpaRepository<Company, String> {
+
+    /**
+     * 기업명이 정확히 같은 기업을 찾는다. 자소서에 적힌 회사 이름으로 기업코드를 되찾을 때 쓴다.
+     *
+     * <p>부분 일치가 아니라 완전 일치다 — 검토 방 에이전트에 자동으로 넣을 값이라 비슷한 이름이
+     * 걸리면 엉뚱한 기업을 분석한다. 이름이 유일하다는 보장이 없어 목록으로 받고, 하나가 아니면
+     * 호출부가 쓰지 않는다.
+     */
+    List<Company> findByCorpName(String corpName);
 
     /**
      * corpCode 로 기업 상세를 조회한다(분석 페이지 헤더용).

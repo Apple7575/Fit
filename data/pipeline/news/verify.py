@@ -1,6 +1,6 @@
 """뉴스 데이터 검증. 실패를 숨기지 않고, 데이터를 보정하지 않는다.
 
-기준 문서 11장의 14개 항목을 그대로 구현한다. 원본이 없으면 해당 항목은 `skip` 이고,
+기준 문서 11장의 15개 항목을 그대로 구현한다. 원본이 없으면 해당 항목은 `skip` 이고,
 `skip` 을 `pass` 로 세지 않는다 — 데이터 없이 통과했다고 보고하는 것이 가장 나쁘다.
 
 돌리는 방법은 `data/scripts/verify_news.py` 를 보라.
@@ -320,6 +320,29 @@ def check_12_inventory_row_counts() -> Check:
                   "problems": problems})
 
 
+def _seed_build_options() -> dict:
+    """시드를 만들 때 쓴 선택을 manifest 에서 읽는다.
+
+    `curate.build` 의 기본값이 아닌 선택(예: `--per-company 5`)으로 만든 시드를
+    기본값으로 다시 만들면 당연히 달라진다. 그것은 결정성 문제가 아니라 **다른
+    명령을 돌린 것**이라, 재실행 대조는 같은 선택으로 해야 뜻이 있다.
+    manifest 가 없거나 키가 없으면 기본값으로 둔다.
+    """
+    path = curate.SEED_MANIFEST_DIR / f"{SEED_TABLE}.json"
+    if not path.exists():
+        return {}
+    try:
+        saved = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    options: dict = {}
+    if saved.get("per_company_limit"):
+        options["per_company"] = int(saved["per_company_limit"])
+    if saved.get("source_column_maps_to"):
+        options["source_column"] = saved["source_column_maps_to"]
+    return options
+
+
 def check_13_determinism() -> Check:
     """같은 원본으로 다시 정제·시드 생성해 바이트가 같은지 본다."""
     runs = rawstore.list_runs()
@@ -343,7 +366,11 @@ def check_13_determinism() -> Check:
                 problems.append(f"{run_id}: articles.csv 가 재실행 결과와 다르다")
         seed_path = SEED_DIR / f"{SEED_TABLE}.csv"
         if seed_path.exists():
-            rebuilt = curate.build(_staged_rows())
+            # 시드를 만들 때 준 선택(기업별 상한·source 컬럼)을 manifest 에서 읽어
+            # 그대로 다시 준다. 기본값으로 다시 만들면 "재실행하면 달라진다"가
+            # 아니라 "다른 명령을 돌렸다"를 잡게 된다.
+            options = _seed_build_options()
+            rebuilt = curate.build(_staged_rows(), **options)
             copy = scratch / "seed"
             copy.mkdir(parents=True, exist_ok=True)
             from pipeline.news.csvio import write_csv
@@ -370,12 +397,68 @@ def check_14_unit_tests() -> Check:
                  {"returncode": process.returncode, "output_tail": tail})
 
 
+def _ignored_seed_names(gitignore_text: str) -> list[str]:
+    """`.gitignore` 가 커밋을 막아 둔 시드 파일 이름을 뽑는다."""
+    names = []
+    for raw in gitignore_text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or line.startswith("!"):
+            continue
+        if line.startswith("/curated/seed/") and not line.endswith("/"):
+            names.append(line.rsplit("/", 1)[-1])
+    return names
+
+
+def check_15_forbidden_seed_tracked() -> Check:
+    """커밋하지 않기로 한 시드가 git 에 올라가 있지 않은지 본다.
+
+    `.gitignore` 는 **아직 트래킹되지 않은 파일에만** 듣는다. 파일이 먼저 생기고
+    제외 규칙이 나중에 들어오면, 규칙을 적어 둔 채로 파일은 계속 따라다닌다.
+    2026-09-15 에 `curated/seed/news_article.csv` 가 그랬다 — 새 표 이름이 제외
+    목록에 빠져 있던 사이에 만들어졌고, 규칙을 더한 뒤에도 남아 뉴스와 무관한
+    브랜치(MR !110)에 딸려 갔다. 제3자 기사 제목·URL 이라 눈으로 찾기 전에
+    검증이 잡아야 한다.
+
+    저장소가 아닌 곳(CD 가 서버로 복사한 사본)에서는 확인할 것이 없어 `skip` 이다.
+    """
+    import subprocess
+
+    ignore_file = DATA / ".gitignore"
+    if not ignore_file.exists():
+        return Check(15, "커밋 금지 시드", "skip", {"reason": f"{ignore_file} 가 없다"})
+
+    forbidden = _ignored_seed_names(ignore_file.read_text(encoding="utf-8"))
+    if not forbidden:
+        return Check(15, "커밋 금지 시드", "skip",
+                     {"reason": ".gitignore 에 curated/seed 제외 규칙이 없다"})
+
+    try:
+        process = subprocess.run(
+            ["git", "-C", str(DATA), "ls-files", "--", "curated/seed"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except OSError as error:                         # git 이 없는 환경
+        return Check(15, "커밋 금지 시드", "skip", {"reason": f"git 을 부를 수 없다: {error}"})
+
+    if process.returncode != 0:
+        reason = (process.stderr or "").strip().splitlines()[:1]
+        return Check(15, "커밋 금지 시드", "skip",
+                     {"reason": reason[0] if reason else "git ls-files 가 실패했다"})
+
+    tracked = {line.rsplit("/", 1)[-1] for line in process.stdout.splitlines() if line.strip()}
+    problems = [f"{name} 이 트래킹되고 있다 — .gitignore 는 커밋하지 않기로 적어 두었다. "
+                f"`git rm --cached curated/seed/{name}` 로 추적만 끊는다"
+                for name in forbidden if name in tracked]
+    return Check(15, "커밋 금지 시드", "fail" if problems else "pass",
+                 {"forbidden": forbidden, "tracked": sorted(tracked), "problems": problems})
+
+
 ALL_CHECKS = (
     check_01_raw_vs_manifest, check_02_record_counts, check_03_exclusions,
     check_04_article_key_unique, check_05_url_duplicates, check_06_corp_mapping,
     check_07_published_at, check_08_required_nulls, check_09_headers,
     check_10_seed_keys, check_11_foreign_keys, check_12_inventory_row_counts,
     check_13_determinism, check_14_unit_tests,
+    check_15_forbidden_seed_tracked,
 )
 
 

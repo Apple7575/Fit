@@ -30,6 +30,8 @@ MIGRATION_DIR = (
 # 이 스키마에 실제로 쓰인 타입만 허용한다. 새 타입이 들어오면 여기서 걸려
 # 사전(data_fields.csv)을 갱신하라는 신호가 된다.
 _SIZED_TYPES = ("VARCHAR", "NUMERIC", "CHAR", "DECIMAL")
+# 앞에서부터 startswith 로 맞춰 보므로 **긴 이름을 먼저** 둔다. "INT" 가 "INTEGER"
+# 앞에 오면 INTEGER 가 INT 로 잘리고 "EGER" 가 남는다.
 _PLAIN_TYPES = (
     "BIGINT[]", "BIGINT", "INTEGER", "INT", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
     "JSONB", "JSON", "DATE", "TIMESTAMPTZ", "TIMESTAMP", "UUID",
@@ -404,8 +406,11 @@ def load(migration_dir: Path | None = None) -> Schema:
                 continue
             if any(head.startswith(k) for k in (
                 "CREATE INDEX", "CREATE SCHEMA", "CREATE EXTENSION", "ALTER TABLE",
-                "DROP INDEX", "UPDATE", "DELETE", "SET",
+                "DROP INDEX", "ALTER INDEX", "UPDATE", "DELETE", "SET",
             )):
+                # 인덱스는 컬럼 구조가 아니라 이름을 바꿔도 사전이 달라지지 않는다.
+                # V25 의 `ALTER INDEX ... RENAME TO ...` 가 여기 없어 시드 빌더가
+                # develop 에서 통째로 멈췄다 (2026-09-17).
                 continue
             raise ValueError(f"{path.name}: 파싱하지 못한 문장 — {statement[:120]!r}")
     return schema

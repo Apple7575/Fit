@@ -2,9 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
 
 export type QueryState<T> =
-  | { status: 'loading' }
-  | { status: 'success'; data: T }
-  | { status: 'error'; error: ApiError };
+  { status: 'loading' } | { status: 'success'; data: T } | { status: 'error'; error: ApiError };
 
 type SettledState<T> = Exclude<QueryState<T>, { status: 'loading' }>;
 
@@ -19,10 +17,7 @@ const LOADING = { status: 'loading' } as const;
  *
  * fetcher 는 key 에 포함된 값만 사용해야 한다 (key 가 같으면 결과도 같다는 전제).
  */
-export function useApiQuery<T>(
-  key: string,
-  fetcher: (signal: AbortSignal) => Promise<T>,
-) {
+export function useApiQuery<T>(key: string, fetcher: (signal: AbortSignal) => Promise<T>) {
   const [attempt, setAttempt] = useState(0);
   const requestKey = `${key}#${attempt}`;
   const [settled, setSettled] = useState<{
@@ -34,9 +29,7 @@ export function useApiQuery<T>(
     const controller = new AbortController();
 
     fetcher(controller.signal)
-      .then((data) =>
-        setSettled({ key: requestKey, state: { status: 'success', data } }),
-      )
+      .then((data) => setSettled({ key: requestKey, state: { status: 'success', data } }))
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
           return;
@@ -59,8 +52,7 @@ export function useApiQuery<T>(
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
-  const state: QueryState<T> =
-    settled?.key === requestKey ? settled.state : LOADING;
+  const state: QueryState<T> = settled?.key === requestKey ? settled.state : LOADING;
 
   return { state, retry };
 }

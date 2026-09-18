@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-021", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "캐시를 적용한 이유와 구현을 설명해 주세요.",
+  "documents": [{"document_id": "doc-021", "document_type": "RESUME", "text": "매 요청마다 변하지 않는 국가 코드 목록을 읽는 비용을 줄이기 위해 애플리케이션 시작 시 메모리에 적재하도록 변경했습니다."}],
+  "expected_findings": [{"experience_type": "CACHE_PERFORMANCE", "claim_quote": "매 요청마다 변하지 않는 국가 코드 목록을 읽는 비용을 줄이기 위해 애플리케이션 시작 시 메모리에 적재하도록 변경했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "MECHANISM"], "missing_elements": ["VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["국가 코드에 Caffeine Cache를 적용했습니다.", "국가 코드 캐시 TTL을 24시간으로 설정했습니다.", "국가 코드 조회 DB 부하를 52% 감소시켰습니다."]
+}

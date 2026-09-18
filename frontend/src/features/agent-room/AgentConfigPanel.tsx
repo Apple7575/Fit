@@ -8,13 +8,12 @@ import {
   toDraft,
   type ConfigDraft,
 } from './configDraft';
-import type { AgentCatalogEntry, JobRoleOption, RoomAgent } from './types';
+import type { AgentCatalogEntry, RoomAgent } from './types';
 
 interface AgentConfigPanelProps {
   roomId: number;
   agent: RoomAgent;
   catalog: AgentCatalogEntry | undefined;
-  jobRoles: JobRoleOption[];
   onSaved: () => void;
 }
 
@@ -23,7 +22,6 @@ export function AgentConfigPanel({
   roomId,
   agent,
   catalog,
-  jobRoles,
   onSaved,
 }: AgentConfigPanelProps) {
   const [draft, setDraft] = useState<ConfigDraft>(() => toDraft(agent));
@@ -73,7 +71,6 @@ export function AgentConfigPanel({
         schema={schema}
         draft={draft}
         onChange={setDraft}
-        jobRoles={jobRoles}
         disabled={saving}
       />
 

@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { CoverLetterHeader } from '../cover-letter/CoverLetterHeader';
 import { useAuth } from '../../features/auth/AuthProvider';
@@ -13,9 +14,7 @@ export function AgentRoomPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <CoverLetterHeader />
-        <p className="mx-auto max-w-4xl px-6 py-16 text-center text-sm text-slate-400" role="status">
-          불러오는 중…
-        </p>
+        <LoadingScreen />
       </div>
     );
   }

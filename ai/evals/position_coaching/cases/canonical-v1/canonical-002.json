@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-002", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "데이터베이스 문제를 해결한 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-002", "document_type": "SELF_INTRO", "text": "정산 목록 조회가 월말마다 느려지는 문제를 해결하기 위해 실행 계획을 분석하고, 필터 조건과 정렬 순서에 맞춘 복합 인덱스를 추가했습니다. 운영 복제본에서 동일 쿼리를 30회 실행해 p95가 2.4초에서 310ms로 줄어든 것을 검증했습니다."}],
+  "expected_findings": [{"experience_type": "DATABASE", "claim_quote": "정산 목록 조회가 월말마다 느려지는 문제를 해결하기 위해 실행 계획을 분석하고, 필터 조건과 정렬 순서에 맞춘 복합 인덱스를 추가했습니다. 운영 복제본에서 동일 쿼리를 30회 실행해 p95가 2.4초에서 310ms로 줄어든 것을 검증했습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"], "missing_elements": []}],
+  "forbidden_output_substrings": ["정산 테이블에 샤딩을 적용했습니다.", "정산 데이터를 MongoDB로 마이그레이션했습니다.", "스토리지 비용을 40% 절감했습니다."]
+}

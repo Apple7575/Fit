@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { deleteInterview } from '../../features/interview/api';
+import { deleteByServerId, listServerIdsWithClips } from '../../features/interview/localVideo';
 import { useInterviews } from '../../features/interview/queries';
 import { TYPE_LABEL } from '../../features/interview/styles';
 import type { InterviewSummary } from '../../features/interview/types';
@@ -15,7 +17,7 @@ export function InterviewListPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <InterviewHeader />
-        <div className="mx-auto max-w-4xl px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</div>
+        <LoadingScreen />
       </div>
     );
   }
@@ -35,10 +37,32 @@ function ListBody() {
   const navigate = useNavigate();
   const { state, retry } = useInterviews();
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [localIds, setLocalIds] = useState<Set<number>>(new Set());
+
+  // 이 브라우저에 녹화가 남아 있는 면접을 표시하기 위해 한 번 로드한다.
+  useEffect(() => {
+    let cancelled = false;
+    listServerIdsWithClips()
+      .then((ids) => {
+        if (!cancelled) setLocalIds(ids);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const remove = async (id: number) => {
     setConfirmingId(null);
     await deleteInterview(id);
+    // 서버 기록을 지우면 이 브라우저의 로컬 녹화도 함께 정리한다.
+    await deleteByServerId(id).catch(() => {});
+    setLocalIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     retry();
   };
 
@@ -61,8 +85,8 @@ function ListBody() {
       </div>
 
       {state.status === 'loading' && (
-        <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-sm text-slate-400">
-          불러오는 중…
+        <div className="rounded-2xl border border-slate-200 bg-white">
+          <LoadingScreen compact message="면접 기록을 불러오는 중" />
         </div>
       )}
 
@@ -89,6 +113,7 @@ function ListBody() {
               <ListRow
                 key={interview.id}
                 interview={interview}
+                hasLocal={localIds.has(interview.id)}
                 confirming={confirmingId === interview.id}
                 onOpen={() => navigate(`/interviews/${interview.id}`)}
                 onAskDelete={() => setConfirmingId(interview.id)}
@@ -104,6 +129,7 @@ function ListBody() {
 
 function ListRow({
   interview,
+  hasLocal,
   confirming,
   onOpen,
   onAskDelete,
@@ -111,6 +137,7 @@ function ListRow({
   onConfirmDelete,
 }: {
   interview: InterviewSummary;
+  hasLocal: boolean;
   confirming: boolean;
   onOpen: () => void;
   onAskDelete: () => void;
@@ -137,6 +164,11 @@ function ListRow({
             )}
             <span>· 문항 {interview.itemCount}개</span>
             <span>· {interview.createdAt}</span>
+            {hasLocal && (
+              <span className="rounded-md bg-slate-900/5 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+                🎥 이 브라우저에 녹화 있음
+              </span>
+            )}
           </div>
         </div>
       </button>

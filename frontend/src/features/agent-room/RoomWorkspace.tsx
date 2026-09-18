@@ -1,9 +1,10 @@
+import { CharacterSlot } from '../../components/brand/CharacterSlot';
+import { characterForAgent } from '../../components/brand/characters';
 import { useState } from 'react';
 import { AgentConfigPanel } from './AgentConfigPanel';
-import { AGENT_DOT } from './agentStyle';
 import { MessageComposer } from './MessageComposer';
 import { MessageThread } from './MessageThread';
-import { useAgents, useJobRoles, useMessages, useRoom } from './queries';
+import { useAgents, useMessages, useRoom } from './queries';
 import { useTurnPolling } from './useTurnPolling';
 import type { RoomAgent } from './types';
 
@@ -13,7 +14,6 @@ function summarize(agent: RoomAgent): string | null {
     return agent.config.companies.map((company) => company.name ?? company.corpCode).join(', ');
   }
   if (agent.config.jobRole) return agent.config.jobRole;
-  if (agent.config.jdUrl) return '공고 연결됨';
   return null;
 }
 
@@ -27,7 +27,6 @@ interface RoomWorkspaceProps {
 export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspaceProps) {
   const { state: room, retry: reloadRoom } = useRoom(roomId);
   const { state: agents } = useAgents();
-  const { state: jobRoles } = useJobRoles();
   const { state: messages, retry: reloadMessages } = useMessages(roomId);
   const [openAgentKey, setOpenAgentKey] = useState<string | null>(null);
   const [activeTurnId, setActiveTurnId] = useState<number | null>(null);
@@ -65,7 +64,6 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
   const data = room.data;
   const open = data.agents.find((agent) => agent.agentKey === openAgentKey);
   const catalog = agents.status === 'success' ? agents.data : [];
-  const roles = jobRoles.status === 'success' ? jobRoles.data : [];
   const agentNames = Object.fromEntries(data.agents.map((agent) => [agent.agentKey, agent.name]));
 
   // 서버는 최신순으로 주는데 화면은 위에서 아래로 읽는다.
@@ -80,6 +78,12 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
           {data.coverLetter ? data.coverLetter.title : '연결된 자소서 없음'}
           <span className="mx-1.5 text-slate-300">·</span>
           에이전트 {data.agents.length}명
+          {data.jobContext && (
+            <>
+              <span className="mx-1.5 text-slate-300">·</span>
+              공고 {data.jobContext.companyName} {data.jobContext.positionName}
+            </>
+          )}
         </p>
       </header>
 
@@ -102,9 +106,10 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
                     : 'border-slate-200 bg-white text-slate-700'
                 } ${selectable && !busy ? 'hover:bg-slate-50' : 'cursor-default opacity-80'}`}
               >
-                <span
-                  aria-hidden
-                  className={`size-[7px] rounded-full ${AGENT_DOT[agent.agentKey] ?? 'bg-slate-400'}`}
+                <CharacterSlot
+                  character={characterForAgent(agent.agentKey)}
+                  interactive={false}
+                  size={18}
                 />
                 {agent.name}
                 {summary && <span className="text-slate-500">· {summary}</span>}
@@ -123,7 +128,6 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
           roomId={roomId}
           agent={open}
           catalog={catalog.find((entry) => entry.agentKey === open.agentKey)}
-          jobRoles={roles}
           onSaved={() => {
             setOpenAgentKey(null);
             reloadRoom();

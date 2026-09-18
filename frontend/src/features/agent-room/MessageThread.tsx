@@ -1,5 +1,6 @@
+import { CharacterSlot } from '../../components/brand/CharacterSlot';
+import { characterForAgent } from '../../components/brand/characters';
 import { useEffect, useRef, useState } from 'react';
-import { AGENT_DOT } from './agentStyle';
 import type { RoomMessage, TurnStatus } from './types';
 
 interface MessageThreadProps {
@@ -26,7 +27,9 @@ function BasedOnChips({
   lookup: Map<number, RoomMessage>;
   onJump: (messageId: number) => void;
 }) {
-  const found = basedOn.map((id) => lookup.get(id)).filter((m): m is RoomMessage => m !== undefined);
+  const found = basedOn
+    .map((id) => lookup.get(id))
+    .filter((m): m is RoomMessage => m !== undefined);
   if (found.length === 0) {
     return null;
   }
@@ -41,9 +44,10 @@ function BasedOnChips({
           onClick={() => onJump(source.messageId)}
           className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[11px] text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
         >
-          <span
-            aria-hidden
-            className={`size-[6px] rounded-full ${AGENT_DOT[source.agentKey ?? ''] ?? 'bg-slate-400'}`}
+          <CharacterSlot
+            character={characterForAgent(source.agentKey)}
+            interactive={false}
+            size={14}
           />
           {source.agentName ?? source.agentKey}
         </button>
@@ -68,7 +72,9 @@ function MessageRow({
   if (message.role === 'user') {
     return (
       <li id={rowId(message.messageId)} className="flex justify-end">
-        <div className={`max-w-[78%] rounded-xl border border-slate-200 bg-white px-3 py-2.5 ${ring}`}>
+        <div
+          className={`max-w-[78%] rounded-xl border border-slate-200 bg-white px-3 py-2.5 ${ring}`}
+        >
           <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
             {message.content}
           </p>
@@ -80,10 +86,9 @@ function MessageRow({
   const failed = message.status === 'FAILED';
   return (
     <li id={rowId(message.messageId)} className={`flex gap-2.5 rounded-lg ${ring}`}>
-      <span
-        aria-hidden
-        className={`mt-1 size-[10px] shrink-0 rounded-full ${AGENT_DOT[message.agentKey ?? ''] ?? 'bg-slate-400'}`}
-      />
+      <span className="mt-0.5 shrink-0">
+        <CharacterSlot character={characterForAgent(message.agentKey)} size={28} />
+      </span>
       <div className="min-w-0 flex-1">
         <p className="mb-1 text-[12px] text-slate-500">{message.agentName ?? message.agentKey}</p>
 
@@ -118,10 +123,13 @@ function PendingRow({
 }) {
   return (
     <li className="flex gap-2.5">
-      <span
-        aria-hidden
-        className={`mt-1 size-[10px] shrink-0 rounded-full opacity-40 ${AGENT_DOT[agentKey] ?? 'bg-slate-400'}`}
-      />
+      <span className="mt-0.5 shrink-0 opacity-50">
+        <CharacterSlot
+          character={characterForAgent(agentKey)}
+          mood={status === 'RUNNING' ? 'wow' : 'sleepy'}
+          size={28}
+        />
+      </span>
       <div>
         <p className="mb-0.5 text-[12px] text-slate-500">{name}</p>
         <p className="text-[13px] text-slate-400">
@@ -139,7 +147,9 @@ export function MessageThread({ messages, running, agentNames }: MessageThreadPr
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const jumpTo = (messageId: number) => {
-    document.getElementById(rowId(messageId))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document
+      .getElementById(rowId(messageId))
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     // 이동만 하면 어디로 갔는지 놓친다. 잠깐 테두리를 둘러 눈이 따라가게 한다.
     setFocusedId(messageId);
     clearTimeout(timer.current);

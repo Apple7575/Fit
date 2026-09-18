@@ -1,20 +1,17 @@
 package com.ssafy.companyanalysis.agent.service;
 
-import com.ssafy.companyanalysis.agent.config.AgentCatalogProperties;
 import com.ssafy.companyanalysis.agent.dto.AgentCatalogResponse;
-import com.ssafy.companyanalysis.agent.dto.JobRoleListResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AgentCatalogServiceTest {
 
-    private AgentCatalogService service(String... readyRoles) {
-        return new AgentCatalogService(new AgentCatalogProperties(Set.of(readyRoles), Set.of()));
+    private AgentCatalogService service() {
+        return new AgentCatalogService();
     }
 
     @Test
@@ -51,7 +48,7 @@ class AgentCatalogServiceTest {
         AgentCatalogResponse.Agent position = agents.stream()
                 .filter(a -> a.agentKey().equals("position")).findFirst().orElseThrow();
         assertThat(position.configSchema()).containsOnlyKeys("jobRole");
-        assertThat(position.configSchema().get("jobRole").type()).isEqualTo("enum");
+        assertThat(position.configSchema().get("jobRole").type()).isEqualTo("string");
     }
 
     @Test
@@ -64,47 +61,12 @@ class AgentCatalogServiceTest {
     }
 
     @Test
-    @DisplayName("뉴스 담당의 months 는 선택 항목이고 corpCodes 다음에 온다")
-    void newsMonthsIsOptionalAndOrdered() {
+    @DisplayName("뉴스 담당이 받는 설정은 기업뿐이다. 기간은 고르게 하지 않는다")
+    void newsTakesCompaniesOnly() {
         AgentCatalogResponse.Agent news = service().listAgents().agents().stream()
                 .filter(a -> a.agentKey().equals("news")).findFirst().orElseThrow();
 
-        assertThat(news.configSchema().keySet()).containsExactly("corpCodes", "months");
-        assertThat(news.configSchema().get("months").required()).isFalse();
+        assertThat(news.configSchema().keySet()).containsExactly("corpCodes");
     }
 
-    @Test
-    @DisplayName("설정에 적힌 직무만 ready 다")
-    void onlyConfiguredRolesAreReady() {
-        JobRoleListResponse response = service("backend").listJobRoles();
-
-        assertThat(response.jobRoles())
-                .filteredOn(JobRoleListResponse.JobRole::ready)
-                .extracting(JobRoleListResponse.JobRole::key)
-                .containsExactly("backend");
-    }
-
-    @Test
-    @DisplayName("열어 두지 않은 직무는 목록에 남되 topics 가 빈 배열이다")
-    void notReadyRoleKeepsItsPlaceButHasNoTopics() {
-        JobRoleListResponse response = service("backend").listJobRoles();
-
-        JobRoleListResponse.JobRole frontend = response.jobRoles().stream()
-                .filter(r -> r.key().equals("frontend")).findFirst().orElseThrow();
-        assertThat(frontend.ready()).isFalse();
-        assertThat(frontend.topics()).isEmpty();
-
-        JobRoleListResponse.JobRole backend = response.jobRoles().stream()
-                .filter(r -> r.key().equals("backend")).findFirst().orElseThrow();
-        assertThat(backend.topics()).isNotEmpty();
-    }
-
-    @Test
-    @DisplayName("설정이 비어 있으면 모든 직무가 ready=false 다")
-    void emptyConfigMeansNothingIsReady() {
-        JobRoleListResponse response = service().listJobRoles();
-
-        assertThat(response.jobRoles()).isNotEmpty();
-        assertThat(response.jobRoles()).noneMatch(JobRoleListResponse.JobRole::ready);
-    }
 }

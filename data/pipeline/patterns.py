@@ -47,6 +47,7 @@ class RndPatterns:
     cell_tags: tuple[str, ...]
     units: tuple[tuple[str, int], ...]          # (표기, 배수). 긴 것부터
     unit_lookback_tables: int
+    foreign_currency_markers: tuple[str, ...]   # 이게 보이면 거슬러 오르기를 멈춘다
     consolidated_header: str
     separate_header: str
     header_scan_rows: int
@@ -66,6 +67,7 @@ class SegmentPatterns:
     table_hint: re.Pattern
     exclude_row: re.Pattern
     exclude_cell: re.Pattern
+    balance_sheet_row: re.Pattern                    # 부문이 아니라 재무상태표 항목
     name_strip: re.Pattern
     name_max_len: int
     value_position: int
@@ -81,8 +83,12 @@ class FacilityPatterns:
     purpose_header: re.Pattern
     amount_header_priority: tuple[re.Pattern, ...]   # 순서 = 우선순위
     amount_exclude_header: re.Pattern
+    subheader_cell: re.Pattern                       # 2단 헤더의 아랫단
+    cell_unit: re.Pattern                            # 금액 칸에 직접 붙은 단위
+    require_field_or_purpose: bool                   # 금액 열만 있는 표는 안 본다
     foreign_currency: re.Pattern
-    period_in_purpose: re.Pattern
+    period_cell: re.Pattern                          # 항목·목적 칸의 투자기간
+    period_field: re.Pattern                         # 연도로 시작하는 항목 이름
 
 
 @dataclass(frozen=True)
@@ -192,6 +198,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
             cell_tags=tuple(rnd["cell_tags"]),
             units=tuple((u["name"], int(u["multiplier"])) for u in rnd["units"]),
             unit_lookback_tables=int(rnd["unit_lookback_tables"]),
+            foreign_currency_markers=tuple(rnd.get("foreign_currency_markers") or ()),
             consolidated_header=rnd["consolidated_header"],
             separate_header=rnd["separate_header"],
             header_scan_rows=int(rnd["header_scan_rows"]),
@@ -207,6 +214,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
                 table_hint=_re(br["segment"]["table_hint_re"]),
                 exclude_row=_re(br["segment"]["exclude_row_re"]),
                 exclude_cell=_re(br["segment"]["exclude_cell_re"]),
+                balance_sheet_row=_re(br["segment"]["balance_sheet_row_re"]),
                 name_strip=_re(br["segment"]["name_strip_re"]),
                 name_max_len=int(br["segment"]["name_max_len"]),
                 value_position=int(br["segment"]["value_position"]),
@@ -220,8 +228,13 @@ def load_patterns(path: Path | None = None) -> Patterns:
                 amount_header_priority=tuple(
                     _re(x) for x in br["facility"]["amount_header_priority_re"]),
                 amount_exclude_header=_re(br["facility"]["amount_exclude_header_re"]),
+                subheader_cell=_re(br["facility"]["subheader_cell_re"]),
+                cell_unit=_re(br["facility"]["cell_unit_re"]),
+                require_field_or_purpose=bool(
+                    br["facility"]["require_field_or_purpose"]),
                 foreign_currency=_re(br["facility"]["foreign_currency_re"]),
-                period_in_purpose=_re(br["facility"]["period_in_purpose_re"]),
+                period_cell=_re(br["facility"]["period_cell_re"]),
+                period_field=_re(br["facility"]["period_field_re"]),
             ),
             text=TextPatterns(
                 main_business_section=_re(br["text"]["main_business_section_re"]),

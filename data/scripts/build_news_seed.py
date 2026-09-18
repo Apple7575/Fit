@@ -31,7 +31,11 @@ def main() -> int:
                         help="collected_at 이 빈 행에 쓸 값. 기본은 비움(그 행은 제외된다)")
     parser.add_argument("--allow-empty", action="store_true",
                         help="staged 가 비어도 헤더만 있는 시드를 쓴다")
+    parser.add_argument("--per-company", type=int, default=0, metavar="N",
+                        help="기업마다 최신 N 건만 남긴다. 0 이면 전부 (기본)")
     args = parser.parse_args()
+    if args.per_company < 0:
+        parser.error("--per-company 는 0 이상이어야 한다")
 
     schema = flyway.load()
     staged_dir = curate.SEED_DIR.parents[1] / "staged" / "google_news_rss"
@@ -45,9 +49,12 @@ def main() -> int:
         print(f"  현재 상태는 docs/seed_csv_inventory.csv 의 {SEED_TABLE} 행에서 확인한다.")
         return 0
 
-    result = curate.build(rows, schema, args.source_column, args.collected_at_fallback)
+    result = curate.build(rows, schema, args.source_column, args.collected_at_fallback,
+                          per_company=args.per_company)
     paths = curate.write(result)
     summary = result.summary
+    if args.per_company:
+        print(f"선별     기업마다 최신 {args.per_company}건")
     print(f"\n시드     {summary['seed_rows']}행 → {paths['seed']}")
     print(f"헤더     {','.join(summary['header'])}")
     print(f"source   → {summary['source_column_maps_to']}  (백엔드 합의 필요)")

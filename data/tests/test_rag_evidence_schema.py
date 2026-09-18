@@ -3,7 +3,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MIGRATION = ROOT / "backend/src/main/resources/db/migration/V24__rag_evidence.sql"
+MIGRATION = ROOT / "backend/src/main/resources/db/migration/V27__rag_evidence.sql"
 
 
 class RagEvidenceSchemaTest(unittest.TestCase):

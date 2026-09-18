@@ -44,11 +44,11 @@ public class SecurityConfig {
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/logout", "/api/auth/verify").permitAll()
-                        // 문항 피드백은 게스트도 쓸 수 있게 공개한다(무저장). CSRF 는 유지한다.
-                        .requestMatchers(HttpMethod.POST, "/api/cover-letters/feedback").permitAll()
+                        // 공고 URL 확인은 게스트도 자소서를 쓸 수 있어야 해서 공개한다(무저장). CSRF 는 유지한다.
+                        .requestMatchers(HttpMethod.POST, "/api/job-postings/parse").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/companies/**", "/api/industries/**").permitAll()
-                        // 에이전트·직무 목록은 설정 화면을 그리는 참조 데이터라 공개한다(개인 정보 없음).
-                        .requestMatchers(HttpMethod.GET, "/api/agents", "/api/job-roles").permitAll()
+                        // 에이전트 목록은 설정 화면을 그리는 참조 데이터라 공개한다(개인 정보 없음).
+                        .requestMatchers(HttpMethod.GET, "/api/agents").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session

@@ -70,6 +70,47 @@
         }
       }
     },
+    "/internal/job-sources/from-url": {
+      "post": {
+        "tags": [
+          "internal"
+        ],
+        "summary": "Ingest Job Source From Url",
+        "operationId": "ingest_job_source_from_url_internal_job_sources_from_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJobSourceFromUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobSourceFromUrlResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/job-contexts/from-url": {
       "post": {
         "tags": [
@@ -526,13 +567,56 @@
         }
       }
     },
-    "/internal/jd/analyze": {
+    "/internal/messages": {
+      "post": {
+        "tags": [
+          "internal"
+        ],
+        "summary": "Create Stateless Message",
+        "operationId": "create_stateless_message_internal_messages_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatelessMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Stateless Message Internal Messages Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/analyses": {
       "post": {
         "tags": [
           "internal"
         ],
         "summary": "Analyze Jd",
-        "operationId": "analyze_jd_internal_jd_analyze_post",
+        "operationId": "analyze_jd_internal_analyses_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -956,6 +1040,22 @@
         ],
         "title": "CreateJobContextRequest"
       },
+      "CreateJobSourceFromUrlRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "CreateJobSourceFromUrlRequest"
+      },
       "CreateMessageRequest": {
         "properties": {
           "client_message_id": {
@@ -979,6 +1079,29 @@
         ],
         "title": "CreateMessageRequest"
       },
+      "CurrentDocumentRequest": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Document Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 50000,
+            "minLength": 10,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document_id",
+          "text"
+        ],
+        "title": "CurrentDocumentRequest"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -991,6 +1114,198 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HistoryMessageRequest": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "HistoryMessageRequest"
+      },
+      "JobSourceFromUrlResponse": {
+        "properties": {
+          "jd_text": {
+            "type": "string",
+            "title": "Jd Text"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "position_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Name"
+          },
+          "job_posting_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Posting Id"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "content_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jd_text",
+          "source_url",
+          "company_name",
+          "position_name",
+          "job_posting_id",
+          "published_at",
+          "valid_until",
+          "content_sha256"
+        ],
+        "title": "JobSourceFromUrlResponse"
+      },
+      "StatelessAnalysisResult": {
+        "properties": {
+          "context_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Context Id"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Summary"
+          },
+          "requirements": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Requirements"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "context_id",
+          "summary",
+          "requirements"
+        ],
+        "title": "StatelessAnalysisResult"
+      },
+      "StatelessMessageRequest": {
+        "properties": {
+          "context_id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Context Id"
+          },
+          "analysis_result": {
+            "$ref": "#/components/schemas/StatelessAnalysisResult"
+          },
+          "current_document": {
+            "$ref": "#/components/schemas/CurrentDocumentRequest"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryMessageRequest"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "History"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "context_id",
+          "analysis_result",
+          "current_document",
+          "message"
+        ],
+        "title": "StatelessMessageRequest"
       },
       "ValidationError": {
         "properties": {

@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "hr-002", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "인사 담당", "priority_requirements": ["제도 기획"]},
+  "question": "의사결정 경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "사람을 존중하는 제도를 만들고 싶습니다."}],
+  "expected_findings": [{"claim_type": "DECISION", "claim_quote": "사람을 존중하는 제도를 만들고 싶습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["SITUATION", "ROLE", "ACTION", "REASONING", "RESULT"]}],
+  "forbidden_output_substrings": ["합격", "제도를 도입"]
+}

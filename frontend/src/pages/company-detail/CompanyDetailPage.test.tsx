@@ -154,7 +154,7 @@ describe('CompanyDetailPage', () => {
       await screen.findByRole('heading', { level: 1, name: '삼성전자' }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('heading', { name: '주요 사업' }),
+      await screen.findByRole('heading', { name: '다섯 질문으로 보는 이 회사' }),
     ).toBeInTheDocument();
     // 데이터 기준 칩
     expect(screen.getByText('데이터 기준: 2025')).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('CompanyDetailPage', () => {
     await user.click(screen.getByRole('link', { name: '산업 비교' }));
 
     expect(
-      await screen.findByRole('heading', { name: '동일 산업 기업 비교' }),
+      await screen.findByRole('heading', { name: '업계에서 어디쯤' }),
     ).toBeInTheDocument();
   });
 
@@ -208,7 +208,7 @@ describe('CompanyDetailPage', () => {
     renderAt('/companies/00126380/focus');
 
     expect(
-      await screen.findByRole('heading', { name: '기업 집중 분야 분석' }),
+      await screen.findByRole('heading', { name: '어디에 힘을 싣나' }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole('heading', { name: '투자' }),
@@ -250,7 +250,7 @@ describe('CompanyDetailPage', () => {
     renderAt('/companies/00126380/issues');
 
     expect(
-      await screen.findByRole('heading', { name: '최근 기업 이슈' }),
+      await screen.findByRole('heading', { name: '요즘 무슨 일' }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole('heading', { name: '최신 뉴스' }),
@@ -263,13 +263,13 @@ describe('CompanyDetailPage', () => {
     expect(await screen.findByText('데이터 기준: 2025.05.13')).toBeInTheDocument();
   });
 
-  it('상세 탭 다섯 개가 모두 링크로 표시된다', async () => {
+  it('기업명(요약)과 상세 탭 다섯 개가 모두 링크로 표시된다', async () => {
     vi.stubGlobal('fetch', stubFetchByUrl());
 
     renderAt('/companies/00126380');
     await screen.findByRole('heading', { level: 1, name: '삼성전자' });
 
-    for (const label of ['기업 개요', '성장 분석', '집중 분야', '산업 비교', '최근 이슈']) {
+    for (const label of ['삼성전자 요약', '사업', '성장', '집중 분야', '산업 비교', '최근 이슈']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
   });
@@ -292,7 +292,7 @@ describe('CompanyDetailPage', () => {
     ).toBeInTheDocument();
     // 조건부 섹션은 별개 요청이라 정상 표시된다
     expect(
-      await screen.findByRole('heading', { name: '주요 사업' }),
+      await screen.findByRole('heading', { name: '다섯 질문으로 보는 이 회사' }),
     ).toBeInTheDocument();
     // 실패를 "정보 없음"으로 위장하지 않고 안내 + 다시 시도를 보여준다
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -319,6 +319,6 @@ describe('CompanyDetailPage', () => {
       '기업 정보를 찾을 수 없습니다. 기업코드(99999999)를 확인해 주세요.',
     );
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '주요 사업' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '어떤 회사인가' })).not.toBeInTheDocument();
   });
 });

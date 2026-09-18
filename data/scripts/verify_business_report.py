@@ -9,7 +9,7 @@ DB 없이 CSV 만으로 돈다. 적재 전에 걸러야 할 것을 적재 전에
     C  PK/UNIQUE   적재가 거부될 중복이 없나
     D  부문 합계    segment_revenue 합 == company_metric 의 revenue 인가
     E  R&D 상식     rd_expense / revenue 가 0~60% 인가
-    F  시설투자     amount 가 양수이고 자릿수가 상식 범위인가
+    F  시설투자     amount 가 양수이고 자릿수가 상식 범위인가 · 항목이 머리말이 아닌가
     G  company_text seq 가 0부터 연속인가, 값이 비지 않았나
     H  커버리지     기업·연도별로 무엇이 얼마나 찼나 (실패가 아니라 보고)
 
@@ -25,11 +25,13 @@ from __future__ import annotations
 import argparse
 import collections
 import csv
+import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from pipeline.normalize.text import squash  # noqa: E402
 from pipeline.paths import curated_seed_dir  # noqa: E402
 
 for _s in (sys.stdout, sys.stderr):
@@ -56,6 +58,22 @@ RD_RATIO_MAX = 60.0
 # 그래서 하한을 100만원으로 내린다. 설비투자가 100만원 미만이면 단위를 잘못 읽은
 # 것이고(효성티앤씨 '$15백만' → 15원 사건), 그 위는 회사가 그렇게 공시한 것이다.
 FACILITY_MIN, FACILITY_MAX = 1e6, 2e14
+
+# **자릿수만으로는 못 잡는 오파싱이 있다.** 2단 헤더의 아랫단이 데이터 행으로 남으면
+# 항목이 '자산형태' 가 되고 금액 자리에 연도가 들어온다. 억원 표에서는 2023년이
+# 2,023억원이 되어 위 범위를 그대로 통과한다 — 1차 확대 때 25행(2.3조원)이 이렇게
+# 시드에 들어갔고, 천원 표에서 값이 작아진 2차에서야 드러났다.
+#
+# 파서는 고쳤지만(patterns.yaml subheader_cell_re) 손으로 고친 시드도 보므로
+# **항목 이름으로 한 번 더 막는다.** 머리말은 투자 항목 이름이 될 수 없다.
+#
+# 항목이 **연도로 시작하는 것**도 같이 막는다. 머리말은 아니지만 셀이 밀려 항목
+# 자리에 투자기간이 온 행이고, 금액은 옆 열에서 온 값이라 못 믿는다 — GS 가
+# '2022년 06월 ~ 2028년 12월' 로 1조 1,707억을 달고 왔다.
+FACILITY_HEADER_NAME_RE = re.compile(
+    r'^(자산\s*형태|자산\s*구분|자산별|구\s*분|금\s*액|수\s*량|계획\s*명칭'
+    r'|\(?\s*(실적|계획)\s*\)?)$'
+    r'|^(19|20)\d{2}\s*[년.\-/~]')
 
 
 class Report:
@@ -191,6 +209,10 @@ def main() -> int:
         if not (FACILITY_MIN <= v <= FACILITY_MAX):
             bad.append(f"{label(r['corp_code'], r['fiscal_year'])}: "
                        f"{r['field_name']} {v:,.0f}원 — 자릿수 확인")
+        if FACILITY_HEADER_NAME_RE.match(squash(r["field_name"] or "")):
+            bad.append(f"{label(r['corp_code'], r['fiscal_year'])}: "
+                       f"항목이 '{r['field_name']}' 이다 — 헤더 아랫단을 "
+                       f"데이터로 읽었다 (금액 {v:,.0f}원)")
         if r["counterparty"]:
             bad.append(f"{label(r['corp_code'], r['fiscal_year'])}: "
                        "facility 인데 counterparty 가 있다")

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-006", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "병목을 측정하고 개선한 백엔드 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-006", "document_type": "SELF_INTRO", "text": "추천 목록 생성 중 같은 사용자 설정을 반복 조회해 지연이 커지는 문제를 프로파일링으로 찾았습니다. 요청 범위 메모이제이션을 넣어 동일 계산을 한 번만 수행하게 했고, 고정된 5천 요청 시나리오를 전후 비교해 평균 처리 시간이 420ms에서 170ms로 낮아졌습니다."}],
+  "expected_findings": [{"experience_type": "CACHE_PERFORMANCE", "claim_quote": "추천 목록 생성 중 같은 사용자 설정을 반복 조회해 지연이 커지는 문제를 프로파일링으로 찾았습니다. 요청 범위 메모이제이션을 넣어 동일 계산을 한 번만 수행하게 했고, 고정된 5천 요청 시나리오를 전후 비교해 평균 처리 시간이 420ms에서 170ms로 낮아졌습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["추천 결과를 CDN에 캐시했습니다.", "추천 조회 p99 10ms를 달성했습니다.", "서버 CPU 사용량을 75% 감소시켰습니다."]
+}

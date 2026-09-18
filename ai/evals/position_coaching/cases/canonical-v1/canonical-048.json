@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-048", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "데이터베이스 최적화 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-048", "document_type": "PORTFOLIO", "text": "인덱스와 실행 계획의 개념을 개인 노트로 정리했으며 실제 서비스 쿼리를 개선한 사례는 없습니다."}],
+  "expected_findings": [{"experience_type": "DATABASE", "claim_quote": "인덱스와 실행 계획의 개념을 개인 노트로 정리했으며 실제 서비스 쿼리를 개선한 사례는 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["주문 조회용 복합 인덱스를 생성했습니다.", "주문 조회 p95 300ms를 달성했습니다.", "운영 데이터베이스 쿼리를 튜닝했습니다."]
+}

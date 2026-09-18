@@ -6,9 +6,11 @@ import {
 } from 'react-router-dom';
 import { AgentRoomListPage } from '../pages/agent-room/AgentRoomListPage';
 import { AgentRoomPage } from '../pages/agent-room/AgentRoomPage';
+import { CompanyBusinessTab } from '../pages/company-detail/CompanyBusinessTab';
 import { CompanyComparisonTab } from '../pages/company-detail/CompanyComparisonTab';
 import { CompanyGrowthTab } from '../pages/company-detail/CompanyGrowthTab';
 import { CompanyDetailPage } from '../pages/company-detail/CompanyDetailPage';
+import { CompanySearchPage } from '../pages/companies/CompanySearchPage';
 import { CompanyFocusTab } from '../pages/company-detail/CompanyFocusTab';
 import { CompanyIssuesTab } from '../pages/company-detail/CompanyIssuesTab';
 import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
@@ -27,6 +29,10 @@ const routes: RouteObject[] = [
   {
     path: '/',
     element: <HomePage />,
+  },
+  {
+    path: '/companies',
+    element: <CompanySearchPage />,
   },
   {
     path: '/login',
@@ -82,6 +88,7 @@ const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate replace to="overview" /> },
       { path: 'overview', element: <CompanyOverviewTab /> },
+      { path: 'business', element: <CompanyBusinessTab /> },
       { path: 'growth', element: <CompanyGrowthTab /> },
       { path: 'focus', element: <CompanyFocusTab /> },
       { path: 'comparison', element: <CompanyComparisonTab /> },

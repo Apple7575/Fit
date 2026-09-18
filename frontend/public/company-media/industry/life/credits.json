@@ -1,0 +1,37 @@
+{
+  "hero": {
+    "title": "Skyline view from Seoul City (South Korea)",
+    "author": "Flickr - Laurie Nevay https://www.flickr.com/photos/laurienevay/",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Skyline_view_from_Seoul_City_(South_Korea).jpg"
+  },
+  "point-business": {
+    "title": "Little Textile Factory (14130118878)",
+    "author": "darkday from Brisbane, Australia",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Little_Textile_Factory_(14130118878).jpg"
+  },
+  "point-direction": {
+    "title": "Telecommunication masts at Mountain - geograph.org.uk - 7901600",
+    "author": "Kevin Waterhouse",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Telecommunication_masts_at_Mountain_-_geograph.org.uk_-_7901600.jpg"
+  },
+  "point-momentum": {
+    "title": "Leers 1 rue victor hugo",
+    "author": "Velvet",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Leers_1_rue_victor_hugo.jpg"
+  },
+  "point-rank": {
+    "title": "Seoul city skyline at night from Namsan Mountain (49174548523)",
+    "author": "Matt Kieffer from London, United Kingdom",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Seoul_city_skyline_at_night_from_Namsan_Mountain_(49174548523).jpg"
+  }
+}

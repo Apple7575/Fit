@@ -6,9 +6,11 @@ const companySchema: Record<string, ConfigField> = {
   corpCodes: { type: 'array', required: true, description: '분석 대상 기업' },
 };
 
-const newsSchema: Record<string, ConfigField> = {
+// 선택 항목을 가진 스키마. 지금 실제 에이전트에는 없지만, 스키마로 폼을 그리는 구조라
+// 나중에 생길 수 있어 일반 동작을 잡아 둔다.
+const withOptionalSchema: Record<string, ConfigField> = {
   corpCodes: { type: 'array', required: true, description: '대상 기업' },
-  months: { type: 'number', required: false, description: '몇 개월치' },
+  limit: { type: 'number', required: false, description: '몇 건까지' },
 };
 
 const agent = (config: RoomAgent['config']): RoomAgent => ({
@@ -59,12 +61,12 @@ describe('toConfigPayload', () => {
   it('비어 있는 선택 항목은 빼고 보낸다', () => {
     const filled = { corpCodes: [{ corpCode: '00126380', name: '네이버', ragReady: true }] };
 
-    expect(toConfigPayload({ ...filled, months: '' }, newsSchema)).toEqual({
+    expect(toConfigPayload({ ...filled, limit: '' }, withOptionalSchema)).toEqual({
       corpCodes: ['00126380'],
     });
-    expect(toConfigPayload({ ...filled, months: 3 }, newsSchema)).toEqual({
+    expect(toConfigPayload({ ...filled, limit: 3 }, withOptionalSchema)).toEqual({
       corpCodes: ['00126380'],
-      months: 3,
+      limit: 3,
     });
   });
 });
@@ -77,7 +79,7 @@ describe('isDraftComplete', () => {
   it('필수 항목이 차면 선택 항목이 없어도 완성이다', () => {
     const draft = { corpCodes: [{ corpCode: '00126380', name: '네이버', ragReady: true }] };
 
-    expect(isDraftComplete(draft, newsSchema)).toBe(true);
+    expect(isDraftComplete(draft, withOptionalSchema)).toBe(true);
   });
 
   it('설정할 것이 없는 에이전트는 언제나 완성이다', () => {

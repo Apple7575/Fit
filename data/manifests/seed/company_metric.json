@@ -1,6 +1,6 @@
 {
   "table": "company_metric",
-  "generated_at": "2026-09-08T08:43:58.619999+00:00",
+  "generated_at": "2026-09-17T07:44:18.975719+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -28,28 +28,55 @@
     "V13__erd_alignment.sql",
     "V14__users.sql",
     "V15__email_verification.sql",
-    "V16__news_article_drop_ai_columns.sql"
+    "V16__news_article_drop_ai_columns.sql",
+    "V17__erd_alignment_followup.sql",
+    "V18__cover_letter.sql",
+    "V19__interview.sql",
+    "V20__jd_ai_analysis.sql",
+    "V21__jd_ai_conversation.sql",
+    "V22__agent_room.sql",
+    "V23__agent_message.sql",
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
   ],
   "source": "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
-  "seed_rows": 58646,
+  "seed_rows": 106230,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "metric_code": 0,
     "metric_value": 0,
-    "fs_div": 319
+    "fs_div": 47903
   },
   "notes": [
     "연결 우선·별도 폴백. 고른 쪽을 fs_div 에 남긴다",
     "결측은 행을 넣지 않는다 — metric_value 가 NOT NULL 이다",
     "KRW 가 아닌 통화는 넣지 않는다 (환산은 추정이다)"
   ],
-  "distinct_corp_codes": 2578,
+  "distinct_corp_codes": 2688,
   "fiscal_years": [
     2021,
     2025
   ],
   "build_stats": {
+    "emp": {
+      "집계한 기업-연도": 12536,
+      "1인평균급여: 총액/인원 사용": 258,
+      "average_tenure 결측": 197,
+      "경고: 1인평균급여와": 793,
+      "경고: 평균근속 기재 없음": 197,
+      "빈 응답": 979,
+      "average_salary 결측": 239,
+      "경고: 1인평균급여 기재 없음": 239,
+      "average_salary 상식 위반(E-5, 제외)": 62,
+      "1인평균급여: 총액/인원이 상식 밖이라 보고값 유지": 6,
+      "경고: 근속 상세": 19,
+      "경고: 상세 합": 4,
+      "average_tenure 상식 위반(E-5, 제외)": 2,
+      "employee_count 결측": 143,
+      "1인평균급여: 둘 다 상식 밖": 8
+    },
     "missing": {
       "net_income": 115,
       "revenue": 367,
@@ -59,10 +86,15 @@
     },
     "pairs": 11880,
     "rd": {
-      "판정 high": 311,
-      "판정 medium": 8,
-      "판정 mismatch": 54,
-      "채택": 319
+      "판정 high": 5207,
+      "판정 mismatch": 1187,
+      "rd_ratio 기재 없음": 18,
+      "판정 medium": 291,
+      "금액이 비율과 5~100배 어긋남(넣되 기록)": 39,
+      "매출이 없어 금액-비율 대조 못 함(넣음)": 67,
+      "금액이 비율과 100배 이상 어긋남(제외)": 20,
+      "판정 low": 37,
+      "채택": 10938
     },
     "skipped_currency": {
       "USD": 268,

@@ -1,3 +1,4 @@
+import json
 import unittest
 import tempfile
 from pathlib import Path
@@ -14,7 +15,11 @@ from ai.jd_coaching.api import (
     _required_database_url,
 )
 from ai.jd_coaching.source_ingestion import IngestedJd
-from ai.jd_coaching.source_ingestion import UnsupportedSourceError
+from ai.jd_coaching.source_ingestion import (
+    SourceFetchError,
+    SourceIngestionError,
+    UnsupportedSourceError,
+)
 
 
 class FakeService:
@@ -84,6 +89,7 @@ class FakeSourceIngestor:
             job_posting_id="url-posting-1",
             published_at="2026-09-01",
             valid_until="2026-09-30",
+            content_sha256="b" * 64,
         )
 
     def from_file(self, *, filename, content_type, content):
@@ -97,6 +103,14 @@ class FakeSourceIngestor:
 
 
 class ApiTest(unittest.TestCase):
+    def test_committed_openapi_uses_current_sync_analysis_path(self):
+        committed = json.loads(
+            Path("ai/docs/jd-coaching-openapi.json").read_text(encoding="utf-8")
+        )
+
+        self.assertIn("/internal/analyses", committed["paths"])
+        self.assertNotIn("/internal/jd/analyze", committed["paths"])
+
     def setUp(self):
         self.analysis_store = InMemoryAnalysisStore()
         app.dependency_overrides[get_analysis_service] = lambda: FakeService()
@@ -153,7 +167,7 @@ class ApiTest(unittest.TestCase):
 
     def test_analyzes_user_supplied_jd(self):
         response = self.client.post(
-            "/internal/jd/analyze",
+            "/internal/analyses",
             json={
                 "company_name": "다른기업",
                 "position_name": "백엔드 개발자",
@@ -164,6 +178,19 @@ class ApiTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["company_name"], "다른기업")
+
+    def test_does_not_expose_legacy_sync_analysis_path(self):
+        response = self.client.post(
+            "/internal/jd/analyze",
+            json={
+                "company_name": "다른기업",
+                "position_name": "백엔드 개발자",
+                "jd_text": "Python 기반 API 개발 경험을 요구합니다.",
+                "applicant_text": "Python으로 API를 개발했습니다.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_creates_and_reads_job_context(self):
         created = self.client.post(
@@ -199,6 +226,63 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(
             response.json()["source_type"], "USER_PROVIDED_JOB_POSTING"
         )
+
+    def test_extracts_job_source_without_creating_context(self):
+        response = self.client.post(
+            "/internal/job-sources/from-url",
+            json={"url": "https://careers.example.com/jobs/1"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            "jd_text": "Python 기반 API 개발 경험을 요구합니다.",
+            "source_url": "https://careers.example.com/jobs/1",
+            "company_name": "URL기업",
+            "position_name": "백엔드 개발자",
+            "job_posting_id": "url-posting-1",
+            "published_at": "2026-09-01",
+            "valid_until": "2026-09-30",
+            "content_sha256": "b" * 64,
+        })
+
+    def test_extracts_job_source_even_without_company_metadata(self):
+        response = self.client.post(
+            "/internal/job-sources/from-url",
+            json={"url": "https://careers.example.com/without-metadata"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["company_name"])
+        self.assertIsNone(response.json()["position_name"])
+
+    def test_source_only_endpoint_rejects_invalid_or_extra_input(self):
+        for payload in (
+            {"url": "file:///etc/passwd"},
+            {"url": "https://careers.example.com/jobs/1", "company_name": "override"},
+        ):
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    "/internal/job-sources/from-url", json=payload
+                )
+                self.assertEqual(response.status_code, 422)
+
+    def test_source_only_endpoint_maps_extraction_errors(self):
+        for error, expected_status in (
+            (UnsupportedSourceError("unsupported"), 415),
+            (SourceFetchError("fetch failed"), 502),
+            (SourceIngestionError("no posting text"), 422),
+        ):
+            class FailingIngestor:
+                def from_url(self, url):
+                    raise error
+
+            with self.subTest(error=type(error).__name__):
+                app.dependency_overrides[get_source_ingestor] = lambda: FailingIngestor()
+                response = self.client.post(
+                    "/internal/job-sources/from-url",
+                    json={"url": "https://careers.example.com/jobs/1"},
+                )
+                self.assertEqual(response.status_code, expected_status)
 
     def test_url_request_metadata_overrides_extracted_metadata(self):
         response = self.client.post(
@@ -294,7 +378,7 @@ class ApiTest(unittest.TestCase):
 
     def test_rejects_blank_applicant_text(self):
         response = self.client.post(
-            "/internal/jd/analyze",
+            "/internal/analyses",
             json={
                 "company_name": "다른기업",
                 "position_name": "백엔드 개발자",

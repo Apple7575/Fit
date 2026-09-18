@@ -66,3 +66,7 @@ logs/
 .cache/
 tmp/
 data/runtime/
+outputs/position-lora/
+
+# ── Git 격리 작업공간 ──
+.worktrees/

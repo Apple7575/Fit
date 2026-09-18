@@ -50,7 +50,7 @@ describe('CompanyProfileSections', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('전 배열이 비어 있으면 아무것도 렌더하지 않는다', async () => {
+  it('전 배열이 비어 있으면 카드 대신 안내 한 줄만 보여준다', async () => {
     stubProfile({
       year: 2025,
       businesses: [],
@@ -67,7 +67,8 @@ describe('CompanyProfileSections', () => {
     await vi.waitFor(() =>
       expect(container.querySelector('[role="status"]')).toBeNull(),
     );
-    expect(container).toBeEmptyDOMElement();
+    expect(container).toHaveTextContent('이 기업의 사업 정보가 아직 없어요');
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 
   it('404 는 조용히 전체 미노출한다', async () => {

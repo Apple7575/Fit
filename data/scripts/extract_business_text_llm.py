@@ -57,11 +57,23 @@ LIST_KEYS = llm_mod.LIST_KEYS
 TEXT_KEYS = llm_mod.TEXT_KEYS
 
 
+def _year(value) -> int:
+    """연도를 정수로 맞춘다.
+
+    입력이 어디서 왔는지에 따라 타입이 갈린다 — 로컬 파서(`parse_business_reports.py`)가
+    쓴 `passages.jsonl` 은 `2024`(int) 지만, Spark 잡이 쓴 것은 `"2024"`(str) 다.
+    DataFrame 을 거치면서 문자열이 된다. 아래 이어서 돌리기가 `(기업, 연도)` 로
+    비교하므로, 맞추지 않으면 **이미 만든 것을 하나도 못 알아보고 전부 다시 부른다**
+    (S15P21A504-73 0차에서 실측으로 확인).
+    """
+    return int(str(value).strip())
+
+
 def _existing(path: Path) -> set[tuple[str, int]]:
     if not path.exists():
         return set()
     with path.open(encoding="utf-8", newline="") as f:
-        return {(r["corp_code"], int(r["fiscal_year"])) for r in csv.DictReader(f)}
+        return {(r["corp_code"], _year(r["fiscal_year"])) for r in csv.DictReader(f)}
 
 
 def main() -> int:
@@ -94,7 +106,7 @@ def main() -> int:
         print(f"앞 {args.companies}개사로 좁힘 — 문서 {before:,} → {len(jobs):,}")
 
     done = set() if args.redo else _existing(dest)
-    todo = [j for j in jobs if (j["corp_code"], j["fiscal_year"]) not in done]
+    todo = [j for j in jobs if (j["corp_code"], _year(j["fiscal_year"])) not in done]
     if args.limit:
         todo = todo[:args.limit]
 
@@ -118,7 +130,7 @@ def main() -> int:
         for i, job in enumerate(todo, 1):
             res = llm_mod.extract(client, {"business": job["business"], "rd": job["rd"]})
             now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-            base = {"corp_code": job["corp_code"], "fiscal_year": job["fiscal_year"],
+            base = {"corp_code": job["corp_code"], "fiscal_year": _year(job["fiscal_year"]),
                     "rcept_no": job["rcept_no"],
                     # AI 생성물이라 언제 만든 것인지 남긴다 (V13 generated_at 주석)
                     "generated_at": now, "model": client.model}

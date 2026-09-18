@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-037", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "성능 개선 경험의 배경과 결과를 설명해 주세요.",
+  "documents": [{"document_id": "doc-037", "document_type": "RESUME", "text": "메인 화면의 카테고리 조회가 트래픽 증가 시간대에 느려지는 문제가 있었습니다."}],
+  "expected_findings": [{"experience_type": "CACHE_PERFORMANCE", "claim_quote": "메인 화면의 카테고리 조회가 트래픽 증가 시간대에 느려지는 문제가 있었습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "MECHANISM", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["카테고리 Redis TTL을 10분으로 설정했습니다.", "카테고리 캐시 적중률 93%를 달성했습니다.", "카테고리 조회 p99를 640ms 개선했습니다."]
+}

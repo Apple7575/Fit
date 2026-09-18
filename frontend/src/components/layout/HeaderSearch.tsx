@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchCompanies } from '../../features/company-search/api';
+import { addRecentCompany } from '../../features/company-search/recent';
 import type { Company } from '../../types/company';
 
 type SearchStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -48,6 +49,7 @@ export function HeaderSearch() {
   const select = (company: Company) => {
     close();
     setKeyword('');
+    addRecentCompany(company);
     navigate(`/companies/${company.corpCode}/overview`);
   };
 

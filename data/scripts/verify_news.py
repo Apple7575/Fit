@@ -1,4 +1,4 @@
-"""뉴스 데이터 검증 14종 (data/docs/DATA_STORAGE_STANDARD.md 11장).
+"""뉴스 데이터 검증 15종 (data/docs/DATA_STORAGE_STANDARD.md 11장).
 
     python scripts/verify_news.py
     python scripts/verify_news.py --json _out/news_verify.json

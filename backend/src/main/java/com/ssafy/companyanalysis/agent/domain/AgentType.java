@@ -16,8 +16,8 @@ import java.util.Map;
 public enum AgentType {
 
     JD("jd", "채용공고 담당", "채용공고 필수 자격요건의 누락 여부를 점검합니다.",
-            "채용공고 원문(웹 크롤링)", true,
-            schema("jdUrl", new ConfigField("string", true, "채용공고 URL"))),
+            "방에 붙은 채용공고 분석", true,
+            schema()),
 
     COMPANY("company", "기업 RAG 담당", "기업의 사업 방향과 강점의 부합 여부를 분석합니다.",
             "기업별 Vector DB(사업보고서 · IR)", true,
@@ -25,12 +25,11 @@ public enum AgentType {
 
     POSITION("position", "포지션 담당", "직무 요구 수준에 맞는 기술적 깊이를 검증합니다.",
             "모델 지식 + 직무별 관점 힌트", true,
-            schema("jobRole", new ConfigField("enum", true, "지원 직무. /api/job-roles 의 key"))),
+            schema("jobRole", new ConfigField("string", true, "지원 직무. 자소서의 지원 직무가 그대로 들어온다"))),
 
     NEWS("news", "뉴스/트렌드 담당", "설득력을 높여줄 최근 기업 이슈 및 트렌드를 제안합니다.",
             "최근 뉴스", true,
-            schema("corpCodes", new ConfigField("array", true, "대상 기업의 corpCode 목록"),
-                    "months", new ConfigField("number", false, "몇 개월치를 볼지. 기본 6"))),
+            schema("corpCodes", new ConfigField("array", true, "대상 기업의 corpCode 목록"))),
 
     WRITING("writing", "글쓰기 담당", "가독성, 두괄식 구성, 글자 수 및 중복 표현을 교정합니다.",
             "자소서 원문", true,

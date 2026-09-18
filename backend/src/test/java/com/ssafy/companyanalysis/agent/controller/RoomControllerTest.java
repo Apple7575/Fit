@@ -61,6 +61,7 @@ class RoomControllerTest {
     private static RoomResponse room() {
         return new RoomResponse(31L, "네이버 백엔드 합동 검토",
                 new RoomResponse.CoverLetterRef(12L, "2026 상반기 네이버 지원"),
+                new RoomResponse.JobContextRef("ctx-1", "네이버", "백엔드 엔지니어"),
                 List.of(new RoomResponse.Agent("company", "기업 RAG 담당", false, true,
                                 Map.of("companies", List.of(Map.of("corpCode", "00126380",
                                         "name", "네이버", "ragReady", true)))),

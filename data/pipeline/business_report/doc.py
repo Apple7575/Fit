@@ -33,6 +33,20 @@ def _has_nested_table(element) -> bool:
     )
 
 
+def foreign_unit_in_blob(blob: str, markers) -> str | None:
+    """'단위' 표기 뒤가 외화이면 그 표기를 돌려준다.
+
+    원화 단위를 못 찾았을 때만 부른다. 외화 단위표를 만나면 **거기서 멈춰야** 한다 —
+    더 거슬러 오르면 남의 표에 붙은 원화 단위를 집는다 (doc.unit 주석 참고).
+    """
+    for m in _UNIT_SCOPE.finditer(blob):
+        scope = m.group(1)
+        for name in markers:
+            if name in scope:
+                return name
+    return None
+
+
 def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
     for match in _UNIT_SCOPE.finditer(blob):
         for name, multiplier in units:
@@ -281,10 +295,25 @@ class Document:
         return result
 
     def unit(self, table: Table) -> tuple[str | None, int | None, str | None]:
+        """표의 금액 단위 → (표기, 원 환산 배수, 어디서 찾았나).
+
+        단위 표기는 표 앞 문장이 아니라 **직전의 1행 1열 표**에 있다 (rnd.py 실측:
+        50건 중 44건). 그래서 자기 표부터 직전 N개까지 거슬러 오른다. 규칙과 배수
+        목록을 rnd 쪽 patterns 에서 그대로 가져와 두 파서가 갈리지 않게 한다.
+        """
         rules = self.p.rnd
         for index in range(table.idx, max(-1, table.idx - rules.unit_lookback_tables - 1), -1):
             candidate = self.tables[index]
-            found = unit_from_blob(candidate.caption + " " + candidate.head(3), rules.units)
+            blob = candidate.caption + " " + candidate.head(3)
+            # 외화가 보이면 원화 표기가 같이 있어도 버린다. 행마다 통화가 다른 표라
+            # 곱할 수를 하나로 정할 수 없다. 계속 거슬러 오르면 남의 표의 원화 단위를
+            # 집어 값이 1억 배가 되고(SJG세종 2021 · 240조원), 표 안에 '원' 이 섞여
+            # 있으면 그대로 원화로 읽혀 자릿수 검증까지 통과한다(같은 회사 2024).
+            # 둘 다 S15P21A504-73 1차 확대에서 실측했다.
+            foreign = foreign_unit_in_blob(blob, rules.foreign_currency_markers)
+            if foreign:
+                return None, None, f"외화표기:{foreign}"
+            found = unit_from_blob(blob, rules.units)
             if found:
                 name, multiplier = found
                 return name, multiplier, "자기표" if index == table.idx else f"직전표-{table.idx - index}"

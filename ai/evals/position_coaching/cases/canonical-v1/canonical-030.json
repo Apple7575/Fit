@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-030", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "서버 개발에서 해결한 문제와 역할을 작성해 주세요.",
+  "documents": [{"document_id": "doc-030", "document_type": "SELF_INTRO", "text": "엑셀 내보내기가 메모리 부족으로 중단되는 문제에서 다운로드 기능을 맡아 행을 순차 기록하는 방식으로 변경했습니다."}],
+  "expected_findings": [{"experience_type": "OTHER_BACKEND", "claim_quote": "엑셀 내보내기가 메모리 부족으로 중단되는 문제에서 다운로드 기능을 맡아 행을 순차 기록하는 방식으로 변경했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ROLE", "ACTION"], "missing_elements": ["RESULT"]}],
+  "forbidden_output_substrings": ["엑셀 생성에 Apache POI SXSSF를 사용했습니다.", "엑셀 파일 50만 행을 처리했습니다.", "내보내기 메모리를 82% 절감했습니다."]
+}

@@ -68,7 +68,7 @@ export const mockIndustryComparisonByCompany: Record<string, IndustryComparison>
         },
       },
       {
-        corpCode: '90000008',
+        corpCode: '00160843',
         corpName: 'DB하이텍',
         isTarget: false,
         values: {
@@ -82,7 +82,7 @@ export const mockIndustryComparisonByCompany: Record<string, IndustryComparison>
         },
       },
       {
-        corpCode: '90000009',
+        corpCode: '00369657',
         corpName: '리노공업',
         isTarget: false,
         values: {
@@ -96,7 +96,7 @@ export const mockIndustryComparisonByCompany: Record<string, IndustryComparison>
         },
       },
       {
-        corpCode: '90000010',
+        corpCode: '00246417',
         corpName: '이오테크닉스',
         isTarget: false,
         values: {
@@ -130,9 +130,9 @@ export const mockIndustryCompaniesByIndustry: Record<string, IndustryCompany[]> 
     { corpCode: '00126380', corpName: '삼성전자' },
     { corpCode: '00164779', corpName: 'SK하이닉스' },
     { corpCode: '00401731', corpName: 'LG전자' },
-    { corpCode: '90000008', corpName: 'DB하이텍' },
-    { corpCode: '90000009', corpName: '리노공업' },
-    { corpCode: '90000010', corpName: '이오테크닉스' },
+    { corpCode: '00160843', corpName: 'DB하이텍' },
+    { corpCode: '00369657', corpName: '리노공업' },
+    { corpCode: '00246417', corpName: '이오테크닉스' },
   ],
 };
 
@@ -179,14 +179,14 @@ export const mockComparisonTrendSeriesByCompany: Record<string, TrendSeriesLike[
     series('average_salary', [90e6, 92e6, 94e6, 96e6, 99e6]),
     series('rd_ratio', [5.8, 6.0, 6.2, 6.2, 6.5]),
   ],
-  '90000008': [
+  '00160843': [
     series('revenue', [1_220e9, 1_670e9, 1_150e9, 1_147e9, 1_376e9]),
     series('operating_profit', [400e9, 770e9, 260e9, -97e9, 210e9]),
     series('employee_count', [2_000, 2_050, 2_100, 2_100, 2_120]),
     series('average_salary', [80e6, 85e6, 78e6, 78e6, 89e6]),
     series('rd_ratio', [7.0, 6.5, 8.0, 9.3, 9.3]),
   ],
-  '90000009': [
+  '00369657': [
     series('revenue', [280e9, 320e9, null, 261e9, 271e9]),
     series('operating_profit', [120e9, 140e9, null, 105e9, 110e9]),
     series('employee_count', [null, null, null, null, null]),

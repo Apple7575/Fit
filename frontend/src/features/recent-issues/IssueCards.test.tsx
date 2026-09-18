@@ -128,17 +128,19 @@ const stats: NewsStats = {
 };
 
 describe('IssueKpiRow / IssueDistributionCard', () => {
-  it('renders four KPI tiles with 미제공 for a missing count', () => {
+  it('renders a tile per available KPI and folds the missing one into a note', () => {
     render(<IssueKpiRow state={{ status: 'success', data: stats }} />);
 
     const dl = screen.getByLabelText('뉴스 KPI');
     expect(within(dl).getByText('최근 뉴스 수')).toBeInTheDocument();
     expect(within(dl).getByText('48')).toBeInTheDocument();
     expect(within(dl).getByText('7일 기준')).toBeInTheDocument();
-    expect(within(dl).getByText('미제공')).toBeInTheDocument();
+    expect(within(dl).queryByText('중요 이슈 수')).not.toBeInTheDocument();
+    expect(within(dl).queryByText('미제공')).not.toBeInTheDocument();
+    expect(screen.getByText(/중요 이슈 수 은\(는\) AI 분류가 아직 없어/)).toBeInTheDocument();
   });
 
-  it('keeps the news count and marks the three AI-derived KPIs 미제공 when analysis has not run', () => {
+  it('keeps the news count and folds the three AI-derived KPIs when analysis has not run', () => {
     render(
       <IssueKpiRow
         state={{
@@ -153,7 +155,9 @@ describe('IssueKpiRow / IssueDistributionCard', () => {
 
     const dl = screen.getByLabelText('뉴스 KPI');
     expect(within(dl).getByText('48')).toBeInTheDocument();
-    expect(within(dl).getAllByText('미제공')).toHaveLength(3);
+    expect(within(dl).getAllByRole('term')).toHaveLength(1);
+    expect(within(dl).queryByText('미제공')).not.toBeInTheDocument();
+    expect(screen.getByText(/중요 이슈 수 · 투자 이슈 · 기술 이슈 은\(는\)/)).toBeInTheDocument();
   });
 
   it('hides the distribution card when nothing was classified', () => {

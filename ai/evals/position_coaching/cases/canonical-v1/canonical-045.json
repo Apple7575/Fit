@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-045", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "기타 백엔드 구현 경험에서 역할을 설명해 주세요.",
+  "documents": [{"document_id": "doc-045", "document_type": "RESUME", "text": "팀 프로젝트에서 파일 업로드 서버 개발을 담당했습니다."}],
+  "expected_findings": [{"experience_type": "OTHER_BACKEND", "claim_quote": "팀 프로젝트에서 파일 업로드 서버 개발을 담당했습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["ROLE"], "missing_elements": ["PROBLEM", "ACTION", "RESULT"]}],
+  "forbidden_output_substrings": ["파일 서버에 S3 멀티파트 업로드를 구현했습니다.", "최대 5GB 파일 업로드를 지원했습니다.", "파일 업로드 실패율을 2% 감소시켰습니다."]
+}

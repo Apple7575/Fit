@@ -1,4 +1,4 @@
-"""사업보고서 파싱 대상 100개사를 고른다 → `config/business_report_universe.csv`.
+"""사업보고서 파싱 대상을 고른다 → `config/business_report_universe.csv`.
 
 팀장 요청이 "기업 100개만 우선" 이고, 고르는 규칙은 **기존 13개사 고정 + 최신연도
 매출 상위로 87개를 채운다** 이다 (S15P21A504-73).
@@ -20,8 +20,20 @@
 바뀌고, 어제 받은 원문이 오늘 목록에 없는 상태가 된다. 수집·파싱·검증이 전부 이 파일
 하나를 읽는다.
 
-    python scripts/select_business_report_universe.py            # 다시 고른다
-    python scripts/select_business_report_universe.py --check    # 파일과 대조만
+    python scripts/select_business_report_universe.py                     # 100개사
+    python scripts/select_business_report_universe.py --companies 300     # 1차 확대
+    python scripts/select_business_report_universe.py --check             # 파일과 대조만
+
+**앞 N개사가 집합으로 고정된다.** 300개사로 다시 골라도 앞 100개사는 지금 파일의
+100개사와 같은 집합이다(실측). 매출 순위가 고정돼 있어 뒤에 붙기만 하기 때문이다.
+그래서 차수를 늘려도 이미 받은 원문·산출을 다시 만들 필요가 없다.
+
+**다만 그 100개사 안의 줄 순서는 달라질 수 있다.** 파일은 `existing_seed` 를 앞에
+두는데, 그 판정이 `curated/seed` 의 현재 내용을 보기 때문이다 — 100개사를 파싱해
+`segment_metric`·`company_activity` 가 늘면 다음 실행에서 `existing_seed` 도 는다
+(13 → 85개사가 실제로 그랬다). 순서에 기대는 코드는 없다. `--companies N` 을 받는
+쪽(`build_spark_jobs.py` · `extract_business_text_llm.py`)은 앞 N개를 잘라 **집합으로**
+쓴다.
 """
 from __future__ import annotations
 
@@ -35,7 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pipeline.paths import CONFIG, curated_seed_dir  # noqa: E402
 
-TARGET_SIZE = 100
+DEFAULT_SIZE = 100          # 팀장 요청의 1차 범위. 차수를 늘릴 때는 --companies 로 준다
 DEST = CONFIG / "business_report_universe.csv"
 
 FIELDS = ["corp_code", "corp_name", "stock_code", "pick_reason",
@@ -78,7 +90,7 @@ def latest_revenue(seed: Path) -> dict[str, tuple[int, float]]:
     return out
 
 
-def build() -> list[dict]:
+def build(target_size: int = DEFAULT_SIZE) -> list[dict]:
     seed = curated_seed_dir()
     names = {r["corp_code"]: r for r in _read(seed / "company.csv")}
     rev = latest_revenue(seed)
@@ -91,7 +103,7 @@ def build() -> list[dict]:
     picked: list[tuple[str, str]] = [(c, "existing_seed") for c in keep]
     seen = set(keep)
     for corp, _ in ranked:
-        if len(picked) >= TARGET_SIZE:
+        if len(picked) >= target_size:
             break
         if corp not in seen:
             picked.append((corp, "revenue_top"))
@@ -119,11 +131,14 @@ def build() -> list[dict]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="다시 고르지 않고 파일과 대조만 한다")
+    ap.add_argument("--companies", type=int, default=DEFAULT_SIZE, metavar="N",
+                    help=f"고를 기업 수 (기본 {DEFAULT_SIZE}). 앞은 고정되므로 차수를 "
+                         "늘릴 때 이 값만 키운다")
     args = ap.parse_args()
 
-    rows = build()
-    if len(rows) != TARGET_SIZE:
-        print(f"경고: {len(rows)}개사만 골랐다 (목표 {TARGET_SIZE}). "
+    rows = build(args.companies)
+    if len(rows) != args.companies:
+        print(f"경고: {len(rows)}개사만 골랐다 (목표 {args.companies}). "
               "company_metric 의 revenue 커버리지를 확인하라", file=sys.stderr)
 
     if args.check:

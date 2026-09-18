@@ -20,7 +20,7 @@ export const mockKeyMetricsByCompany: Record<string, KeyMetricsData> = {
     ],
     profitability: { operatingMargin: 13.6, netMargin: 11.0, debtRatio: 38.3 },
   },
-  '90000002': {
+  '00164742': {
     year: 2025,
     metrics: [
       { key: 'revenue', value: 175_231_000_000_000, prevValue: 162_700_000_000_000, changeRate: 7.7 },

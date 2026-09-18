@@ -47,7 +47,7 @@ export const mockActivitiesByCompany: Record<string, InvestmentActivity[]> = {
       amount: null,
     },
   ],
-  '90000002': [
+  '00164742': [
     {
       year: 2025,
       type: 'facility',
@@ -56,7 +56,7 @@ export const mockActivitiesByCompany: Record<string, InvestmentActivity[]> = {
       amount: 2_000_000_000_000,
     },
   ],
-  '90000004': [],
+  '00266961': [],
 };
 
 export const mockWorkforceByCompany: Record<string, WorkforceChange> = {
@@ -69,14 +69,14 @@ export const mockWorkforceByCompany: Record<string, WorkforceChange> = {
       { name: 'SDC', revenue: null, revenueShare: null, employeeChange: 248 },
     ],
   },
-  '90000002': {
+  '00164742': {
     year: 2025,
     employeeTotalChange: -120,
     segments: [
       { name: '완성차', revenue: 150_000_000_000_000, revenueShare: 85.6, employeeChange: null },
     ],
   },
-  '90000004': { year: 2025, employeeTotalChange: null, segments: [] },
+  '00266961': { year: 2025, employeeTotalChange: null, segments: [] },
 };
 
 export const mockFocusByCompany: Record<string, CompanyFocus> = {
@@ -94,5 +94,5 @@ export const mockFocusByCompany: Record<string, CompanyFocus> = {
       fields: ['AI 반도체', 'HBM', '파운드리'],
     },
   },
-  '90000004': { year: 2025, direction: null, rnd: null },
+  '00266961': { year: 2025, direction: null, rnd: null },
 };

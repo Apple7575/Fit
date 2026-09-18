@@ -32,6 +32,10 @@ public class Room {
     @Column(name = "cover_letter_id", nullable = false, updatable = false)
     private Long coverLetterId;
 
+    /** 검토 대상 채용공고 분석(ai_job_contexts.context_id). 공고 없이 연 방은 NULL. */
+    @Column(name = "context_id", length = 80)
+    private String jobContextId;
+
     @Column(name = "title", length = 120, nullable = false)
     private String title;
 
@@ -48,16 +52,23 @@ public class Room {
     protected Room() {
     }
 
-    private Room(Long userId, Long coverLetterId, String title, List<RoomAgent> agents) {
+    private Room(Long userId, Long coverLetterId, String jobContextId, String title, List<RoomAgent> agents) {
         this.userId = userId;
         this.coverLetterId = coverLetterId;
+        this.jobContextId = jobContextId;
         this.title = title;
         this.agents = List.copyOf(agents);
         this.createdAt = OffsetDateTime.now();
     }
 
+    /** 공고 없이 여는 방. 자소서를 고르면 깔아 주는 기본 방들이 이쪽이다. */
     public static Room create(Long userId, Long coverLetterId, String title, List<RoomAgent> agents) {
-        return new Room(userId, coverLetterId, title, agents);
+        return new Room(userId, coverLetterId, null, title, agents);
+    }
+
+    public static Room create(Long userId, Long coverLetterId, String jobContextId, String title,
+                              List<RoomAgent> agents) {
+        return new Room(userId, coverLetterId, jobContextId, title, agents);
     }
 
     public void rename(String title) {
@@ -82,6 +93,10 @@ public class Room {
 
     public Long getCoverLetterId() {
         return coverLetterId;
+    }
+
+    public String getJobContextId() {
+        return jobContextId;
     }
 
     public String getTitle() {

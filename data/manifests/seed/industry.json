@@ -1,6 +1,6 @@
 {
   "table": "industry",
-  "generated_at": "2026-09-08T05:01:59.443697+00:00",
+  "generated_at": "2026-09-17T07:04:07.787400+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "industry_code",
@@ -23,7 +23,17 @@
     "V13__erd_alignment.sql",
     "V14__users.sql",
     "V15__email_verification.sql",
-    "V16__news_article_drop_ai_columns.sql"
+    "V16__news_article_drop_ai_columns.sql",
+    "V17__erd_alignment_followup.sql",
+    "V18__cover_letter.sql",
+    "V19__interview.sql",
+    "V20__jd_ai_analysis.sql",
+    "V21__jd_ai_conversation.sql",
+    "V22__agent_room.sql",
+    "V23__agent_message.sql",
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
   ],
   "source": "config/ksic_division.csv",
   "seed_rows": 77,
