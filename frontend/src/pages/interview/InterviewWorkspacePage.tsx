@@ -1,6 +1,6 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
@@ -43,6 +43,8 @@ type Phase = 'setup' | 'generating' | 'session' | 'analyzing' | 'saving' | 'repo
 function NewInterview() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  // 기업 분석에서 넘어온 ?corpCode=&company= 가 로그인 후에도 남도록 검색 문자열째 되돌려준다
+  const { pathname, search } = useLocation();
 
   const [phase, setPhase] = useState<Phase>('setup');
   const [localSessionId] = useState(() => crypto.randomUUID());
@@ -60,7 +62,7 @@ function NewInterview() {
       </Shell>
     );
   }
-  if (!user) return <Navigate replace to="/login?redirect=/interviews/new" />;
+  if (!user) return <Navigate replace to={`/login?redirect=${encodeURIComponent(pathname + search)}`} />;
 
   const start = async (next: InterviewConfig) => {
     setConfig(next);
@@ -214,12 +216,11 @@ function NewInterview() {
   // setup
   return (
     <Shell>
-      <div className="mx-auto max-w-3xl px-6 pt-6">
-        <button onClick={() => navigate('/interviews')} className="text-sm text-slate-400 hover:text-slate-600" type="button">
-          ← 목록으로
-        </button>
-        {error && <div className="mt-3"><InlineNotice>{error}</InlineNotice></div>}
-      </div>
+      {error && (
+        <div className="mx-auto max-w-4xl px-6 pt-6">
+          <InlineNotice>{error}</InlineNotice>
+        </div>
+      )}
       <InterviewSetup loading={false} onStart={(c) => void start(c)} />
     </Shell>
   );
@@ -287,12 +288,8 @@ function SavedReport({ interview }: { interview: Interview }) {
   const navigate = useNavigate();
   return (
     <div>
-      <div className="mx-auto max-w-4xl px-6 pt-6">
-        <button onClick={() => navigate('/interviews')} className="text-sm text-slate-400 hover:text-slate-600" type="button">
-          ← 목록으로
-        </button>
-      </div>
       <InterviewReport
+        onBack={() => navigate('/interviews')}
         company={interview.targetCompany ?? null}
         position={interview.targetPosition ?? null}
         interviewType={interview.interviewType}
