@@ -7,6 +7,10 @@ import { useAuth } from '../../features/auth/AuthProvider';
 const FIELD_CLASS =
   'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
 
+// 비밀번호 규칙: 영문·숫자·특수문자를 모두 포함해 8~64자. 백엔드 SignupRequest 의 @Pattern 과 같은 규칙.
+const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,64}$/;
+const PASSWORD_HINT = '영문·숫자·특수문자를 포함해 8자 이상 입력하세요.';
+
 export function SignupPage() {
   const navigate = useNavigate();
   const { signup } = useAuth();
@@ -18,10 +22,16 @@ export function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const mismatch = passwordConfirm.length > 0 && passwordConfirm !== password;
+  const passwordWeak = password.length > 0 && !PASSWORD_RE.test(password);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    // 서버 가드(@Pattern)와 같은 규칙을 여기서 먼저 막아 명확히 안내한다.
+    if (!PASSWORD_RE.test(password)) {
+      setError(PASSWORD_HINT);
+      return;
+    }
     // 서버는 비밀번호를 한 번만 받는다. 오타 방지는 여기서만 한다.
     if (password !== passwordConfirm) {
       setError('비밀번호가 일치하지 않습니다.');
@@ -90,8 +100,9 @@ export function SignupPage() {
             비밀번호
           </label>
           <input
+            aria-invalid={passwordWeak}
             autoComplete="new-password"
-            className={FIELD_CLASS}
+            className={`${FIELD_CLASS} ${passwordWeak ? 'border-red-400' : ''}`}
             id="signup-password"
             minLength={8}
             onChange={(event) => setPassword(event.target.value)}
@@ -99,7 +110,9 @@ export function SignupPage() {
             type="password"
             value={password}
           />
-          <p className="text-xs text-slate-500">8자 이상 입력하세요.</p>
+          <p className={`text-xs ${passwordWeak ? 'font-medium text-red-600' : 'text-slate-500'}`}>
+            {PASSWORD_HINT}
+          </p>
         </div>
 
         <div className="flex flex-col gap-1.5">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ApiError } from '../../api/client';
+import { ApiError, isRateLimited } from '../../api/client';
 import { CompanyPicker } from './CompanyPicker';
 import { parseJobPosting } from './api';
 import type { CoverLetterInput } from './types';
@@ -328,10 +328,12 @@ function JobPostingBar({
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<PostingStatus>('idle');
   const [message, setMessage] = useState('');
+  // 자동 인식이 안 되는 것으로 판명난 URL. 같은 주소 재파싱은 성공하지 않으므로 다시 못 누르게 막는다.
+  const [blockedUrl, setBlockedUrl] = useState<string | null>(null);
 
   const confirm = async () => {
     const target = url.trim();
-    if (!target) return;
+    if (!target || target === blockedUrl) return;
     setStatus('loading');
     setMessage('');
     try {
@@ -342,11 +344,19 @@ function JobPostingBar({
       setMessage('');
     } catch (error) {
       setStatus('error');
-      setMessage(
-        error instanceof ApiError
-          ? error.message
-          : '공고를 확인하지 못했습니다. 주소를 다시 확인해 주세요.',
-      );
+      if (error instanceof ApiError && error.code === 'JOB_POSTING_PARSE_FAILED') {
+        // 같은 URL 재시도는 무의미 → 그 주소를 잠그고 다른 주소/직접 입력으로 유도한다.
+        setBlockedUrl(target);
+        setMessage('이 공고는 자동 인식이 안 돼요. 다른 주소를 넣거나 회사·직무를 직접 입력해 주세요.');
+      } else if (error instanceof ApiError && isRateLimited(error)) {
+        setMessage('요청이 많습니다. 잠시 후 다시 시도해 주세요.');
+      } else {
+        setMessage(
+          error instanceof ApiError
+            ? error.message
+            : '공고를 확인하지 못했습니다. 주소를 다시 확인해 주세요.',
+        );
+      }
     }
   };
 
@@ -359,7 +369,13 @@ function JobPostingBar({
         <input
           id="cl-posting-url"
           value={url}
-          onChange={(event) => setUrl(event.target.value)}
+          onChange={(event) => {
+            setUrl(event.target.value);
+            if (status === 'error') {
+              setStatus('idle');
+              setMessage('');
+            }
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault();
@@ -373,7 +389,7 @@ function JobPostingBar({
         />
         <button
           onClick={confirm}
-          disabled={status === 'loading' || url.trim() === ''}
+          disabled={status === 'loading' || url.trim() === '' || url.trim() === blockedUrl}
           className="h-[42px] shrink-0 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           type="button"
         >
