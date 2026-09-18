@@ -1,6 +1,7 @@
 package com.ssafy.companyanalysis.agent.service;
 
 import com.ssafy.companyanalysis.agent.config.AgentCatalogProperties;
+import com.ssafy.companyanalysis.agent.domain.JobContext;
 import com.ssafy.companyanalysis.agent.domain.Room;
 import com.ssafy.companyanalysis.agent.domain.RoomAgent;
 import com.ssafy.companyanalysis.agent.dto.RoomCreateRequest;
@@ -261,6 +262,34 @@ class RoomServiceTest {
     }
 
     @Test
+    @DisplayName("자소서에 붙은 공고를 방마다 물려준다 — 방을 열 때마다 다시 등록하지 않는다")
+    void defaultRoomsInheritTheCoverLettersJobContext() {
+        givenCoverLetter("네이버", "서버 개발", "ctx-1");
+        // 목을 먼저 만들어 둔다. given(...) 안에서 다른 목을 세우면 Mockito 가 미완성 스터빙으로 본다.
+        JobContext context = jobContext("ctx-1");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedRooms()).allSatisfy(room ->
+                assertThat(room.getJobContextId()).isEqualTo("ctx-1"));
+    }
+
+    @Test
+    @DisplayName("자소서가 가리키는 공고가 사라졌으면 방은 공고 없이 깐다 — 화면을 막지 않는다")
+    void aVanishedJobContextLeavesTheRoomsWithoutOne() {
+        givenCoverLetter("네이버", "서버 개발", "ctx-gone");
+        given(jobContextRepository.findById("ctx-gone")).willReturn(Optional.empty());
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedRooms()).allSatisfy(room ->
+                assertThat(room.getJobContextId()).isNull());
+    }
+
+    @Test
     @DisplayName("채용공고 담당은 비워 둔다 — 공고 URL 을 자소서에 저장하지 않는다")
     void jobPostingAgentStaysEmpty() {
         givenCoverLetter("네이버", "서버 개발");
@@ -349,13 +378,32 @@ class RoomServiceTest {
     }
 
     private void givenCoverLetter(String company, String position) {
+        givenCoverLetter(company, position, null);
+    }
+
+    private void givenCoverLetter(String company, String position, String contextId) {
         CoverLetter letter = Mockito.mock(CoverLetter.class);
         given(letter.getId()).willReturn(LETTER);
         given(letter.getTitle()).willReturn("자소서");
         given(letter.getTargetCompany()).willReturn(company);
         given(letter.getTargetPosition()).willReturn(position);
+        given(letter.getContextId()).willReturn(contextId);
         given(coverLetterRepository.findByIdAndUserId(LETTER, USER)).willReturn(Optional.of(letter));
         given(coverLetterRepository.findById(LETTER)).willReturn(Optional.of(letter));
+    }
+
+    private static JobContext jobContext(String contextId) {
+        JobContext context = Mockito.mock(JobContext.class);
+        given(context.getContextId()).willReturn(contextId);
+        return context;
+    }
+
+    /** 새로 저장된 방 전부. */
+    @SuppressWarnings("unchecked")
+    private List<Room> savedRooms() {
+        org.mockito.ArgumentCaptor<List<Room>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        org.mockito.Mockito.verify(roomRepository).saveAll(captor.capture());
+        return captor.getValue();
     }
 
     /** 새로 저장된 전담 방(에이전트 1명)의 설정을 agentKey 로 모은다. */

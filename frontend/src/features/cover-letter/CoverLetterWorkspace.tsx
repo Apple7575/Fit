@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ApiError, isRateLimited } from '../../api/client';
 import { CompanyPicker } from './CompanyPicker';
-import { parseJobPosting } from './api';
+import { parseJobPosting, registerJobPosting } from './api';
 import type { CoverLetterInput } from './types';
 
 interface CoverLetterWorkspaceProps {
@@ -22,6 +22,10 @@ interface WorkItem {
 }
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+
+/** 공고를 어떤 회사·직무로 등록했는지 적어 두는 열쇠. 달라지면 등록한 공고가 더는 맞지 않는다. */
+const postingKey = (company?: string | null, position?: string | null) =>
+  `${(company ?? '').trim()}|${(position ?? '').trim()}`;
 
 const toWorkItem = (item: CoverLetterInput['items'][number]): WorkItem => ({
   key: uid(),
@@ -50,6 +54,15 @@ export function CoverLetterWorkspace({
   const [savedOnce, setSavedOnce] = useState(alreadySaved ?? false);
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  // 확인만 해 둔 공고. 저장할 때 이 주소로 등록한다.
+  const [posting, setPosting] = useState<{ url: string; sourceKey: string | null } | null>(null);
+  // 등록해 둔 공고와, 그때의 회사·직무. 그 뒤에 회사나 직무를 바꾸면 다시 등록해야 한다.
+  const [registered, setRegistered] = useState<{ id: string; of: string } | null>(() =>
+    initial.jobContextId
+      ? { id: initial.jobContextId, of: postingKey(initial.targetCompany, initial.targetPosition) }
+      : null,
+  );
+  const [registering, setRegistering] = useState(false);
 
   const touch = () => setDirty(true);
 
@@ -70,7 +83,15 @@ export function CoverLetterWorkspace({
   };
 
   // 공고에서 읽어 온 값은 저장되지 않는다. 입력칸을 채울 뿐이라 여기서도 미저장 표시를 켠다.
-  const applyPosting = (companyName: string | null, positions: string[]) => {
+  const applyPosting = (
+    companyName: string | null,
+    positions: string[],
+    sourceUrl: string,
+    sourceKey: string | null,
+  ) => {
+    // 주소만 들고 있다가 저장할 때 등록한다. 지금 등록하면 그 뒤에 직무를 바꿨을 때 어긋난다.
+    setPosting({ url: sourceUrl, sourceKey });
+    setRegistered(null);
     if (companyName) setCompany(companyName);
     setTypingPosition(false);
     if (positions.length === 1) {
@@ -89,6 +110,7 @@ export function CoverLetterWorkspace({
     title: title.trim() || '제목 없는 자소서',
     targetCompany: company.trim() || null,
     targetPosition: position.trim() || null,
+    jobContextId: registered?.id ?? null,
     items: items.map((item) => ({
       question: item.question,
       answer: item.answer,
@@ -96,10 +118,42 @@ export function CoverLetterWorkspace({
     })),
   });
 
+  /**
+   * 저장 직전에 공고를 등록해 식별자를 붙인다. 검토 방은 자소서에 적힌 이 값을 물려받는다.
+   *
+   * 등록은 모델이 공고를 요구사항 단위로 정리하므로 수십 초 걸린다. 그동안 버튼이 "공고
+   * 분석 중…" 으로 남는다. 같은 회사·직무로 이미 등록해 뒀으면 다시 부르지 않는다.
+   *
+   * 실패해도 저장은 그대로 진행한다. 공고는 선택 항목이라 써 둔 글을 못 담게 할 이유가 없다.
+   */
+  const inputForSaving = async (): Promise<CoverLetterInput> => {
+    const base = buildInput();
+    const key = postingKey(base.targetCompany, base.targetPosition);
+    if (!posting || registered?.of === key) {
+      return base;
+    }
+
+    setRegistering(true);
+    try {
+      const context = await registerJobPosting(
+        posting.url,
+        base.targetCompany ?? null,
+        base.targetPosition ?? null,
+        posting.sourceKey,
+      );
+      setRegistered({ id: context.jobContextId, of: key });
+      return { ...base, jobContextId: context.jobContextId };
+    } catch {
+      return { ...base, jobContextId: null };
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     try {
-      await onSave(buildInput());
+      await onSave(await inputForSaving());
       setDirty(false);
       setSavedOnce(true);
     } finally {
@@ -110,7 +164,7 @@ export function CoverLetterWorkspace({
   const review = async () => {
     setReviewing(true);
     try {
-      await onReview(buildInput());
+      await onReview(await inputForSaving());
     } finally {
       setReviewing(false);
     }
@@ -154,6 +208,7 @@ export function CoverLetterWorkspace({
           dirty={dirty}
           savedOnce={savedOnce}
           saving={saving}
+          registering={registering}
           onSave={save}
         />
       </div>
@@ -296,11 +351,11 @@ export function CoverLetterWorkspace({
       <div className="mt-6 flex flex-col items-end gap-1.5">
         <button
           onClick={review}
-          disabled={reviewing || !hasWriting}
+          disabled={reviewing || registering || !hasWriting}
           className="rounded-xl bg-slate-900 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           type="button"
         >
-          {reviewing ? '여는 중…' : 'AI 검토'}
+          {registering ? '공고 분석 중…' : reviewing ? '여는 중…' : 'AI 검토'}
         </button>
         <p className="text-[12px] text-slate-400">
           {!hasWriting
@@ -323,7 +378,12 @@ type PostingStatus = 'idle' | 'loading' | 'done' | 'error';
 function JobPostingBar({
   onParsed,
 }: {
-  onParsed: (companyName: string | null, positions: string[]) => void;
+  onParsed: (
+    companyName: string | null,
+    positions: string[],
+    sourceUrl: string,
+    sourceKey: string | null,
+  ) => void;
 }) {
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<PostingStatus>('idle');
@@ -338,7 +398,7 @@ function JobPostingBar({
     setMessage('');
     try {
       const result = await parseJobPosting(target);
-      onParsed(result.companyName, result.positions);
+      onParsed(result.companyName, result.positions, result.sourceUrl, result.sourceKey);
       // 잘 됐다는 말은 하지 않는다. 회사·직무 칸이 채워진 것으로 이미 보인다.
       setStatus('done');
       setMessage('');
@@ -457,12 +517,15 @@ function SaveArea({
   dirty,
   savedOnce,
   saving,
+  registering,
   onSave,
 }: {
   isLoggedIn: boolean;
   dirty: boolean;
   savedOnce: boolean;
   saving: boolean;
+  /** 공고를 등록하는 중. 저장의 한 단계라 버튼을 같이 잠근다. */
+  registering: boolean;
   onSave: () => void;
 }) {
   if (!isLoggedIn) {
@@ -486,11 +549,11 @@ function SaveArea({
       {savedOnce && !dirty && <span className="text-[12.5px] font-medium text-emerald-600">저장됨 ✓</span>}
       <button
         onClick={onSave}
-        disabled={saving || (savedOnce && !dirty)}
+        disabled={saving || registering || (savedOnce && !dirty)}
         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         type="button"
       >
-        {saving ? '저장 중…' : '저장'}
+        {registering ? '공고 분석 중…' : saving ? '저장 중…' : '저장'}
       </button>
     </div>
   );

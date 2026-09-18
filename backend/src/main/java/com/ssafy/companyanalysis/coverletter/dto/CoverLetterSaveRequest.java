@@ -10,11 +10,17 @@ import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
-/** 자소서 저장(신규·수정 공통) 요청. */
+/**
+ * 자소서 저장(신규·수정 공통) 요청.
+ *
+ * <p>{@code jobContextId} 는 공고 등록({@code POST /api/job-postings/contexts})에서 받은 식별자다.
+ * 공고를 넣지 않았거나 등록에 실패했으면 비운다 — 공고는 선택이라 없다고 저장을 막지 않는다.
+ */
 public record CoverLetterSaveRequest(
         @NotBlank @Size(max = 120) String title,
         @Size(max = 120) String targetCompany,
         @Size(max = 120) String targetPosition,
+        @Size(max = 80) String jobContextId,
         @NotEmpty @Valid List<Item> items) {
 
     public record Item(
