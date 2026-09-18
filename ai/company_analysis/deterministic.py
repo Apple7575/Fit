@@ -306,7 +306,7 @@ def products_bullets(facts: CompanyFacts) -> BulletsBlock | None:
 
 
 def rnd_bullets(facts: CompanyFacts) -> BulletsBlock | None:
-    return _list_bullets(facts, RD_FIELD, "연구개발 조직·분야", joiner=", ")
+    return _list_bullets(facts, RD_FIELD, "연구개발 실적·분야", joiner=", ")
 
 
 def new_business_bullets(facts: CompanyFacts) -> BulletsBlock | None:
@@ -434,15 +434,17 @@ def build_deterministic_report(
     sections: list[ReportSection] = []
     warnings: list[str] = []
 
+    # 표·KPI 를 앞에, DB 문구 목록(주요 제품·R&D·신사업·전략)은 뒤에 둔다. LLM 서술 블록은
+    # 첫 표 앞에 끼워 넣으므로(narrative._merge_section) 이 순서라야 서술 → 데이터 → 부속 목록이 된다.
     business_blocks = _drop_none(
         [
-            products_bullets(facts),
             segment_share_table(facts),
+            investment_table(facts),
+            kpi_block(facts),
+            products_bullets(facts),
             rnd_bullets(facts),
             new_business_bullets(facts),
             strategy_bullets(facts),
-            investment_table(facts),
-            kpi_block(facts),
         ]
     )
     if business_blocks:

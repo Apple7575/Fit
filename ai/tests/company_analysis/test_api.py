@@ -42,10 +42,24 @@ class FailingEnricher:
         raise RuntimeError("LLM down")
 
 
-def _service(enrichers=()) -> tuple[CompanyAnalysisService, FakeRepository, InMemoryReportStore]:
+class MarkingEnricher:
+    def enrich(self, facts, report):
+        return report.model_copy(update={"corp_name": report.corp_name + " (서술 완료)"})
+
+
+class ImmediateExecutor:
+    """제출 즉시 같은 스레드에서 실행한다. 백그라운드 경로를 결정적으로 테스트하기 위한 것."""
+
+    def submit(self, fn, *args, **kwargs):
+        fn(*args, **kwargs)
+
+
+def _service(enrichers=(), executor=None) -> tuple[CompanyAnalysisService, FakeRepository, InMemoryReportStore]:
     repository = FakeRepository({"00164779": _facts()})
     store = InMemoryReportStore(clock=lambda: NOW)
-    service = CompanyAnalysisService(repository=repository, store=store, enrichers=enrichers, clock=lambda: NOW)
+    service = CompanyAnalysisService(
+        repository=repository, store=store, enrichers=enrichers, executor=executor, clock=lambda: NOW
+    )
     return service, repository, store
 
 
@@ -70,8 +84,37 @@ class ServiceTest(unittest.TestCase):
         status = service.generate("00164779")
         self.assertEqual(status.status, "READY")
         report = store.get("00164779").report
+        self.assertEqual(report.stage, "FULL")
         self.assertTrue(any("FailingEnricher" in w for w in report.warnings))
         self.assertEqual([s.type for s in report.sections], ["BUSINESS", "FINANCIALS"])
+
+    def test_no_enrichers_is_full_immediately(self):
+        service, _, store = _service()
+        service.generate("00164779")
+        self.assertEqual(store.get("00164779").report.stage, "FULL")
+
+    def test_background_enrichment_upgrades_stage(self):
+        class RecordingStore(InMemoryReportStore):
+            def __init__(self):
+                super().__init__(clock=lambda: NOW)
+                self.saved = []
+
+            def save_ready(self, corp_code, report):
+                self.saved.append(report)
+                return super().save_ready(corp_code, report)
+
+        repository = FakeRepository({"00164779": _facts()})
+        store = RecordingStore()
+        service = CompanyAnalysisService(
+            repository=repository, store=store, enrichers=(MarkingEnricher(),), executor=ImmediateExecutor(), clock=lambda: NOW
+        )
+        service.generate("00164779")
+        self.assertEqual([r.stage for r in store.saved], ["DETERMINISTIC", "FULL"], "결정적 리포트를 먼저 저장하고 서술 뒤 갱신한다")
+        self.assertTrue(any("생성하는 중" in w for w in store.saved[0].warnings))
+        final = store.get("00164779").report
+        self.assertEqual(final.corp_name, "SK하이닉스 (서술 완료)")
+        self.assertFalse(any("생성하는 중" in w for w in final.warnings))
+        self.assertFalse(service.is_enriching("00164779"))
 
 
 class ApiTest(unittest.TestCase):

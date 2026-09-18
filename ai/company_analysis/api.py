@@ -5,22 +5,33 @@
     GET  /internal/reports/{corp_code}/status   생성 상태만
     POST /internal/reports                      생성 요청 {corp_code, force}
 
-DB 주소는 COMPANY_ANALYSIS_DATABASE_URL, 없으면 JD_DATABASE_URL(ai/.env) 을 쓴다 —
-같은 서비스 DB 다.
+환경변수(없으면 ai/.env)
+- COMPANY_ANALYSIS_DATABASE_URL, 없으면 JD_DATABASE_URL: 확정 데이터·리포트 저장 DB
+- COMPANY_ANALYSIS_RAG_DATABASE_URL: 사업보고서 청크(rag_evidence) DB. 없으면 위와 같은 DB
+- COMPANY_ANALYSIS_NARRATIVE: `off` 면 LLM 서술 없이 확정 블록만 만든다. 기본 on
+- COMPANY_ANALYSIS_MODEL_TIMEOUT_SECONDS: Qwen 호출 제한. 기본 180
+- QWEN_BASE_URL / QWEN_MODEL / QWEN_API_KEY: 다른 담당과 같은 GPU 서버 설정
 """
 
 from __future__ import annotations
 
+import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
+
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 
 from .contracts import CompanyReport, ReportGenerateRequest, ReportStatus
+from .evidence import PostgresBusinessReportRepository
+from .llm import QwenConfig, QwenStructuredClient
+from .narrative import NarrativeEnricher
 from .repository import PostgresCompanyFactsRepository
 from .service import CompanyAnalysisService, CompanyNotFoundError
 from .store import PostgresReportStore
 
+LOGGER = logging.getLogger("ai.company_analysis.api")
 AI_ROOT = Path(__file__).parents[1]
 CORP_CODE_PATTERN = r"^[0-9]{8}$"
 
@@ -42,14 +53,44 @@ def _read_env_value(path: Path, key: str) -> str:
     return ""
 
 
-def resolve_database_url() -> str:
-    for key in ("COMPANY_ANALYSIS_DATABASE_URL", "JD_DATABASE_URL"):
-        value = os.environ.get(key, "").strip() or _read_env_value(_env_file(), key)
+def _env(key: str) -> str:
+    return os.environ.get(key, "").strip() or _read_env_value(_env_file(), key)
+
+
+def _postgres_url(*keys: str) -> str:
+    for key in keys:
+        value = _env(key)
         if value:
             if not value.startswith(("postgresql://", "postgres://")):
                 raise RuntimeError(f"{key} must be a PostgreSQL URL")
             return value
-    raise RuntimeError("COMPANY_ANALYSIS_DATABASE_URL or JD_DATABASE_URL is required")
+    raise RuntimeError(f"{' or '.join(keys)} is required")
+
+
+def resolve_database_url() -> str:
+    return _postgres_url("COMPANY_ANALYSIS_DATABASE_URL", "JD_DATABASE_URL")
+
+
+def resolve_rag_database_url() -> str:
+    return _postgres_url("COMPANY_ANALYSIS_RAG_DATABASE_URL", "COMPANY_ANALYSIS_DATABASE_URL", "JD_DATABASE_URL")
+
+
+def narrative_enabled() -> bool:
+    return _env("COMPANY_ANALYSIS_NARRATIVE").lower() not in {"off", "0", "false", "no"}
+
+
+def build_enrichers() -> tuple:
+    """Qwen 설정이 없으면 서술 없이 확정 블록만 만든다. 설정 오류로 리포트 API 전체가 죽지 않게 한다."""
+    if not narrative_enabled():
+        return ()
+    try:
+        timeout = int(_env("COMPANY_ANALYSIS_MODEL_TIMEOUT_SECONDS") or "180")
+        config = QwenConfig.from_env_file(_env_file(), timeout_seconds=timeout)
+        rag_connect = _connect_factory(resolve_rag_database_url())
+    except (OSError, RuntimeError, ValueError) as error:
+        LOGGER.warning("narrative disabled: %s", error)
+        return ()
+    return (NarrativeEnricher(QwenStructuredClient(config), PostgresBusinessReportRepository(rag_connect)),)
 
 
 def _connect_factory(database_url: str):
@@ -69,9 +110,13 @@ def get_company_analysis_service() -> CompanyAnalysisService:
         raise HTTPException(
             status_code=503, detail={"code": "COMPANY_ANALYSIS_CONFIGURATION_UNAVAILABLE"}
         ) from error
+    enrichers = build_enrichers()
     return CompanyAnalysisService(
         repository=PostgresCompanyFactsRepository(connect),
         store=PostgresReportStore(connect),
+        enrichers=enrichers,
+        # GPU 한 대를 여러 기업이 동시에 두드리지 않게 서술 생성은 한 줄로 세운다.
+        executor=ThreadPoolExecutor(max_workers=1, thread_name_prefix="company-narrative") if enrichers else None,
     )
 
 
@@ -116,8 +161,10 @@ def create_app(service_provider=get_company_analysis_service) -> FastAPI:
             current = service.generate(payload.corp_code, force=payload.force)
         except CompanyNotFoundError:
             raise HTTPException(status_code=404, detail={"code": "COMPANY_NOT_FOUND"})
-        response.status_code = 200 if current.status == "READY" else 202
-        return current
+        stored = service.status(payload.corp_code)
+        finished = current.status == "READY" and not service.is_enriching(payload.corp_code)
+        response.status_code = 200 if finished else 202
+        return stored or current
 
     return app
 

@@ -185,6 +185,8 @@ class ReportSource(StrictModel):
 
 class CompanyReport(StrictModel):
     schema_version: Literal["company-report-v1"] = "company-report-v1"
+    # DETERMINISTIC: 확정 데이터 블록만 있음(서술 생성 중이거나 실패). FULL: 서술 블록까지 완료.
+    stage: Literal["DETERMINISTIC", "FULL"] = "DETERMINISTIC"
     corp_code: CorpCode
     corp_name: ShortText
     # 리포트가 기준으로 삼은 최신 사업연도.
