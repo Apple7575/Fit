@@ -86,8 +86,8 @@ _INSERT = """
 INSERT INTO company_table_row
     (corp_code, rcept_no, table_index, form_code, section_title, entity_scope, unit, header,
      row_no, matrix_row, col_no, row_labels, column_key, fiscal_year, value_num, value_text,
-     parse_status, evidence_id, rule_version)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+     parse_status, evidence_id, evidence_status, rule_version)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 
 
@@ -95,13 +95,13 @@ _COPY = """
 COPY company_table_row
     (corp_code, rcept_no, table_index, form_code, section_title, entity_scope, unit, header,
      row_no, matrix_row, col_no, row_labels, column_key, fiscal_year, value_num, value_text,
-     parse_status, evidence_id, rule_version)
+     parse_status, evidence_id, evidence_status, rule_version)
 FROM STDIN
 """
 
 
 def write_company_rows(connection, corp_code: str, records: list[TableRowRecord]) -> dict[str, int]:
-    """기업의 기존 행을 지우고 다시 넣는다. 근거 ID 가 rag_evidence 에 없으면 NULL 로 두고 건수를 보고한다."""
+    """기업의 기존 행을 지우고 다시 넣는다. 근거 ID 가 rag_evidence 에 없으면 NULL·PENDING_CHUNK 로 두고 건수를 보고한다."""
     cursor = connection.cursor()
     wanted = sorted({r.evidence_id for r in records if r.evidence_id})
     known: set[str] = set()
@@ -112,9 +112,10 @@ def write_company_rows(connection, corp_code: str, records: list[TableRowRecord]
     unmatched = 0
     for record in records:
         evidence_id = record.evidence_id if record.evidence_id in known else None
-        if record.evidence_id and evidence_id is None:
+        if evidence_id is None:
             unmatched += 1
-        rows.append((*record.as_tuple()[:17], evidence_id, RULE_VERSION))
+        # 값은 원문에서 왔지만 같은 경계의 청크가 없으면 PENDING_CHUNK. 보고서는 LINKED 만 인용한다.
+        rows.append((*record.as_tuple()[:17], evidence_id, "LINKED" if evidence_id else "PENDING_CHUNK", RULE_VERSION))
     cursor.execute(_DELETE, (corp_code,))
     if rows and hasattr(cursor, "copy"):
         # 5만 행 규모라 executemany(행당 왕복)보다 COPY 가 훨씬 빠르다. 실측: 772행 executemany 약 130초.

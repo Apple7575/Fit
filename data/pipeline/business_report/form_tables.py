@@ -34,6 +34,7 @@ class FormSpec:
     numeric: tuple[str, ...] = ()     # 숫자여야 하는 머리글 이름(부분 일치). 열 밀림 판정에 쓴다.
     default_unit: str | None = None   # 단위 메타가 비었을 때
     patterns: tuple[tuple[str, str], ...] = ()  # (머리글 이름, 값 정규식). 값 절반 이상이 안 맞으면 열 밀림
+    text_columns: tuple[str, ...] = ()  # 값이 숫자처럼 보여도 문자로 둘 열. 재직기간 '31'·'9년 2개월'·'2022.01.27~현재' 가 한 열에 섞인다(검수 판정 2026-09-19)
 
 
 # 2008.05.16 · 2008-05-16 · 2008년 05월 16일 · '22.03 (POSCO홀딩스 실측) · 22.03
@@ -43,7 +44,8 @@ FORM_SPECS: tuple[FormSpec, ...] = (
     FormSpec("EMPLOYEE_STATUS", "직원 현황", re.compile(r"임원\s*및\s*직원"), ("평균근속연수", "1인평균급여액"), ("연간급여총액", "1인평균급여액"), "백만원"),
     # DART 미등기임원 보수 현황: 구분(미등기임원) · 인원수 · 연간급여 총액 · 1인평균 급여액. 실측 값(덕산테코피아 10명 1,219)은 백만원 단위다.
     FormSpec("EXECUTIVE_PAY", "미등기임원 보수", re.compile(r"임원\s*및\s*직원"), ("인원수", "1인평균급여액"), ("인원수", "연간급여총액", "1인평균급여액"), "백만원"),
-    FormSpec("EXECUTIVE_STATUS", "임원 현황", re.compile(r"임원\s*및\s*직원"), ("성명", "직위", "담당업무"), (), None, (("출생년월", r"^\d{4}[.\-/]\d{1,2}$|^\d{4}년"),)),
+    FormSpec("EXECUTIVE_STATUS", "임원 현황", re.compile(r"임원\s*및\s*직원"), ("성명", "직위", "담당업무"), (), None, (("출생년월", r"^\d{4}[.\-/]\d{1,2}$|^\d{4}년"),),
+             ("재직기간", "임기만료일", "출생년월", "출생연월", "선임", "해임")),
     FormSpec("AFFILIATE_LIST", "계열회사 현황", re.compile(r"계열회사"), ("기업명", "법인등록번호"), (), None, (("상장여부", r"^(상장|비상장|코스닥|코스피|코넥스)"),)),
     FormSpec("EQUITY_INVESTMENT", "타법인출자 현황", re.compile(r"타법인\s*출자"), ("법인명", "최초취득일자", "출자목적", "기말잔액"), ("최초취득금액", "기말잔액>수량", "기말잔액>지분율", "기말잔액>장부가액"), "백만원",
              (("상장여부", r"^(상장|비상장)"), ("최초취득일자", _DATE))),
@@ -267,7 +269,7 @@ def form_tables(document: Document, *, report_year: int) -> list[FormTable]:
                 text = squash(row[col])
                 if not text:
                     continue
-                number = parse_number(text)
+                number = None if any(name in paths[col] for name in spec.text_columns) else parse_number(text)
                 status = "MISALIGNED" if reason else ("NUMBER" if number is not None else "TEXT")
                 form.rows.append(FormRow(
                     spec.code, table.idx, row_no, body_offset + row_no, col, labels, paths[col], text, number,

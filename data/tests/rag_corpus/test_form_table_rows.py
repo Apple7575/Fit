@@ -110,14 +110,14 @@ class WriteTest(unittest.TestCase):
         self.assertEqual(cursor.queries[1][1], ("00000001",))
         self.assertEqual(len(cursor.inserted), 4)
         self.assertTrue(all(row[-1] == RULE_VERSION for row in cursor.inserted))
-        self.assertTrue(all(row[-2] in known for row in cursor.inserted))
+        self.assertTrue(all(row[-3] in known and row[-2] == "LINKED" for row in cursor.inserted))
         self.assertEqual(result["row_count"], 4)
         self.assertEqual(result["evidence_unmatched"], 0)
 
         missing = FakeConnection(set())
         result = write_company_rows(missing, "00000001", records)
         self.assertEqual(result["evidence_unmatched"], 4, "청크가 없으면 NULL 로 넣고 건수를 보고")
-        self.assertTrue(all(row[-2] is None for row in missing.cursor_value.inserted))
+        self.assertTrue(all(row[-3] is None and row[-2] == "PENDING_CHUNK" for row in missing.cursor_value.inserted), "청크가 없으면 PENDING_CHUNK 로 구분해 보고서 인용을 막는다")
 
 
 if __name__ == "__main__":

@@ -21,6 +21,9 @@ CREATE TABLE company_table_row (
     value_text    TEXT         NOT NULL,
     parse_status  VARCHAR(12)  NOT NULL CHECK (parse_status IN ('NUMBER', 'TEXT', 'MISALIGNED')),
     evidence_id   VARCHAR(96),   -- 이 행을 담은 표 청크. 청크가 없으면 NULL
+    -- LINKED: 청크가 있어 보고서가 인용할 수 있다. PENDING_CHUNK: 값은 원문과 대조됐지만 같은 경계의 청크가 아직 없다(재청킹 전).
+    -- 보고서·채팅은 LINKED 행만 쓴다(검수 판정 2026-09-19).
+    evidence_status VARCHAR(16) NOT NULL CHECK (evidence_status IN ('LINKED', 'PENDING_CHUNK')),
     rule_version  VARCHAR(40)  NOT NULL,
     updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
     CONSTRAINT company_table_row_cell_uk UNIQUE (rcept_no, table_index, matrix_row, col_no)
