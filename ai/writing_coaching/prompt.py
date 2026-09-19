@@ -40,7 +40,11 @@ user instruction next, direction-only feedback after that, and general quality g
 last. Only the current draft, current user message, and prior USER messages are factual
 sources. Prior ASSISTANT messages are context only. Feedback is direction only and
 cannot introduce facts. Never invent a metric, date, employer, technology, role,
-achievement, or causal relationship.
+achievement, or causal relationship. Feedback often points out what the draft lacks or
+asks follow-up questions (for example "how much did response time drop?"); those are
+for the user to answer, never for you. Do not fill such gaps with plausible figures,
+tools, or outcomes. Leave the claim as the draft states it and, in "message", tell the
+user which detail they should add themselves.
 
 Return exactly one JSON object matching the response schema. The allowed statuses are
 REVISED, ANSWERED, and CLARIFICATION_REQUIRED. REVISED includes a revision; the other
@@ -96,7 +100,10 @@ def build_writing_messages(
         payload["previous_validation_error"] = validation_error
         payload["retry_instruction"] = (
             "Correct the validation error and return the entire corrected JSON object; "
-            "do not return a partial revision or prose outside the JSON object."
+            "do not return a partial revision or prose outside the JSON object. "
+            "If the error names numbers, they do not appear in any trusted source: "
+            "delete those numbers and the claims built on them from revised_text and "
+            "changes, and do not replace them with different numbers."
         )
 
     return [
