@@ -67,6 +67,10 @@ class CompanyAnalysisService:
         stored = self._store.get(corp_code)
         return stored.status if stored else None
 
+    def facts(self, corp_code: str) -> CompanyFacts | None:
+        """확정 지표·프로필 원본. 채팅이 표준 지표 질문을 결정적으로 답할 때 쓴다."""
+        return self._repository.load(corp_code)
+
     def get_or_generate(self, corp_code: str) -> StoredReport:
         """저장본이 READY 면 그대로, 아니면 결정적 리포트를 지금 만들어 돌려준다."""
         stored = self._store.get(corp_code)

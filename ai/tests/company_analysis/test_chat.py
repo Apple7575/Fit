@@ -135,7 +135,7 @@ class ChatServiceTest(unittest.TestCase):
             {"answer": "매출은 95.3조원입니다.", "citation_ids": ["report:intro"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
             {"answer": "매출은 96조원입니다.", "citation_ids": ["report:intro"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
         ])
-        response = service.respond(ChatRequest(corp_code="00164779", message="매출?"))
+        response = service.respond(ChatRequest(corp_code="00164779", message="실적 규모가 어느 정도야?"))
         self.assertEqual(len(client.calls), 2)
         self.assertIn("검증에서 버려졌다", client.calls[1]["messages"][0]["content"])
         self.assertEqual(response.assistant_message.content, INSUFFICIENT_ANSWER)
@@ -174,7 +174,7 @@ class ChatServiceTest(unittest.TestCase):
             {"answer": "우리자산운용의 2025년 영업이익은 22,133백만원입니다.", "citation_ids": ["e-sub"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
         ])
         service._reports = FakeReports(report)
-        response = service.respond(ChatRequest(corp_code="00164779", message="영업이익 22,133?"))
+        response = service.respond(ChatRequest(corp_code="00164779", message="우리자산운용 영업이익 22,133?"))
         self.assertEqual(len(client.calls), 2, "주체 오류는 다시 묻는다")
         self.assertEqual(response.assistant_message.content, "우리자산운용의 2025년 영업이익은 22,133백만원입니다.")
         payload = _payload(client)
@@ -200,7 +200,7 @@ class ChatServiceTest(unittest.TestCase):
             {"answer": "매출은 95.3조원입니다.", "citation_ids": ["report:financials:0"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
             {"answer": "매출은 97.1조원입니다.", "citation_ids": ["report:financials:0"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
         ])
-        response = service.respond(ChatRequest(corp_code="00164779", message="매출?"))
+        response = service.respond(ChatRequest(corp_code="00164779", message="실적 규모가 어느 정도야?"))
         self.assertEqual(response.assistant_message.content, "매출은 97.1조원입니다.")
         note = client.calls[1]["messages"][0]["content"]
         self.assertIn("95.3", note, "무엇이 어긋났는지 구체적으로 알려 준다")
@@ -220,6 +220,44 @@ class ChatServiceTest(unittest.TestCase):
         self.assertEqual(len(client.calls), 2)
         self.assertIn("우리은행 주어 문장의 숫자", client.calls[1]["messages"][0]["content"])
         self.assertEqual(response.assistant_message.content, "우리은행의 2025년 영업이익은 22,133백만원입니다.")
+
+    def test_metric_question_wrong_number_is_replaced_by_fact(self):
+        # 실측: NAVER 부채비율 0.2932(원문 소수 비율), 삼성화재 순이익 FY'24 값. 표준 지표 질문은 확정값으로 답한다.
+        service, client, _ = _service([
+            {"answer": "SK하이닉스의 2025년 영업이익은 45조 2,000억원입니다. FY'24 기준입니다.", "citation_ids": ["report:intro"], "needs_news": False, "needs_reason": "", "follow_up_questions": ["매출은?"]},
+        ])
+        response = service.respond(ChatRequest(corp_code="00164779", message="SK하이닉스의 2025년 영업이익은 얼마야?"))
+        self.assertEqual(len(client.calls), 1, "표준 지표는 다시 묻지 않고 바로 교체한다")
+        self.assertEqual(response.assistant_message.content, "SK하이닉스의 2025년 영업이익은 47.2조원입니다. 공시 확정 지표(연결 우선) 기준입니다.")
+        self.assertEqual([c.source_type for c in response.assistant_message.citations], ["COMPANY_METRIC"])
+        self.assertEqual([c.source_id for c in response.assistant_message.citations], ["00164779:2025:operating_profit"])
+        self.assertEqual(response.follow_up_questions, ["매출은?"], "후속 질문 제안은 모델 것을 그대로 쓴다")
+
+    def test_metric_question_failed_verification_is_answered_from_fact(self):
+        # 실측: 덕산테코피아 순이익 -1,055.5억원을 -105,550억원으로 두 번 잘못 써서 회피로 끝났다. 이제 확정값으로 답한다.
+        service, client, _ = _service([
+            {"answer": "매출은 95.3조원입니다.", "citation_ids": ["report:intro"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        response = service.respond(ChatRequest(corp_code="00164779", message="SK하이닉스의 2025년 매출액은 얼마야?"))
+        self.assertEqual(len(client.calls), 1)
+        self.assertIn("2025년 매출액은 97.1조원입니다", response.assistant_message.content)
+
+    def test_metric_question_correct_answer_is_kept(self):
+        service, client, _ = _service([
+            {"answer": "SK하이닉스의 2025년 매출액은 97.1조원입니다. 전년보다 크게 늘었습니다.", "citation_ids": ["report:financials:0"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        response = service.respond(ChatRequest(corp_code="00164779", message="2025년 매출액 얼마야?"))
+        self.assertEqual(response.assistant_message.content, "SK하이닉스의 2025년 매출액은 97.1조원입니다. 전년보다 크게 늘었습니다.")
+
+    def test_metric_question_for_missing_year_abstains_with_available_years(self):
+        service, client, _ = _service([
+            {"answer": "2019년 매출은 26.9조원입니다.", "citation_ids": ["report:intro"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
+        ])
+        response = service.respond(ChatRequest(corp_code="00164779", message="2019년 매출액은?"))
+        self.assertEqual(len(client.calls), 1, "확정값이 없는 연도는 다시 묻지 않는다")
+        self.assertIn("2019년 매출액은 확정 지표에 없습니다", response.assistant_message.content)
+        self.assertIn("2024년~2025년", response.assistant_message.content, "이 픽스처의 매출액은 2024·2025년만 있다")
+        self.assertEqual(response.assistant_message.citations, [])
 
     def test_needs_news_is_recorded(self):
         service, _, _ = _service([
