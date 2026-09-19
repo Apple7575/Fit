@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-033", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "데이터베이스 활용 역량을 보여 주세요.",
+  "documents": [{"document_id": "doc-033", "document_type": "RESUME", "text": "주문 통계 화면에서 날짜 범위를 넓히면 조회가 늦어지는 문제를 경험했습니다."}],
+  "expected_findings": [{"experience_type": "DATABASE", "claim_quote": "주문 통계 화면에서 날짜 범위를 넓히면 조회가 늦어지는 문제를 경험했습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["주문 통계 테이블에 월별 파티셔닝을 적용했습니다.", "통계 조회 쿼리를 6초 단축했습니다.", "주문 통계 저장소에 ClickHouse를 도입했습니다."]
+}

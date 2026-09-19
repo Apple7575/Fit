@@ -29,6 +29,27 @@ from pipeline.news.schema import (
 
 SEED_DIR = Path(__file__).resolve().parents[2] / "curated" / "seed"
 SEED_MANIFEST_DIR = Path(__file__).resolve().parents[2] / "manifests" / "seed"
+BLOCKLIST_PATH = Path(__file__).resolve().parents[2] / "config" / "news_source_blocklist.yaml"
+
+
+def load_blocklist(path: Path | None = None) -> frozenset[str]:
+    """뺄 출처 이름. 판단 근거는 YAML 에 함께 적혀 있다.
+
+    회사 이름이 제목에 들어갔다는 이유로 도박·게임 홍보 글이 검색에 걸린다.
+    출처 단위로 막는 것이라 근거 없이 넣지 않는다 — 조건과 반례는 YAML 머리말에
+    적어 두었다. 파일이 없으면 아무것도 막지 않는다(비어 있는 것이 기본값이다).
+    """
+    target = path or BLOCKLIST_PATH
+    if not target.exists():
+        return frozenset()
+    import yaml
+
+    doc = yaml.safe_load(target.read_text(encoding="utf-8")) or {}
+    return frozenset(
+        (entry.get("name") or "").strip().casefold()
+        for entry in (doc.get("publishers") or [])
+        if (entry.get("name") or "").strip()
+    )
 
 # AI 분석은 아직 실행하지 않는다(S15P21A504-74 PoC). 채우지 않고 NULL 로 둔다 —
 # 0 이나 빈 문자열로 채우면 "분석했으나 결과가 없음" 과 구분이 사라진다.
@@ -64,8 +85,15 @@ def seed_header(schema: flyway.Schema) -> list[str]:
 
 def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
           source_column: str = SEED_SOURCE_DEFAULT,
-          collected_at_fallback: str = "") -> CurateResult:
-    """staged 행에서 시드 행을 만든다. 값을 추정하거나 보정하지 않는다."""
+          collected_at_fallback: str = "",
+          per_company: int = 0) -> CurateResult:
+    """staged 행에서 시드 행을 만든다. 값을 추정하거나 보정하지 않는다.
+
+    `per_company` 가 0 보다 크면 기업마다 **최신 N 건만** 남긴다 (팀장 지시:
+    기업별 5개). 잘라내는 것은 유효성 검사를 **통과한 뒤**다 — 먼저 5건을 고르고
+    나서 그중 셋이 결함으로 빠지면 2건만 남는다. 뺀 행은 지우지 않고 사유와 함께
+    `dropped` 에 남겨 무엇이 왜 빠졌는지 셀 수 있게 한다.
+    """
     resolved = schema or flyway.load()
     header = seed_header(resolved)
     if header != SEED_FIELDS:
@@ -73,10 +101,17 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
     limits = _limits(resolved)
 
     result = CurateResult()
+    blocked = load_blocklist()
     seen_url: dict[tuple[str, str], str] = {}
     for row in staged_rows:
         if row.get("is_duplicate") == "true":
             result.dropped.append(dict(row, drop_reason="staged_duplicate"))
+            continue
+        # 기업별 상한보다 **먼저** 뺀다. 나중에 빼면 스팸이 그 회사의 다섯 자리를
+        # 차지하고 들어와, 걸러낸 만큼 기사가 비는 대신 자리만 날린다.
+        publisher = (row.get("publisher") or "").strip()
+        if publisher.casefold() in blocked:
+            result.dropped.append(dict(row, drop_reason=f"blocked_source:{publisher}"))
             continue
         if row.get("stage_status") not in ("staged", "unresolved_corp"):
             result.dropped.append(dict(row, drop_reason=f"stage_status:{row.get('stage_status')}"))
@@ -94,7 +129,18 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
             result.dropped.append(dict(row, drop_reason="collected_at_missing_violates_not_null"))
             continue
 
-        original_url = row.get("original_url") or ""
+        # 언론사 원문 주소가 있으면 그것을 쓰고, 없으면 **구글 뉴스 링크**를 쓴다
+        # (팀장 판단 2026-09-15). RSS 는 언론사 주소를 주지 않고 구글 자기 주소만
+        # 준다 — 그 링크도 클릭하면 기사로 가므로 화면에서는 차이가 없다.
+        # 원문 주소를 얻으려면 링크를 하나씩 열어봐야 하는데, 100개사에 486번이고
+        # 전 종목이면 수만 번이라 차단 위험이 크다.
+        #
+        # **열 이름이 original_url 이지만 언론사 주소가 아닐 수 있다.** 어느 쪽인지는
+        # staged 의 original_url_status 가 들고 있고, manifest 에 건수를 남긴다.
+        original_url = (row.get("original_url") or "").strip()
+        url_is_publisher = bool(original_url)
+        if not original_url:
+            original_url = (row.get("rss_link") or row.get("google_url") or "").strip()
         # V12 의 부분 UNIQUE 인덱스 company_news_url_uk 와 같은 조건이다 —
         # (corp_code, original_url) WHERE original_url IS NOT NULL.
         #
@@ -133,10 +179,30 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
             continue
 
         seed["_article_key"] = row["article_key"]
+        seed["_url_is_publisher"] = url_is_publisher
         result.rows.append(seed)
 
     # 재실행 결정성. article_key 를 마지막 축으로 두어 동순위가 없다.
     result.rows.sort(key=lambda r: (r["corp_code"], r["published_at"], r["_article_key"]))
+
+    if per_company > 0:
+        # 오름차순 정렬이라 뒤쪽이 최신이다. 같은 시각이면 article_key 가 갈라주므로
+        # 같은 입력에는 늘 같은 N 건이 남는다.
+        kept: list[dict] = []
+        group: list[dict] = []
+        current = None
+        for row in result.rows + [None]:
+            corp = row["corp_code"] if row else None
+            if corp != current and group:
+                kept.extend(group[-per_company:])
+                for cut in group[:-per_company]:
+                    result.dropped.append(dict(cut, drop_reason=f"per_company_limit:{per_company}"))
+                group = []
+            current = corp
+            if row:
+                group.append(row)
+        result.rows = kept
+
     result.summary = {
         "table": SEED_TABLE,
         "seed_schema_version": SEED_SCHEMA_VERSION,
@@ -146,12 +212,18 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
         "source_column_maps_to": source_column,
         "flyway_files": resolved.applied_files,
         "input_staged_rows": len(staged_rows),
+        "per_company_limit": per_company or None,
         "seed_rows": len(result.rows),
         "dropped_rows": len(result.dropped),
         "drop_reasons": _count(result.dropped, "drop_reason"),
         "distinct_corp_codes": len({r["corp_code"] for r in result.rows}),
         "published_at_null_rows": sum(1 for r in result.rows if not r["published_at"]),
         "original_url_null_rows": sum(1 for r in result.rows if not r["original_url"]),
+        # 열 이름은 original_url 이지만 값이 언론사 주소인지 구글 뉴스 링크인지
+        # 나뉜다. 화면·후속 작업이 알아야 하므로 건수를 남긴다.
+        "url_publisher_rows": sum(1 for r in result.rows if r.get("_url_is_publisher")),
+        "url_google_news_rows": sum(1 for r in result.rows
+                                    if r["original_url"] and not r.get("_url_is_publisher")),
         "ai_columns_null": list(AI_COLUMNS),
         "collection_run_ids": sorted({r.get("collection_run_id", "") for r in staged_rows if r.get("collection_run_id")}),
     }

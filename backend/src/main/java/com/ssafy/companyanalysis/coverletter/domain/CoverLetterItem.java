@@ -7,7 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/** 자소서 문항. 피드백 요약은 여기에, 코멘트는 feedback_comment 에 둔다. */
+/** 자소서 문항. */
 @Entity
 @Table(name = "cover_letter_item")
 public class CoverLetterItem {
@@ -31,9 +31,6 @@ public class CoverLetterItem {
     @Column(name = "char_limit", nullable = false)
     private int charLimit;
 
-    @Column(name = "feedback_summary")
-    private String feedbackSummary;
-
     protected CoverLetterItem() {
     }
 
@@ -47,10 +44,6 @@ public class CoverLetterItem {
 
     public static CoverLetterItem create(Long coverLetterId, int seq, String question, String answer, int charLimit) {
         return new CoverLetterItem(coverLetterId, seq, question, answer, charLimit);
-    }
-
-    public void attachFeedback(String summary) {
-        this.feedbackSummary = summary;
     }
 
     public Long getId() {
@@ -75,9 +68,5 @@ public class CoverLetterItem {
 
     public int getCharLimit() {
         return charLimit;
-    }
-
-    public String getFeedbackSummary() {
-        return feedbackSummary;
     }
 }

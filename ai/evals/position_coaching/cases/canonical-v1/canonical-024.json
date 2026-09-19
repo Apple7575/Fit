@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-024", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "실패에 강한 서비스를 만든 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-024", "document_type": "PORTFOLIO", "text": "환율 제공사의 응답 지연이 요청 스레드를 오래 점유해, 호출 제한 시간을 800ms로 두고 실패 시 마지막 정상 환율을 사용하도록 변경했습니다."}],
+  "expected_findings": [{"experience_type": "RELIABILITY", "claim_quote": "환율 제공사의 응답 지연이 요청 스레드를 오래 점유해, 호출 제한 시간을 800ms로 두고 실패 시 마지막 정상 환율을 사용하도록 변경했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "REASONING"], "missing_elements": ["VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["환율 API에 Resilience4j 재시도를 적용했습니다.", "환율 제공사 장애 전파를 100% 차단했습니다.", "환율 조회 p95 200ms를 달성했습니다."]
+}

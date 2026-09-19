@@ -33,7 +33,7 @@ from ai.jd_coaching.analysis_store import (
     AnalysisJob,
     AnalysisStore,
 )
-from ai.jd_coaching.chat import ChatService
+from ai.jd_coaching.chat import ChatService, StatelessChatService
 from ai.jd_coaching.conversation_store import (
     ChatMessage,
     Conversation,
@@ -63,7 +63,7 @@ class AnalyzeRequest(BaseModel):
 
     company_name: str = Field(min_length=1, max_length=100)
     position_name: str = Field(min_length=1, max_length=200)
-    jd_text: str = Field(min_length=10, max_length=50_000)
+    jd_text: str = Field(min_length=10, max_length=100_000)
     applicant_text: str = Field(min_length=10, max_length=50_000)
 
     @field_validator("company_name", "position_name", "jd_text", "applicant_text")
@@ -80,7 +80,7 @@ class CreateJobContextRequest(BaseModel):
 
     company_name: str = Field(min_length=1, max_length=100)
     position_name: str = Field(min_length=1, max_length=200)
-    jd_text: str = Field(min_length=10, max_length=50_000)
+    jd_text: str = Field(min_length=10, max_length=100_000)
     job_posting_id: str | None = Field(default=None, min_length=1, max_length=200)
     source_url: str | None = Field(default=None, max_length=2_000)
     published_at: str | None = None
@@ -151,6 +151,33 @@ class CreateJobContextFromUrlRequest(BaseModel):
         return value
 
 
+class CreateJobSourceFromUrlRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    url: str = Field(min_length=1, max_length=2_000)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("url must be an absolute HTTP URL")
+        return value
+
+
+class JobSourceFromUrlResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    jd_text: str
+    source_url: str | None
+    company_name: str | None
+    position_name: str | None
+    job_posting_id: str | None
+    published_at: str | None
+    valid_until: str | None
+    content_sha256: str | None
+
+
 class ApplicantDocumentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -198,6 +225,38 @@ class CreateMessageRequest(BaseModel):
     content: str = Field(min_length=1, max_length=10_000)
 
 
+class StatelessAnalysisResult(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    context_id: str = Field(min_length=1, max_length=80)
+    summary: dict[str, Any]
+    requirements: list[dict[str, Any]]
+
+
+class CurrentDocumentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    document_id: str = Field(min_length=1, max_length=100)
+    text: str = Field(min_length=10, max_length=50_000)
+
+
+class HistoryMessageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=10_000)
+
+
+class StatelessMessageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    context_id: str = Field(min_length=1, max_length=80)
+    analysis_result: StatelessAnalysisResult
+    current_document: CurrentDocumentRequest
+    message: str = Field(min_length=1, max_length=10_000)
+    history: list[HistoryMessageRequest] = Field(default_factory=list, max_length=20)
+
+
 @lru_cache(maxsize=1)
 def get_analysis_service() -> JdAnalysisService:
     env_file = Path(
@@ -238,6 +297,12 @@ def get_chat_service() -> ChatService:
     )
 
 
+@lru_cache(maxsize=1)
+def get_stateless_chat_service() -> StatelessChatService:
+    env_file = Path(os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env")))
+    return StatelessChatService(config=load_qwen_config(env_file))
+
+
 def _required_database_url() -> str:
     value = os.environ.get("JD_DATABASE_URL", "").strip()
     if not value:
@@ -267,7 +332,20 @@ def _read_env_value(path: Path, key: str) -> str:
 
 @lru_cache(maxsize=1)
 def get_source_ingestor() -> JdSourceIngestor:
-    return JdSourceIngestor()
+    env_file = Path(os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env")))
+    gms_key = os.environ.get("GMS_KEY", "").strip() or _read_env_value(env_file, "GMS_KEY")
+    clova_ocr_endpoint = os.environ.get("CLOVA_OCR_ENDPOINT", "").strip() or _read_env_value(
+        env_file, "CLOVA_OCR_ENDPOINT"
+    )
+    clova_ocr_secret = os.environ.get("CLOVA_OCR_SECRET", "").strip() or _read_env_value(
+        env_file, "CLOVA_OCR_SECRET"
+    )
+    # GMS_KEY가 없으면(로컬 등) 회사명·직무명 보완만 건너뛰고 크롤링 자체는 그대로 동작한다.
+    return JdSourceIngestor(
+        gms_key=gms_key or None,
+        clova_ocr_endpoint=clova_ocr_endpoint or None,
+        clova_ocr_secret=clova_ocr_secret or None,
+    )
 
 
 app = FastAPI(title="JD Essay Coaching API", version="0.1.0")
@@ -290,6 +368,25 @@ def create_job_context(
             status_code=502,
             detail=f"JD 구조화에 실패했습니다: {error}",
         ) from error
+
+
+@app.post(
+    "/internal/job-sources/from-url",
+    response_model=JobSourceFromUrlResponse,
+    tags=["internal"],
+)
+def ingest_job_source_from_url(
+    request: CreateJobSourceFromUrlRequest,
+    ingestor: Annotated[JdSourceIngestor, Depends(get_source_ingestor)],
+) -> JobSourceFromUrlResponse:
+    try:
+        return JobSourceFromUrlResponse.model_validate(ingestor.from_url(request.url))
+    except UnsupportedSourceError as error:
+        raise HTTPException(status_code=415, detail=str(error)) from error
+    except SourceFetchError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    except SourceIngestionError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post(
@@ -620,6 +717,36 @@ def create_conversation_message(
         ) from error
 
 
+@app.post("/internal/messages", tags=["internal"])
+def create_stateless_message(
+    request: StatelessMessageRequest,
+    service: Annotated[JdAnalysisService, Depends(get_analysis_service)],
+    chat_service: Annotated[StatelessChatService, Depends(get_stateless_chat_service)],
+) -> dict[str, Any]:
+    if request.analysis_result.context_id != request.context_id:
+        raise HTTPException(
+            status_code=409,
+            detail="분석 결과와 지원 컨텍스트가 일치하지 않습니다.",
+        )
+    try:
+        context = service.get_context(request.context_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="지원 컨텍스트가 없습니다.") from error
+    try:
+        return chat_service.respond(
+            context=context,
+            analysis_result=request.analysis_result.model_dump(),
+            current_document=request.current_document.model_dump(),
+            message=request.message,
+            history=[item.model_dump() for item in request.history],
+        )
+    except (KeyError, RuntimeError, ValueError, TypeError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"대화 모델 처리에 실패했습니다: {error}",
+        ) from error
+
+
 def _conversation_response(
     conversation: Conversation, messages: list[ChatMessage]
 ) -> dict[str, Any]:
@@ -647,7 +774,7 @@ def _chat_message_response(message: ChatMessage) -> dict[str, Any]:
 
 
 @app.post(
-    "/internal/jd/analyze",
+    "/internal/analyses",
     response_model=AnalyzeResponse,
     tags=["internal"],
 )

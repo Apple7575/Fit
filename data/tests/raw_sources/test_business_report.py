@@ -102,8 +102,8 @@ class BusinessReportSourceTest(unittest.TestCase):
         document = Document(payload, rcept_no="20260728000338")
 
         rows = document.tables[0].m
-        self.assertEqual(rows[3], ["기타 품목", "기타 품목", "국 내", "직납", "229,577 (3.7%)"])
-        self.assertEqual(rows[4], ["합 계", "합 계", "합 계", "합 계", "6,244,430 (100%)"])
+        self.assertEqual(rows[3], ["기타 품목", "기타 품목", "국내", "직납", "229,577 (3.7%)"])
+        self.assertEqual(rows[4], ["합계", "합계", "합계", "합계", "6,244,430 (100%)"])
 
     def test_document_constructor_accepts_existing_bytes_and_receipt_contract(self):
         from pipeline.business_report.extract import parse_one

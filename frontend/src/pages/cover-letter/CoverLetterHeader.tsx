@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { AuthButtons } from '../../features/auth/AuthButtons';
-import { LogoMark } from '../home/LandingHeader';
+import { SiteHeader } from '../../components/layout/SiteHeader';
 
 const SECTIONS = [
   { to: '/cover-letters', label: '자기소개서' },
@@ -8,58 +7,40 @@ const SECTIONS = [
 ] as const;
 
 /**
- * 자기소개서 섹션 공통 헤더. 실제 AppHeader 와 같은 톤(로고 + 브레드크럼 + 인증).
- * 검토 방도 자소서에 딸린 화면이라 같은 헤더를 쓴다.
+ * 자기소개서·검토 방 화면 상단. 전역 헤더 아래에 두 화면을 오가는 서브바를 둔다.
+ * 검토 방은 자소서에 딸린 화면이라 전역 메뉴에서는 "자기소개서" 하나로 묶인다.
  */
 export function CoverLetterHeader() {
   const { pathname } = useLocation();
-  const current =
-    SECTIONS.find((section) => pathname.startsWith(section.to)) ?? SECTIONS[0];
+  const current = SECTIONS.find((section) => pathname.startsWith(section.to)) ?? SECTIONS[0];
 
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="flex min-h-14 flex-wrap items-center gap-x-5 gap-y-2 px-5 py-2 lg:px-8">
-        <div className="flex min-w-0 items-center gap-4">
-          <Link className="flex shrink-0 items-center gap-2" to="/" aria-label="기분 홈">
-            <LogoMark />
-            <span className="text-base font-extrabold tracking-tight text-slate-950">기분</span>
-          </Link>
-          <nav aria-label="브레드크럼" className="hidden min-w-0 md:block">
-            <ol className="flex items-center gap-2 text-sm text-slate-500">
-              <li>
-                <Link className="transition hover:text-slate-900" to="/">
-                  홈
-                </Link>
-              </li>
-              <li aria-hidden>/</li>
-              <li className="truncate font-bold text-blue-600">
-                <Link to={current.to}>{current.label}</Link>
-              </li>
-            </ol>
-          </nav>
-        </div>
-
-        <nav aria-label="자기소개서 메뉴" className="ml-auto flex flex-wrap items-center gap-2">
+    <>
+      <SiteHeader />
+      <div className="border-b border-slate-200 bg-white">
+        <nav
+          aria-label="자기소개서 메뉴"
+          className="mx-auto flex min-h-[50px] max-w-[1720px] flex-wrap items-center gap-1.5 px-5 py-2 lg:px-8"
+        >
           {SECTIONS.map((section) => {
             const active = section.to === current.to;
             return (
               <Link
+                aria-current={active ? 'page' : undefined}
+                className={`inline-block rounded-full px-3 py-1.5 text-[13px] font-bold transition ${
+                  active
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100'
+                }`}
                 key={section.to}
                 to={section.to}
-                aria-current={active ? 'page' : undefined}
-                className={
-                  active
-                    ? 'rounded-full bg-blue-600 px-3 py-1.5 text-[13px] font-bold text-white transition hover:bg-blue-700'
-                    : 'rounded-full px-3 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950'
-                }
               >
                 {section.label}
               </Link>
             );
           })}
-          <AuthButtons />
         </nav>
       </div>
-    </header>
+    </>
   );
 }

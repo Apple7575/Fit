@@ -33,7 +33,8 @@ from .text import norm, squash, to_num
 @dataclass
 class RndResult:
     status: str = "no_section"            # ok / no_section / no_row
-    verdict: str = "no_section"           # high / medium / low / mismatch / unit_unknown / ...
+    verdict: str = "no_section"           # high / medium / low / mismatch / unit_unknown /
+                                          # ratio_out_of_range / ...
     table_idx: int | None = None
     section: str | None = None
     unit: str | None = None
@@ -433,6 +434,19 @@ def extract(tables, external_revenue: float | None = None,
         th = p.thresholds
         if not mult:
             out.verdict = "unit_unknown"          # 단위 미상이면 값을 신뢰하지 않는다
+        elif (out.ratio_external is not None
+                and not (th.rnd_ratio_min_pct <= out.ratio_external
+                         <= th.rnd_ratio_max_pct)):
+            # **외부 매출과 견준 비율이 상식 범위를 벗어났다 = 단위를 잘못 읽었다.**
+            # 이 범위(rnd_ratio_max_pct)는 원래 "벗어나면 단위 오인을 의심한다" 는
+            # 뜻으로 뒀는데, 지금까지 판정이 하나뿐일 때(medium/low)만 쓰였다.
+            # 그래서 셀트리온 2021 이 430조원(22,514%)짜리 R&D 로 high·mismatch 를
+            # 달고 시드까지 들어갔다. 3차 확대에서 190행 넘게 나온다.
+            #
+            # **판정과 무관하게 먼저 본다.** verdict 로는 가릴 수 없다 —
+            # mismatch 1,303행 중 1,187행(91%)이 정상 값이고, high 에도 상식 밖이
+            # 71행 있다 (실측). 판별자는 비율이지 판정이 아니다.
+            out.verdict = "ratio_out_of_range"
         elif len(checks) >= 2 and max(checks) - min(checks) <= th.rnd_ratio_tolerance_pp:
             out.verdict = "high"
         elif len(checks) >= 2:

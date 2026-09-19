@@ -269,8 +269,14 @@ def run(conn, corp_codes: set[str], names: dict[str, str], verbose: bool) -> int
     a_cov = A.applicable
     b_cov = B.applicable
     union = max(a_cov, b_cov)          # B 가 A 를 포함한다(62/62)
-    print(f"  84 의 검산 가능 범위   {a_cov}/{total}  ({a_cov / total * 100:.0f}%)")
-    print(f"  86 의 검산 가능 범위   {union}/{total}  ({union / total * 100:.0f}%)"
+
+    # total 은 dart_employee_status 의 (기업, 연도) 수다. 착지 테이블이 비어 있는
+    # 환경(적재 전 dev 등)에서는 0 이 되고, 나누면 그대로 죽는다.
+    def _pct(n: int) -> str:
+        return f"{n}/{total}  ({n / total * 100:.0f}%)" if total else f"{n}/0  (대상 없음)"
+
+    print(f"  84 의 검산 가능 범위   {_pct(a_cov)}")
+    print(f"  86 의 검산 가능 범위   {_pct(union)}"
           f"   ← B 축이 합계 행 없이도 걸린다")
 
     # 확인을 마친 발견은 실패로 세지 않는다. 늘 빨간불인 검사는 무시당하고,
@@ -308,6 +314,14 @@ def run(conn, corp_codes: set[str], names: dict[str, str], verbose: bool) -> int
             print(f"  [{ax.code}] {who}  {msg}")
 
     print("\n" + "-" * 74)
+    if total == 0:
+        # 볼 것이 없었던 것을 통과로 보고하면 안 된다. 늘 초록불인 검사는
+        # 아무도 안 보게 되고, 그러면 진짜 문제도 같이 묻힌다.
+        # (verify_news.py 가 SKIP 을 PASS 로 세지 않는 것과 같은 원칙이다.)
+        print("판정: 검증 못 함 — dart_employee_status 가 비어 있다")
+        print("      A·B·C·E·F 축은 이 표의 (기업, 연도)를 기준으로 돈다.")
+        print("      적재를 먼저 하라: load_company.py → load_raw.py → load_metrics.py")
+        return 2
     if n_con == 0:
         print("판정: 새로 생긴 모순 0건"
               + (f"  (확인을 마친 {len(known_con)}건은 제외)" if known_con else ""))

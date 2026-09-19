@@ -1,0 +1,7 @@
+{
+  "$id": "news-intelligence-evaluation-v1",
+  "title": "News intelligence regression fixture",
+  "description": "DRAFT regression fixtures validate response shape and evidence wiring. They are not published quality scores.",
+  "type": "object",
+  "required": ["status", "request", "stored_candidates", "external_candidates", "expected_response"]
+}

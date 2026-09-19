@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-032", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "API 개선 경험을 구체적으로 설명해 주세요.",
+  "documents": [{"document_id": "doc-032", "document_type": "PORTFOLIO", "text": "결제 취소 API의 오류 응답이 클라이언트마다 다르게 해석되는 문제가 있었습니다."}],
+  "expected_findings": [{"experience_type": "API_DESIGN", "claim_quote": "결제 취소 API의 오류 응답이 클라이언트마다 다르게 해석되는 문제가 있었습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ROLE", "ACTION", "REASONING", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["결제 취소 에러 코드를 표준화했습니다.", "오류 응답에 RFC 7807 형식을 적용했습니다.", "결제 취소 문의 건수를 44% 감소시켰습니다."]
+}

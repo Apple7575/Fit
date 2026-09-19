@@ -70,6 +70,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from build_metric_seed import FIELDS as CM_FIELDS  # noqa: E402
+from build_metric_seed import employee_files  # noqa: E402
 from build_metric_seed import build_rows as build_company_metric_rows  # noqa: E402
 from build_metric_seed import write_seed as write_company_metric  # noqa: E402
 from pipeline.news import flyway  # noqa: E402
@@ -490,9 +491,10 @@ def build_segment_metric(corp_codes: set[str]) -> tuple[list[dict], Counter]:
     head: dict[tuple, float] = defaultdict(float)
     seen: set[tuple] = set()
 
-    for path in sorted(cache_dir().glob("empSttus_*.json")):
-        parts = path.stem.split("_")
-        corp_code, year = parts[1], int(parts[2])
+    # 전 종목은 raw/, 기존 13개사 경로는 .cache/ 에 있다. 한쪽만 글롭하면
+    # collect_employees.py 를 다 돌려도 이 표만 13개사에서 안 늘어난다 —
+    # 오류가 나지 않아 아무도 모른다. 목록은 build_metric_seed 와 공유한다.
+    for (corp_code, year), path in sorted(employee_files().items()):
         if corp_code not in corp_codes:
             stats["company 에 없는 기업(건너뜀)"] += 1
             continue

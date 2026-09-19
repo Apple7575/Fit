@@ -1,5 +1,6 @@
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { ensureDefaultRooms } from '../../features/agent-room/api';
 import { RoomWorkspace } from '../../features/agent-room/RoomWorkspace';
@@ -17,9 +18,7 @@ export function AgentRoomListPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <CoverLetterHeader />
-        <p className="mx-auto max-w-4xl px-6 py-16 text-center text-sm text-slate-400" role="status">
-          불러오는 중…
-        </p>
+        <LoadingScreen />
       </div>
     );
   }
@@ -36,8 +35,11 @@ export function AgentRoomListPage() {
 }
 
 function Workspace() {
+  const [searchParams] = useSearchParams();
   const { state: coverLetters } = useCoverLetters();
-  const [picked, setPicked] = useState<number | null>(null);
+  // 작성 화면에서 'AI 검토' 로 넘어오면 방금 저장한 자소서를 연다.
+  const requested = Number(searchParams.get('coverLetterId')) || null;
+  const [picked, setPicked] = useState<number | null>(requested);
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,9 @@ function Workspace() {
 
   const letters = coverLetters.status === 'success' ? coverLetters.data : [];
   // 고르지 않았으면 첫 자소서로 본다. 효과로 상태를 채우지 않고 렌더에서 정한다.
-  const coverLetterId = picked ?? (letters.length > 0 ? letters[0].id : null);
+  // 넘어온 id 가 이 회원 것이 아니면 무시한다 — 남의 id 로 방을 깔면 404 만 난다.
+  const known = picked !== null && letters.some((letter) => letter.id === picked);
+  const coverLetterId = known ? picked : letters.length > 0 ? letters[0].id : null;
 
   /** 사이드바만 다시 읽는다. 보고 있던 방은 그대로 둔다. */
   const refreshRooms = useCallback(() => {

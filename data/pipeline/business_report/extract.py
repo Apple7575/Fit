@@ -48,7 +48,9 @@ SUMMARY_FIELDS = ["corp_code", "corp_name", "fiscal_year", "rcept_no", "bytes",
                   "seconds", "error"]
 
 # R&D 는 단위 미상이면 값을 버린다 (rnd.py 673만원 사건).
-RND_DROP_VERDICTS = ("unit_unknown",)
+# 단위를 못 찾았거나, 비율이 상식 범위를 벗어나 단위를 잘못 읽은 것이 분명한 값은
+# 시드로 내보내지 않는다. 부문 매출이 대조에 실패한 값을 버리는 것과 같은 정책이다.
+RND_DROP_VERDICTS = ("unit_unknown", "ratio_out_of_range")
 
 
 @dataclass

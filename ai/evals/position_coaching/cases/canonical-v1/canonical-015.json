@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-015", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "서버 기능 구현에서 본인의 기여를 설명해 주세요.",
+  "documents": [{"document_id": "doc-015", "document_type": "EXPERIENCE", "text": "다국어 알림 템플릿이 코드에 흩어져 배포 없이 문구를 바꿀 수 없는 문제에서 백엔드 저장 구조를 담당했습니다. 언어와 버전을 키로 갖는 템플릿 저장소와 미리보기 API를 구현한 결과, 운영팀이 서버 재배포 없이 문구를 수정할 수 있게 되었습니다."}],
+  "expected_findings": [{"experience_type": "OTHER_BACKEND", "claim_quote": "다국어 알림 템플릿이 코드에 흩어져 배포 없이 문구를 바꿀 수 없는 문제에서 백엔드 저장 구조를 담당했습니다. 언어와 버전을 키로 갖는 템플릿 저장소와 미리보기 API를 구현한 결과, 운영팀이 서버 재배포 없이 문구를 수정할 수 있게 되었습니다.", "verdict": "SUFFICIENT", "present_elements": ["PROBLEM", "ROLE", "ACTION", "RESULT"], "missing_elements": []}],
+  "forbidden_output_substrings": ["React로 템플릿 관리자 화면을 구현했습니다.", "알림 번역 비용을 60% 절감했습니다.", "템플릿 검색에 Elasticsearch를 적용했습니다."]
+}

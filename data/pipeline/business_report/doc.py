@@ -15,6 +15,21 @@ from ..patterns import Patterns, patterns as default_patterns
 TEXT_TAGS = ("P", "SPAN", "TU")
 MAX_TABLE_EXPANDED_CHARS = 8_000_000
 _UNIT_SCOPE = re.compile(r"단위\s*[)\]]?\s*[::]?\s*([^)\]|]{0,20})")
+_SPACE = re.compile(r"\s+")
+
+
+def foreign_unit_in_blob(blob: str, markers) -> str | None:
+    """'단위' 표기 뒤가 외화이면 그 표기를 돌려준다.
+
+    원화 단위를 못 찾았을 때만 부른다. 외화 단위표를 만나면 **거기서 멈춰야** 한다 —
+    더 거슬러 오르면 남의 표에 붙은 원화 단위를 집는다 (doc.unit 주석 참고).
+    """
+    for m in _UNIT_SCOPE.finditer(blob):
+        scope = _SPACE.sub("", m.group(1))
+        for name in markers:
+            if name in scope:
+                return name
+    return None
 
 
 def _is_in_table(element) -> bool:
@@ -43,10 +58,24 @@ def _has_nested_table(element) -> bool:
 
 
 def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
-    for match in _UNIT_SCOPE.finditer(blob):
-        for name, multiplier in units:
-            if name in match.group(1):
-                return name, multiplier
+    """'단위' 표기 **바로 뒤**에서만 단위를 찾는다.
+
+    문자열 전체에서 찾으면 본문 서술에 걸린다. 삼성전자 2024 시설투자표의 캡션이
+    "(시설투자 현황) 2024년 ... 53.6조원의 시설투자가 이루어졌습니다" 이고 표의
+    단위는 '억원' 인데, 전체 검색은 앞의 '조원' 을 먼저 집어 값이 1만 배가 됐다.
+
+    units 는 긴 표기가 앞이어야 한다 ('십억원' 이 '억원' 보다 먼저).
+
+    **띄어쓰기를 무시하고 본다.** 회사가 `(단위: 백만 원)` 으로 띄어 적으면 '백만원' 이
+    안 걸리고 뒤의 '원' 이 걸려 **값이 100만분의 1이 된다.** 엔젤로보틱스 2023~2024 가
+    금형투자 5.78억을 578원으로 적어 놓은 꼴이 됐다(3차 확대에서 실측 8행). '십억 원',
+    '억 원' 도 같다. 자릿수가 작아지는 쪽이라 눈으로는 "투자가 적나 보다" 로 보인다.
+    """
+    for m in _UNIT_SCOPE.finditer(blob):
+        scope = _SPACE.sub("", m.group(1))
+        for name, mult in units:
+            if name in scope:
+                return name, mult
     return None
 
 
@@ -293,10 +322,25 @@ class Document:
         return result
 
     def unit(self, table: Table) -> tuple[str | None, int | None, str | None]:
+        """표의 금액 단위 → (표기, 원 환산 배수, 어디서 찾았나).
+
+        단위 표기는 표 앞 문장이 아니라 **직전의 1행 1열 표**에 있다 (rnd.py 실측:
+        50건 중 44건). 그래서 자기 표부터 직전 N개까지 거슬러 오른다. 규칙과 배수
+        목록을 rnd 쪽 patterns 에서 그대로 가져와 두 파서가 갈리지 않게 한다.
+        """
         rules = self.p.rnd
         for index in range(table.idx, max(-1, table.idx - rules.unit_lookback_tables - 1), -1):
             candidate = self.tables[index]
-            found = unit_from_blob(candidate.caption + " " + candidate.head(3), rules.units)
+            blob = candidate.caption + " " + candidate.head(3)
+            # 외화가 보이면 원화 표기가 같이 있어도 버린다. 행마다 통화가 다른 표라
+            # 곱할 수를 하나로 정할 수 없다. 계속 거슬러 오르면 남의 표의 원화 단위를
+            # 집어 값이 1억 배가 되고(SJG세종 2021 · 240조원), 표 안에 '원' 이 섞여
+            # 있으면 그대로 원화로 읽혀 자릿수 검증까지 통과한다(같은 회사 2024).
+            # 둘 다 S15P21A504-73 1차 확대에서 실측했다.
+            foreign = foreign_unit_in_blob(blob, rules.foreign_currency_markers)
+            if foreign:
+                return None, None, f"외화표기:{foreign}"
+            found = unit_from_blob(blob, rules.units)
             if found:
                 name, multiplier = found
                 return name, multiplier, "자기표" if index == table.idx else f"직전표-{table.idx - index}"

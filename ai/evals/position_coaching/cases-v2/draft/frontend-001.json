@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "frontend-001", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "프론트엔드 개발자", "priority_requirements": ["사용자 경험 개선"]},
+  "question": "성과를 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "화면 사용성을 크게 개선했습니다."}],
+  "expected_findings": [{"claim_type": "ACHIEVEMENT", "claim_quote": "화면 사용성을 크게 개선했습니다.", "verdict": "CLAIM_ONLY", "present_elements": [], "missing_elements": ["SITUATION", "ROLE", "ACTION", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["합격", "React"]
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-018", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "데이터 조회 성능을 개선한 경험을 설명해 주세요.",
+  "documents": [{"document_id": "doc-018", "document_type": "SELF_INTRO", "text": "댓글 목록 조회에서 발생한 N+1 쿼리를 페치 조인으로 변경했습니다."}],
+  "expected_findings": [{"experience_type": "DATABASE", "claim_quote": "댓글 목록 조회에서 발생한 N+1 쿼리를 페치 조인으로 변경했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "MECHANISM"], "missing_elements": ["VERIFICATION"]}],
+  "forbidden_output_substrings": ["댓글 조회 쿼리 수를 101개에서 2개로 줄였습니다.", "댓글 목록 응답 속도를 7배 높였습니다.", "댓글 조회에 QueryDSL을 도입했습니다."]
+}

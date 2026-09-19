@@ -1,3 +1,4 @@
+import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../api/client';
 import { InlineNotice } from '../../components/common/InlineNotice';
@@ -84,18 +85,21 @@ export function NewsFeedCard({ corpCode, onLatestDate }: NewsFeedCardProps) {
               기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
             </InlineNotice>
           ) : (
-            <InlineNotice onRetry={retry}>
-              뉴스를 불러오지 못했습니다. {error.message}
-            </InlineNotice>
+            <InlineNotice onRetry={retry}>뉴스를 불러오지 못했습니다. {error.message}</InlineNotice>
           )
         ) : items.length === 0 && status === 'loading' ? (
-          <div aria-busy="true" className="h-64 animate-pulse rounded-2xl bg-slate-50" role="status">
+          <div
+            aria-busy="true"
+            className="h-64 animate-pulse rounded-2xl bg-slate-50"
+            role="status"
+          >
             <span className="sr-only">뉴스를 불러오는 중입니다</span>
           </div>
         ) : items.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center text-sm font-semibold text-slate-400">
-            수집된 최근 뉴스가 없습니다
-          </p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
+            <CharacterSlot character="fox" hideLabel pose="empty" size={72} />
+            <p className="text-sm font-semibold text-slate-400">수집된 최근 뉴스가 없습니다</p>
+          </div>
         ) : (
           <>
             <NewsList items={items} />
@@ -152,10 +156,13 @@ function NewsList({ items }: { items: NewsItem[] }) {
             <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
               {item.relatedBusiness && (
                 <span>
-                  관련 사업 <span className="font-semibold text-slate-700">{item.relatedBusiness}</span>
+                  관련 사업{' '}
+                  <span className="font-semibold text-slate-700">{item.relatedBusiness}</span>
                 </span>
               )}
-              {item.importanceScore !== null && <span>중요도 {item.importanceScore.toFixed(1)}</span>}
+              {item.importanceScore !== null && (
+                <span>중요도 {item.importanceScore.toFixed(1)}</span>
+              )}
               {item.publishedAt && (
                 <time className="ml-auto" dateTime={item.publishedAt}>
                   {formatDateDots(item.publishedAt)}

@@ -1,6 +1,6 @@
 {
   "table": "company_text",
-  "generated_at": "2026-09-10T04:32:52.996840+00:00",
+  "generated_at": "2026-09-18T16:20:58.189254+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -31,17 +31,26 @@
     "V14__users.sql",
     "V15__email_verification.sql",
     "V16__news_article_drop_ai_columns.sql",
-    "V17__erd_alignment_followup.sql"
+    "V17__erd_alignment_followup.sql",
+    "V18__cover_letter.sql",
+    "V19__interview.sql",
+    "V20__jd_ai_analysis.sql",
+    "V21__jd_ai_conversation.sql",
+    "V22__agent_room.sql",
+    "V23__agent_message.sql",
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
   ],
   "source": "staged/business_report/main_product.csv (표 파싱) + staged/business_report/text_llm.csv (LLM 추출)",
-  "seed_rows": 11095,
+  "seed_rows": 98848,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "attr_key": 0,
     "seq": 0,
     "value_text": 0,
-    "generated_at": 3944
+    "generated_at": 61211
   },
   "notes": [
     "main_product 는 '주요 제품' 열을 그대로 옮긴 것이라 generated_at 이 비어 있다 (V13 주석)",
@@ -49,18 +58,18 @@
     "seq 는 사업보고서 기재 순서다. 글 항목은 늘 0 이다",
     "근거가 없으면 행을 만들지 않는다 (팀장 기준 4항)"
   ],
-  "distinct_corp_codes": 100,
+  "distinct_corp_codes": 2353,
   "fiscal_years": [
     2021,
     2025
   ],
   "build_stats": {
-    "business_keyword": 3607,
-    "main_business": 487,
-    "main_product": 3944,
-    "new_business": 359,
-    "rd_field": 2569,
-    "strategy_change": 129,
-    "행": 11095
+    "business_keyword": 20969,
+    "main_business": 2953,
+    "main_product": 61211,
+    "new_business": 1447,
+    "rd_field": 11743,
+    "strategy_change": 525,
+    "행": 98848
   }
 }

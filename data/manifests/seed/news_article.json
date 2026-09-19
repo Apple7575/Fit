@@ -1,0 +1,73 @@
+{
+  "ai_columns_null": [
+    "importance_score"
+  ],
+  "collection_run_ids": [
+    "20260915T042304Z-523c1cb3",
+    "20260918T015212Z-b2f37a72"
+  ],
+  "distinct_corp_codes": 100,
+  "drop_reasons": {
+    "blocked_source:Calgary Roughnecks": 1470,
+    "blocked_source:Histoire pour tous": 4707,
+    "blocked_source:actt.org.tt": 110,
+    "duplicate_corp_url": 2133,
+    "length:guid_exceeds_500": 51,
+    "length:original_url_exceeds_1000,guid_exceeds_500": 52,
+    "per_company_limit:5": 30106
+  },
+  "dropped_rows": 38629,
+  "flyway_files": [
+    "V1__init_schema.sql",
+    "V2__seed_metric.sql",
+    "V3__industry_ksic_division.sql",
+    "V4__rename_average_metric_codes.sql",
+    "V5__add_metric_evidence.sql",
+    "V6__document_corp_name_source.sql",
+    "V7__metric_catalog_v2.sql",
+    "V8__company_address_homepage.sql",
+    "V9__dart_otr_cpr_invstmnt.sql",
+    "V10__company_profile.sql",
+    "V11__company_focus_and_activity.sql",
+    "V12__company_news.sql",
+    "V13__erd_alignment.sql",
+    "V14__users.sql",
+    "V15__email_verification.sql",
+    "V16__news_article_drop_ai_columns.sql",
+    "V17__erd_alignment_followup.sql",
+    "V18__cover_letter.sql",
+    "V19__interview.sql",
+    "V20__jd_ai_analysis.sql",
+    "V21__jd_ai_conversation.sql",
+    "V22__agent_room.sql",
+    "V23__agent_message.sql",
+    "V24__agent_room_job_context.sql",
+    "V25__agent_room_context_id.sql",
+    "V26__cover_letter_context_corp.sql"
+  ],
+  "generated_at": "2026-09-18T01:56:46.441912+00:00",
+  "header": [
+    "corp_code",
+    "title",
+    "published_at",
+    "original_url",
+    "source",
+    "importance_score",
+    "collected_at",
+    "guid"
+  ],
+  "identity_columns_excluded": [
+    "id"
+  ],
+  "input_staged_rows": 39129,
+  "original_url_null_rows": 0,
+  "per_company_limit": 5,
+  "published_at_null_rows": 0,
+  "seed_csv_path": "curated/seed/news_article.csv",
+  "seed_rows": 500,
+  "seed_schema_version": "news_article-seed-v1",
+  "source_column_maps_to": "publisher",
+  "table": "news_article",
+  "url_google_news_rows": 500,
+  "url_publisher_rows": 0
+}

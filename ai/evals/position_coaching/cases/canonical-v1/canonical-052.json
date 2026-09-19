@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-052", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "캐시를 활용해 성능을 개선한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-052", "document_type": "PORTFOLIO", "text": "Redis 기본 명령을 실습한 적은 있으나 애플리케이션 병목에 캐시를 적용한 경험은 없습니다."}],
+  "expected_findings": [{"experience_type": "CACHE_PERFORMANCE", "claim_quote": "Redis 기본 명령을 실습한 적은 있으나 애플리케이션 병목에 캐시를 적용한 경험은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["상품 조회에 캐시 어사이드 전략을 적용했습니다.", "Redis 캐시 적중률 91%를 달성했습니다.", "상품 응답 시간을 절반으로 단축했습니다."]
+}

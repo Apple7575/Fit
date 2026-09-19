@@ -92,7 +92,7 @@ export const mockNewsByCompany: Record<string, NewsItem[]> = {
       importanceScore: 4.8,
     },
   ],
-  '90000002': [
+  '00164742': [
     {
       id: 20010,
       title: '현대차, 울산 전기차 전용공장 착공',
@@ -114,7 +114,7 @@ export const mockNewsByCompany: Record<string, NewsItem[]> = {
       importanceScore: null,
     },
   ],
-  '90000004': [],
+  '00266961': [],
 };
 
 export const mockNewsStatsByCompany: Record<string, NewsStats> = {

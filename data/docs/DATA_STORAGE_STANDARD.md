@@ -336,7 +336,7 @@ DB 테이블과 1:1 대응하지 않는 CSV(`company_year_wide.csv` 등)는 시�
 
 ## 11. 검증
 
-`python scripts/verify_news.py` 가 14개 항목을 돌린다. DB 에 붙지 않는다 — 스키마는 Flyway
+`python scripts/verify_news.py` 가 15개 항목을 돌린다. DB 에 붙지 않는다 — 스키마는 Flyway
 SQL 에서 읽고 FK 대조는 `config/company_universe.csv` 로 한다.
 
 | # | 항목 |
@@ -355,6 +355,7 @@ SQL 에서 읽고 FK 대조는 `config/company_universe.csv` 로 한다.
 | 12 | `seed_csv_inventory.csv` 의 `row_count` ↔ 실제 행 수 (+ 누락 테이블) |
 | 13 | 재실행 결정성 (다시 만들어 바이트 비교) |
 | 14 | 단위 테스트 |
+| 15 | 커밋하지 않기로 한 시드가 git 에 트래킹되고 있지 않은지 |
 
 **`SKIP` 을 `PASS` 로 세지 않는다.** 원본이 없어 확인하지 못한 것과 확인해서 통과한 것은 다르다.
 실패 건수와 원인은 그대로 출력하며, 데이터를 임의로 보정해 통과시키지 않는다.

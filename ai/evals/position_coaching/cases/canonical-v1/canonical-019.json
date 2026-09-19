@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-019", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "데이터 정합성 문제를 다룬 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-019", "document_type": "EXPERIENCE", "text": "회원 탈퇴 뒤 참조 데이터가 남는 문제를 해결하려고 관련 테이블을 하나의 트랜잭션에서 정리하도록 서비스 로직을 수정했습니다."}],
+  "expected_findings": [{"experience_type": "DATABASE", "claim_quote": "회원 탈퇴 뒤 참조 데이터가 남는 문제를 해결하려고 관련 테이블을 하나의 트랜잭션에서 정리하도록 서비스 로직을 수정했습니다.", "verdict": "PARTIAL", "present_elements": ["PROBLEM", "ACTION", "MECHANISM"], "missing_elements": ["VERIFICATION"]}],
+  "forbidden_output_substrings": ["회원 데이터에 외래 키 CASCADE를 적용했습니다.", "고아 레코드 4만 건을 정리했습니다.", "탈퇴 배치 삭제 시간을 12분으로 줄였습니다."]
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-050", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "동시성 문제를 해결한 경험을 작성해 주세요.",
+  "documents": [{"document_id": "doc-050", "document_type": "SELF_INTRO", "text": "동시성 제어가 중요하다고 생각하지만 경합 오류를 재현하거나 수정한 경험은 없습니다."}],
+  "expected_findings": [{"experience_type": "CONCURRENCY", "claim_quote": "동시성 제어가 중요하다고 생각하지만 경합 오류를 재현하거나 수정한 경험은 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["재고 차감에 낙관적 락을 적용했습니다.", "동시 요청의 재고 음수 문제를 해결했습니다.", "재고 API 병렬 요청 500개를 검증했습니다."]
+}

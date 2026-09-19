@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../api/client';
@@ -25,7 +25,11 @@ describe('VerifyPage', () => {
     renderAt('/verify?token=good-token');
 
     expect(await screen.findByRole('heading', { name: '이메일 인증 완료' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login');
+    // 헤더에도 로그인 링크가 있으므로 본문 안의 버튼형 링크만 본다
+    expect(within(screen.getByRole('main')).getByRole('link', { name: '로그인' })).toHaveAttribute(
+      'href',
+      '/login',
+    );
     expect(verifyEmail).toHaveBeenCalledWith('good-token');
   });
 

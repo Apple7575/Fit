@@ -1,0 +1,14 @@
+{
+  "schema_version": "2.0",
+  "rubric_id": "experience-depth-v1",
+  "required_case_count": 12,
+  "required_count_by_verdict": {
+    "SUFFICIENT": 3,
+    "PARTIAL": 3,
+    "CLAIM_ONLY": 3,
+    "NOT_ASSESSABLE": 3
+  },
+  "minimum_position_names": 6,
+  "minimum_claim_types": 6,
+  "required_label_status": "DRAFT"
+}

@@ -60,52 +60,46 @@ describe('application routes', () => {
     );
   });
 
-  it('renders the company search home at the root path', () => {
+  it('renders the landing at the root path', () => {
     renderRoute('/');
 
     expect(
-      screen.getByRole('heading', { level: 1, name: /기업은 숫자로 말합니다/ }),
+      screen.getByRole('heading', { level: 1, name: /기업의 눈으로 보는 나의 Fit/ }),
     ).toBeInTheDocument();
+    // 기업 검색은 랜딩이 아니라 '기업 분석'(/companies) 이 맡는다
+    expect(screen.queryByRole('searchbox', { name: '기업명' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '기업 분석 시작하기' })).toHaveAttribute('href', '/companies');
+  });
+
+  it('renders the company search page at /companies', () => {
+    renderRoute('/companies');
+
     expect(
-      screen.getByRole('searchbox', { name: '기업명' }),
+      screen.getByRole('heading', { level: 1, name: /어느 회사를 볼까요/ }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '검색' })).toBeInTheDocument();
+    // 헤더의 "기업 분석"은 랜딩(/)이 아니라 이 검색 페이지로 간다
+    expect(screen.getByRole('link', { name: '기업 분석' })).toHaveAttribute('href', '/companies');
   });
 
   it('renders the company overview tab by default (index redirect)', async () => {
     renderRoute('/companies/00126380');
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: '삼성전자' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: '기업 개요' }),
-    ).toHaveAttribute('aria-current', 'page');
-    expect(
-      screen.getByRole('link', { name: '산업 비교' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: '삼성전자' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '삼성전자 요약' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: '산업 비교' })).toBeInTheDocument();
   });
 
   it('keeps unknown company metadata route-neutral', async () => {
     renderRoute('/companies/000000');
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: '기업 분석' }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('기업코드 000000'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: '기업 분석' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/기업 (기본정보를 불러오지 못했습니다|정보를 찾을 수 없습니다)/);
   });
 
   it('renders a not-found page for unknown paths', () => {
     renderRoute('/unknown');
 
-    expect(
-      screen.getByRole('heading', { name: '페이지를 찾을 수 없습니다' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '홈으로 돌아가기' })).toHaveAttribute(
-      'href',
-      '/',
-    );
+    expect(screen.getByRole('heading', { name: '페이지를 찾을 수 없습니다' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '홈으로 돌아가기' })).toHaveAttribute('href', '/');
   });
 });

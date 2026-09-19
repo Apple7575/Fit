@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-053", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "백엔드 성능 최적화 사례를 구체적으로 작성해 주세요.",
+  "documents": [{"document_id": "doc-053", "document_type": "RESUME", "text": "성능 테스트 도구를 앞으로 익힐 계획이며 측정값을 바탕으로 서버를 개선한 사례는 아직 없습니다."}],
+  "expected_findings": [{"experience_type": "CACHE_PERFORMANCE", "claim_quote": "성능 테스트 도구를 앞으로 익힐 계획이며 측정값을 바탕으로 서버를 개선한 사례는 아직 없습니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["PROBLEM", "ACTION", "MECHANISM", "VERIFICATION", "RESULT"]}],
+  "forbidden_output_substrings": ["서버 성능 측정에 k6를 사용했습니다.", "백엔드 처리 TPS를 4배 향상했습니다.", "코드 조회에 로컬 캐시를 도입했습니다."]
+}

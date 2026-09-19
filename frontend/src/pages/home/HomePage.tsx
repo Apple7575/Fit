@@ -1,105 +1,59 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { searchCompanies } from '../../features/company-search/api';
-import { CompanySearchForm } from '../../features/company-search/CompanySearchForm';
-import {
-  CompanySearchResults,
-  type CompanySearchStatus,
-} from '../../features/company-search/CompanySearchResults';
-import type { Company } from '../../types/company';
-import { FinalSearchScene } from './FinalSearchScene';
-import { HeroScene } from './HeroScene';
-import { LandingHeader } from './LandingHeader';
-import { ProblemStory } from './ProblemStory';
-import { ProductStory } from './ProductStory';
-import { TakeawayScene } from './TakeawayScene';
-import { prefersReducedMotion } from './useInView';
+import { SiteHeader } from '../../components/layout/SiteHeader';
+import { prefersReducedMotion } from '../../hooks/useInView';
+import { AgentDemo } from './AgentDemo';
+import { FinalCta } from './FinalCta';
+import { Hero } from './Hero';
+import { InterviewDemo } from './InterviewDemo';
+import { SectionDots } from './SectionDots';
+
+const SECTIONS = [
+  { id: 'hero', label: '시작' },
+  { id: 'agents', label: '코치 다섯' },
+  { id: 'interview', label: 'AI 면접' },
+  { id: 'start', label: '시작하기' },
+];
 
 /**
- * 홈 = 랜딩. 브랜드 메시지 → 문제 → 다섯 질문 → 5탭 제품 스토리 → 세 가지 요약 → 검색 CTA.
- * 검색 폼은 히어로에 하나만 두고, 헤더·CTA·푸터의 "기업 검색"은 그 폼으로 스크롤·포커스한다.
+ * 홈 = 랜딩. 한 화면 한 장씩 스냅 스크롤로 넘어간다:
+ * 소개와 바로 가기 → 멀티 에이전트 검토 방 → AI 면접 → 시작하기.
+ * 기업 검색은 '기업 분석'(/companies) 이 맡으므로 랜딩에는 검색창을 두지 않는다.
  */
 export function HomePage() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<CompanySearchStatus>('idle');
-  const [keyword, setKeyword] = useState('');
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [total, setTotal] = useState(0);
-  // 새 검색이 시작되면 이전 요청을 취소해 오래된 응답이 최신 결과를 덮어쓰지 않게 한다.
-  const inFlight = useRef<AbortController | null>(null);
   const heroRef = useRef<HTMLElement>(null);
+  const scrollerRef = useRef<HTMLElement>(null);
 
-  useEffect(() => () => inFlight.current?.abort(), []);
+  // 랜딩은 한 화면에 딱 맞아 문서가 스크롤되지 않는다. 스크롤바 자리까지 비워 두면 오른쪽에 띠가 생긴다
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('no-scrollbar-gutter');
+    return () => root.classList.remove('no-scrollbar-gutter');
+  }, []);
 
-  const runSearch = async (nextKeyword: string) => {
-    inFlight.current?.abort();
+  const behavior = () => (prefersReducedMotion() ? 'auto' : 'smooth') as ScrollBehavior;
 
-    const controller = new AbortController();
-    inFlight.current = controller;
-
-    setKeyword(nextKeyword);
-    setStatus('loading');
-
-    try {
-      const result = await searchCompanies(nextKeyword, controller.signal);
-
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      setCompanies(result.items);
-      setTotal(result.total);
-      setStatus('success');
-    } catch {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      setCompanies([]);
-      setTotal(0);
-      setStatus('error');
-    }
-  };
-
-  const focusSearch = useCallback(() => {
-    // 히어로 스크롤 구간의 끝(검색창이 완전히 올라온 지점)으로 맞춘다. jsdom 에는 scrollIntoView 가 없다
-    heroRef.current?.scrollIntoView?.({
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'end',
-    });
-    const input = heroRef.current?.querySelector<HTMLInputElement>('input[type="search"]');
-    // 스크롤이 끝난 뒤 포커스해야 브라우저가 스크롤을 건너뛰지 않는다
-    window.setTimeout(() => input?.focus({ preventScroll: true }), 400);
+  const goNext = useCallback(() => {
+    scrollerRef.current
+      ?.querySelector<HTMLElement>('#agents')
+      ?.scrollIntoView?.({ behavior: behavior(), block: 'start' });
   }, []);
 
   return (
-    <div className="landing bg-slate-50">
-      <LandingHeader onSearchClick={focusSearch} />
+    <div className="relative h-screen overflow-hidden bg-slate-50">
+      {/* 첫 장 위에 흰 유리 헤더로 떠 있는다. 아래 섹션들이 헤더 높이만큼 위 여백을 갖는다 */}
+      <SiteHeader overlay scrolled />
 
-      <main>
-        <HeroScene
-          ref={heroRef}
-          search={
-            <>
-              <CompanySearchForm onSearch={runSearch} />
-              <div className="mt-4">
-                <CompanySearchResults
-                  companies={companies}
-                  keyword={keyword}
-                  onRetry={() => runSearch(keyword)}
-                  onSelect={(company) => navigate(`/companies/${company.corpCode}`)}
-                  status={status}
-                  total={total}
-                />
-              </div>
-            </>
-          }
-        />
-        <ProblemStory />
-        <ProductStory />
-        <TakeawayScene />
-        <FinalSearchScene onSearchClick={focusSearch} />
+      {/* 화면 높이 그대로 한 장씩 스냅. 각 섹션이 헤더 높이(3.5rem) 만큼 위 여백을 가진다 */}
+      <main className="h-screen snap-y snap-mandatory overflow-y-auto scroll-smooth" ref={scrollerRef}>
+        <Hero onNext={goNext} ref={heroRef} />
+        <AgentDemo />
+        <InterviewDemo />
+        <FinalCta onStart={() => navigate('/companies')} />
       </main>
+
+      <SectionDots container={scrollerRef} sections={SECTIONS} />
     </div>
   );
 }

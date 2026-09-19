@@ -1,3 +1,4 @@
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
@@ -64,6 +65,18 @@ function NewWorkspace() {
     navigate(`/cover-letters/${saved.id}`);
   };
 
+  // 검토 방은 저장된 자소서에 붙으므로 먼저 저장하고 넘어간다.
+  const onReview = async (input: CoverLetterInput) => {
+    if (!user) {
+      writeStash(input);
+      navigate('/login?redirect=/cover-letters/new');
+      return;
+    }
+    const saved = await createCoverLetter(input);
+    clearStash();
+    navigate(`/agent-rooms?coverLetterId=${saved.id}`);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <CoverLetterHeader />
@@ -71,6 +84,7 @@ function NewWorkspace() {
         initial={initial}
         isLoggedIn={!!user}
         onSave={onSave}
+        onReview={onReview}
         onBack={user ? () => navigate('/cover-letters') : undefined}
       />
     </div>
@@ -84,7 +98,7 @@ function ExistingWorkspace({ id }: { id: number }) {
     return (
       <div className="min-h-screen bg-slate-50">
         <CoverLetterHeader />
-        <div className="mx-auto max-w-6xl px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</div>
+        <LoadingScreen />
       </div>
     );
   }
@@ -101,6 +115,12 @@ function ExistingLoaded({ id }: { id: number }) {
     await updateCoverLetter(id, input);
   };
 
+  // 고친 내용을 에이전트가 보도록 저장부터 하고 넘어간다.
+  const onReview = async (input: CoverLetterInput) => {
+    await updateCoverLetter(id, input);
+    navigate(`/agent-rooms?coverLetterId=${id}`);
+  };
+
   const notFound =
     state.status === 'error' &&
     (state.error.status === 404 || state.error.code === 'COVER_LETTER_NOT_FOUND');
@@ -110,7 +130,7 @@ function ExistingLoaded({ id }: { id: number }) {
       <CoverLetterHeader />
 
       {state.status === 'loading' && (
-        <div className="mx-auto max-w-6xl px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</div>
+        <LoadingScreen />
       )}
 
       {state.status === 'error' && (
@@ -135,6 +155,7 @@ function ExistingLoaded({ id }: { id: number }) {
           isLoggedIn
           alreadySaved
           onSave={onSave}
+          onReview={onReview}
           onBack={() => navigate('/cover-letters')}
         />
       )}

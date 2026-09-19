@@ -226,7 +226,7 @@ API 계약은 다음과 같다.
 | `POST /internal/conversations/{conversation_id}/messages` | 이전 맥락을 포함해 코칭 답변 생성, 중복 요청 방지 |
 | `GET /internal/conversations/{conversation_id}` | 대화 기준 분석과 메시지 조회 |
 | `DELETE /internal/conversations/{conversation_id}` | 지원 세션 삭제 시 AI 대화와 메시지 삭제 |
-| `POST /internal/jd/analyze` | 단일 JD·사용자 글을 한 번에 처리하는 호환 API |
+| `POST /internal/analyses` | 단일 JD·사용자 글을 한 번에 처리하는 동기 분석 API |
 | `GET /health` | 서버 프로세스 상태 확인 |
 
 2026-09-13 삼성전자 이름이 없는 합성 JD로 Qwen 통합 테스트를 수행했다. API 내부 서비스는 API 개발과 관계형 데이터베이스 설계 요구사항 두 개를 추출했고 두 항목을 모두 `SUPPORTED`로 판정했다. 사용량은 Qwen 응답의 `usage`를 합산해 총 2,321토큰이었다. 이 결과는 실행 가능성을 확인한 스모크 테스트이며 정확도나 기업 간 일반화 성능은 아니다.

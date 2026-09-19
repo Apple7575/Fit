@@ -1,0 +1,23 @@
+{
+  "hero": {
+    "title": "Bioreactor in operation",
+    "author": "Habin Zhang",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Bioreactor_in_operation.jpg"
+  },
+  "point-business": {
+    "title": "Bioreactor 1",
+    "author": "Luis Fernando Flores LAB",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Bioreactor_1.jpg"
+  },
+  "point-direction": {
+    "title": "Bioreactor is capable of maintaining a stable environment that is conducive to cell growth.",
+    "author": "Habin Zhang",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Bioreactor_is_capable_of_maintaining_a_stable_environment_that_is_conducive_to_cell_growth..jpg"
+  }
+}

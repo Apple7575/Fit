@@ -1,0 +1,7 @@
+{
+  "status": "DRAFT",
+  "request": {"instruction": "최근 산업 변화가 직무에 미치는 영향을 알려줘", "job_context_id": "fixture-context-2", "corp_code": "00126380", "conversation": []},
+  "stored_candidates": [],
+  "external_candidates": [{"article_id": "external:industry-1", "origin": "EXTERNAL", "title": "반도체 산업 공급망 재편 가속", "publisher": "산업일보", "published_at": "2026-08-28T10:00:00+09:00", "url": "https://news.example.test/industry-1"}],
+  "expected_response": {"message": "[INDUSTRY] 반도체 산업 공급망 재편\n공급망 변화와 직무 연관성을 확인한다.", "analysis": {"analysis_status": "COMPLETED", "company": {"corp_code": "00126380", "corp_name": "삼성전자"}, "window": {"from": "2026-06-18", "to": "2026-09-16"}, "signals": [{"signal_id": "signal-001", "scope": "INDUSTRY", "title": "반도체 산업 공급망 재편", "summary": "반도체 산업의 공급망 재편이 가속되고 있다.", "jd_relevance": "공급망 변화와 직무 연관성을 확인한다.", "preparation_checks": ["협업 경험을 정리한다."], "evidence_level": "MEDIUM", "sources": [{"article_id": "external:industry-1", "origin": "EXTERNAL", "title": "반도체 산업 공급망 재편 가속", "publisher": "산업일보", "published_at": "2026-08-28T10:00:00+09:00", "url": "https://news.example.test/industry-1"}]}], "coverage": {"company": "INSUFFICIENT", "industry": "INSUFFICIENT", "role": "INSUFFICIENT"}, "external_search": {"used": true, "reason": "유효 기사 5건 미만"}}}
+}

@@ -49,9 +49,7 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
   if (value) {
     return (
       <div className="flex h-[42px] items-center justify-between rounded-lg border border-slate-200 bg-white px-2.5">
-        <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-[13px] font-semibold text-blue-700">
-          {value}
-        </span>
+        <span className="truncate px-0.5 text-[15px] font-bold text-slate-900">{value}</span>
         <button
           onClick={() => {
             onChange('');

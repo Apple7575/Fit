@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "writing-message-v1.json",
+  "title": "Writing Message v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "message", "revision"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["REVISED", "ANSWERED", "CLARIFICATION_REQUIRED"]
+    },
+    "message": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "revision": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["revision_strength", "revised_text", "char_count", "changes", "warnings"],
+      "properties": {
+        "revision_strength": {
+          "type": "string",
+          "enum": ["LIGHT", "BALANCED", "REWRITE"]
+        },
+        "revised_text": {"type": "string", "minLength": 1, "maxLength": 50000},
+        "char_count": {"type": "integer", "minimum": 1, "maximum": 50000},
+        "changes": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "before", "after", "reason", "applied_feedback_ids"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["STRUCTURE", "CLARITY", "CONCISENESS", "FLOW", "TONE", "LENGTH"]
+              },
+              "before": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "after": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+              "applied_feedback_ids": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": ["MISSING_EVIDENCE", "UNAPPLIED_FEEDBACK", "CHAR_LIMIT_CONFLICT", "AMBIGUOUS_INSTRUCTION"]
+              },
+              "message": {"type": "string", "minLength": 1, "maxLength": 1000}
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {"const": "REVISED"}
+        }
+      },
+      "then": {
+        "properties": {
+          "revision": {"type": "object"}
+        }
+      },
+      "else": {
+        "properties": {
+          "revision": {"const": null}
+        }
+      }
+    }
+  ]
+}

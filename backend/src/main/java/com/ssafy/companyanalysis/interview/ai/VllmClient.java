@@ -69,7 +69,8 @@ public class VllmClient implements InterviewLlmClient {
                         Map.of("role", "system", "content", systemInstruction),
                         Map.of("role", "user", "content", userText)),
                 "temperature", 0.4,
-                "max_tokens", 2000,
+                // 피드백 지표 확장 대비. 2000 은 5문항에서 Qwen 출력이 넘겨 JSON 이 잘렸다(관측).
+                "max_tokens", 5000,
                 // Qwen3 기본 사고(thinking) 출력을 끈다. 켜 두면 JSON 앞에 <think> 가 섞인다.
                 "chat_template_kwargs", Map.of("enable_thinking", false),
                 "response_format", Map.of(

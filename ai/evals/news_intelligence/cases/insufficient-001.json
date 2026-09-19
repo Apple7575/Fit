@@ -1,0 +1,7 @@
+{
+  "status": "DRAFT",
+  "request": {"instruction": "최근 기업 변화가 직무에 미치는 영향을 알려줘", "job_context_id": "fixture-context-4", "corp_code": "00126380", "conversation": []},
+  "stored_candidates": [],
+  "external_candidates": [],
+  "expected_response": {"message": "확인 가능한 최신 기사 근거가 부족해 기업·산업·직무 변화를 판단하지 않았습니다.", "analysis": {"analysis_status": "INSUFFICIENT_EVIDENCE", "company": {"corp_code": "00126380", "corp_name": "삼성전자"}, "window": {"from": "2026-06-18", "to": "2026-09-16"}, "signals": [], "coverage": {"company": "INSUFFICIENT", "industry": "INSUFFICIENT", "role": "INSUFFICIENT"}, "external_search": {"used": true, "reason": "유효 기사 5건 미만"}}}
+}

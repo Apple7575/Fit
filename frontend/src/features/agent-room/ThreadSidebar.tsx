@@ -1,4 +1,5 @@
-import { AGENT_DOT } from './agentStyle';
+import { CharacterSlot } from '../../components/brand/CharacterSlot';
+import { characterForRoomTitle } from '../../components/brand/characters';
 import type { RoomSummary } from './types';
 
 interface ThreadSidebarProps {
@@ -6,15 +7,6 @@ interface ThreadSidebarProps {
   selectedRoomId: number | null;
   onSelect: (roomId: number) => void;
 }
-
-/** 방 이름이 곧 에이전트 이름이라 이름으로 색을 되찾는다. */
-const DOT_BY_TITLE: Record<string, string> = {
-  '채용공고 담당': AGENT_DOT.jd,
-  '기업 RAG 담당': AGENT_DOT.company,
-  '포지션 담당': AGENT_DOT.position,
-  '뉴스/트렌드 담당': AGENT_DOT.news,
-  '글쓰기 담당': AGENT_DOT.writing,
-};
 
 /**
  * 왼쪽 스레드 목록. 에이전트 전담 방이 1:1 대화이고, 에이전트가 여럿인 방이 총괄 논의다.
@@ -38,15 +30,18 @@ export function ThreadSidebar({ rooms, selectedRoomId, onSelect }: ThreadSidebar
             selected ? 'bg-slate-100' : 'hover:bg-slate-50'
           }`}
         >
-          <span
-            aria-hidden
-            className={`mt-1 size-[9px] shrink-0 rounded-full ${
-              isGroup ? 'bg-amber-600' : (DOT_BY_TITLE[room.title] ?? 'bg-slate-400')
-            }`}
-          />
+          <span className="mt-0.5 shrink-0">
+            <CharacterSlot
+              character={isGroup ? 'lead' : characterForRoomTitle(room.title)}
+              interactive={false}
+              size={24}
+            />
+          </span>
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1.5">
-              <span className="truncate text-[13px] font-semibold text-slate-800">{room.title}</span>
+              <span className="truncate text-[13px] font-semibold text-slate-800">
+                {room.title}
+              </span>
               {room.running && (
                 <span className="shrink-0 text-[11px] font-medium text-blue-600">답하는 중</span>
               )}

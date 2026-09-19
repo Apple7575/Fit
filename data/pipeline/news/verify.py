@@ -1,6 +1,6 @@
 """뉴스 데이터 검증. 실패를 숨기지 않고, 데이터를 보정하지 않는다.
 
-기준 문서 11장의 14개 항목을 그대로 구현한다. 원본이 없으면 해당 항목은 `skip` 이고,
+기준 문서 11장의 15개 항목을 그대로 구현한다. 원본이 없으면 해당 항목은 `skip` 이고,
 `skip` 을 `pass` 로 세지 않는다 — 데이터 없이 통과했다고 보고하는 것이 가장 나쁘다.
 
 돌리는 방법은 `data/scripts/verify_news.py` 를 보라.
@@ -111,18 +111,47 @@ def check_03_exclusions() -> Check:
 
 
 def check_04_article_key_unique() -> Check:
+    """기사 식별자가 **수집 실행 안에서** 유일한지 본다.
+
+    실행을 넘어선 유일성은 요구하지 않는다. 같은 기사를 다음 수집에서 다시 관측하는
+    것은 정상이고 — 증분 수집이면 반드시 생긴다 — 오히려 같은 기사에 같은 키가
+    붙는 것이 article_key 를 내용으로 만든 이유다.
+
+    처음에는 staged 전체에서 유일성을 요구했다. 수집 실행이 하나뿐이던 동안에는
+    구별이 안 됐다. 2026-09-18 증분 수집으로 실행이 둘이 되자 재관측 2,487건이
+    전부 실패로 잡혔다. **날짜 창을 갈라도 못 없앤다** — 같은 기사인데 나중 실행에서
+    RSS 가 pubDate 를 다르게 주는 경우가 있어(실측 25건) 서로 다른 날짜 창에 들어간다.
+    그대로 두면 증분 수집마다 실패하고, 실패를 늘 무시하게 되면 검사가 죽는다.
+
+    재관측은 숫자로만 남긴다. 늘어나는 것 자체는 이상이 아니지만, 갑자기 0 이 되면
+    article_key 가 내용을 못 따라가고 있다는 뜻이라 눈에 보이는 편이 낫다.
+    """
     rows = _staged_rows()
     if not rows:
-        return Check(4, "기사 식별자 중복", "skip", {"reason": "staged 산출물이 없다"})
-    seen: dict[str, int] = {}
+        return Check(4, "기사 식별자 중복 (수집 실행 안)", "skip", {"reason": "staged 산출물이 없다"})
+    per_run: dict[str, dict[str, int]] = {}
+    runs_by_key: dict[str, set[str]] = {}
     for row in rows:
-        seen[row["article_key"]] = seen.get(row["article_key"], 0) + 1
-    duplicates = {k: v for k, v in seen.items() if v > 1}
-    return Check(4, "기사 식별자 중복", "fail" if duplicates else "pass",
-                 {"rows": len(rows), "distinct": len(seen), "duplicate_keys": duplicates})
+        run = row.get("collection_run_id") or "(실행 미상)"
+        counts = per_run.setdefault(run, {})
+        counts[row["article_key"]] = counts.get(row["article_key"], 0) + 1
+        runs_by_key.setdefault(row["article_key"], set()).add(run)
+    duplicates = {run: {key: count for key, count in counts.items() if count > 1}
+                  for run, counts in per_run.items()}
+    duplicates = {run: found for run, found in duplicates.items() if found}
+    return Check(4, "기사 식별자 중복 (수집 실행 안)", "fail" if duplicates else "pass",
+                 {"rows": len(rows), "distinct": len(runs_by_key), "runs": len(per_run),
+                  "duplicate_keys_by_run": duplicates,
+                  "reobserved_across_runs": sum(1 for r in runs_by_key.values() if len(r) > 1)})
 
 
 def check_05_url_duplicates() -> Check:
+    """정규화한 언론사 URL 이 겹치는지 본다.
+
+    4번과 같은 이유로 실행 간 재관측은 여기서도 생길 수 있다. 지금은 original_url 이
+    전부 구글 링크라 `original_url_norm` 이 빈 값이어서 비교 대상이 0 건이다 —
+    언론사 주소를 채우게 되면 이 검사도 실행 안으로 범위를 좁혀야 한다.
+    """
     rows = _staged_rows()
     if not rows:
         return Check(5, "URL 중복", "skip", {"reason": "staged 산출물이 없다"})
@@ -320,6 +349,29 @@ def check_12_inventory_row_counts() -> Check:
                   "problems": problems})
 
 
+def _seed_build_options() -> dict:
+    """시드를 만들 때 쓴 선택을 manifest 에서 읽는다.
+
+    `curate.build` 의 기본값이 아닌 선택(예: `--per-company 5`)으로 만든 시드를
+    기본값으로 다시 만들면 당연히 달라진다. 그것은 결정성 문제가 아니라 **다른
+    명령을 돌린 것**이라, 재실행 대조는 같은 선택으로 해야 뜻이 있다.
+    manifest 가 없거나 키가 없으면 기본값으로 둔다.
+    """
+    path = curate.SEED_MANIFEST_DIR / f"{SEED_TABLE}.json"
+    if not path.exists():
+        return {}
+    try:
+        saved = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    options: dict = {}
+    if saved.get("per_company_limit"):
+        options["per_company"] = int(saved["per_company_limit"])
+    if saved.get("source_column_maps_to"):
+        options["source_column"] = saved["source_column_maps_to"]
+    return options
+
+
 def check_13_determinism() -> Check:
     """같은 원본으로 다시 정제·시드 생성해 바이트가 같은지 본다."""
     runs = rawstore.list_runs()
@@ -343,7 +395,11 @@ def check_13_determinism() -> Check:
                 problems.append(f"{run_id}: articles.csv 가 재실행 결과와 다르다")
         seed_path = SEED_DIR / f"{SEED_TABLE}.csv"
         if seed_path.exists():
-            rebuilt = curate.build(_staged_rows())
+            # 시드를 만들 때 준 선택(기업별 상한·source 컬럼)을 manifest 에서 읽어
+            # 그대로 다시 준다. 기본값으로 다시 만들면 "재실행하면 달라진다"가
+            # 아니라 "다른 명령을 돌렸다"를 잡게 된다.
+            options = _seed_build_options()
+            rebuilt = curate.build(_staged_rows(), **options)
             copy = scratch / "seed"
             copy.mkdir(parents=True, exist_ok=True)
             from pipeline.news.csvio import write_csv
@@ -370,12 +426,68 @@ def check_14_unit_tests() -> Check:
                  {"returncode": process.returncode, "output_tail": tail})
 
 
+def _ignored_seed_names(gitignore_text: str) -> list[str]:
+    """`.gitignore` 가 커밋을 막아 둔 시드 파일 이름을 뽑는다."""
+    names = []
+    for raw in gitignore_text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or line.startswith("!"):
+            continue
+        if line.startswith("/curated/seed/") and not line.endswith("/"):
+            names.append(line.rsplit("/", 1)[-1])
+    return names
+
+
+def check_15_forbidden_seed_tracked() -> Check:
+    """커밋하지 않기로 한 시드가 git 에 올라가 있지 않은지 본다.
+
+    `.gitignore` 는 **아직 트래킹되지 않은 파일에만** 듣는다. 파일이 먼저 생기고
+    제외 규칙이 나중에 들어오면, 규칙을 적어 둔 채로 파일은 계속 따라다닌다.
+    2026-09-15 에 `curated/seed/news_article.csv` 가 그랬다 — 새 표 이름이 제외
+    목록에 빠져 있던 사이에 만들어졌고, 규칙을 더한 뒤에도 남아 뉴스와 무관한
+    브랜치(MR !110)에 딸려 갔다. 제3자 기사 제목·URL 이라 눈으로 찾기 전에
+    검증이 잡아야 한다.
+
+    저장소가 아닌 곳(CD 가 서버로 복사한 사본)에서는 확인할 것이 없어 `skip` 이다.
+    """
+    import subprocess
+
+    ignore_file = DATA / ".gitignore"
+    if not ignore_file.exists():
+        return Check(15, "커밋 금지 시드", "skip", {"reason": f"{ignore_file} 가 없다"})
+
+    forbidden = _ignored_seed_names(ignore_file.read_text(encoding="utf-8"))
+    if not forbidden:
+        return Check(15, "커밋 금지 시드", "skip",
+                     {"reason": ".gitignore 에 curated/seed 제외 규칙이 없다"})
+
+    try:
+        process = subprocess.run(
+            ["git", "-C", str(DATA), "ls-files", "--", "curated/seed"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except OSError as error:                         # git 이 없는 환경
+        return Check(15, "커밋 금지 시드", "skip", {"reason": f"git 을 부를 수 없다: {error}"})
+
+    if process.returncode != 0:
+        reason = (process.stderr or "").strip().splitlines()[:1]
+        return Check(15, "커밋 금지 시드", "skip",
+                     {"reason": reason[0] if reason else "git ls-files 가 실패했다"})
+
+    tracked = {line.rsplit("/", 1)[-1] for line in process.stdout.splitlines() if line.strip()}
+    problems = [f"{name} 이 트래킹되고 있다 — .gitignore 는 커밋하지 않기로 적어 두었다. "
+                f"`git rm --cached curated/seed/{name}` 로 추적만 끊는다"
+                for name in forbidden if name in tracked]
+    return Check(15, "커밋 금지 시드", "fail" if problems else "pass",
+                 {"forbidden": forbidden, "tracked": sorted(tracked), "problems": problems})
+
+
 ALL_CHECKS = (
     check_01_raw_vs_manifest, check_02_record_counts, check_03_exclusions,
     check_04_article_key_unique, check_05_url_duplicates, check_06_corp_mapping,
     check_07_published_at, check_08_required_nulls, check_09_headers,
     check_10_seed_keys, check_11_foreign_keys, check_12_inventory_row_counts,
     check_13_determinism, check_14_unit_tests,
+    check_15_forbidden_seed_tracked,
 )
 
 

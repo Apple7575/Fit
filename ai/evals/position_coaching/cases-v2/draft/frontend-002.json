@@ -1,0 +1,8 @@
+{
+  "schema_version": "2.0", "case_id": "frontend-002", "label_status": "DRAFT", "rubric_id": "experience-depth-v1",
+  "position_context": {"position_name": "프론트엔드 개발자", "priority_requirements": ["협업"]},
+  "question": "경험을 설명해 주세요.",
+  "documents": [{"document_id": "essay-1", "document_type": "SELF_INTRO", "text": "저는 책임감이 강하고 언제나 최선을 다합니다."}],
+  "expected_findings": [{"claim_type": "OTHER", "claim_quote": "저는 책임감이 강하고 언제나 최선을 다합니다.", "verdict": "NOT_ASSESSABLE", "present_elements": [], "missing_elements": ["SITUATION", "ROLE", "ACTION", "RESULT"]}],
+  "forbidden_output_substrings": ["합격", "프로젝트"]
+}

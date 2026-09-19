@@ -3,32 +3,6 @@
  * 필드명은 백엔드 agent/dto 의 record 들과 같다.
  */
 
-/** 에이전트가 요구하는 설정 항목 하나. 이걸로 입력 UI 를 그린다. */
-export interface ConfigField {
-  type: 'array' | 'enum' | 'string' | 'number';
-  required: boolean;
-  description: string;
-}
-
-/** GET /api/agents 의 한 건. */
-export interface AgentCatalogEntry {
-  agentKey: string;
-  name: string;
-  description: string;
-  dataSource: string;
-  /** 총괄만 false — 사용자가 직접 넣는 대상이 아니라 서버가 붙인다. */
-  selectable: boolean;
-  configSchema: Record<string, ConfigField>;
-}
-
-/** GET /api/job-roles 의 한 건. ready=false 면 아직 열어 두지 않은 직무라 고를 수 없다. */
-export interface JobRoleOption {
-  key: string;
-  name: string;
-  ready: boolean;
-  topics: string[];
-}
-
 /** 방 상세의 기업 담당·뉴스 담당 설정에 실려 오는 기업. */
 export interface RoomCompany {
   corpCode: string;
@@ -50,15 +24,21 @@ export interface RoomAgent {
   config: {
     companies?: RoomCompany[];
     jobRole?: string;
-    jdUrl?: string;
-    months?: number;
   };
+}
+
+/** 방이 놓고 도는 채용공고. 공고 없이 연 방은 null 이다. */
+export interface RoomJobContext {
+  contextId: string;
+  companyName: string;
+  positionName: string;
 }
 
 export interface Room {
   roomId: number;
   title: string;
   coverLetter: { id: number; title: string } | null;
+  jobContext: RoomJobContext | null;
   agents: RoomAgent[];
   createdAt: string;
   lastMessageAt: string | null;
@@ -84,6 +64,8 @@ export interface AgentSpec {
 export interface RoomCreateInput {
   coverLetterId: number;
   title: string;
+  /** 자소서 작성 화면이 채용공고를 확인했을 때만 보낸다. 공고 없이도 방은 열린다. */
+  jobContextId?: string;
   agents: AgentSpec[];
 }
 

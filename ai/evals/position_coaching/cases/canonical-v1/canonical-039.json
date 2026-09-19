@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0", "case_id": "backend-canonical-039", "label_status": "DRAFT", "position_profile_id": "backend-v1",
+  "question": "메시지 처리 경험을 구체적으로 설명해 주세요.",
+  "documents": [{"document_id": "doc-039", "document_type": "EXPERIENCE", "text": "배송 상태 이벤트가 순서와 다르게 도착해 완료 상태가 준비 상태로 되돌아가는 문제가 있었습니다."}],
+  "expected_findings": [{"experience_type": "MESSAGING", "claim_quote": "배송 상태 이벤트가 순서와 다르게 도착해 완료 상태가 준비 상태로 되돌아가는 문제가 있었습니다.", "verdict": "CLAIM_ONLY", "present_elements": ["PROBLEM"], "missing_elements": ["ACTION", "MECHANISM", "VERIFICATION"]}],
+  "forbidden_output_substrings": ["배송 상태 이벤트 버전을 비교해 갱신했습니다.", "주문 ID를 Kafka 파티션 키로 사용했습니다.", "배송 상태 역전 건수 0건을 달성했습니다."]
+}
