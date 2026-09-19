@@ -99,6 +99,27 @@ class BundleTest(unittest.TestCase):
         self.assertTrue(any("정형 표를 읽지 못해" in w for w in report.warnings))
 
 
+class FinancialsFactsTest(unittest.TestCase):
+    def test_financials_bundle_gets_employee_and_pay_tables(self):
+        rows = [
+            _row(["전사", "남"], "직원>직원수>합계", "2,897", 2897.0, form="EMPLOYEE_STATUS", table=21, unit="백만원", year=None),
+            _row(["전사", "남"], "직원>1인평균급여액", "160", 160.0, form="EMPLOYEE_STATUS", table=21, unit="백만원", year=None),
+            _row(["미등기임원"], "인원수", "136", 136.0, form="EXECUTIVE_PAY", table=23, unit="백만원", year=None),
+            _row(["반도체 부문"], "제78기", "97,146,675", 97146675.0),
+        ]
+        business = BusinessReport(corp_code="00164779", rcept_no=RCEPT, report_name="r", published_at=PUBLISHED, chunks=(_raw_table(7),))
+        bundle = build_bundle(PLANS["FINANCIALS"], business, build_deterministic_report(_facts(), generated_at=NOW), rows)
+        self.assertIn(f"facts:EMPLOYEE_STATUS:{RCEPT}:21", bundle.ids)
+        self.assertIn(f"facts:EXECUTIVE_PAY:{RCEPT}:23", bundle.ids)
+        self.assertNotIn(f"facts:SALES_BY_PRODUCT:{RCEPT}:7", bundle.ids, "재무 섹션에는 매출실적 표를 넣지 않는다")
+        contents = bundle.payload[-2]["content"] + bundle.payload[-1]["content"]
+        self.assertIn("직원>직원수>합계: 2,897명", contents, "인원 열에는 표 단위(백만원)를 붙이지 않는다")
+        self.assertIn("직원>1인평균급여액: 160백만원", contents)
+        self.assertIn("인원수: 136명", contents)
+        outsourced = _row(["전사", "남"], "소속외근로자>계", "530", 530.0, form="EMPLOYEE_STATUS", table=21, unit="백만원", year=None)
+        self.assertIn("소속외근로자>계: 530명", render_blocks([outsourced], ("EMPLOYEE_STATUS",))[0].content, "NAVER 실측: 소속 외 근로자 수에 백만원이 붙었다")
+
+
 class RetryTest(unittest.TestCase):
     def test_truncated_output_is_retried_once_with_compact_note(self):
         from ai.company_analysis.llm import InvalidModelResponse

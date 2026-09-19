@@ -20,6 +20,8 @@ from .evidence import SOURCE_TYPE
 PLAN_FORMS: dict[str, tuple[str, ...]] = {
     "BUSINESS_CORE": ("SALES_BY_PRODUCT",),
     "BUSINESS_GROWTH": ("SALES_BY_PRODUCT", "ORDER_BACKLOG"),
+    # 재무 섹션은 원문 서술만 써서 숫자 불일치로 항목이 많이 빠졌다(NAVER 7건, 2026-09-19). 직원·보수 정형 표를 근거로 준다.
+    "FINANCIALS": ("EMPLOYEE_STATUS", "EXECUTIVE_PAY"),
 }
 FORM_LABELS = {
     "SALES_BY_PRODUCT": "매출실적·주요 제품 매출",
@@ -92,12 +94,22 @@ class PostgresTableFactsRepository:
             ]
 
 
+_COUNT_COLUMNS = ("인원", "직원수", "회사수", "수량", "명", "소속외근로자", "근로자")
+_YEARS_COLUMNS = ("근속연수", "근속")
+
+
 def _format(row: TableFactRow) -> str:
+    """값에 맞는 단위를 붙인다. 표 단위(백만원)는 금액 열에만 쓰고 인원·근속연수·비율 열에는 쓰지 않는다."""
     if row.value_num is None:
         return row.value_text
     value = f"{row.value_num:,.2f}".rstrip("0").rstrip(".")
-    if "%" in row.value_text or "비율" in row.column_key or "지분율" in row.column_key:
+    key = row.column_key
+    if "%" in row.value_text or "비율" in key or "지분율" in key:
         return f"{value}%"
+    if any(word in key for word in _COUNT_COLUMNS):
+        return f"{value}명" if "수량" not in key else value
+    if any(word in key for word in _YEARS_COLUMNS):
+        return f"{value}년"
     return f"{value}{row.unit or ''}"
 
 

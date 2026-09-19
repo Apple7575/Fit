@@ -132,7 +132,7 @@ PLANS: dict[str, SectionPlan] = {
             BlockSpec("summary", "text", "재무 추이 요약", "`metrics:` 근거의 3개년 수치로 매출·이익 흐름과 전환점을 2~3문장으로 요약한다."),
             BlockSpec("growth", "bullets", "매출 성장성", "매출 성장률과 그 배경(경영진 해설에 있는 원인)을 항목으로 쓴다."),
             BlockSpec("profitability", "bullets", "수익성", "영업이익률·순이익률·ROE 추이와 R&D 비중을 항목으로 쓴다."),
-            BlockSpec("health", "bullets", "재무 건전성", "부채비율·자본총계 추이, 유동성·자금조달 관련 사실을 항목으로 쓴다."),
+            BlockSpec("health", "bullets", "재무 건전성", "부채비율·자본총계 추이, 유동성·자금조달 관련 사실을 항목으로 쓴다. `facts:` 근거(직원 현황·미등기임원 보수)가 있으면 직원 수·평균근속연수·1인평균 급여액을 단위와 함께 한 항목으로 쓴다."),
         ),
         text_budget=4_500,
         include_metric_tables=True,
