@@ -19,12 +19,16 @@ interface BarLineChartProps {
   rateName?: string;
 }
 
-const H = 300;
-const PAD = { top: 28, right: 56, bottom: 36, left: 64 };
+const H = 340;
+const PAD = { top: 30, right: 56, bottom: 36, left: 64 };
 const PLOT_H = H - PAD.top - PAD.bottom;
+/** 증가율 꺾은선이 쓰는 위 띠. 막대와 같은 자리에 그리면 선·점·글씨가 막대에 묻힌다 */
+const RATE_H = 84;
+/** 두 띠 사이 여백. 막대 위 값 글씨가 여기 들어간다 */
+const BAND_GAP = 22;
 
 /**
- * 막대(값, 왼쪽 축) + 꺾은선(증가율 %, 오른쪽 축) 이중축 차트.
+ * 값은 아래 띠에 막대로, 증가율(%)은 위 띠에 꺾은선으로 — 가로축만 공유하고 자리는 나눈다.
  * 값이 없는 연도는 막대를 그리지 않고 "미제공"으로 표시하며, 선은 그 지점에서 끊는다.
  * 스크린리더용 표를 함께 제공한다.
  */
@@ -44,14 +48,20 @@ export function BarLineChart({
 
   const values = points.map((p) => p.value).filter((v): v is number => v !== null);
   const rates = points.map((p) => p.rate).filter((v): v is number => v !== null);
+  const hasRates = rates.length > 0;
+
+  // 위 띠는 증가율, 아래 띠는 값. 증가율이 없으면 막대가 전체를 쓴다
+  const rateH = hasRates ? RATE_H : 0;
+  const barTop = PAD.top + rateH + (hasRates ? BAND_GAP : 0);
+  const barH = PAD.top + PLOT_H - barTop;
+
   const vTicks = niceTicks(values);
   const vMin = vTicks[0];
   const vMax = vTicks[vTicks.length - 1];
-  const yOf = (v: number) => PAD.top + PLOT_H - ((v - vMin) / (vMax - vMin || 1)) * PLOT_H;
-  const hasRates = rates.length > 0;
+  const yOf = (v: number) => barTop + barH - ((v - vMin) / (vMax - vMin || 1)) * barH;
   const rTicks = hasRates ? symmetricTicks(rates) : [];
   const rMax = hasRates ? rTicks[rTicks.length - 1] : 1;
-  const yOfRate = (r: number) => PAD.top + PLOT_H / 2 - (r / (rMax || 1)) * (PLOT_H / 2);
+  const yOfRate = (r: number) => PAD.top + rateH / 2 - (r / (rMax || 1)) * (rateH / 2);
 
   // 증가율 선: null 에서 끊는다
   const segments: string[] = [];
@@ -70,12 +80,12 @@ export function BarLineChart({
       <p className="mb-3 flex flex-wrap gap-4 text-xs font-semibold text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="inline-block h-2.5 w-4 rounded-sm bg-blue-600" />
-          {valueName}(좌)
+          {valueName}(아래)
         </span>
         {hasRates && (
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden="true" className="inline-block size-2.5 rounded-full border-2 border-sky-400 bg-white" />
-            {rateName}(우)
+            {rateName}(위)
           </span>
         )}
       </p>
@@ -89,6 +99,16 @@ export function BarLineChart({
         role="img"
         viewBox={`0 0 ${W} ${H}`}
       >
+        {hasRates && (
+          <rect
+            className="fill-slate-50"
+            height={rateH}
+            rx={10}
+            width={W - PAD.left - PAD.right}
+            x={PAD.left}
+            y={PAD.top}
+          />
+        )}
         {vTicks.map((t) => (
           <g key={`v-${t}`}>
             <line
@@ -111,20 +131,32 @@ export function BarLineChart({
             </text>
           </g>
         ))}
-        {hasRates &&
-          rTicks.map((t) => (
-            <text
-              className="fill-slate-400 text-[11px]"
-              dominantBaseline="middle"
-              key={`r-${t}`}
-              textAnchor="start"
-              x={W - PAD.right + 8}
-              y={yOfRate(t)}
-            >
-              {t > 0 ? '+' : ''}
-              {t}%
-            </text>
-          ))}
+        {hasRates && (
+          <g>
+            <line
+              className="stroke-slate-300"
+              strokeDasharray="3 3"
+              strokeWidth={1}
+              x1={PAD.left}
+              x2={W - PAD.right}
+              y1={yOfRate(0)}
+              y2={yOfRate(0)}
+            />
+            {[rTicks[rTicks.length - 1], 0].map((t) => (
+              <text
+                className="fill-slate-400 text-[11px]"
+                dominantBaseline="middle"
+                key={`r-${t}`}
+                textAnchor="start"
+                x={W - PAD.right + 8}
+                y={yOfRate(t)}
+              >
+                {t > 0 ? '+' : ''}
+                {t}%
+              </text>
+            ))}
+          </g>
+        )}
 
         {points.map((p, i) => {
           const x = xCenter(i);
@@ -134,18 +166,18 @@ export function BarLineChart({
                 <>
                   <rect
                     className="fill-none stroke-slate-300"
-                    height={PLOT_H}
+                    height={barH}
                     rx={4}
                     strokeDasharray="4 4"
                     width={barW}
                     x={x - barW / 2}
-                    y={PAD.top}
+                    y={barTop}
                   />
                   <text
                     className="fill-slate-400 text-[11px] font-semibold"
                     textAnchor="middle"
                     x={x}
-                    y={PAD.top + PLOT_H / 2}
+                    y={barTop + barH / 2}
                   >
                     미제공
                   </text>

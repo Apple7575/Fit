@@ -156,8 +156,8 @@ describe('CompanyDetailPage', () => {
     expect(
       await screen.findByRole('heading', { name: '다섯 질문으로 보는 이 회사' }),
     ).toBeInTheDocument();
-    // 데이터 기준 칩
-    expect(screen.getByText('데이터 기준: 2025')).toBeInTheDocument();
+    // 기준 칩
+    expect(screen.getByText('최근 공시 기준')).toBeInTheDocument();
   });
 
   it('탭 버튼으로 산업 비교 탭에 이동한다', async () => {
