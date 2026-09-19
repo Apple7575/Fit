@@ -40,8 +40,9 @@ from .contracts import (
     TextBlock,
 )
 from .evidence import BusinessReport, BusinessReportRepository, EvidenceChunk
+from .table_facts import PLAN_FORMS, FactBlock, TableFactRow, TableFactsRepository, covered_tables, render_blocks
 from .facts import CompanyFacts
-from .llm import StructuredCompletionClient
+from .llm import InvalidModelResponse, StructuredCompletionClient
 
 LOGGER = logging.getLogger("ai.company_analysis.narrative")
 PROMPT_PATH = Path(__file__).parent / "resources" / "prompts" / "narrative-v1.md"
@@ -109,6 +110,8 @@ PLANS: dict[str, SectionPlan] = {
             BlockSpec("overview", "text", "주요 사업 내용", "주력 사업과 제품군, 사업 구조를 3~5문장으로 설명한다."),
             BlockSpec("units", "bullets", "사업 부문별 상세", "제품군·사업 부문별로 무엇을 만들고 어떤 시장·고객을 대상으로 하는지, 기술·시장 지위를 항목으로 쓴다."),
         ),
+        # 제품 표가 정형 블록으로 들어가면 출력이 길어져 2,200 토큰에서 JSON 이 잘렸다(삼성전자·덕산테코피아, 2026-09-19).
+        max_output_tokens=3_200,
     ),
     "BUSINESS_GROWTH": SectionPlan(
         name="BUSINESS_GROWTH",
@@ -319,27 +322,57 @@ def _add_peer_table(bundle: EvidenceBundle, report: CompanyReport) -> None:
                 )
 
 
-def build_bundle(plan: SectionPlan, business_report: BusinessReport | None, report: CompanyReport) -> EvidenceBundle:
+def _add_fact_blocks(bundle: EvidenceBundle, blocks: Sequence[FactBlock]) -> None:
+    for block in blocks:
+        bundle.add(
+            block.evidence_id,
+            kind="TABLE",
+            title=block.title,
+            content=block.content,
+            citation=block.citation,
+            unit=block.unit,
+            is_table=True,
+            scope=block.entity_scope,
+        )
+
+
+def build_bundle(
+    plan: SectionPlan, business_report: BusinessReport | None, report: CompanyReport,
+    table_facts: Sequence[TableFactRow] = (),
+) -> EvidenceBundle:
+    """근거 묶음. 정형화된 서식 표(`table_facts`)가 있으면 그 표의 원문 청크 대신 정형 블록을 넣는다."""
     bundle = EvidenceBundle(company_name=report.corp_name)
     if plan.include_metric_tables:
         _add_metric_tables(bundle, report)
     if plan.include_peer_table:
         _add_peer_table(bundle, report)
+    fact_blocks = render_blocks(table_facts, PLAN_FORMS.get(plan.name, ())) if table_facts else []
+    covered = covered_tables(fact_blocks)
     if business_report is not None:
         bundle.known_scopes = {c.entity_scope for c in business_report.chunks if c.entity_scope and is_plausible_entity(c.entity_scope)}
         _add_chunks(bundle, business_report.select(plan.text_patterns, content_types=("TEXT",), max_chars=plan.text_budget))
+        _add_fact_blocks(bundle, fact_blocks)
         if plan.table_patterns:
-            _add_chunks(bundle, business_report.select(plan.table_patterns, content_types=("TABLE",), max_chars=plan.table_budget))
+            tables = business_report.select(plan.table_patterns, content_types=("TABLE",), max_chars=plan.table_budget)
+            # 정형 블록으로 대체된 표의 원문 청크는 뺀다. 모델이 표를 직접 읽지 않게 한다.
+            _add_chunks(bundle, [c for c in tables if (c.rcept_no, _int_meta(c, "table_index")) not in covered])
     _fit_to_budget(bundle, MAX_EVIDENCE_CHARS)
     return bundle
 
 
+def _int_meta(chunk: EvidenceChunk, key: str) -> int | None:
+    try:
+        return int(chunk.metadata.get(key))
+    except (TypeError, ValueError):
+        return None
+
+
 def _fit_to_budget(bundle: EvidenceBundle, max_chars: int) -> None:
-    """근거 총 글자 수가 예산을 넘으면 뒤에서부터 뺀다. 확정 지표(metrics:/peers:)는 남긴다."""
+    """근거 총 글자 수가 예산을 넘으면 뒤에서부터 뺀다. 확정 지표(metrics:/peers:)와 정형 표(facts:)는 남긴다."""
     total = sum(len(e["content"]) for e in bundle.payload)
     while total > max_chars and bundle.payload:
         index = next(
-            (i for i in range(len(bundle.payload) - 1, -1, -1) if not bundle.payload[i]["evidence_id"].startswith(("metrics:", "peers:"))),
+            (i for i in range(len(bundle.payload) - 1, -1, -1) if not bundle.payload[i]["evidence_id"].startswith(("metrics:", "peers:", "facts:"))),
             None,
         )
         if index is None:
@@ -446,7 +479,7 @@ class Conversion:
     warnings: list[str] = field(default_factory=list)
 
 
-_ID_TOKEN = r"(?:dart-[A-Za-z0-9_\-]+|metrics:[A-Za-z0-9:_\-]+|peers:[A-Za-z0-9:_\-]+|evidence_id\s*[:：]\s*[A-Za-z0-9:_\-]+)"
+_ID_TOKEN = r"(?:dart-[A-Za-z0-9_\-]+|metrics:[A-Za-z0-9:_\-]+|peers:[A-Za-z0-9:_\-]+|facts:[A-Za-z0-9:_\-]+|evidence_id\s*[:：]\s*[A-Za-z0-9:_\-]+)"
 _EVIDENCE_ID_LEAK = re.compile(
     rf"\s*\(\s*(?:evidence_id\s*[:：]\s*)?{_ID_TOKEN}(?:\s*,\s*{_ID_TOKEN})*\s*\)?"  # 괄호 안 ID 목록
     rf"|\s*{_ID_TOKEN}"  # 괄호 없이 붙은 ID
@@ -644,9 +677,11 @@ class NarrativeEnricher:
         plans: Sequence[SectionPlan] | None = None,
         prompt_path: Path = PROMPT_PATH,
         max_output_tokens: int = MAX_OUTPUT_TOKENS,
+        table_facts: TableFactsRepository | None = None,
     ) -> None:
         self._client = client
         self._reports = reports
+        self._table_facts = table_facts
         self._plans = tuple(plans) if plans is not None else tuple(PLANS.values())
         self._prompt = prompt_path.read_text(encoding="utf-8").strip()
         self._max_output_tokens = max_output_tokens
@@ -663,17 +698,20 @@ class NarrativeEnricher:
             sources.append(ReportSource(**business_report.source_card()))
         report = report.model_copy(update={"sources": sources[:20]})
 
+        facts_rows: list[TableFactRow] = []
+        if self._table_facts is not None:
+            try:
+                facts_rows = self._table_facts.rows(report.corp_code, business_report.rcept_no)
+            except Exception as error:  # noqa: BLE001 — 정형 표가 없어도 서술은 계속한다
+                LOGGER.warning("table facts unavailable corp_code=%s: %s", report.corp_code, error)
+                warnings.append(f"정형 표를 읽지 못해 원문 표 청크로 대신합니다: {type(error).__name__}")
         for plan in self._plans:
-            bundle = build_bundle(plan, business_report, report)
+            bundle = build_bundle(plan, business_report, report, facts_rows)
             if not bundle.ids:
                 warnings.append(f"{plan.name} 서술: 넣을 근거가 없습니다.")
                 continue
             try:
-                output = self._client.complete(
-                    self._messages(plan, report, bundle),
-                    section_schema(plan, bundle.ids),
-                    max_tokens=max(self._max_output_tokens, plan.max_output_tokens),
-                )
+                output = self._complete_with_retry(plan, report, bundle)
             except Exception as error:  # noqa: BLE001 — 섹션 하나의 실패가 나머지를 막지 않는다
                 LOGGER.warning("narrative %s failed corp_code=%s: %s", plan.name, report.corp_code, error)
                 warnings.append(f"{plan.name} 서술 생성에 실패했습니다: {type(error).__name__}")
@@ -685,10 +723,29 @@ class NarrativeEnricher:
             report = self._apply(plan, report, conversion)
         return report.model_copy(update={"warnings": list(dict.fromkeys(warnings))[:20]})
 
-    def _messages(self, plan: SectionPlan, report: CompanyReport, bundle: EvidenceBundle) -> list[dict[str, str]]:
+    COMPACT_NOTE = " 출력이 길어 잘렸다. 이번에는 항목당 2문장 이내, 전체 항목 4개 이내로 짧게 쓴다."
+
+    def _complete_with_retry(self, plan: SectionPlan, report: CompanyReport, bundle: EvidenceBundle) -> dict[str, Any]:
+        """출력 길이 초과(finish_reason=length)로 JSON 이 잘리면 짧게 쓰라는 지시를 붙여 한 번 다시 묻는다.
+
+        같은 입력도 실행마다 길이가 달라 삼성전자·덕산테코피아 사업 섹션이 간헐적으로 잘렸다(2026-09-19 실측,
+        3,200 토큰에서 9,800자). 토큰을 더 늘려도 채워 쓰므로 지시로 줄인다.
+        """
+        max_tokens = max(self._max_output_tokens, plan.max_output_tokens)
+        try:
+            return self._client.complete(self._messages(plan, report, bundle), section_schema(plan, bundle.ids), max_tokens=max_tokens)
+        except InvalidModelResponse as error:
+            if "finish_reason=length" not in str(error):
+                raise
+            LOGGER.info("narrative %s truncated corp_code=%s; retrying compact", plan.name, report.corp_code)
+            return self._client.complete(
+                self._messages(plan, report, bundle, note=self.COMPACT_NOTE), section_schema(plan, bundle.ids), max_tokens=max_tokens,
+            )
+
+    def _messages(self, plan: SectionPlan, report: CompanyReport, bundle: EvidenceBundle, *, note: str = "") -> list[dict[str, str]]:
         payload = {
             "company": {"corp_code": report.corp_code, "name": report.corp_name, "fiscal_year": report.fiscal_year},
-            "section": {"type": plan.section, "name": plan.name, "instructions": section_instructions(plan)},
+            "section": {"type": plan.section, "name": plan.name, "instructions": section_instructions(plan) + note},
             "evidence": bundle.payload,
         }
         return [
