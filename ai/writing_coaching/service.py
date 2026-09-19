@@ -20,7 +20,8 @@ RESOURCE_ROOT = Path(__file__).parent / "resources"
 RUBRIC_PATH = RESOURCE_ROOT / "rubrics" / "writing-quality-v1.json"
 SCHEMA_PATH = RESOURCE_ROOT / "schemas" / "writing-message-v1.json"
 PROMPT_VERSION = "writing-quality-v1"
-QWEN_TIMEOUT_SECONDS = 30
+# 실측 생성 시간이 약 19초라 모델 서버가 동시 요청으로 느려지면 30초를 넘겼다.
+QWEN_TIMEOUT_SECONDS = 45
 
 QwenCaller = Callable[..., dict[str, Any]]
 
