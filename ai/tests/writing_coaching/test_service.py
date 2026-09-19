@@ -57,7 +57,7 @@ class WritingServiceTest(unittest.TestCase):
         self.assertEqual(
             result.revision.char_count, len(result.revision.revised_text)
         )
-        self.assertEqual(caller.calls[0]["timeout_seconds"], 30)
+        self.assertEqual(caller.calls[0]["timeout_seconds"], 45)
         self.assertEqual(caller.calls[0]["schema_name"], "writing_message_v1")
         self.assertIsInstance(caller.calls[0]["schema"], dict)
 

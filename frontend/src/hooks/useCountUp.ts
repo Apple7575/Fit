@@ -23,7 +23,8 @@ export function useCountUp(target: number, { enabled = true, duration = 1200 }: 
     let frame = 0;
     const start = performance.now();
     const tick = (now: number) => {
-      const t = Math.min((now - start) / duration, 1);
+      // rAF 가 넘겨주는 시각이 start 보다 이를 수 있다. 막지 않으면 첫 프레임에 음수가 스친다
+      const t = Math.min(Math.max((now - start) / duration, 0), 1);
       setAnimated(target * easeOut(t));
       if (t < 1) frame = requestAnimationFrame(tick);
     };

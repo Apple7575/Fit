@@ -16,6 +16,7 @@ import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -157,11 +158,17 @@ class SupervisorTurnRunnerTest {
         return new Evidence("NEWS_ARTICLE", title, 2026, null, "요약", "https://news.example.test/1");
     }
 
+    /** 담당을 전부 고른 방(총괄 논의). 설정은 뉴스 담당만 채워 둔다. */
     private static TurnContext context() {
+        Map<String, Map<String, Object>> everyAgent = new LinkedHashMap<>();
+        everyAgent.put("jd", Map.of());
+        everyAgent.put("company", Map.of());
+        everyAgent.put("position", Map.of());
+        everyAgent.put("news", Map.of("corpCodes", List.of("00126380")));
+        everyAgent.put("writing", Map.of());
         return new TurnContext(
                 List.of(new TurnContext.CoverLetterPart(1, "지원동기", "저는 API 를 만들었습니다.", 1000)),
-                "봐줘", "ctx-1", "백엔드", List.of(),
-                Map.of("news", Map.of("corpCodes", List.of("00126380"))));
+                "봐줘", "ctx-1", "백엔드", List.of(), everyAgent);
     }
 
     /** 아직 아무 문항도 쓰지 않은 방. 보낼 문서가 없어 뉴스 담당만 돌 수 있다. */

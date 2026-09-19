@@ -277,19 +277,20 @@ function StoryCard<T>({ question, state, index, inView, children, className = ''
         className="relative flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70 transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] hover:ring-blue-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         to={`../${question.tab}`}
       >
-        <div className="relative flex items-start justify-between gap-3">
+        {/* 질문 한 줄과 코치 얼굴을 같은 높이에 놓는다 (한 줄짜리라 위로 붙이면 아래가 빈다) */}
+        <div className="relative flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600">
-              {questionNumber(question.tab)} · {question.short}
-            </p>
-            <h3 className="mt-0.5 text-sm font-bold text-slate-500" id={titleId}>
-              {question.title}
+            <h3
+              className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600"
+              id={titleId}
+            >
+              {questionNumber(question.tab)} · {question.title}
             </h3>
           </div>
           <CharacterSlot character={question.coach} className="shrink-0" interactive={false} size={36} />
         </div>
 
-        <div className="relative mt-3 flex-1">
+        <div className="relative mt-1 flex-1">
           {state.status === 'loading' && (
             <div aria-busy="true" className="animate-pulse space-y-2.5" role="status">
               <span className="sr-only">{question.title} 답을 불러오는 중입니다</span>
@@ -313,10 +314,8 @@ function StoryCard<T>({ question, state, index, inView, children, className = ''
         </div>
 
         <div className="relative mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 text-xs">
-          <span className={`font-bold ${content?.ai ? 'text-violet-600' : 'text-slate-400'}`}>
-            {content?.ai ? '✦ AI 분석 포함' : '▣ 공시·수집 데이터'}
-          </span>
-          <span className="font-bold text-blue-600 transition group-hover:text-blue-700">
+          {content?.ai && <span className="font-bold text-violet-600">✦ AI 분석 포함</span>}
+          <span className="ml-auto font-bold text-blue-600 transition group-hover:text-blue-700">
             {failed ? '탭에서 다시 시도' : '자세히'} <span aria-hidden="true">→</span>
           </span>
         </div>

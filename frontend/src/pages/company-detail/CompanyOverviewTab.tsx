@@ -17,6 +17,19 @@ import { NEWS_DAYS } from '../../features/recent-issues/types';
 import type { CompanyDetailOutletContext } from './CompanyDetailPage';
 
 /**
+ * 요약 탭은 히어로를 화면 끝까지 펼치려고 레이아웃의 max-width 를 쓰지 않는다.
+ * 그래서 히어로가 아닌 구획은 각자 이 틀을 두른다.
+ */
+const SHELL = 'mx-auto w-full max-w-[1320px] px-5 lg:px-8';
+
+/**
+ * 히어로 다음 칸. 스냅해서 내려왔을 때 반투명 헤더(57) + 기업 서브바(51) 밑에 자리잡는다.
+ * 바닥 여백도 이 안에 둬야 한다 — 스냅 영역 밖에 두면 스크롤이 거기까지 내려가지 못해
+ * 마지막 카드가 화면 아래로 잘린다.
+ */
+const NEXT_SCREEN = `${SHELL} snap-start scroll-mt-[108px] pb-16`;
+
+/**
  * 요약 탭 = 기업 상세의 첫 화면. 취준생이 "이 회사에 맞는 사람이 되려면 뭘 알아야 하나"에
  * 한 장으로 답한다: 사진 위 한 줄과 숫자 넷 → 지원자라면 알아둘 세 가지 → 다섯 질문 카드 → 준비하기.
  * 표·차트·목록은 두지 않는다 — 카드를 누르면 같은 질문의 상세 탭이 열린다.
@@ -33,23 +46,23 @@ export function CompanyOverviewTab() {
 
   return (
     <div className="space-y-8">
-      {detailState.status === 'error' &&
-        (notFound ? (
-          <InlineNotice>
-            기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
-          </InlineNotice>
-        ) : (
-          <InlineNotice onRetry={retryDetail}>
-            기업 기본정보를 불러오지 못했습니다. {detailState.error.message}
-          </InlineNotice>
-        ))}
+      {detailState.status === 'error' && (
+        <div className={`${SHELL} pt-6`}>
+          {notFound ? (
+            <InlineNotice>
+              기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
+            </InlineNotice>
+          ) : (
+            <InlineNotice onRetry={retryDetail}>
+              기업 기본정보를 불러오지 못했습니다. {detailState.error.message}
+            </InlineNotice>
+          )}
+        </div>
+      )}
 
+      {/* 히어로가 들어올 자리를 그대로 비워 둔다 (화면 한 장) */}
       {detailState.status === 'loading' && (
-        <section
-          aria-busy="true"
-          className="min-h-[460px] animate-pulse rounded-[1.75rem] bg-slate-200"
-          role="status"
-        >
+        <section aria-busy="true" className="min-h-[100svh] animate-pulse bg-slate-200" role="status">
           <span className="sr-only">기업 기본정보를 불러오는 중입니다</span>
         </section>
       )}
@@ -117,24 +130,26 @@ function SummaryBody({ corpCode, detail }: SummaryBodyProps) {
         metrics={metricsData}
         tagline={tagline}
       />
-      <FitPoints
-        industryCode={detail?.industryCode ?? null}
-        corpName={detail?.corpName ?? null}
-        loading={pointsLoading}
-        points={points}
-      />
-      <StoryCards
-        corpCode={corpCode}
-        focus={focus.state}
-        industryName={detail?.industryName ?? null}
-        metrics={metrics.state}
-        news={news.state}
-        peers={peers.state}
-        profile={profile.state}
-        stats={stats.state}
-        trend={trend.state}
-      />
-      <PrepCta corpName={detail?.corpName ?? null} />
+      <div className={`${NEXT_SCREEN} space-y-8`}>
+        <FitPoints
+          industryCode={detail?.industryCode ?? null}
+          corpName={detail?.corpName ?? null}
+          loading={pointsLoading}
+          points={points}
+        />
+        <StoryCards
+          corpCode={corpCode}
+          focus={focus.state}
+          industryName={detail?.industryName ?? null}
+          metrics={metrics.state}
+          news={news.state}
+          peers={peers.state}
+          profile={profile.state}
+          stats={stats.state}
+          trend={trend.state}
+        />
+        <PrepCta corpName={detail?.corpName ?? null} />
+      </div>
     </>
   );
 }

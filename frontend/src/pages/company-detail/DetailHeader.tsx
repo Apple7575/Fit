@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react';
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
-import { CHARACTER_BY_KEY } from '../../components/brand/characters';
 import {
   QUESTION_BY_TAB,
   questionNumber,
   type CompanyQuestion,
 } from '../../features/company-detail/questions';
-import { withSubject } from '../../utils/koreanParticle';
 
 interface DetailHeaderProps {
   tab: CompanyQuestion['tab'];
@@ -22,7 +20,6 @@ interface DetailHeaderProps {
  */
 export function DetailHeader({ tab, description, aside }: DetailHeaderProps) {
   const question = QUESTION_BY_TAB[tab];
-  const coach = CHARACTER_BY_KEY[question.coach];
 
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
@@ -31,9 +28,6 @@ export function DetailHeader({ tab, description, aside }: DetailHeaderProps) {
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600">
             {questionNumber(tab)} · {question.short}
-            <span className="ml-2 font-semibold normal-case tracking-normal text-slate-400">
-              {withSubject(coach.name)} 답해요
-            </span>
           </p>
           <h2 className="mt-0.5 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
             {question.title}

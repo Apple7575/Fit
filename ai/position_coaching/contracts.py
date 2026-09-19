@@ -209,7 +209,12 @@ def _validate_claim(claim, documents_by_id) -> dict[str, Any]:
     end = _require_offset(value["end_offset"], "end_offset")
     text = documents_by_id[document_id]["text"]
     if end < start or end > len(text) or text[start:end] != quote:
-        raise ValueError("claim offset does not match quote")
+        # 모델이 글자 위치를 자주 틀린다. 인용문이 문서에 실제로 있으면 위치를 고쳐 쓰고,
+        # 문서에 없는 인용문(지어낸 근거)만 거절한다.
+        located = text.find(quote)
+        if located < 0:
+            raise ValueError("claim offset does not match quote")
+        start, end = located, located + len(quote)
     return {"quote": quote, "document_id": document_id, "start_offset": start, "end_offset": end}
 
 
