@@ -3,25 +3,6 @@
  * 필드명은 백엔드 agent/dto 의 record 들과 같다.
  */
 
-/** 에이전트가 요구하는 설정 항목 하나. 이걸로 입력 UI 를 그린다. */
-export interface ConfigField {
-  type: 'array' | 'enum' | 'string' | 'number';
-  required: boolean;
-  description: string;
-}
-
-/** GET /api/agents 의 한 건. */
-export interface AgentCatalogEntry {
-  agentKey: string;
-  name: string;
-  description: string;
-  dataSource: string;
-  /** 총괄만 false — 사용자가 직접 넣는 대상이 아니라 서버가 붙인다. */
-  selectable: boolean;
-  configSchema: Record<string, ConfigField>;
-}
-
-
 /** 방 상세의 기업 담당·뉴스 담당 설정에 실려 오는 기업. */
 export interface RoomCompany {
   corpCode: string;

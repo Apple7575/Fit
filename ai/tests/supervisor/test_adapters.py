@@ -26,7 +26,11 @@ class FakePositionService:
 
     def analyze(self, rubric_id, position_context, documents, conversation):
         self.calls.append((rubric_id, position_context, documents, conversation))
-        return {"rubric": {"id": rubric_id}, "position_context": position_context}
+        return {
+            "analysis_status": "NO_EXPERIENCE_CLAIM",
+            "rubric": {"id": rubric_id},
+            "findings": [],
+        }
 
 
 class FakeNewsResponse:
@@ -104,9 +108,14 @@ class AgentRegistryTest(unittest.TestCase):
 
         self.assertEqual(registry.available_names(contexts), ["jd", "position"])
         registry.execute("jd", "검토", documents, [], contexts["jd"])
-        registry.execute("position", "검토", documents, [], contexts["position"])
+        position_result = registry.execute(
+            "position", "검토", documents, [], contexts["position"]
+        )
 
         self.assertEqual(jd.calls[0][0], "jctx_1")
+        # 백엔드가 말풍선에 띄우는 message 가 단독 API 와 같은 모양으로 들어 있어야 한다.
+        self.assertEqual(position_result["analysis_status"], "NO_EXPERIENCE_CLAIM")
+        self.assertIn("구체화할 경험을 찾지 못했습니다", position_result["message"])
         self.assertEqual(position.calls, [(
             "experience-depth-v1",
             {

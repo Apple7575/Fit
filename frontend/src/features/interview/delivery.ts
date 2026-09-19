@@ -14,23 +14,31 @@ export interface AudioStats {
   hadSignal: boolean;
   /** 2초 이상 이어진 공백 구간(녹화 시작 기준 ms). 리포트 타임라인 마커용. */
   silences: Array<{ startMs: number; endMs: number }>;
+  /** 음량 파형(0~1). 리포트에서 "언제 소리가 없었는지" 근거로 보여준다 */
+  wave: number[];
+  /** wave 한 칸의 길이(ms) */
+  waveStepMs: number;
 }
 
 /**
  * 녹화 구간에서 특정 시각에 일어난 신호(공백·프레임/정면/시선 이탈). 리포트에서 영상 타임라인 위 마커로 그린다.
  * 시각은 모두 "녹화 시작 = 0" 기준 ms. 말속도·군더더기·음량처럼 전체 평균 지표는 여기에 포함하지 않는다.
  */
-export type ClipEventKind = 'silence' | 'offframe' | 'nonfrontal' | 'gaze';
+export type ClipEventKind = 'silence' | 'offframe' | 'nonfrontal' | 'gaze' | 'headdown' | 'slouch';
 export interface ClipEvent {
   kind: ClipEventKind;
   startMs: number;
   endMs: number;
+  /** 그 순간 얼굴이 있던 자리(0~1 비율). 리포트에서 영상 위에 네모로 겹쳐 보여준다 */
+  box?: { x: number; y: number; w: number; h: number };
 }
 export const EVENT_META: Record<ClipEventKind, { label: string; color: string }> = {
-  silence: { label: '긴 공백', color: 'bg-slate-400' },
-  offframe: { label: '프레임 이탈', color: 'bg-rose-400' },
-  nonfrontal: { label: '정면 이탈', color: 'bg-amber-400' },
-  gaze: { label: '시선 이탈', color: 'bg-amber-500' },
+  silence: { label: '말이 멈춘 구간', color: 'bg-slate-400' },
+  offframe: { label: '얼굴이 화면 밖', color: 'bg-rose-400' },
+  nonfrontal: { label: '고개 돌림', color: 'bg-amber-400' },
+  gaze: { label: '시선이 딴 곳', color: 'bg-amber-500' },
+  headdown: { label: '고개 떨굼', color: 'bg-orange-500' },
+  slouch: { label: '구부정한 자세', color: 'bg-violet-500' },
 };
 
 /** 리포트·저장에 쓰는 문항별 전달 지표(요약값). */
@@ -127,9 +135,9 @@ export interface MetricRow {
 
 function ratePace(wpm: number): MetricRow {
   if (wpm === 0) return { key: '말 속도', value: '측정 안 됨', tone: 'warn' };
-  if (wpm < PACE_MIN) return { key: '말 속도', value: `${wpm} 음절/분`, tone: 'warn', hint: '조금 더 또렷하고 빠르게' };
-  if (wpm > PACE_MAX) return { key: '말 속도', value: `${wpm} 음절/분`, tone: 'warn', hint: '조금 천천히' };
-  return { key: '말 속도', value: `${wpm} 음절/분`, tone: 'good' };
+  if (wpm < PACE_MIN) return { key: '말 속도', value: `1분에 ${wpm}자`, tone: 'warn', hint: '조금 더 또렷하고 빠르게 말해 보세요' };
+  if (wpm > PACE_MAX) return { key: '말 속도', value: `1분에 ${wpm}자`, tone: 'warn', hint: '조금 천천히 말해 보세요' };
+  return { key: '말 속도', value: `1분에 ${wpm}자`, tone: 'good' };
 }
 
 /** 리포트 카드용 지표 행 목록. */
@@ -138,10 +146,10 @@ export function describeDelivery(m: DeliveryMetrics): MetricRow[] {
 
   const fillerWarn = m.fillerRatio >= FILLER_WARN;
   rows.push({
-    key: '군더더기어',
-    value: `${m.fillerCount}회 · ${m.fillerRatio}% (추정)`,
+    key: '습관어(음·어)',
+    value: `${m.fillerCount}번`,
     tone: fillerWarn ? 'warn' : 'good',
-    hint: fillerWarn ? '“음·어” 같은 습관어를 줄여보세요' : undefined,
+    hint: fillerWarn ? '“음·어” 같은 말버릇을 줄여 보세요' : undefined,
   });
 
   const lenWarn = m.durationSec < LEN_MIN || m.durationSec > LEN_MAX;
@@ -155,17 +163,17 @@ export function describeDelivery(m: DeliveryMetrics): MetricRow[] {
   if (m.hasAudio) {
     const pauseWarn = m.startDelaySec > START_DELAY_WARN || m.longestSilenceSec > SILENCE_WARN;
     rows.push({
-      key: '뜸들이기/공백',
-      value: `시작 ${m.startDelaySec}초 · 최장 ${m.longestSilenceSec}초`,
+      key: '말이 멈춘 시간',
+      value: `말 시작까지 ${m.startDelaySec}초 · 가장 긴 침묵 ${m.longestSilenceSec}초`,
       tone: pauseWarn ? 'warn' : 'good',
-      hint: pauseWarn ? '질문 직후 바로 첫 문장을 시작해보세요' : undefined,
+      hint: pauseWarn ? '질문이 끝나면 바로 첫 문장을 시작해 보세요' : undefined,
     });
     const volWarn = m.volumeCV > VOLUME_CV_WARN;
     rows.push({
-      key: '음량 안정성',
-      value: volWarn ? '들쭉날쭉' : '안정적',
+      key: '목소리 크기',
+      value: volWarn ? '들쭉날쭉해요' : '고르게 유지',
       tone: volWarn ? 'warn' : 'good',
-      hint: volWarn ? '일정한 목소리 크기를 유지해보세요' : undefined,
+      hint: volWarn ? '문장 끝까지 같은 크기로 말해 보세요' : undefined,
     });
   }
 

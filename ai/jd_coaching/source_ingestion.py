@@ -8,8 +8,10 @@ import ipaddress
 import json
 import re
 import socket
+import time
 import urllib.error
 import urllib.request
+import uuid
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -114,7 +116,10 @@ def _call_gms_company_position(key: str, text: str) -> dict[str, Any]:
 GMS_OCR_MODEL = "gemini-2.5-flash-lite"
 _OCR_TIMEOUT_SECONDS = 30
 _OCR_MAX_OUTPUT_TOKENS = 4_000
+_CLOVA_OCR_TIMEOUT_SECONDS = 15
 IMAGE_OCR_MAX_CANDIDATES = 3
+# OCR 호출 전에는 더 넓게 후보를 훑되, 실제 모델에 넘길 이미지는 상위 후보로 제한한다.
+IMAGE_OCR_MAX_SCAN_CANDIDATES = 8
 IMAGE_OCR_MAX_IMAGE_BYTES = 8 * 1024 * 1024
 # 사이트 공통 UI 요소(로고·공유 버튼·아이콘 등)는 후보에서 제외한다. 개인정보
 # 동의 문구 등 사이트 상용구 텍스트가 길어서 본문이 200자를 넘는 페이지도
@@ -192,6 +197,51 @@ def _call_gms_image_ocr(key: str, image_bytes: bytes, mime_type: str) -> str:
     return text
 
 
+def _call_clova_ocr(
+    endpoint: str, secret: str, image_bytes: bytes, mime_type: str
+) -> str:
+    """CLOVA General OCR로 이미지의 원문 텍스트만 추출한다."""
+    if urlsplit(endpoint).scheme != "https":
+        raise ValueError("CLOVA OCR endpoint must use HTTPS")
+    image_format = {
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/png": "png",
+    }.get(mime_type.lower())
+    if image_format is None:
+        raise ValueError(f"unsupported CLOVA OCR image type: {mime_type}")
+    body = {
+        "version": "V2",
+        "requestId": str(uuid.uuid4()),
+        "timestamp": int(time.time() * 1000),
+        "lang": "ko",
+        "images": [
+            {
+                "format": image_format,
+                "name": "job-posting",
+                "data": base64.b64encode(image_bytes).decode("ascii"),
+            }
+        ],
+    }
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "X-OCR-SECRET": secret},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=_CLOVA_OCR_TIMEOUT_SECONDS) as response:
+        output = json.loads(response.read().decode("utf-8"))
+    fields = output["images"][0]["fields"]
+    if not isinstance(fields, list):
+        raise ValueError("CLOVA OCR response fields are invalid")
+    return "\n".join(
+        field["inferText"].strip()
+        for field in fields
+        if isinstance(field, dict) and isinstance(field.get("inferText"), str)
+        and field["inferText"].strip()
+    )
+
+
 def _split_image_into_tiles(image_bytes: bytes, media_type: str) -> list[tuple[bytes, str]]:
     """세로로 긴 이미지를 IMAGE_OCR_TILE_MAX_HEIGHT_PX 단위로 잘라 PNG 조각들로 만든다.
 
@@ -218,6 +268,16 @@ def _split_image_into_tiles(image_bytes: bytes, media_type: str) -> list[tuple[b
     return tiles
 
 
+def _image_area(image_bytes: bytes) -> int:
+    """이미지를 전개하지 않고 헤더의 가로·세로만 읽어 OCR 우선순위를 정한다."""
+    try:
+        image = Image.open(io.BytesIO(image_bytes))
+        width, height = image.size
+    except (UnidentifiedImageError, OSError):
+        return 0
+    return width * height
+
+
 def _safe_absolute_url(page_url: str, src: str) -> str | None:
     """HTML의 img src(퍼센트 인코딩 안 된 한글·괄호 등 포함 가능)를 요청 가능한
     절대 URL로 만든다. urllib.request는 URL에 non-ASCII 문자가 있으면 그대로
@@ -236,21 +296,30 @@ def _safe_absolute_url(page_url: str, src: str) -> str | None:
 
 
 WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-JOB_POSTING_MARKERS = (
-    "담당 업무",
+JOB_POSTING_ROLE_MARKERS = (
     "담당업무",
-    "주요 업무",
     "주요업무",
-    "자격 요건",
-    "자격요건",
-    "지원 자격",
-    "지원자격",
-    "우대 사항",
-    "우대사항",
+    "모집분야",
+    "채용분야",
+    "직무내용",
+    "모집부문",
+    "채용포지션",
+    "직무",
+    "업무내용",
     "responsibilities",
+    "job description",
+)
+JOB_POSTING_REQUIREMENT_MARKERS = (
+    "자격요건",
+    "지원자격",
+    "우대사항",
+    "응시자격",
+    "자격조건",
+    "접수방법",
     "qualifications",
     "requirements",
-    "job description",
+    "전형절차",
+    "지원방법",
 )
 
 
@@ -301,6 +370,18 @@ class SafeHttpFetcher:
         self._max_bytes = max_bytes
 
     def fetch(self, url: str) -> SourceFetchResult:
+        return self._fetch(url, accept="text/html,text/plain,application/xhtml+xml")
+
+    def fetch_image(self, url: str) -> SourceFetchResult:
+        """OCR용 이미지 요청은 HTML 요청과 다른 Accept 헤더로 보낸다.
+
+        일부 이미지 호스트는 HTML Accept 헤더를 받으면 이미지 대신 뷰어 페이지로
+        리다이렉트한다. 그 상태에서는 OCR이 읽을 원본이 없어져 이미지 전용 공고가
+        본문 없음으로 끝난다.
+        """
+        return self._fetch(url, accept="image/avif,image/webp,image/apng,image/*,*/*;q=0.8")
+
+    def _fetch(self, url: str, *, accept: str) -> SourceFetchResult:
         _validate_public_http_url(url)
         request = urllib.request.Request(
             url,
@@ -312,7 +393,7 @@ class SafeHttpFetcher:
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                     "(KHTML, like Gecko) Chrome/140.0 Safari/537.36"
                 ),
-                "Accept": "text/html,text/plain,application/xhtml+xml",
+                "Accept": accept,
                 "Accept-Language": "ko-KR,ko;q=0.9",
                 "Referer": "https://www.saramin.co.kr/",
             },
@@ -450,8 +531,11 @@ class JdSourceIngestor:
         max_source_bytes: int = DEFAULT_MAX_SOURCE_BYTES,
         max_text_chars: int = DEFAULT_MAX_TEXT_CHARS,
         gms_key: str | None = None,
+        clova_ocr_endpoint: str | None = None,
+        clova_ocr_secret: str | None = None,
         company_position_caller: Callable[[str, str], dict[str, Any]] | None = None,
         image_ocr_caller: Callable[[str, bytes, str], str] | None = None,
+        clova_ocr_caller: Callable[[str, str, bytes, str], str] | None = None,
     ) -> None:
         self._max_source_bytes = max_source_bytes
         self._max_text_chars = max_text_chars
@@ -459,8 +543,11 @@ class JdSourceIngestor:
         # 회사명·직무명을 JSON-LD에서 못 뽑았을 때만 GMS로 보완한다. 키가 없으면
         # (로컬·테스트 등) 기존처럼 구조화 데이터만으로 판단한다.
         self._gms_key = gms_key
+        self._clova_ocr_endpoint = clova_ocr_endpoint
+        self._clova_ocr_secret = clova_ocr_secret
         self._company_position_caller = company_position_caller or _call_gms_company_position
         self._image_ocr_caller = image_ocr_caller or _call_gms_image_ocr
+        self._clova_ocr_caller = clova_ocr_caller or _call_clova_ocr
 
     def from_url(self, url: str) -> IngestedJd:
         fetched = self._fetcher.fetch(url)
@@ -481,6 +568,10 @@ class JdSourceIngestor:
         parser = _JobPostingHtmlParser()
         parser.feed(decoded)
         metadata = _extract_job_posting_metadata(parser.json_ld_documents)
+        metadata = _merge_missing_metadata(
+            metadata,
+            _extract_saramin_title_metadata(fetched.final_url, "".join(parser.title_parts)),
+        )
         body_text = _normalize_text("".join(parser.text_parts))
         # OCR 후보 이미지 주소와, 그 주소를 절대경로로 풀 때 기준으로 쓸 페이지 주소.
         # 사람인 상세 페이지를 따로 받으면 진짜 이미지는 거기 있으므로 그쪽으로 바꾼다.
@@ -492,11 +583,15 @@ class JdSourceIngestor:
         detail_url = _saramin_detail_url(fetched.final_url) or _saramin_detail_url(url)
         if detail_url:
             try:
-                detail_text, detail_image_srcs = self._fetch_visible_text(detail_url)
+                detail_text, detail_image_srcs = self._fetch_saramin_detail(detail_url)
             except SourceIngestionError:
                 detail_text, detail_image_srcs = "", []
             if detail_text:
                 body_text = detail_text
+            # 사람인 상세가 이미지 한 장뿐이면 detail_text는 비어도 이미지 주소는
+            # 유효하다. 본문 유무와 이미지 후보 갱신을 한 조건으로 묶으면 OCR까지
+            # 도달하지 못한다.
+            if detail_image_srcs:
                 image_srcs = detail_image_srcs
                 image_page_url = detail_url
 
@@ -511,12 +606,15 @@ class JdSourceIngestor:
         text = _normalize_text(
             _join_all(title_text, og_description_text, body_text, description)
         )
-        if not metadata and not _looks_like_job_posting(text):
+        # 제목에서 보완한 사람인 메타데이터는 회사·직무 자동 입력용일 뿐 JD 본문은
+        # 아니다. 이를 본문으로 취급하면 이미지 전용 공고가 OCR에 도달하지 못한다.
+        has_structured_description = bool(_html_fragment_to_text(metadata.get("description")))
+        if not has_structured_description and not _looks_like_job_posting(text):
             # 공고가 이미지 한 장(플라이어 등)으로만 올라온 페이지일 수 있다. 본문이
             # 길어도(개인정보 동의 문구 등 상용구) 실제 공고 마커가 없으면 마찬가지라,
             # 본문 길이가 아니라 이 마커 판정 결과만으로 OCR 시도 여부를 정한다.
             ocr_text = ""
-            if self._gms_key and image_srcs:
+            if (self._has_clova_ocr or self._gms_key) and image_srcs:
                 ocr_text = self._ocr_images(image_page_url, image_srcs)
             # OCR 결과도 일반 본문과 똑같은 기준(JD 마커)을 통과해야 받아들인다.
             # 모델이 안 보이는 걸 그럴듯한 일반 채용공고로 지어내는 경우가 실제로
@@ -570,55 +668,90 @@ class JdSourceIngestor:
             "position_name": _optional_text(output.get("position_name")),
         }
 
-    def _ocr_images(self, page_url: str, image_srcs: list[str]) -> str:
-        """공고 이미지 후보를 내려받아 GMS 비전으로 글자를 옮긴다. 실패해도 빈 문자열.
+    @property
+    def _has_clova_ocr(self) -> bool:
+        return bool(self._clova_ocr_endpoint and self._clova_ocr_secret)
 
-        세로로 긴 이미지는 조각내어 따로 읽히고, 요청 하나당 호출 수는
-        IMAGE_OCR_MAX_CALLS로 제한한다.
-        """
-        collected: list[str] = []
-        calls_made = 0
-        for image_url in self._select_image_candidates(page_url, image_srcs):
-            if calls_made >= IMAGE_OCR_MAX_CALLS:
-                break
+    def _ocr_image_tile(self, image_bytes: bytes, mime_type: str) -> str:
+        """CLOVA를 우선 사용하고, 통신·응답 실패 때만 Gemini 비전으로 보완한다."""
+        if self._has_clova_ocr:
             try:
-                fetched = self._fetcher.fetch(image_url)
-            except SourceIngestionError:
-                continue
+                return self._clova_ocr_caller(
+                    self._clova_ocr_endpoint or "",
+                    self._clova_ocr_secret or "",
+                    image_bytes,
+                    mime_type,
+                )
+            except (
+                RuntimeError,
+                ValueError,
+                LookupError,
+                TypeError,
+                urllib.error.URLError,
+                TimeoutError,
+            ):
+                pass
+        if not self._gms_key:
+            return ""
+        return self._image_ocr_caller(self._gms_key, image_bytes, mime_type)
+
+    def _ocr_images(self, page_url: str, image_srcs: list[str]) -> str:
+        """공고 이미지 후보를 내려받아 원문 글자를 옮긴다. 실패해도 빈 문자열.
+
+        후보마다 첫 조각을 먼저 읽고, 공고 표식이 나온 이미지에만 남은 조각의
+        호출 예산을 우선 배정한다. 세로로 긴 배너 한 장이 호출 한도를 독점해
+        실제 공고 이미지를 읽지 못하는 일을 막는다.
+        """
+        candidates: list[dict[str, Any]] = []
+        calls_made = 0
+        for fetched in self._rank_image_candidates(page_url, image_srcs):
             media_type = fetched.content_type.split(";", 1)[0].strip().lower()
             if not media_type.startswith("image/"):
                 continue
             if len(fetched.content) > IMAGE_OCR_MAX_IMAGE_BYTES:
                 continue
-            # 이 이미지(조각들 합)가 실제 공고인지는 이미지 단위로 따로 판정한다.
-            # 후보가 여러 장일 때 관련 없는 작은 이미지(국기 아이콘 등)가 진짜
-            # 공고 이미지 옆에서 지어낸 내용을 얹는 걸 막기 위해서다.
-            image_texts: list[str] = []
-            for tile_bytes, tile_mime in _split_image_into_tiles(fetched.content, media_type):
-                if calls_made >= IMAGE_OCR_MAX_CALLS:
-                    break
-                calls_made += 1
-                try:
-                    text = self._image_ocr_caller(self._gms_key, tile_bytes, tile_mime)
-                except (
-                    RuntimeError,
-                    ValueError,
-                    LookupError,  # KeyError·IndexError — candidates가 빈 배열일 수 있음
-                    TypeError,
-                    urllib.error.URLError,
-                    TimeoutError,
-                ):
-                    continue
-                text = text.strip()
-                if not text or _OCR_PLACEHOLDER_PATTERN.search(text):
-                    # 모델이 프롬프트를 어기고 빈 자리 표시자를 지어냈다는 신호.
-                    # 이 조각은 신뢰하지 않고 버린다.
-                    continue
-                image_texts.append(text)
-            image_text = "\n".join(image_texts)
+            tiles = _split_image_into_tiles(fetched.content, media_type)
+            if tiles:
+                candidates.append({"tiles": tiles, "texts": []})
+
+        next_candidate_index = 0
+        while candidates and calls_made < IMAGE_OCR_MAX_CALLS:
+            recognized = [
+                candidate
+                for candidate in candidates
+                if _looks_like_job_posting("\n".join(candidate["texts"]))
+            ]
+            candidate = (
+                recognized[0]
+                if recognized
+                else candidates[next_candidate_index % len(candidates)]
+            )
+            if not recognized:
+                next_candidate_index += 1
+            tile_bytes, tile_mime = candidate["tiles"].pop(0)
+            calls_made += 1
+            try:
+                text = self._ocr_image_tile(tile_bytes, tile_mime)
+            except (
+                RuntimeError,
+                ValueError,
+                LookupError,  # KeyError·IndexError — candidates가 빈 배열일 수 있음
+                TypeError,
+                urllib.error.URLError,
+                TimeoutError,
+            ):
+                text = ""
+            text = text.strip()
+            if text and not _OCR_PLACEHOLDER_PATTERN.search(text):
+                candidate["texts"].append(text)
+
+            if candidate["tiles"]:
+                continue
+            image_text = "\n".join(candidate["texts"])
+            candidates.remove(candidate)
             if _looks_like_job_posting(image_text):
-                collected.append(image_text)
-        return "\n".join(collected)
+                return image_text
+        return ""
 
     @staticmethod
     def _select_image_candidates(page_url: str, image_srcs: list[str]) -> list[str]:
@@ -634,9 +767,42 @@ class JdSourceIngestor:
                 continue
             seen.add(absolute)
             candidates.append(absolute)
-            if len(candidates) >= IMAGE_OCR_MAX_CANDIDATES:
+            if len(candidates) >= IMAGE_OCR_MAX_SCAN_CANDIDATES:
                 break
         return candidates
+
+    def _rank_image_candidates(
+        self, page_url: str, image_srcs: list[str]
+    ) -> list[SourceFetchResult]:
+        """사람인 상세의 UI 이미지보다 실제 공고 플라이어를 먼저 OCR한다."""
+        ranked: list[tuple[int, int, SourceFetchResult]] = []
+        image_fetcher = getattr(self._fetcher, "fetch_image", self._fetcher.fetch)
+        for index, image_url in enumerate(self._select_image_candidates(page_url, image_srcs)):
+            try:
+                fetched = image_fetcher(image_url)
+            except SourceIngestionError:
+                continue
+            media_type = fetched.content_type.split(";", 1)[0].strip().lower()
+            if not media_type.startswith("image/") or len(fetched.content) > IMAGE_OCR_MAX_IMAGE_BYTES:
+                continue
+            ranked.append((_image_area(fetched.content), -index, fetched))
+        ranked.sort(reverse=True, key=lambda item: (item[0], item[1]))
+        return [fetched for _, _, fetched in ranked[:IMAGE_OCR_MAX_CANDIDATES]]
+
+    def _fetch_saramin_detail(self, url: str) -> tuple[str, list[str]]:
+        """사람인 상세 응답이 비거나 일시적으로 끊기면 한 번만 다시 읽는다."""
+        for attempt in range(2):
+            try:
+                text, images = self._fetch_visible_text(url)
+            except SourceFetchError:
+                if attempt == 1:
+                    raise
+                time.sleep(0.5)
+                continue
+            if text or images or attempt == 1:
+                return text, images
+            time.sleep(0.5)
+        return "", []
 
     def _fetch_visible_text(self, url: str) -> tuple[str, list[str]]:
         """보조 주소(예: 사람인 상세)를 받아 본문 텍스트와 이미지 주소를 뽑는다.
@@ -802,9 +968,56 @@ def _saramin_detail_url(url: str) -> str | None:
     return f"https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx={match.group(1)}"
 
 
+_SARAMIN_TITLE_PATTERN = re.compile(
+    r"^\[(?P<company>[^\]]+)\]\s*(?P<position>.+?)(?:\s*-\s*사람인)?$"
+)
+_SARAMIN_DEADLINE_SUFFIX_PATTERN = re.compile(
+    r"\s*\((?:D-\d+|채용\s*시\s*마감)\)\s*$", re.IGNORECASE
+)
+
+
+def _extract_saramin_title_metadata(url: str, title: str) -> dict[str, Any]:
+    """사람인 목록 페이지 제목의 `[회사명] 공고명 - 사람인` 형식을 읽는다.
+
+    JSON-LD가 없는 사람인 공고에서도 화면이 이미 제공하는 회사명·공고명을
+    그대로 사용한다. 사이트명이 아니라 실제 회사명이 대괄호 안에 있다는 것이
+    확인된 형식일 때만 채운다.
+    """
+    hostname = (urlparse(url).hostname or "").lower()
+    if hostname != "saramin.co.kr" and not hostname.endswith(".saramin.co.kr"):
+        return {}
+    normalized_title = _normalize_text(title)
+    match = _SARAMIN_TITLE_PATTERN.match(normalized_title)
+    if not match:
+        return {}
+    company_name = _optional_text(match.group("company"))
+    position_name = _optional_text(
+        _SARAMIN_DEADLINE_SUFFIX_PATTERN.sub("", match.group("position"))
+    )
+    if not company_name or not position_name:
+        return {}
+    return {"company_name": company_name, "position_name": position_name}
+
+
+def _merge_missing_metadata(
+    primary: dict[str, Any], fallback: dict[str, Any]
+) -> dict[str, Any]:
+    """JSON-LD의 확정값을 우선하고 비어 있는 필드만 플랫폼 메타로 보완한다."""
+    merged = dict(primary)
+    for key, value in fallback.items():
+        if not _optional_text(merged.get(key)):
+            merged[key] = value
+    return merged
+
+
 def _looks_like_job_posting(value: str) -> bool:
-    normalized = value.casefold()
-    return sum(marker in normalized for marker in JOB_POSTING_MARKERS) >= 2
+    normalized = re.sub(r"\s+", "", value).casefold()
+    # 배너 문구에도 "채용"·"모집"은 흔하다. 역할/모집 정보와 지원·전형 정보를
+    # 각각 하나 이상 확인해야 실제 공고로 인정한다.
+    return (
+        any(marker in normalized for marker in JOB_POSTING_ROLE_MARKERS)
+        and any(marker in normalized for marker in JOB_POSTING_REQUIREMENT_MARKERS)
+    )
 
 
 def _extract_job_posting_metadata(documents: list[str]) -> dict[str, Any]:

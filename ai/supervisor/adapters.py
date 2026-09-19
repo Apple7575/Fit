@@ -2,6 +2,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol
 
 from ai.news_intelligence.contracts import NewsAnalysisRequest
+from ai.position_coaching.render import render_position_message
 from ai.supervisor.contracts import AgentResult
 from ai.supervisor.feedback import normalize_writing_feedback
 from ai.writing_coaching.contracts import WritingMessageRequest
@@ -61,12 +62,15 @@ class PositionAgentAdapter:
             raise ValueError(
                 "position agent requires SELF_INTRO or EXPERIENCE document"
             )
-        return self._service_provider().analyze(
+        analysis = self._service_provider().analyze(
             context["rubric_id"],
             context["position_context"],
             supported_documents,
             list(conversation),
         )
+        # 단독 API(/position/internal/analyses)와 같은 모양으로 맞춘다. 백엔드는 결과의
+        # message 만 말풍선에 띄우므로 이 키가 없으면 성공해도 "답을 만들지 못했다"로 보인다.
+        return {**analysis, "message": render_position_message(analysis)}
 
 
 class WritingAgentAdapter:

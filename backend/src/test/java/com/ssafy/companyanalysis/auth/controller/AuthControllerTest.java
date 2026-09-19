@@ -69,7 +69,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/signup").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new SignupRequest("user@example.com", "password123", "민재"))))
+                                new SignupRequest("user@example.com", "Password123!", "민재"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.email").value("user@example.com"));
@@ -83,9 +83,20 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/signup").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new SignupRequest("user@example.com", "password123", "민재"))))
+                                new SignupRequest("user@example.com", "Password123!", "민재"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_EXISTS"));
+    }
+
+    @Test
+    @DisplayName("길이만 맞고 복잡도(영문·숫자·특수문자)를 못 채우면 400 INVALID_PARAMETER")
+    void signupWithWeakPasswordIsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/auth/signup").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new SignupRequest("user@example.com", "password123", "민재"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_PARAMETER"));
     }
 
     @Test
