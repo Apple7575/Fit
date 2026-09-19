@@ -32,7 +32,7 @@ export function AuthLayout({
       <div className="mx-auto grid min-h-[calc(100vh-3.5rem)] max-w-[1200px] grid-cols-1 lg:grid-cols-[1.05fr_1fr]">
         <aside
           aria-hidden="true"
-          className="relative hidden overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-owl px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between"
+          className="relative hidden overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-violet-500 px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between"
         >
           <span className="anim-blob absolute -left-16 top-24 size-72 bg-white/10" />
           <span className="anim-blob absolute -right-20 bottom-10 size-96 bg-white/10 [animation-delay:-4s]" />

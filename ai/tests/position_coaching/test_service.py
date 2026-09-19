@@ -81,11 +81,12 @@ class PositionAnalysisServiceTest(unittest.TestCase):
         self.assertEqual(result["rubric"], {"id": "experience-depth-v1", "version": 1})
         self.assertEqual(len(qwen.calls), 1)
         self.assertEqual(qwen.calls[0]["schema_name"], "position_analysis_v2")
-        self.assertEqual(qwen.calls[0]["timeout_seconds"], 25)
+        self.assertEqual(qwen.calls[0]["timeout_seconds"], 45)
 
     def test_retries_once_when_evidence_does_not_match_source(self):
         invalid = valid_output()
-        invalid["findings"][0]["claim"]["end_offset"] -= 1
+        # 위치만 틀린 인용문은 고쳐 쓰므로, 문서에 없는 인용문으로 재시도를 일으킨다.
+        invalid["findings"][0]["claim"]["quote"] = "문서에 없는 인용문입니다."
         qwen = FakeQwen([invalid, valid_output()])
         service = PositionAnalysisService(config=CONFIG, qwen_caller=qwen)
 

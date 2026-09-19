@@ -67,7 +67,8 @@ class TurnServiceTest {
         jobContextRepository = Mockito.mock(JobContextRepository.class);
         service = new TurnService(roomRepository, messageRepository, jobContextRepository,
                 itemRepository, turnExecutor,
-                new AnalysisRateLimiter(100, java.time.Duration.ofHours(1)));
+                new AnalysisRateLimiter(100, java.time.Duration.ofHours(1)),
+                noTransaction());
 
         AtomicLong seq = new AtomicLong(100);
         given(messageRepository.save(any(Message.class)))
@@ -80,6 +81,28 @@ class TurnServiceTest {
                 });
         given(itemRepository.findByCoverLetterIdOrderBySeqAsc(anyLong()))
                 .willReturn(List.of(withItemId(CoverLetterItem.create(12L, 1, "질문", "답변", 1000), 500L)));
+    }
+
+    /**
+     * 트랜잭션 경계만 있고 실제로 아무것도 하지 않는 관리자. 여기서는 저장소가 다 가짜라
+     * 커밋할 것이 없고, 확인하려는 것은 뿌리와 자리를 한 번에 만드느냐이지 커밋 자체가 아니다.
+     */
+    private static org.springframework.transaction.PlatformTransactionManager noTransaction() {
+        return new org.springframework.transaction.PlatformTransactionManager() {
+            @Override
+            public org.springframework.transaction.TransactionStatus getTransaction(
+                    org.springframework.transaction.TransactionDefinition definition) {
+                return new org.springframework.transaction.support.SimpleTransactionStatus();
+            }
+
+            @Override
+            public void commit(org.springframework.transaction.TransactionStatus status) {
+            }
+
+            @Override
+            public void rollback(org.springframework.transaction.TransactionStatus status) {
+            }
+        };
     }
 
     private static CoverLetterItem withItemId(CoverLetterItem item, long id) {
@@ -188,8 +211,8 @@ class TurnServiceTest {
     }
 
     @Test
-    @DisplayName("방에서 고르지 않은 담당도 재료가 있으면 자리를 만든다 — 고르는 일은 AI 총괄이 한다")
-    void everyFillableAgentGetsASlotEvenIfTheRoomDidNotPickIt() {
+    @DisplayName("전담 방은 그 담당 자리만 만든다 — 공고가 붙어 재료가 있어도 다른 담당은 빼놓는다")
+    void aSoloRoomOnlyGetsASlotForItsOwnAgent() {
         roomWithJobContext("ctx-1", "writing");
         JobContext context = jobContext("ctx-1", "백엔드");
         given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
@@ -197,18 +220,31 @@ class TurnServiceTest {
         TurnStartedResponse response = service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
 
         assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
-                .containsExactly("jd", "position", "writing", "supervisor");
+                .containsExactly("writing");
     }
 
     @Test
-    @DisplayName("기업 RAG 담당은 방에서 고른 경우에만 자리를 만든다 — 아직 백엔드가 맡고 있다")
+    @DisplayName("담당을 전부 고른 방은 재료가 있는 담당과 총괄 자리를 만든다")
+    void aRoomThatPickedEveryAgentGetsEverySlot() {
+        roomWithJobContext("ctx-1", "jd", "company", "position", "news", "writing");
+        JobContext context = jobContext("ctx-1", "백엔드");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+
+        TurnStartedResponse response = service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
+
+        assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
+                .containsExactly("jd", "position", "writing", "company", "supervisor");
+    }
+
+    @Test
+    @DisplayName("기업 RAG 담당 전담 방은 그 자리 하나뿐이다 — 아직 백엔드가 맡고 있다")
     void companyAgentStillFollowsTheRoomSelection() {
         roomWith("company");
 
         TurnStartedResponse response = service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
 
         assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
-                .containsExactly("writing", "company", "supervisor");
+                .containsExactly("company");
     }
 
     @Test
@@ -331,5 +367,82 @@ class TurnServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.TURN_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("자동 검토는 사용자가 하지 않은 말을 지어내지 않는다 — 턴의 뿌리가 비어 있다")
+    void autoReviewLeavesTheRootEmpty() {
+        roomWith("writing", "position");
+
+        service.autoReview(USER, ROOM);
+
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        then(messageRepository).should().save(captor.capture());
+        assertThat(captor.getValue().getContent()).isNull();
+        assertThat(captor.getValue().getStatus()).isEqualTo(MessageStatus.DONE);
+    }
+
+    @Test
+    @DisplayName("자동 검토는 총괄에게 기본 지시문을 보낸다 — 지시문 없이는 무엇을 할지 정하지 못한다")
+    void autoReviewSendsADefaultInstruction() {
+        roomWith("writing");
+
+        service.autoReview(USER, ROOM);
+
+        ArgumentCaptor<TurnContext> captor = ArgumentCaptor.forClass(TurnContext.class);
+        then(turnExecutor).should().runTurnNow(anyLong(), captor.capture());
+        assertThat(captor.getValue().userMessage()).isNotBlank();
+        assertThat(captor.getValue().answeredParts()).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("자동 검토는 부른 스레드에서 끝까지 돈다 — 방을 하나씩 차례로 돌리기 위한 것이다")
+    void autoReviewRunsOnTheCallingThread() {
+        roomWith("writing");
+
+        service.autoReview(USER, ROOM);
+
+        then(turnExecutor).should().runTurnNow(anyLong(), any());
+        then(turnExecutor).should(Mockito.never()).runTurn(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("이미 말이 오간 방은 자동 검토가 물러난다")
+    void autoReviewSkipsRoomThatAlreadyTalked() {
+        roomWith("writing");
+        given(messageRepository.existsByRoomId(ROOM)).willReturn(true);
+
+        service.autoReview(USER, ROOM);
+
+        then(turnExecutor).shouldHaveNoInteractions();
+        then(messageRepository).should(Mockito.never()).save(any(Message.class));
+    }
+
+    @Test
+    @DisplayName("아직 문항이 없는 자소서는 검토할 것이 없어 건너뛴다 — 방이 깔리는 것까지 막지 않는다")
+    void autoReviewSkipsEmptyCoverLetter() {
+        roomWith("writing");
+        given(itemRepository.findByCoverLetterIdOrderBySeqAsc(anyLong())).willReturn(List.of());
+
+        service.autoReview(USER, ROOM);
+
+        then(turnExecutor).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("자동 검토도 재료가 있는 담당마다 자리를 만들고, 둘 이상이면 총괄이 붙는다")
+    void autoReviewOpensSlotsForEveryAgent() {
+        // 직무를 채워야 포지션 담당에게 넘길 재료가 생긴다. 재료가 없는 담당은 자리도 만들지 않는다.
+        Room room = Room.create(USER, 12L, "검토 방", List.of(
+                new RoomAgent("writing", Map.of()),
+                new RoomAgent("position", Map.of("jobRole", "백엔드 개발"))));
+        given(roomRepository.findByIdAndUserId(ROOM, USER)).willReturn(Optional.of(room));
+
+        service.autoReview(USER, ROOM);
+
+        ArgumentCaptor<List<Message>> captor = ArgumentCaptor.forClass(List.class);
+        then(messageRepository).should().saveAll(captor.capture());
+        assertThat(captor.getValue()).extracting(Message::getAgentKey)
+                .contains("writing", "position", "supervisor");
     }
 }

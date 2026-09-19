@@ -4,7 +4,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/src/main/resources/db/migration/V27__rag_evidence.sql"
-EMBEDDING_MIGRATION = ROOT / "backend/src/main/resources/db/migration/V31__rag_evidence_embedding.sql"
+EMBEDDING_MIGRATION = ROOT / "backend/src/main/resources/db/migration/V29__rag_evidence_embedding.sql"
 
 
 class RagEvidenceSchemaTest(unittest.TestCase):

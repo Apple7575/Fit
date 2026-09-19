@@ -85,6 +85,17 @@ public class Message {
         return new Message(roomId, null, MessageRole.USER, null, content, MessageStatus.DONE);
     }
 
+    /**
+     * 자동 검토 턴의 뿌리. 사용자가 아무것도 묻지 않았으므로 내용이 비어 있다.
+     *
+     * <p>턴은 뿌리가 있어야 성립한다(에이전트 답변이 {@code parentMessageId} 로 가리킨다).
+     * 그래서 자리는 만들되 사용자가 하지 않은 말을 지어 넣지 않는다 — 화면은 내용이 빈 사용자
+     * 발화를 말풍선 대신 자동 검토 표시로 그린다.
+     */
+    public static Message autoReview(Long roomId) {
+        return new Message(roomId, null, MessageRole.USER, null, null, MessageStatus.DONE);
+    }
+
     /** 아직 실행하지 않은 에이전트 답변 자리. 실행하면서 내용을 채운다. */
     public static Message pendingAgent(Long roomId, Long turnId, String agentKey) {
         return new Message(roomId, turnId, MessageRole.AGENT, agentKey, null, MessageStatus.PENDING);

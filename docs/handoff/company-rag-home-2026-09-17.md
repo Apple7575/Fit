@@ -66,7 +66,7 @@ python -m ai.scripts.export_company_report_review --corp-code 00126380 --as-of 2
 
 - `C:\Users\SSAFY\Downloads\dart_local.zip`: 사업보고서 XML 원본, 약 2.66GB. 다른 PC로 안전하게 복사하거나 DART에서 다시 수집해야 한다. 원본이 없으면 같은 100개사 코퍼스를 재구축할 수 없다.
 - `outputs/company-context-quality/experiment-100-rowspan-v2/staging/adaptive-v1/`: 100개사 압축 청크 약 193MB. 원본 ZIP과 청킹 스크립트로 재생성 가능하다. 복사할 경우 요약 JSON 안의 `records_path`가 이전 PC 절대경로인지 확인하고 다시 생성하거나 경로를 갱신한다.
-- PostgreSQL DB `ca_rag_adaptive_rowspan_v2`: 631,068개 근거와 벡터. Git에 없다. 다른 PC에서 그대로 조회하려면 PostgreSQL 백업을 별도로 옮기고 복원해야 한다. 백업이 없다면 원본 ZIP → `adaptive-v1` 청킹 → DB 적재 → GPU 임베딩을 다시 실행한다. 마이그레이션에는 `V31__rag_evidence_embedding.sql`이 필요하다.
+- PostgreSQL DB `ca_rag_adaptive_rowspan_v2`: 631,068개 근거와 벡터. Git에 없다. 다른 PC에서 그대로 조회하려면 PostgreSQL 백업을 별도로 옮기고 복원해야 한다. 백업이 없다면 원본 ZIP → `adaptive-v1` 청킹 → DB 적재 → GPU 임베딩을 다시 실행한다. 마이그레이션에는 `V29__rag_evidence_embedding.sql`이 필요하다.
 - 로컬 `ai/.env`, `data/.env`: 키·비밀번호를 담고 있어 Git에 없다. 집 PC에서 각각 새로 설정한다.
 - `outputs/company-context-quality/rowspan-v2-reports-scope-gate-v3/`: 5개 보고서의 상세 원문이 들어 있는 로컬 검토 산출물. Git에는 실험 요약만 남긴다.
 

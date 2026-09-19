@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { CHARACTER_BY_KEY, COACHES, type CharacterKey } from '../../components/brand/characters';
@@ -106,15 +106,17 @@ export function AgentDemo() {
             채용공고·기업·뉴스·포지션·글쓰기 담당이 각자 관점으로 답하고, 반장이 근거 순서로
             정리합니다. 감이 아니라 사업보고서와 뉴스에서 찾은 근거로요.
           </p>
-          <ul className="mt-8 flex flex-wrap gap-2" aria-label="코치 목록">
-            {COACHES.map((coach) => (
-              <li
-                className="inline-flex items-center gap-2 rounded-full bg-slate-50 py-1 pl-1 pr-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-200"
-                key={coach.key}
-              >
-                <CharacterSlot character={coach.key} interactive={false} size={26} />
-                {coach.role}
-              </li>
+          {/* 줄 간격은 gap-y-1 + 줄바꿈 칸(0높이)이 합쳐져 칩 사이 8px 이 된다 */}
+          <ul className="mt-8 flex flex-wrap gap-x-2 gap-y-1" aria-label="코치 목록">
+            {COACHES.map((coach, i) => (
+              <Fragment key={coach.key}>
+                {/* 넷·하나로 갈라지면 아랫줄이 허전하다. 넷째 앞에서 줄을 바꿔 셋·둘로 나눈다 */}
+                {i === 3 && <li aria-hidden="true" className="basis-full" />}
+                <li className="inline-flex items-center gap-2 rounded-full bg-slate-50 py-1 pl-1 pr-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-200">
+                  <CharacterSlot character={coach.key} interactive={false} size={26} />
+                  {coach.role}
+                </li>
+              </Fragment>
             ))}
           </ul>
           <Link
