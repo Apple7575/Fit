@@ -21,6 +21,9 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     /** 아직 끝나지 않은 턴이 있는지. 방마다 한 번에 한 턴만 돈다. */
     boolean existsByRoomIdAndStatusIn(Long roomId, Collection<MessageStatus> statuses);
 
+    /** 말이 한 번이라도 오갔는지. 자동 검토는 빈 방에서만 돈다. */
+    boolean existsByRoomId(Long roomId);
+
     /**
      * 대화 내역 한 페이지. 최신순이며 cursor 보다 오래된 것만 준다.
      *

@@ -111,18 +111,47 @@ def check_03_exclusions() -> Check:
 
 
 def check_04_article_key_unique() -> Check:
+    """기사 식별자가 **수집 실행 안에서** 유일한지 본다.
+
+    실행을 넘어선 유일성은 요구하지 않는다. 같은 기사를 다음 수집에서 다시 관측하는
+    것은 정상이고 — 증분 수집이면 반드시 생긴다 — 오히려 같은 기사에 같은 키가
+    붙는 것이 article_key 를 내용으로 만든 이유다.
+
+    처음에는 staged 전체에서 유일성을 요구했다. 수집 실행이 하나뿐이던 동안에는
+    구별이 안 됐다. 2026-09-18 증분 수집으로 실행이 둘이 되자 재관측 2,487건이
+    전부 실패로 잡혔다. **날짜 창을 갈라도 못 없앤다** — 같은 기사인데 나중 실행에서
+    RSS 가 pubDate 를 다르게 주는 경우가 있어(실측 25건) 서로 다른 날짜 창에 들어간다.
+    그대로 두면 증분 수집마다 실패하고, 실패를 늘 무시하게 되면 검사가 죽는다.
+
+    재관측은 숫자로만 남긴다. 늘어나는 것 자체는 이상이 아니지만, 갑자기 0 이 되면
+    article_key 가 내용을 못 따라가고 있다는 뜻이라 눈에 보이는 편이 낫다.
+    """
     rows = _staged_rows()
     if not rows:
-        return Check(4, "기사 식별자 중복", "skip", {"reason": "staged 산출물이 없다"})
-    seen: dict[str, int] = {}
+        return Check(4, "기사 식별자 중복 (수집 실행 안)", "skip", {"reason": "staged 산출물이 없다"})
+    per_run: dict[str, dict[str, int]] = {}
+    runs_by_key: dict[str, set[str]] = {}
     for row in rows:
-        seen[row["article_key"]] = seen.get(row["article_key"], 0) + 1
-    duplicates = {k: v for k, v in seen.items() if v > 1}
-    return Check(4, "기사 식별자 중복", "fail" if duplicates else "pass",
-                 {"rows": len(rows), "distinct": len(seen), "duplicate_keys": duplicates})
+        run = row.get("collection_run_id") or "(실행 미상)"
+        counts = per_run.setdefault(run, {})
+        counts[row["article_key"]] = counts.get(row["article_key"], 0) + 1
+        runs_by_key.setdefault(row["article_key"], set()).add(run)
+    duplicates = {run: {key: count for key, count in counts.items() if count > 1}
+                  for run, counts in per_run.items()}
+    duplicates = {run: found for run, found in duplicates.items() if found}
+    return Check(4, "기사 식별자 중복 (수집 실행 안)", "fail" if duplicates else "pass",
+                 {"rows": len(rows), "distinct": len(runs_by_key), "runs": len(per_run),
+                  "duplicate_keys_by_run": duplicates,
+                  "reobserved_across_runs": sum(1 for r in runs_by_key.values() if len(r) > 1)})
 
 
 def check_05_url_duplicates() -> Check:
+    """정규화한 언론사 URL 이 겹치는지 본다.
+
+    4번과 같은 이유로 실행 간 재관측은 여기서도 생길 수 있다. 지금은 original_url 이
+    전부 구글 링크라 `original_url_norm` 이 빈 값이어서 비교 대상이 0 건이다 —
+    언론사 주소를 채우게 되면 이 검사도 실행 안으로 범위를 좁혀야 한다.
+    """
     rows = _staged_rows()
     if not rows:
         return Check(5, "URL 중복", "skip", {"reason": "staged 산출물이 없다"})

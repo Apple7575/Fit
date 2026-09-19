@@ -1,6 +1,6 @@
 {
   "table": "company_activity",
-  "generated_at": "2026-09-17T07:04:16.803113+00:00",
+  "generated_at": "2026-09-18T16:20:56.420724+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",

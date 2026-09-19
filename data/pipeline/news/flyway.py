@@ -34,7 +34,7 @@ _SIZED_TYPES = ("VARCHAR", "NUMERIC", "CHAR", "DECIMAL")
 # 앞에 오면 INTEGER 가 INT 로 잘리고 "EGER" 가 남는다.
 _PLAIN_TYPES = (
     "BIGINT[]", "BIGINT", "INTEGER", "INT", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
-    "JSONB", "JSON", "DATE", "TIMESTAMPTZ", "TIMESTAMP", "UUID",
+    "JSONB", "JSON", "DATE", "TIMESTAMPTZ", "TIMESTAMP", "UUID", "BYTEA",
 )
 _TYPE_ALIASES = {"INT": "INTEGER"}
 _CONSTRAINT_STARTS = ("CONSTRAINT", "PRIMARY KEY", "UNIQUE", "CHECK", "FOREIGN KEY", "EXCLUDE")
@@ -202,8 +202,16 @@ _CREATE_TABLE = re.compile(
     r"^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)\s*\((.*)\)\s*$",
     re.IGNORECASE | re.DOTALL,
 )
-_ADD_COLUMN = re.compile(
-    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+ADD\s+(?:COLUMN\s+)?(\w+)\s+(.*)$",
+# 한 ALTER 에 `ADD COLUMN a …, ADD COLUMN b …` 처럼 여러 절이 붙는다(V26 이 그렇다).
+# DROP COLUMN 과 같은 이유로 문장을 매치하는 것과 절을 훑는 것을 나눈다 — 하나만
+# 읽으면 뒤 컬럼이 조용히 사라지고, 사전에 없는 컬럼이 생겨도 검증이 못 잡는다.
+# V26 의 cover_letter.corp_code 가 그렇게 빠져 있었다 (2026-09-18).
+_ADD_COLUMN_STMT = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+(ADD\s+.*)$",
+    re.IGNORECASE | re.DOTALL,
+)
+_ADD_COLUMN_CLAUSE = re.compile(
+    r"^ADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s+(.*)$",
     re.IGNORECASE | re.DOTALL,
 )
 _COMMENT_ON = re.compile(
@@ -242,6 +250,20 @@ _DROP_COLUMN_CLAUSE = re.compile(
 _ADD_UNIQUE = re.compile(
     r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+ADD\s+CONSTRAINT\s+\w+\s+UNIQUE\s*\(([^)]*)\)",
     re.IGNORECASE | re.DOTALL)
+# 컬럼 이름이 바뀌는 문장. 읽지 않으면 사전이 옛 이름을 문서화한 채로 통과한다 —
+# V25 가 agent_room.job_context_id 를 context_id 로 옮겼는데 아래 ALTER TABLE 통짜
+# 무시에 걸려, 사전에는 DB 에 없는 job_context_id 가 남아 있었다 (2026-09-18).
+#
+# 제약·인덱스 이름만 바뀌는 것은 컬럼 구조가 아니라 넘긴다. 다만 두 형태를 구별해서
+# 넘겨야 RENAME 을 통째로 무시하는 일이 다시 생기지 않는다 — 나머지 RENAME 은
+# 아래에서 예외로 떨어진다.
+_RENAME_COLUMN = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+RENAME\s+COLUMN\s+(\w+)\s+TO\s+(\w+)\s*$",
+    re.IGNORECASE | re.DOTALL)
+_RENAME_ANY = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+RENAME\s+", re.IGNORECASE)
+_RENAME_CONSTRAINT = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+RENAME\s+CONSTRAINT\s+", re.IGNORECASE)
 _REFERENCES = re.compile(
     r"REFERENCES\s+(?:\w+\.)?(\w+)\s*\(\s*(\w+)\s*\)", re.IGNORECASE
 )
@@ -313,6 +335,40 @@ def _apply_create_table(schema: Schema, match: re.Match) -> None:
             table.columns[name].referenced_column = target_column
 
 
+def _apply_add_column(table: Table, name: str, definition: str) -> None:
+    """`ADD COLUMN <name> <definition>` 한 절을 테이블에 붙인다."""
+    data_type, rest = _parse_type(definition)
+    upper = rest.upper()
+    column = Column(
+        table=table.name, name=name,
+        ordinal=max((c.ordinal for c in table.columns.values()), default=0) + 1,
+        data_type=data_type,
+        nullable="NOT NULL" not in upper and "PRIMARY KEY" not in upper,
+    )
+    default = re.search(r"DEFAULT\s+(.+?)$", rest, re.IGNORECASE | re.DOTALL)
+    if default:
+        column.default = default.group(1).strip()
+    ref = _REFERENCES.search(rest)
+    if ref:
+        _add_key(column, "FK")
+        column.referenced_table, column.referenced_column = ref.group(1), ref.group(2)
+    table.columns[column.name] = column
+
+
+def _apply_rename_column(table: Table, old: str, new: str) -> None:
+    """컬럼 이름만 바꾼다. 자리와 COMMENT·키·FK 는 그대로 따라간다."""
+    if old not in table.columns:
+        raise ValueError(f"없는 컬럼의 이름을 바꾼다: {table.name}.{old}")
+    column = table.columns[old]
+    column.name = new
+    # dict 는 키를 갈아끼울 수 없다. 자리를 지키려면 순서대로 다시 만든다 —
+    # ordinal 과 함께 사전의 컬럼 순서가 된다.
+    table.columns = {
+        (new if key == old else key): value
+        for key, value in table.columns.items()
+    }
+
+
 def load(migration_dir: Path | None = None) -> Schema:
     """마이그레이션을 버전 순으로 적용해 현재 스키마를 만든다."""
     directory = migration_dir or MIGRATION_DIR
@@ -353,25 +409,15 @@ def load(migration_dir: Path | None = None) -> Schema:
                         if name in table.columns:
                             _add_key(table.columns[name], "UK")
                 continue
-            add = _ADD_COLUMN.match(statement)
+            add = _ADD_COLUMN_STMT.match(statement)
             if add and not re.match(r"^ALTER\s+TABLE\s+[\w.]+\s+ADD\s+CONSTRAINT", statement, re.IGNORECASE):
                 table = schema.tables[add.group(2)]
-                data_type, rest = _parse_type(add.group(4))
-                upper = rest.upper()
-                column = Column(
-                    table=table.name, name=add.group(3),
-                    ordinal=max((c.ordinal for c in table.columns.values()), default=0) + 1,
-                    data_type=data_type,
-                    nullable="NOT NULL" not in upper and "PRIMARY KEY" not in upper,
-                )
-                default = re.search(r"DEFAULT\s+(.+?)$", rest, re.IGNORECASE | re.DOTALL)
-                if default:
-                    column.default = default.group(1).strip()
-                ref = _REFERENCES.search(rest)
-                if ref:
-                    _add_key(column, "FK")
-                    column.referenced_table, column.referenced_column = ref.group(1), ref.group(2)
-                table.columns[column.name] = column
+                for clause in _split_top_level(add.group(3)):
+                    piece = _ADD_COLUMN_CLAUSE.match(clause.strip())
+                    if not piece:
+                        raise ValueError(
+                            f"{path.name}: ADD 절을 읽지 못했다 — {clause[:120]!r}")
+                    _apply_add_column(table, piece.group(1), piece.group(2))
                 continue
             index = _UNIQUE_INDEX.match(statement)
             if index:
@@ -397,6 +443,15 @@ def load(migration_dir: Path | None = None) -> Schema:
                 if table:
                     table.schema = moved.group(3).lower()
                 continue
+            renamed = _RENAME_COLUMN.match(statement)
+            if renamed:
+                table = schema.tables.get(renamed.group(2))
+                if table:
+                    _apply_rename_column(table, renamed.group(3), renamed.group(4))
+                continue
+            if _RENAME_ANY.match(statement) and not _RENAME_CONSTRAINT.match(statement):
+                raise ValueError(
+                    f"{path.name}: 읽지 못한 RENAME 문장 — {statement[:120]!r}")
             dropped = _DROP_COLUMN_STMT.match(statement)
             if dropped:
                 table = schema.tables.get(dropped.group(2))

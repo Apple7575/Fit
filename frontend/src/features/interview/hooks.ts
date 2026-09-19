@@ -146,6 +146,21 @@ function audioCtor(): typeof AudioContext | null {
   return w.AudioContext ?? w.webkitAudioContext ?? null;
 }
 
+/** 파형은 5Hz(200ms) 로 줄여 저장한다. 1분 답변이면 300칸이라 IndexedDB 에 부담이 없다 */
+const WAVE_STEP_MS = 200;
+
+function summarizeWave(samples: number[]): number[] {
+  const per = Math.max(1, Math.round(WAVE_STEP_MS / SAMPLE_MS));
+  const out: number[] = [];
+  for (let i = 0; i < samples.length; i += per) {
+    const chunk = samples.slice(i, i + per);
+    const peak = chunk.reduce((a, x) => Math.max(a, x), 0);
+    // 화면에 그릴 값이라 0~1 로 맞춘다 (rms 는 보통 0.3 이하)
+    out.push(Math.round(Math.min(1, peak * 4) * 100) / 100);
+  }
+  return out;
+}
+
 function summarizeAudio(samples: number[], durationMs: number): AudioStats {
   const speech = samples.filter((r) => r >= SILENCE_RMS);
   const silenceRatio = samples.length ? (samples.length - speech.length) / samples.length : 1;
@@ -177,6 +192,8 @@ function summarizeAudio(samples: number[], durationMs: number): AudioStats {
   const variance = speech.length ? speech.reduce((a, r) => a + (r - mean) ** 2, 0) / speech.length : 0;
   const volumeCV = mean > 0 ? Math.sqrt(variance) / mean : 0;
   return {
+    wave: summarizeWave(samples),
+    waveStepMs: WAVE_STEP_MS,
     durationMs,
     silenceRatio,
     longestSilenceMs: longestSilence,
