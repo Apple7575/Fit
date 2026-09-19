@@ -57,8 +57,6 @@ def _has_nested_table(element) -> bool:
     )
 
 
-
-
 def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
     """'단위' 표기 **바로 뒤**에서만 단위를 찾는다.
 
