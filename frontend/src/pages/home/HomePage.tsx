@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SiteHeader } from '../../components/layout/SiteHeader';
 import { prefersReducedMotion } from '../../hooks/useInView';
@@ -24,6 +24,13 @@ export function HomePage() {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLElement>(null);
+
+  // 랜딩은 한 화면에 딱 맞아 문서가 스크롤되지 않는다. 스크롤바 자리까지 비워 두면 오른쪽에 띠가 생긴다
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('no-scrollbar-gutter');
+    return () => root.classList.remove('no-scrollbar-gutter');
+  }, []);
 
   const behavior = () => (prefersReducedMotion() ? 'auto' : 'smooth') as ScrollBehavior;
 

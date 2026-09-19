@@ -4,8 +4,6 @@ import { useInView } from '../../hooks/useInView';
 import { CompanyMedia } from './CompanyMedia';
 import { industryGroupOf } from './industryGroups';
 import type { FitPoint } from './buildFitPoints';
-import { MediaCaption } from './MediaCaption';
-import { useMediaCredits } from './useMediaCredits';
 
 interface FitPointsProps {
   /** 기본정보의 industryCode. 사진은 업종 그룹 단위로 고른다 */
@@ -22,7 +20,6 @@ interface FitPointsProps {
 export function FitPoints({ industryCode, corpName, points, loading }: FitPointsProps) {
   const [ref, inView] = useInView<HTMLElement>({ threshold: 0.15 });
   const group = industryGroupOf(industryCode);
-  const credits = useMediaCredits(group);
 
   if (!loading && points.length === 0) return null;
 
@@ -86,11 +83,6 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                     </div>
                   </div>
                 </Link>
-                {/* 링크 안에 링크를 둘 수 없어 카드 밖에 겹쳐 둔다 */}
-                <MediaCaption
-                  className="absolute right-3 top-3 max-w-[60%]"
-                  credit={credits[`point-${p.key}`]}
-                />
               </li>
             );
           })}

@@ -107,7 +107,7 @@ export function InterviewDemo() {
           role="img"
         >
           <div className="relative aspect-video overflow-hidden rounded-[var(--radius-card)] ring-1 ring-white/15">
-            <MediaSlot label="면접 화면 클립" spec="1280×720 · 6~8초 루프 · 2MB 이하" />
+            <MediaSlot label="면접 화면 클립" />
             {phase === 'answer' && (
               <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-bold text-white">
                 <span className="size-2 animate-pulse rounded-full bg-white" /> REC {mm}:{ss}
