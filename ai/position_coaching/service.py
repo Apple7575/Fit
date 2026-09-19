@@ -17,7 +17,9 @@ RESOURCE_ROOT = Path(__file__).parent / "resources"
 RUBRIC_PATH = RESOURCE_ROOT / "rubrics" / "experience-depth-v1.json"
 SCHEMA_PATH = RESOURCE_ROOT / "schemas" / "position-analysis-v2.json"
 PROMPT_VERSION = "experience-depth-v1"
-QWEN_TIMEOUT_SECONDS = 25
+# 실측 생성 시간이 약 25초(완성 토큰 800여 개)라 25초 제한은 절반쯤 타임아웃 났다.
+# 백엔드 총괄 제한 120초 안에서 검증 실패 재시도 한 번까지 들어가는 값이다.
+QWEN_TIMEOUT_SECONDS = 45
 
 QwenCaller = Callable[..., dict[str, Any]]
 

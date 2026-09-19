@@ -1,7 +1,7 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ApiError } from '../../api/client';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ApiError, isRateLimited, isRetryable } from '../../api/client';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { analyzeAnswers, createInterview, generateQuestions } from '../../features/interview/api';
@@ -25,13 +25,19 @@ export function InterviewWorkspacePage() {
   return id ? <SavedInterview id={Number(id)} /> : <NewInterview />;
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, breadcrumb }: { children: React.ReactNode; breadcrumb?: string | string[] }) {
   return (
     <div className="min-h-screen bg-slate-50">
-      <InterviewHeader />
+      <InterviewHeader breadcrumb={breadcrumb} />
       {children}
     </div>
   );
+}
+
+/** 헤더 브레드크럼에 쓸 면접 이름. 회사·직무가 없으면 화면 이름만 남긴다. */
+function crumbs(company: string | null | undefined, position: string | null | undefined): string[] {
+  const title = [company, position].filter(Boolean).join(' · ');
+  return title ? ['모의 면접', title] : ['모의 면접'];
 }
 
 function Loading({ message }: { message: string }) {
@@ -43,6 +49,8 @@ type Phase = 'setup' | 'generating' | 'session' | 'analyzing' | 'saving' | 'repo
 function NewInterview() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  // 기업 분석에서 넘어온 ?corpCode=&company= 가 로그인 후에도 남도록 검색 문자열째 되돌려준다
+  const { pathname, search } = useLocation();
 
   const [phase, setPhase] = useState<Phase>('setup');
   const [localSessionId] = useState(() => crypto.randomUUID());
@@ -51,6 +59,8 @@ function NewInterview() {
   const [sessionItems, setSessionItems] = useState<SessionItem[]>([]);
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 분석 실패의 성격(재시도 가능/한도초과/입력오류)을 리포트 화면에서 판정하기 위해 에러 객체를 보관한다.
+  const [analyzeError, setAnalyzeError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
 
   if (loading) {
@@ -60,7 +70,7 @@ function NewInterview() {
       </Shell>
     );
   }
-  if (!user) return <Navigate replace to="/login?redirect=/interviews/new" />;
+  if (!user) return <Navigate replace to={`/login?redirect=${encodeURIComponent(pathname + search)}`} />;
 
   const start = async (next: InterviewConfig) => {
     setConfig(next);
@@ -113,6 +123,7 @@ function NewInterview() {
     if (!config) return;
     setSessionItems(items);
     setError(null);
+    setAnalyzeError(null);
     setPhase('analyzing');
     let result: AnalyzeResult;
     try {
@@ -124,7 +135,8 @@ function NewInterview() {
       setAnalysis(result);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '답변 분석에 실패했습니다.');
-      setPhase('report'); // 리포트 화면에서 재시도 노출
+      setAnalyzeError(e instanceof ApiError ? e : null);
+      setPhase('report'); // 리포트 화면에서 성격에 맞는 복구 수단을 노출
       return;
     }
     // 분석이 끝나면 자동으로 저장한다. 실패하면 리포트에서 수동 저장(저장 버튼)으로 폴백한다.
@@ -170,12 +182,22 @@ function NewInterview() {
 
   if (phase === 'report' && config) {
     if (!analysis) {
+      // 한도초과(429)는 즉시 재시도해도 또 실패하고 LLM 쿼터만 태운다 → 재시도 버튼을 숨긴다.
+      // 5xx·네트워크 등 일시적 오류만 재시도를 노출하고, 그 외 4xx(입력 문제)는 설정으로 유도한다.
+      const rateLimited = analyzeError !== null && isRateLimited(analyzeError);
+      const canRetry = analyzeError === null || isRetryable(analyzeError);
       return (
         <Shell>
           <div className="mx-auto max-w-4xl px-6 py-8">
-            <InlineNotice onRetry={() => void finish(sessionItems)}>
-              {error ?? '답변 분석에 실패했습니다.'}
-            </InlineNotice>
+            {rateLimited ? (
+              <InlineNotice>{error ?? '요청이 많습니다. 잠시 후 다시 시도해 주세요.'}</InlineNotice>
+            ) : canRetry ? (
+              <InlineNotice onRetry={() => void finish(sessionItems)}>
+                {error ?? '답변 분석에 실패했습니다.'}
+              </InlineNotice>
+            ) : (
+              <InlineNotice>{error ?? '분석할 수 없는 요청입니다. 답변을 확인해 주세요.'}</InlineNotice>
+            )}
             <button
               onClick={() => setPhase('setup')}
               className="mt-4 text-sm text-slate-500 hover:text-slate-700"
@@ -189,7 +211,7 @@ function NewInterview() {
     }
     // 여기 도달하면 자동 저장이 실패한 경우다. 안내와 함께 수동 저장(저장 버튼)으로 폴백한다.
     return (
-      <Shell>
+      <Shell breadcrumb={crumbs(config.targetCompany, config.targetPosition)}>
         {error && (
           <div className="mx-auto max-w-4xl px-6 pt-6">
             <InlineNotice>{error}</InlineNotice>
@@ -205,7 +227,6 @@ function NewInterview() {
           saved={false}
           saving={saving}
           onSave={() => void save()}
-          onRestart={() => void start(config)}
         />
       </Shell>
     );
@@ -214,12 +235,11 @@ function NewInterview() {
   // setup
   return (
     <Shell>
-      <div className="mx-auto max-w-3xl px-6 pt-6">
-        <button onClick={() => navigate('/interviews')} className="text-sm text-slate-400 hover:text-slate-600" type="button">
-          ← 목록으로
-        </button>
-        {error && <div className="mt-3"><InlineNotice>{error}</InlineNotice></div>}
-      </div>
+      {error && (
+        <div className="mx-auto max-w-4xl px-6 pt-6">
+          <InlineNotice>{error}</InlineNotice>
+        </div>
+      )}
       <InterviewSetup loading={false} onStart={(c) => void start(c)} />
     </Shell>
   );
@@ -260,7 +280,7 @@ function SavedLoaded({ id }: { id: number }) {
     state.status === 'error' && (state.error.status === 404 || state.error.code === 'INTERVIEW_NOT_FOUND');
 
   return (
-    <Shell>
+    <Shell breadcrumb={state.status === 'success' ? crumbs(state.data.targetCompany, state.data.targetPosition) : undefined}>
       {state.status === 'loading' && <Loading message="불러오는 중…" />}
 
       {state.status === 'error' && (
@@ -284,14 +304,8 @@ function SavedLoaded({ id }: { id: number }) {
 }
 
 function SavedReport({ interview }: { interview: Interview }) {
-  const navigate = useNavigate();
   return (
     <div>
-      <div className="mx-auto max-w-4xl px-6 pt-6">
-        <button onClick={() => navigate('/interviews')} className="text-sm text-slate-400 hover:text-slate-600" type="button">
-          ← 목록으로
-        </button>
-      </div>
       <InterviewReport
         company={interview.targetCompany ?? null}
         position={interview.targetPosition ?? null}
@@ -307,7 +321,6 @@ function SavedReport({ interview }: { interview: Interview }) {
         }))}
         serverInterviewId={interview.id}
         saved
-        onRestart={() => navigate('/interviews/new')}
       />
     </div>
   );

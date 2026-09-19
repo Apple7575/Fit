@@ -1,6 +1,7 @@
 package com.ssafy.companyanalysis.agent.service;
 
 import com.ssafy.companyanalysis.agent.config.AgentCatalogProperties;
+import com.ssafy.companyanalysis.agent.domain.JobContext;
 import com.ssafy.companyanalysis.agent.domain.Room;
 import com.ssafy.companyanalysis.agent.domain.RoomAgent;
 import com.ssafy.companyanalysis.agent.dto.RoomCreateRequest;
@@ -17,6 +18,7 @@ import com.ssafy.companyanalysis.global.error.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -31,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 class RoomServiceTest {
 
@@ -41,6 +44,7 @@ class RoomServiceTest {
     private JobContextRepository jobContextRepository;
     private CoverLetterRepository coverLetterRepository;
     private CompanyRepository companyRepository;
+    private AutoReviewStarter autoReviewStarter;
 
     @BeforeEach
     void setUp() {
@@ -48,8 +52,18 @@ class RoomServiceTest {
         jobContextRepository = Mockito.mock(JobContextRepository.class);
         coverLetterRepository = Mockito.mock(CoverLetterRepository.class);
         companyRepository = Mockito.mock(CompanyRepository.class);
+        autoReviewStarter = Mockito.mock(AutoReviewStarter.class);
 
         given(roomRepository.save(any(Room.class))).willAnswer(call -> call.getArgument(0));
+        // 저장 시점에 DB 가 채우는 id 를 흉내 낸다. 자동 검토가 방 id 로 걸리므로 필요하다.
+        given(roomRepository.saveAll(any())).willAnswer(call -> {
+            List<Room> rooms = call.getArgument(0);
+            long id = 100;
+            for (Room room : rooms) {
+                org.springframework.test.util.ReflectionTestUtils.setField(room, "id", id++);
+            }
+            return rooms;
+        });
         given(companyRepository.findAllById(any())).willAnswer(call -> {
             Iterable<String> codes = call.getArgument(0);
             return java.util.stream.StreamSupport.stream(codes.spliterator(), false)
@@ -85,7 +99,8 @@ class RoomServiceTest {
     private RoomService service(Set<String> indexed) {
         AgentCatalogProperties properties = new AgentCatalogProperties(indexed);
         return new RoomService(roomRepository, jobContextRepository, coverLetterRepository,
-                companyRepository, new RoomAgentValidator(companyRepository, properties), properties);
+                companyRepository, new RoomAgentValidator(companyRepository, properties), properties,
+                autoReviewStarter);
     }
 
     private RoomService service() {
@@ -247,6 +262,34 @@ class RoomServiceTest {
     }
 
     @Test
+    @DisplayName("자소서에 붙은 공고를 방마다 물려준다 — 방을 열 때마다 다시 등록하지 않는다")
+    void defaultRoomsInheritTheCoverLettersJobContext() {
+        givenCoverLetter("네이버", "서버 개발", "ctx-1");
+        // 목을 먼저 만들어 둔다. given(...) 안에서 다른 목을 세우면 Mockito 가 미완성 스터빙으로 본다.
+        JobContext context = jobContext("ctx-1");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedRooms()).allSatisfy(room ->
+                assertThat(room.getJobContextId()).isEqualTo("ctx-1"));
+    }
+
+    @Test
+    @DisplayName("자소서가 가리키는 공고가 사라졌으면 방은 공고 없이 깐다 — 화면을 막지 않는다")
+    void aVanishedJobContextLeavesTheRoomsWithoutOne() {
+        givenCoverLetter("네이버", "서버 개발", "ctx-gone");
+        given(jobContextRepository.findById("ctx-gone")).willReturn(Optional.empty());
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(savedRooms()).allSatisfy(room ->
+                assertThat(room.getJobContextId()).isNull());
+    }
+
+    @Test
     @DisplayName("채용공고 담당은 비워 둔다 — 공고 URL 을 자소서에 저장하지 않는다")
     void jobPostingAgentStaysEmpty() {
         givenCoverLetter("네이버", "서버 개발");
@@ -335,13 +378,32 @@ class RoomServiceTest {
     }
 
     private void givenCoverLetter(String company, String position) {
+        givenCoverLetter(company, position, null);
+    }
+
+    private void givenCoverLetter(String company, String position, String contextId) {
         CoverLetter letter = Mockito.mock(CoverLetter.class);
         given(letter.getId()).willReturn(LETTER);
         given(letter.getTitle()).willReturn("자소서");
         given(letter.getTargetCompany()).willReturn(company);
         given(letter.getTargetPosition()).willReturn(position);
+        given(letter.getContextId()).willReturn(contextId);
         given(coverLetterRepository.findByIdAndUserId(LETTER, USER)).willReturn(Optional.of(letter));
         given(coverLetterRepository.findById(LETTER)).willReturn(Optional.of(letter));
+    }
+
+    private static JobContext jobContext(String contextId) {
+        JobContext context = Mockito.mock(JobContext.class);
+        given(context.getContextId()).willReturn(contextId);
+        return context;
+    }
+
+    /** 새로 저장된 방 전부. */
+    @SuppressWarnings("unchecked")
+    private List<Room> savedRooms() {
+        org.mockito.ArgumentCaptor<List<Room>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        org.mockito.Mockito.verify(roomRepository).saveAll(captor.capture());
+        return captor.getValue();
     }
 
     /** 새로 저장된 전담 방(에이전트 1명)의 설정을 agentKey 로 모은다. */
@@ -354,5 +416,49 @@ class RoomServiceTest {
                 .collect(java.util.stream.Collectors.toMap(
                         room -> room.getAgents().get(0).agentKey(),
                         room -> room.getAgents().get(0).config()));
+    }
+
+    @Test
+    @DisplayName("방을 깔면 자동 검토가 걸린다 — 사용자가 무엇을 봐 달라고 적기 전에 결과가 보여야 한다")
+    void defaultRoomsAreReviewedWithoutBeingAsked() {
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+        then(autoReviewStarter).should().startAll(eq(USER), captor.capture());
+        // 전담 방 5개 + 총괄 논의 방 1개
+        assertThat(captor.getValue()).hasSize(6);
+    }
+
+    @Test
+    @DisplayName("총괄 논의 방을 먼저 검토한다 — 화면이 처음 여는 방이 그것이다")
+    void theJointRoomIsReviewedFirst() {
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of());
+
+        service().ensureDefaults(USER, LETTER);
+
+        ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+        then(autoReviewStarter).should().startAll(eq(USER), captor.capture());
+        // 만들어진 순서는 전담 방이 먼저다. 총괄 논의 방(마지막 id)이 앞으로 당겨져야 한다.
+        assertThat(captor.getValue().get(0)).isEqualTo(105L);
+    }
+
+    @Test
+    @DisplayName("전에 만들어져 비어 있던 방도 검토 후보로 넘긴다 — 언제 만들어졌는지는 사용자와 상관없다")
+    void roomsMadeEarlierAreReviewedToo() {
+        List<Room> already = new java.util.ArrayList<>(java.util.Arrays.stream(
+                        new String[] {"jd", "company", "position", "news", "writing"})
+                .map(key -> Room.create(USER, LETTER, key, List.of(new RoomAgent(key, Map.of()))))
+                .toList());
+        already.add(Room.create(USER, LETTER, "총괄 논의", List.of(
+                new RoomAgent("writing", Map.of()), new RoomAgent("position", Map.of()))));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(already);
+
+        service().ensureDefaults(USER, LETTER);
+
+        ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+        then(autoReviewStarter).should().startAll(eq(USER), captor.capture());
+        assertThat(captor.getValue()).hasSize(6);
     }
 }

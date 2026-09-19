@@ -8,8 +8,10 @@ from pypdf import PdfWriter
 from ai.jd_coaching.source_ingestion import (
     JdSourceIngestor,
     SafeHttpFetcher,
+    SourceFetchError,
     SourceFetchResult,
     SourceIngestionError,
+    _looks_like_job_posting,
 )
 
 
@@ -38,6 +40,48 @@ class RoutingFakeFetcher:
         raise AssertionError(f"unexpected url: {url}")
 
 
+class ImageAwareRoutingFakeFetcher(RoutingFakeFetcher):
+    """HTML과 이미지 요청을 구분하는 사람인 이미지 공고 재현용 fetcher."""
+
+    def __init__(self, routes: dict[str, SourceFetchResult], image_result: SourceFetchResult):
+        super().__init__(routes)
+        self.image_result = image_result
+        self.image_requested_urls: list[str] = []
+
+    def fetch_image(self, url: str) -> SourceFetchResult:
+        self.image_requested_urls.append(url)
+        return self.image_result
+
+
+class ImageMapRoutingFakeFetcher(RoutingFakeFetcher):
+    """이미지 주소마다 서로 다른 응답을 주는 이미지 후보 순위 테스트용 fetcher."""
+
+    def __init__(self, routes: dict[str, SourceFetchResult], image_routes: dict[str, SourceFetchResult]):
+        super().__init__(routes)
+        self.image_routes = image_routes
+
+    def fetch_image(self, url: str) -> SourceFetchResult:
+        for marker, result in self.image_routes.items():
+            if marker in url:
+                return result
+        raise AssertionError(f"unexpected image url: {url}")
+
+
+class RetryDetailFetcher(RoutingFakeFetcher):
+    """사람인 상세 응답이 첫 요청에만 실패하는 경우를 재현한다."""
+
+    def __init__(self, routes: dict[str, SourceFetchResult]):
+        super().__init__(routes)
+        self.detail_attempts = 0
+
+    def fetch(self, url: str) -> SourceFetchResult:
+        if "view-detail" in url:
+            self.detail_attempts += 1
+            if self.detail_attempts == 1:
+                raise SourceFetchError("temporary detail response failure")
+        return super().fetch(url)
+
+
 def make_docx(text: str) -> bytes:
     document_xml = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -52,6 +96,30 @@ def make_docx(text: str) -> bytes:
 
 
 class JdSourceIngestorTest(unittest.TestCase):
+    def test_job_posting_marker_accepts_spaced_and_saramin_section_labels(self):
+        text = """
+        모집부문
+        클리오BM팀
+        채용포지션
+        클리오BM (대리~차장)
+        직무
+        브랜드 및 카테고리별 상품 전략 수립
+        지원자격
+        관련 경력 4년 이상인 분
+        """
+
+        self.assertTrue(_looks_like_job_posting(text))
+
+    def test_job_posting_marker_accepts_clova_ocr_section_labels(self):
+        text = """
+        업무내용
+        캠프 관리, 차량 적재 및 하차, CS 처리 및 반송 업무
+        자격조건
+        운전면허 소지자, 주 5일 스케줄 근무 가능자
+        """
+
+        self.assertTrue(_looks_like_job_posting(text))
+
     def test_extracts_job_posting_metadata_and_visible_text_from_url(self):
         posting = {
             "@context": "https://schema.org",
@@ -203,6 +271,175 @@ class JdSourceIngestorTest(unittest.TestCase):
             "https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=12345678",
         )
 
+    def test_saramin_title_fills_company_and_position_without_gms(self):
+        shell = SourceFetchResult(
+            content=(
+                "<html><head>"
+                "<title>[(주)아이투맥스] 세일즈포스 CSS팀 개발자 신입/경력 채용(D-23) - 사람인</title>"
+                "</head><body>로딩중...</body></html>"
+            ).encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=55012840",
+        )
+        detail = SourceFetchResult(
+            content=(
+                "<div>담당 업무: Salesforce Platform 개발</div>"
+                "<div>자격 요건: JavaScript 경험 1년 이상</div>"
+            ).encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=55012840",
+        )
+        result = JdSourceIngestor(
+            fetcher=RoutingFakeFetcher({"view-detail": detail, "view?rec_idx": shell})
+        ).from_url("https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=55012840")
+
+        self.assertEqual(result.company_name, "(주)아이투맥스")
+        self.assertEqual(result.position_name, "세일즈포스 CSS팀 개발자 신입/경력 채용")
+
+    def test_saramin_image_only_posting_uses_image_fetcher_for_ocr(self):
+        shell = SourceFetchResult(
+            content=(
+                "<title>[(주)엠클라우독] 프론트엔드 개발자 채용(D-12) - 사람인</title>"
+                "<body>로딩중...</body>"
+            ).encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=54964700",
+        )
+        detail = SourceFetchResult(
+            content='<img src="https://i.ifh.cc/6wv4Da.jpg">'.encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=54964700",
+        )
+        fetcher = ImageAwareRoutingFakeFetcher(
+            {"view-detail": detail, "view?rec_idx": shell},
+            SourceFetchResult(
+                content=b"real-image-bytes", content_type="image/jpeg",
+                final_url="https://g.ifh.cc/6wv4Da.jpg",
+            ),
+        )
+
+        result = JdSourceIngestor(
+            fetcher=fetcher,
+            gms_key="test-key",
+            image_ocr_caller=lambda _key, image, _mime: (
+                "담당 업무: 프론트엔드 개발\n자격 요건: React 경험" if image == b"real-image-bytes" else ""
+            ),
+        ).from_url("https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=54964700")
+
+        self.assertIn("담당 업무: 프론트엔드 개발", result.jd_text)
+        self.assertEqual(fetcher.image_requested_urls, ["https://i.ifh.cc/6wv4Da.jpg"])
+
+    def test_saramin_image_ocr_prefers_largest_candidate_over_document_order(self):
+        from PIL import Image
+
+        def png(width: int, height: int) -> bytes:
+            buffer = io.BytesIO()
+            Image.new("RGB", (width, height), color="white").save(buffer, format="PNG")
+            return buffer.getvalue()
+
+        shell = SourceFetchResult(
+            content='<title>[테스트기업] 데이터 엔지니어 채용(D-10) - 사람인</title>'.encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=10000001",
+        )
+        detail = SourceFetchResult(
+            content=(
+                '<img src="small-1.png"><img src="small-2.png">'
+                '<img src="small-3.png"><img src="actual-flyer.png">'
+            ).encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=10000001",
+        )
+        # 분할 OCR 경로가 아니라 후보 순위만 검증할 수 있도록 타일 기준보다 작게 둔다.
+        large_flyer = png(900, 3000)
+        fetcher = ImageMapRoutingFakeFetcher(
+            {"view-detail": detail, "view?rec_idx": shell},
+            {
+                "small-1": SourceFetchResult(png(100, 100), "image/png", "https://example.test/small-1.png"),
+                "small-2": SourceFetchResult(png(120, 120), "image/png", "https://example.test/small-2.png"),
+                "small-3": SourceFetchResult(png(140, 140), "image/png", "https://example.test/small-3.png"),
+                "actual-flyer": SourceFetchResult(large_flyer, "image/png", "https://example.test/actual-flyer.png"),
+            },
+        )
+
+        result = JdSourceIngestor(
+            fetcher=fetcher,
+            gms_key="test-key",
+            image_ocr_caller=lambda _key, image, _mime: (
+                "모집분야: 데이터 엔지니어\n전형절차: 서류 전형 및 면접" if image == large_flyer else ""
+            ),
+        ).from_url("https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=10000001")
+
+        self.assertIn("모집분야: 데이터 엔지니어", result.jd_text)
+
+    def test_image_ocr_probes_later_candidate_before_tall_non_posting_image(self):
+        from PIL import Image
+
+        banner_buffer = io.BytesIO()
+        Image.new("RGB", (800, 24_001), color="red").save(banner_buffer, format="PNG")
+        flyer_buffer = io.BytesIO()
+        Image.new("RGB", (900, 1_200), color="green").save(flyer_buffer, format="PNG")
+        banner = banner_buffer.getvalue()
+        flyer = flyer_buffer.getvalue()
+        fetcher = ImageMapRoutingFakeFetcher(
+            {
+                "": SourceFetchResult(
+                    content=(
+                        '<title>회사 채용공고 페이지</title>'
+                        '<img src="hero.png"><img src="flyer.png">'
+                    ).encode(),
+                    content_type="text/html; charset=utf-8",
+                    final_url="https://example.test/job/1",
+                )
+            },
+            {
+                "hero.png": SourceFetchResult(
+                    banner, "image/png", "https://example.test/hero.png"
+                ),
+                "flyer.png": SourceFetchResult(
+                    flyer, "image/png", "https://example.test/flyer.png"
+                ),
+            },
+        )
+        call_colors: list[tuple[int, int, int]] = []
+
+        def fake_ocr(_key, image_bytes, _mime_type):
+            color = Image.open(io.BytesIO(image_bytes)).getpixel((0, 0))
+            call_colors.append(color)
+            if color == (0, 128, 0):
+                return "모집부문: 백엔드 개발\n지원자격: Python 경험 3년 이상"
+            return "회사 홍보 배너"
+
+        result = JdSourceIngestor(
+            fetcher=fetcher, gms_key="test-key", image_ocr_caller=fake_ocr
+        ).from_url("https://example.test/job/1")
+
+        self.assertIn("모집부문: 백엔드 개발", result.jd_text)
+        self.assertEqual(call_colors, [(255, 0, 0), (0, 128, 0)])
+
+    def test_saramin_detail_is_retried_once_after_transient_fetch_error(self):
+        shell = SourceFetchResult(
+            content='<title>[테스트기업] 백엔드 개발자 채용(D-10) - 사람인</title>'.encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=10000002",
+        )
+        detail = SourceFetchResult(
+            content=(
+                "<div>담당 업무: API 서버 개발</div>"
+                "<div>자격 요건: Java 경험 3년 이상</div>"
+            ).encode(),
+            content_type="text/html; charset=utf-8",
+            final_url="https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=10000002",
+        )
+        fetcher = RetryDetailFetcher({"view-detail": detail, "view?rec_idx": shell})
+
+        result = JdSourceIngestor(fetcher=fetcher).from_url(
+            "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=10000002"
+        )
+
+        self.assertIn("담당 업무: API 서버 개발", result.jd_text)
+        self.assertEqual(fetcher.detail_attempts, 2)
+
     def test_non_saramin_url_is_not_fetched_twice(self):
         fetcher = FakeFetcher(
             SourceFetchResult(
@@ -333,6 +570,43 @@ class JdSourceIngestorTest(unittest.TestCase):
         ).from_url("https://example.test/job/1")
 
         self.assertIn("담당 업무", result.jd_text)
+
+    def test_image_only_posting_prefers_clova_ocr_over_gemini(self):
+        fetcher = RoutingFakeFetcher({
+            ".png": SourceFetchResult(
+                content=b"fake-image-bytes", content_type="image/png",
+                final_url="https://example.test/flyer.png",
+            ),
+            "": SourceFetchResult(
+                content='<img src="flyer.png">'.encode(),
+                content_type="text/html; charset=utf-8",
+                final_url="https://example.test/job/1",
+            ),
+        })
+        calls: list[str] = []
+
+        def fake_clova(endpoint, secret, image_bytes, mime_type):
+            calls.append(f"clova:{endpoint}:{secret}:{mime_type}")
+            self.assertEqual(image_bytes, b"fake-image-bytes")
+            return "담당 업무: 백엔드 서비스 개발\n자격 요건: 3년 이상 경력"
+
+        def failing_gemini(*_args):
+            raise AssertionError("CLOVA OCR should be preferred")
+
+        result = JdSourceIngestor(
+            fetcher=fetcher,
+            gms_key="gms-key",
+            clova_ocr_endpoint="https://ocr.example.test/general",
+            clova_ocr_secret="clova-secret",
+            clova_ocr_caller=fake_clova,
+            image_ocr_caller=failing_gemini,
+        ).from_url("https://example.test/job/1")
+
+        self.assertIn("담당 업무", result.jd_text)
+        self.assertEqual(
+            calls,
+            ["clova:https://ocr.example.test/general:clova-secret:image/png"],
+        )
 
     def test_image_ocr_reached_even_when_page_has_no_visible_text(self):
         # 공고가 이미지 한 장뿐인 페이지는 title도 없이 <img> 하나만 있는 경우가

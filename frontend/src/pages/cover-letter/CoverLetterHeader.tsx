@@ -20,7 +20,7 @@ export function CoverLetterHeader() {
       <div className="border-b border-slate-200 bg-white">
         <nav
           aria-label="자기소개서 메뉴"
-          className="mx-auto flex max-w-[1720px] flex-wrap items-center gap-1.5 px-5 py-2 lg:px-8"
+          className="mx-auto flex min-h-[50px] max-w-[1720px] flex-wrap items-center gap-1.5 px-5 py-2 lg:px-8"
         >
           {SECTIONS.map((section) => {
             const active = section.to === current.to;
