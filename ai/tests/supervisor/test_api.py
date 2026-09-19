@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
 
 from ai.serve import build_app
+from ai.position_coaching.render import NO_EXPERIENCE_CLAIM_MESSAGE
 from ai.supervisor.api import (
     assemble_supervisor_service,
     app,
@@ -304,11 +305,10 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
             {
                 "agent": "position", "status": "SUCCESS",
                 "result": {
+                    "analysis_status": "NO_EXPERIENCE_CLAIM",
                     "rubric": {"id": "experience-depth-v1"},
-                    "position_context": {
-                        "position_name": "백엔드 개발자",
-                        "priority_requirements": ["Spring 기반 API 개발"],
-                    },
+                    "findings": [],
+                    "message": NO_EXPERIENCE_CLAIM_MESSAGE,
                 },
                 "error": None,
                 "evidence": [], "needs": [], "tool_calls": [], "usage": None, "delegated_from": None,

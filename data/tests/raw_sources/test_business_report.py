@@ -9,6 +9,7 @@ import zipfile
 
 from pipeline.business_report.doc import Document
 from pipeline.raw_sources.business_report import business_report_batch
+from pipeline.raw_sources.chunking_profiles import get_chunking_profile
 from pipeline.raw_sources.dart_archive import DartArchive
 
 
@@ -38,6 +39,72 @@ def build_batch(payload: bytes, *, max_chars: int = 1500):
 
 
 class BusinessReportSourceTest(unittest.TestCase):
+    def test_profile_controls_text_and_table_limits_and_evidence_identity(self):
+        payload = (
+            "<DOCUMENT><TITLE>사업</TITLE><P>" + "가" * 1600 + "</P>"
+            "<TABLE><TR><TD>구분</TD><TD>값</TD></TR><TR><TD>항목</TD><TD>" + "나" * 1600
+            + "</TD></TR></TABLE></DOCUMENT>"
+        ).encode()
+        with tempfile.TemporaryDirectory() as directory:
+            archive_path = Path(directory) / "dart.zip"
+            make_archive(archive_path, [(2024, "20250318000001", payload)])
+            with DartArchive(archive_path) as archive:
+                compact = business_report_batch(
+                    archive, "00000001", profile=get_chunking_profile("structural-800-v1"),
+                )
+                adaptive = business_report_batch(
+                    archive, "00000001", profile=get_chunking_profile("adaptive-v1"),
+                )
+
+        self.assertTrue(all(len(row.content) <= 800 for row in compact.records))
+        self.assertTrue(all(
+            len(row.content) <= (1200 if row.metadata["content_type"] == "TEXT" else 800)
+            for row in adaptive.records
+        ))
+        self.assertTrue(all(row.metadata["chunking_profile"] == "adaptive-v1" for row in adaptive.records))
+        self.assertNotEqual(
+            {row.evidence_id for row in compact.records},
+            {row.evidence_id for row in adaptive.records},
+        )
+
+    def test_rowspan_covers_every_row_it_declares(self):
+        # 우리금융지주 20260313001235 표 825: `영업이익 ROWSPAN=4`가 3행만 덮어 `판매관리비` 행 값이 한 칸 밀렸다.
+        payload = """<DOCUMENT><TITLE>6. 영업부문 (연결)</TITLE>
+          <TABLE>
+            <TR><TH></TH><TH></TH><TH>은행</TH><TH>보험</TH><TH>카드</TH></TR>
+            <TR><TE COLSPAN="2">영업이익</TE><TE>3,520,741</TE><TE>108,040</TE><TE>213,556</TE></TR>
+            <TR><TE ROWSPAN="4">영업이익</TE><TE>순이자손익</TE><TE>6,807,324</TE><TE>(105,758)</TE><TE>756,173</TE></TR>
+            <TR><TE>비이자손익</TE><TE>2,133,050</TE><TE>271,296</TE><TE>212,462</TE></TR>
+            <TR><TE>신용손실</TE><TE>(1,126,171)</TE><TE>(5,833)</TE><TE>(433,302)</TE></TR>
+            <TR><TE>판매관리비</TE><TE>(4,293,462)</TE><TE>(51,665)</TE><TE>(321,777)</TE></TR>
+            <TR><TE COLSPAN="2">영업외손익</TE><TE>(161,553)</TE><TE>3,075</TE><TE>(18,316)</TE></TR>
+          </TABLE></DOCUMENT>""".encode()
+
+        document = Document(payload, rcept_no="20260313001235")
+
+        rows = document.tables[0].m
+        self.assertEqual(rows[5], ["영업이익", "판매관리비", "(4,293,462)", "(51,665)", "(321,777)"])
+        self.assertEqual(rows[6], ["영업외손익", "영업외손익", "(161,553)", "3,075", "(18,316)"])
+        self.assertTrue(all(len(row) == 5 for row in rows))
+
+    def test_rowspan_two_covers_the_next_row(self):
+        # 나노솔루션 20260728000338 매출 표: `기타 품목 COLSPAN=2 ROWSPAN=2`가 다음 행을 덮지 않아
+        # `국 내 | 직납 | 229,577 (3.7%) | | `로 밀렸다.
+        payload = """<DOCUMENT><TITLE>4. 매출 및 수주상황</TITLE>
+          <TABLE>
+            <TR><TH>매출유형</TH><TH>품 목</TH><TH>구 분</TH><TH>판매경로</TH><TH>판매경로별 매출액(비중)</TH></TR>
+            <TR><TD>제품</TD><TD>SAHD30</TD><TD>국 내</TD><TD>직납</TD><TD>4,452,074 (71.3%)</TD></TR>
+            <TR><TD COLSPAN="2" ROWSPAN="2">기타 품목</TD><TD>수 출</TD><TD>직납</TD><TD>62,779 (1.0%) (USD 43,709)</TD></TR>
+            <TR><TD>국 내</TD><TD>직납</TD><TD>229,577 (3.7%)</TD></TR>
+            <TR><TD COLSPAN="4">합 계</TD><TD>6,244,430 (100%)</TD></TR>
+          </TABLE></DOCUMENT>""".encode()
+
+        document = Document(payload, rcept_no="20260728000338")
+
+        rows = document.tables[0].m
+        self.assertEqual(rows[3], ["기타 품목", "기타 품목", "국내", "직납", "229,577 (3.7%)"])
+        self.assertEqual(rows[4], ["합계", "합계", "합계", "합계", "6,244,430 (100%)"])
+
     def test_document_constructor_accepts_existing_bytes_and_receipt_contract(self):
         from pipeline.business_report.extract import parse_one
 
@@ -85,6 +152,16 @@ class BusinessReportSourceTest(unittest.TestCase):
             row.metadata["content_type"] == "TEXT" and "표 내부 문단" in row.content
             for row in batch.records
         ))
+
+    def test_does_not_repeat_text_from_nested_text_tags(self):
+        payload = (
+            "<DOCUMENT><TITLE>II. 사업의 내용</TITLE>"
+            "<P><SPAN>첫 번째 문장</SPAN><SPAN>두 번째 문장</SPAN></P></DOCUMENT>"
+        ).encode()
+
+        document = Document.from_bytes(payload, rcept_no="20250318000001")
+
+        self.assertEqual(document.sections[1].paragraphs, ["첫 번째 문장두 번째 문장"])
 
     def test_excludes_nested_table_container_and_keeps_leaf_table_coordinates(self):
         payload = """<DOCUMENT><TITLE>II. 사업의 내용</TITLE><P>매출 표</P>
@@ -209,12 +286,13 @@ class BusinessReportSourceTest(unittest.TestCase):
             "</TABLE></DOCUMENT>"
         ).encode()
 
-        rejected = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=224_999)
-        accepted = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=225_000)
+        # A(rowspan 2)가 1행까지, B(rowspan 4)가 1~3행을 덮으므로 C는 0열부터 시작해 폭은 60,000이다.
+        rejected = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=179_999)
+        accepted = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=180_000)
 
         self.assertEqual(rejected.tables[0].excluded_reason, "table_too_large")
         self.assertIsNone(accepted.tables[0].excluded_reason)
-        self.assertEqual((len(accepted.tables[0].m), len(accepted.tables[0].m[0])), (3, 75_000))
+        self.assertEqual((len(accepted.tables[0].m), len(accepted.tables[0].m[0])), (3, 60_000))
 
     def test_rejects_when_adjacent_pending_spans_require_multiple_skips(self):
         payload = (
@@ -239,10 +317,13 @@ class BusinessReportSourceTest(unittest.TestCase):
             "</TABLE></DOCUMENT>"
         ).encode()
 
-        document = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=12)
+        # C(rowspan 2)가 2행의 0~3열을 덮으므로 D는 4열로 밀려 표 폭은 5, 셀 수는 15다.
+        document = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=15)
+        rejected = Document.from_bytes(payload, rcept_no="20250318000001", max_table_cells=14)
 
         self.assertIsNone(document.tables[0].excluded_reason)
-        self.assertEqual(document.tables[0].m[2], ["D", "", "", ""])
+        self.assertEqual(document.tables[0].m[2], ["C", "C", "C", "C", "D"])
+        self.assertEqual(rejected.tables[0].excluded_reason, "table_too_large")
 
     def test_invalid_span_is_excluded_instead_of_reaching_matrix_conversion(self):
         payload = b"<DOCUMENT><TABLE><TR><TD COLSPAN='abc'>header</TD></TR></TABLE></DOCUMENT>"

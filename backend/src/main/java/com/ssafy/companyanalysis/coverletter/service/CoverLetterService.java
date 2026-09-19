@@ -54,7 +54,8 @@ public class CoverLetterService {
     @Transactional
     public CoverLetterResponse create(Long userId, CoverLetterSaveRequest request) {
         CoverLetter letter = coverLetterRepository.save(
-                CoverLetter.create(userId, request.title(), request.targetCompany(), request.targetPosition()));
+                CoverLetter.create(userId, request.title(), request.targetCompany(),
+                        request.targetPosition(), request.jobContextId()));
         persistItems(letter.getId(), request.items());
         return toResponse(letter);
     }
@@ -62,7 +63,8 @@ public class CoverLetterService {
     @Transactional
     public CoverLetterResponse update(Long userId, Long id, CoverLetterSaveRequest request) {
         CoverLetter letter = findOwned(userId, id);
-        letter.update(request.title(), request.targetCompany(), request.targetPosition());
+        letter.update(request.title(), request.targetCompany(), request.targetPosition(),
+                request.jobContextId());
         itemRepository.deleteByCoverLetterId(id);
         persistItems(id, request.items());
         return toResponse(letter);
@@ -93,7 +95,7 @@ public class CoverLetterService {
                 .toList();
 
         return new CoverLetterResponse(letter.getId(), letter.getTitle(),
-                letter.getTargetCompany(), letter.getTargetPosition(),
+                letter.getTargetCompany(), letter.getTargetPosition(), letter.getContextId(),
                 letter.getUpdatedAt().toLocalDate().toString(), itemResponses);
     }
 }

@@ -93,6 +93,61 @@ python scripts/build_rag_corpus.py \
 `record_count × embedding_dimension × 4`로 계산한 float32 벡터 본문 예상 바이트다.
 차원은 양수만 허용하며 기본값은 `1024`; 테이블·인덱스·메타데이터 저장량은 포함하지 않는다.
 
+### RAG 문서 임베딩 증분 구축
+
+Flyway V26 적용과 `DATABASE_URL` 설정이 필요하다. 기본 모델은
+`Qwen/Qwen3-Embedding-0.6B`이며 팀 GPU 서버의 vLLM pooling runner로 실행한다. 문서 입력은
+`document_embedding_text` 계약으로 만들고, 질의에만 기업 공식 자료 검색 지시문을
+붙인다. 기존 E5 기준선은 `requirements-embedding-cpu.txt` 또는
+`requirements-embedding-gpu.txt`로 로컬 실행할 수 있다.
+
+```bash
+# 선택 건수만 조회한다. 모델 생성·다운로드·임베딩 저장은 하지 않는다.
+python scripts/build_rag_embeddings.py --corp-code 00126380 --dry-run
+
+# 기존 E5를 비교 기준선으로 로컬 실행한다.
+python scripts/build_rag_embeddings.py \
+  --model intfloat/multilingual-e5-large --device cuda --version document-v1
+```
+
+팀 GPU 서버에서는 기존 Qwen vLLM과 별도인 8001번 포트에 임베딩 API를 띄운다.
+GPU는 팀에 배정된 1번만 사용하며 명시적 CUDA 실행이 실패하면 CPU로 우회하지 않고
+서버 시작도 실패한다. Qwen 프로세스가 팀 할당 메모리를 사용 중이면 먼저 중지해야 한다.
+
+```bash
+# jupyter05의 vLLM 가상환경에서 실행한다.
+# EMBEDDING_API_KEY는 저장소 밖의 보호된 환경 파일에서 주입한다.
+bash scripts/run_rag_embedding_server.sh
+
+# 개발 PC의 data/.env에 같은 EMBEDDING_API_KEY를 둔다.
+# DB는 개발 PC가 읽고 GPU 서버에는 임베딩할 텍스트만 보낸다.
+python scripts/build_rag_embeddings.py \
+  --corp-code 00126380 \
+  --corp-code 00164779 \
+  --source-type DART_BUSINESS_REPORT \
+  --batch-size 32 \
+  --remote-url http://70.12.130.105:8001/v1
+```
+
+vLLM 원격 API 경로는 `POST /v1/embeddings`다. 응답 차원과 벡터 개수가 계약과 다르면 해당
+배치를 저장하지 않는다. 이전 배치까지는 독립 커밋되므로 같은 명령으로 재실행하면
+남은 근거만 처리한다. 이 경로는 기업 에이전트 공개 API가 아니라 GPU 추론 인프라의
+내부 경로다.
+
+기본 모델은 `Qwen/Qwen3-Embedding-0.6B`, 버전은 `document-v1`, 배치는 `32`다.
+기업 코드 생략 시 전체 기업을 대상으로 하며, 알 수 없는 기업 코드는 모델 로드·저장 전에
+거부한다. 정확히 같은 모델·버전에 벡터가 없거나 근거의 `content_hash`가 다른 행만
+`corp_code, evidence_id` 순서로 선택한다. 조회 연결을 닫은 뒤 임베딩하며, 저장은 배치별
+독립 트랜잭션이다. 실패한 배치는 롤백되고 이전 커밋은 남으므로 같은 명령으로 재실행한다.
+
+성공·실패는 stdout 한 줄 JSON이며 실패 종료 코드는 `1`이다. `selected`는 시작 시점의
+변경 대상 수, `unchanged`는 같은 모델·버전·해시로 이미 저장된 수, `embedded`는 이번 실행의
+커밋된 수, `failed`는 실패 배치의 행 수다. 배치 처리 중 오류 JSON에도 이 집계가 포함된다.
+오류 원문은 DB 인증정보 유출을 피하려고 출력하지 않는다. `dimension`은 실제 임베딩 차원이며,
+dry-run에서는 기본 Qwen3 모델의 알려진 차원 `1024`를 쓰고 그 외 모델은 `null`로 표시한다.
+dry-run의 `embedded`와 `failed`는 `0`이다. 동시 코퍼스 수정이 있으면 시작 집계와 처리량은
+달라질 수 있으며, 이미 읽은 행의 수정은 다음 실행에서 해시 불일치로 다시 선택된다.
+
 뉴스는 별도 흐름이다. 수집기는 `news_poc/pipeline/collect.py` 이고, 그 원본을 표준 구조로
 정제·적재본으로 만드는 것은 아래 네 CLI 다. 네트워크를 호출하지 않는다.
 

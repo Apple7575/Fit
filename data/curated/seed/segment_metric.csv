@@ -9405,8 +9405,12 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 00147152,2023,자동차부품,segment_employee_count,605.0000
 00147152,2023,자동차부품,segment_revenue,305366000000.0000
 00147152,2023,제품,segment_revenue,20473000000.0000
+00147152,2024,자동차부 품,segment_revenue,350307000000.0000
 00147152,2024,자동차부품,segment_employee_count,616.0000
+00147152,2024,전동화,segment_revenue,24493000000.0000
+00147152,2025,자동차부 품,segment_revenue,388847000000.0000
 00147152,2025,자동차부품,segment_employee_count,626.0000
+00147152,2025,전동화,segment_revenue,41336000000.0000
 00147222,2021,섬유제조,segment_employee_count,262.0000
 00147222,2021,섬유제품제조,segment_revenue,133745000000.0000
 00147222,2022,섬유제조,segment_employee_count,242.0000
@@ -14711,7 +14715,13 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 00199988,2025,자동차부문,segment_employee_count,175.0000
 00199988,2025,자동차부문,segment_revenue,199244259000.0000
 00199988,2025,전자부문,segment_employee_count,120.0000
+00200275,2021,YTN뉴스퀘어,segment_revenue,9226000000.0000
+00200275,2021,기타,segment_revenue,4152000000.0000
+00200275,2021,기타사업,segment_revenue,675000000.0000
 00200275,2021,방송 등,segment_employee_count,665.0000
+00200275,2021,방송채널사용사업,segment_revenue,107366000000.0000
+00200275,2021,임대사업,segment_revenue,10561000000.0000
+00200275,2021,콘텐츠판매,segment_revenue,6133000000.0000
 00200275,2022,YTN뉴스퀘어,segment_revenue,9056000000.0000
 00200275,2022,기타사업,segment_revenue,4204000000.0000
 00200275,2022,방송 등,segment_employee_count,734.0000
@@ -19818,8 +19828,12 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 00305297,2021,전사,segment_employee_count,409.0000
 00305297,2022,산업용디스플레이,segment_employee_count,456.0000
 00305297,2023,산업용 디스플레이,segment_employee_count,380.0000
+00305297,2024,산업용모니터제조.판매,segment_revenue,297441000000.0000
+00305297,2024,상품/서비스매출,segment_revenue,10547000000.0000
 00305297,2024,전사,segment_employee_count,304.0000
 00305297,2025,산업용 디스플레이,segment_employee_count,274.0000
+00305297,2025,산업용모니터제조 및 판매,segment_revenue,383573000000.0000
+00305297,2025,상품/서비스매출,segment_revenue,13266000000.0000
 00305570,2021,MSO 사업부문,segment_revenue,789182000.0000
 00305570,2021,공통,segment_employee_count,8.0000
 00305570,2021,기타,segment_revenue,0.0000
@@ -23967,6 +23981,8 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 00397058,2021,해외,segment_revenue,39195000000.0000
 00397058,2022,개발직,segment_employee_count,159.0000
 00397058,2022,관리직,segment_employee_count,20.0000
+00397058,2022,서비스,segment_revenue,17611000000.0000
+00397058,2022,해외,segment_revenue,56043000000.0000
 00397058,2023,개발직,segment_employee_count,196.0000
 00397058,2023,관리직,segment_employee_count,20.0000
 00397058,2023,서비스,segment_revenue,23161000000.0000
@@ -30940,8 +30956,14 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 00606886,2025,연구,segment_employee_count,26.0000
 00606886,2025,영업,segment_employee_count,4.0000
 00606886,2025,원료의약품,segment_revenue,22904000000.0000
+00607496,2023,기타,segment_revenue,458401000.0000
+00607496,2023,기타 (반도체 / 전 자기기) 제조장비,segment_revenue,3224356000.0000
 00607496,2023,전사,segment_employee_count,66.0000
+00607496,2023,제품,segment_revenue,18908387000.0000
+00607496,2024,기타,segment_revenue,608259000.0000
+00607496,2024,기타 (반도체 / 전 자기기) 제조장비,segment_revenue,3424924000.0000
 00607496,2024,전사,segment_employee_count,69.0000
+00607496,2024,제품,segment_revenue,14452581000.0000
 00607496,2025,기타,segment_revenue,581839000.0000
 00607496,2025,기타 (반도체 / 전 자기기) 제조장비,segment_revenue,7788921000.0000
 00607496,2025,전사,segment_employee_count,83.0000
@@ -37279,7 +37301,12 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01010615,2025,사이클/아웃도어팀 커뮤니케이션,segment_revenue,17560000000.0000
 01010615,2025,산업 현장용팀 커뮤니케이션,segment_revenue,7922000000.0000
 01010642,2021,서비스,segment_employee_count,788.0000
+01010642,2022,CMO매출 등,segment_revenue,7685000000.0000
+01010642,2022,검체검사서비스,segment_revenue,161428000000.0000
+01010642,2022,기타,segment_revenue,20552000000.0000
 01010642,2022,서비스,segment_employee_count,830.0000
+01010642,2022,세포치료제,segment_revenue,37255000000.0000
+01010642,2022,제대혈보관,segment_revenue,1936000000.0000
 01010642,2023,CDMO 등,segment_revenue,5712000000.0000
 01010642,2023,검체검사서비스,segment_revenue,94194000000.0000
 01010642,2023,기타,segment_revenue,13083000000.0000
@@ -40155,9 +40182,25 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01128622,2025,자산운용,segment_revenue,10953000000.0000
 01128622,2025,전사,segment_employee_count,54.0000
 01128622,2025,포털사업,segment_revenue,4631000000.0000
+01130849,2023,PRTRA Cloud,segment_revenue,1961600000.0000
+01130849,2023,기타,segment_revenue,5920000.0000
+01130849,2023,상품,segment_revenue,4568000.0000
+01130849,2023,서비스,segment_revenue,36817000.0000
+01130849,2023,용역,segment_revenue,3158130000.0000
 01130849,2023,전사,segment_employee_count,78.0000
+01130849,2023,제품,segment_revenue,5296885000.0000
+01130849,2024,상품 / 기타,segment_revenue,127280000.0000
+01130849,2024,용역 / 서비스,segment_revenue,3392728000.0000
 01130849,2024,전사,segment_employee_count,73.0000
+01130849,2024,페트라 사이퍼(Petra Cipher),segment_revenue,2857850000.0000
+01130849,2024,페트라 클라우드서비스,segment_revenue,2488988000.0000
+01130849,2024,페트라(Petra),segment_revenue,2958678000.0000
+01130849,2025,상품 / 기타,segment_revenue,161946000.0000
+01130849,2025,용역 / 서비스,segment_revenue,3613741000.0000
 01130849,2025,전사,segment_employee_count,76.0000
+01130849,2025,페트라 사이퍼(Petra Cipher),segment_revenue,4372099000.0000
+01130849,2025,페트라 클라우드서비스,segment_revenue,2691099000.0000
+01130849,2025,페트라(Petra),segment_revenue,3158268000.0000
 01130885,2021,관리,segment_employee_count,8.0000
 01130885,2021,연구,segment_employee_count,14.0000
 01130885,2021,영업,segment_employee_count,7.0000
@@ -40562,8 +40605,20 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01144028,2025,사무,segment_employee_count,90.0000
 01144028,2025,연구,segment_employee_count,9.0000
 01144028,2025,영업,segment_employee_count,30.0000
+01144569,2021,2차전지,segment_revenue,618000000.0000
+01144569,2021,LCD,segment_revenue,2745000000.0000
+01144569,2021,기타,segment_revenue,113000000.0000
+01144569,2021,수출,segment_revenue,8191000000.0000
 01144569,2021,전사업부,segment_employee_count,48.0000
+01144569,2022,2차전지,segment_revenue,304000000.0000
+01144569,2022,LCD,segment_revenue,1168000000.0000
+01144569,2022,기타,segment_revenue,6000000.0000
+01144569,2022,수출,segment_revenue,4739000000.0000
 01144569,2022,전사업부,segment_employee_count,39.0000
+01144569,2023,2차전지,segment_revenue,24746000000.0000
+01144569,2023,LCD편광필름,segment_revenue,228000000.0000
+01144569,2023,기타,segment_revenue,6000000.0000
+01144569,2023,수출,segment_revenue,50000000.0000
 01144569,2023,전사업부,segment_employee_count,51.0000
 01144569,2024,2차전지,segment_revenue,16140000000.0000
 01144569,2024,LCD,segment_revenue,228000000.0000
@@ -41192,6 +41247,8 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01182259,2024,"기타(정제,경질등)",segment_revenue,2786000000.0000
 01182259,2024,상품,segment_revenue,333000000.0000
 01182259,2024,제품,segment_revenue,120544000000.0000
+01182259,2025,건강기능식품,segment_revenue,78700000000.0000
+01182259,2025,일반의약품(OTC),segment_revenue,57600000000.0000
 01182550,2021,상품매출,segment_revenue,69960051000.0000
 01182550,2021,연구/관리,segment_employee_count,123.0000
 01182550,2021,유전체진단서비스매출,segment_revenue,7867145000.0000
@@ -43450,17 +43507,29 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01309388,2025,제품,segment_revenue,12251000000.0000
 01309421,2023,가공 사업부,segment_employee_count,23.0000
 01309421,2023,관리부서,segment_employee_count,15.0000
+01309421,2023,상품매출(주2),segment_revenue,46255000.0000
 01309421,2023,연구부서,segment_employee_count,4.0000
+01309421,2023,임가공매출,segment_revenue,8862399000.0000
+01309421,2023,임대료매출,segment_revenue,649000000.0000
 01309421,2023,장비제조 사업부,segment_employee_count,
 01309421,2023,장비제조사업부,segment_employee_count,14.0000
+01309421,2023,제품,segment_revenue,5755460000.0000
 01309421,2024,가공사업부,segment_employee_count,23.0000
 01309421,2024,관리부서,segment_employee_count,15.0000
+01309421,2024,상품매출(주2),segment_revenue,46255000.0000
 01309421,2024,연구부서,segment_employee_count,4.0000
+01309421,2024,임가공매출,segment_revenue,11063916000.0000
+01309421,2024,임대료매출,segment_revenue,523319000.0000
 01309421,2024,장비제조사업부,segment_employee_count,18.0000
+01309421,2024,제품,segment_revenue,4445739000.0000
 01309421,2025,가공사업부,segment_employee_count,24.0000
 01309421,2025,관리부서,segment_employee_count,15.0000
+01309421,2025,상품매출 (주2),segment_revenue,46255000.0000
 01309421,2025,연구부서,segment_employee_count,3.0000
+01309421,2025,임가공매출,segment_revenue,8292650000.0000
+01309421,2025,임대료매출,segment_revenue,661238000.0000
 01309421,2025,장비제조사업부,segment_employee_count,19.0000
+01309421,2025,제품,segment_revenue,5947757000.0000
 01309795,2021,제품매출,segment_revenue,36341315000.0000
 01309795,2021,회사전체,segment_employee_count,32.0000
 01309795,2022,제품매출,segment_revenue,28439998000.0000
@@ -44655,6 +44724,9 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01373709,2025,제품매출,segment_revenue,1302000000.0000
 01374443,2024,개발본부,segment_employee_count,4.0000
 01374443,2024,경영관리본부,segment_employee_count,6.0000
+01374443,2024,기술이전수익,segment_revenue,666667000.0000
+01374443,2024,기타수익,segment_revenue,131341000.0000
+01374443,2024,물질이전수익,segment_revenue,2107025000.0000
 01374443,2024,연구소,segment_employee_count,31.0000
 01374443,2025,개발본부,segment_employee_count,
 01374443,2025,경영관리본부,segment_employee_count,
@@ -45845,11 +45917,9 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01472930,2023,연구,segment_employee_count,49.0000
 01472930,2024,관리,segment_employee_count,7.0000
 01472930,2024,사업,segment_employee_count,114.0000
+01472930,2024,서비스,segment_revenue,12272000000.0000
 01472930,2024,연구,segment_employee_count,34.0000
-01472930,2024,제품 기술비,segment_revenue,1790000000.0000
-01472930,2024,제품 라이선스비,segment_revenue,2929000000.0000
-01472930,2024,제품 운영비,segment_revenue,1932000000.0000
-01472930,2024,프로페셔널 서비스,segment_revenue,8550000000.0000
+01472930,2024,제품,segment_revenue,2929000000.0000
 01472930,2025,관리,segment_employee_count,8.0000
 01472930,2025,사업,segment_employee_count,141.0000
 01472930,2025,서비스,segment_revenue,17604000000.0000

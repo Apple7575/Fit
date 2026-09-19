@@ -4,6 +4,7 @@ import csv
 from collections import Counter
 import io
 from dataclasses import dataclass
+import json
 from pathlib import Path, PurePosixPath
 import re
 import zipfile
@@ -12,6 +13,30 @@ import zipfile
 _REQUIRED_COLUMNS = frozenset({"corp_name", "corp_code", "year", "rcept_no", "rcept_dt", "file"})
 _CORP_CODE = re.compile(r"^[0-9]{8}$")
 _RECEIPT = re.compile(r"^[0-9]{14}$")
+
+
+def extract_archive(path: str | Path, destination: str | Path) -> Path:
+    """ZIP을 한 번만 풀고 완료 마커가 있으면 재사용한다."""
+    archive_path = Path(path).resolve()
+    destination_path = Path(destination).resolve()
+    marker = destination_path / ".complete"
+    signature = {"path": str(archive_path), "size": archive_path.stat().st_size,
+                 "mtime_ns": archive_path.stat().st_mtime_ns}
+    if marker.exists():
+        try:
+            if json.loads(marker.read_text(encoding="utf-8")) == signature:
+                return destination_path
+        except (OSError, json.JSONDecodeError):
+            pass
+    destination_path.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive_path) as archive:
+        for entry in archive.infolist():
+            target = (destination_path / entry.filename).resolve()
+            if target != destination_path and destination_path not in target.parents:
+                raise ValueError(f"ZIP 경로가 추출 디렉터리를 벗어납니다: {entry.filename}")
+        archive.extractall(destination_path)
+    marker.write_text(json.dumps(signature, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    return destination_path
 
 
 @dataclass(frozen=True)
@@ -34,12 +59,16 @@ class DartArchive:
         self._excluded: Counter[str] = Counter()
         self._failures: list[tuple[str, int, str, str]] = []
         self._manifest_rows = 0
-        self._zip = zipfile.ZipFile(self.path)
-        try:
-            self._documents = self._load_manifest()
-        except Exception:
-            self._zip.close()
-            raise
+        self._zip = None
+        if self.path.is_dir():
+            self._documents = self._load_manifest_from_directory()
+        else:
+            self._zip = zipfile.ZipFile(self.path)
+            try:
+                self._documents = self._load_manifest()
+            except Exception:
+                self._zip.close()
+                raise
 
     def __enter__(self) -> "DartArchive":
         return self
@@ -48,7 +77,8 @@ class DartArchive:
         self.close()
 
     def close(self) -> None:
-        self._zip.close()
+        if self._zip is not None:
+            self._zip.close()
 
     def documents(self, corp_code: str | None = None, *, years: set[int] | None = None) -> tuple[DartDocumentRef, ...]:
         return tuple(
@@ -70,7 +100,9 @@ class DartArchive:
         )
 
     def read(self, ref: DartDocumentRef) -> bytes:
-        return self._zip.read(ref.entry_name)
+        if self._zip is not None:
+            return self._zip.read(ref.entry_name)
+        return (self.path / ref.entry_name).read_bytes()
 
     def inventory(self) -> dict[str, object]:
         years = sorted({ref.year for ref in self._documents})
@@ -122,6 +154,57 @@ class DartArchive:
                 rcept_no=receipt, rcept_dt=(row.get("rcept_dt") or "").strip(),
                 report_name=(row.get("report_nm") or "").strip(), entry_name=entry.filename,
                 size=entry.file_size,
+            ))
+        return tuple(sorted(refs, key=lambda item: (item.corp_code, item.year, item.rcept_no)))
+
+    def _load_manifest_from_directory(self) -> tuple[DartDocumentRef, ...]:
+        candidates: list[tuple[Path, list[dict[str, str]]]] = []
+        for entry in self.path.rglob("*.csv"):
+            text = entry.read_text(encoding="utf-8-sig")
+            reader = csv.DictReader(io.StringIO(text), skipinitialspace=True)
+            names = {name.strip() for name in reader.fieldnames if name} if reader.fieldnames else set()
+            if _REQUIRED_COLUMNS.issubset(names):
+                candidates.append((entry, list(reader)))
+        if len(candidates) != 1:
+            raise ValueError(f"사업보고서 manifest CSV가 1개여야 합니다: {len(candidates)}개")
+        manifest, rows = candidates[0]
+        self._manifest_rows = len(rows)
+        entries_by_name: dict[str, list[Path]] = {}
+        for entry in self.path.rglob("*"):
+            if entry.is_file() and entry.name != ".complete":
+                entries_by_name.setdefault(entry.name, []).append(entry)
+        refs: list[DartDocumentRef] = []
+        seen_company_year: set[tuple[str, int]] = set()
+        seen_receipts: set[str] = set()
+        for index, row in enumerate(rows, 2):
+            corp_code = (row.get("corp_code") or "").strip()
+            receipt = (row.get("rcept_no") or "").strip()
+            filename = PurePosixPath((row.get("file") or "").strip()).name
+            try:
+                year = int((row.get("year") or "").strip())
+            except ValueError as error:
+                raise ValueError(f"manifest {manifest.name}:{index} year가 잘못되었습니다") from error
+            if not _CORP_CODE.fullmatch(corp_code) or not _RECEIPT.fullmatch(receipt):
+                raise ValueError(f"manifest {manifest.name}:{index} 식별자가 잘못되었습니다")
+            if (corp_code, year) in seen_company_year:
+                raise ValueError(f"manifest에 중복 기업·연도가 있습니다: {corp_code}/{year}")
+            if receipt in seen_receipts:
+                raise ValueError(f"manifest에 중복 접수번호가 있습니다: {receipt}")
+            matches = entries_by_name.get(filename, [])
+            if not matches:
+                self._excluded["manifest_missing_xml"] += 1
+                self._failures.append((corp_code, year, receipt, filename))
+                continue
+            if len(matches) != 1:
+                raise ValueError(f"manifest XML 연결이 유일하지 않습니다: {filename} ({len(matches)}건)")
+            seen_company_year.add((corp_code, year))
+            seen_receipts.add(receipt)
+            entry = matches[0]
+            refs.append(DartDocumentRef(
+                corp_code=corp_code, corp_name=(row.get("corp_name") or "").strip(), year=year,
+                rcept_no=receipt, rcept_dt=(row.get("rcept_dt") or "").strip(),
+                report_name=(row.get("report_nm") or "").strip(),
+                entry_name=entry.relative_to(self.path).as_posix(), size=entry.stat().st_size,
             ))
         return tuple(sorted(refs, key=lambda item: (item.corp_code, item.year, item.rcept_no)))
 

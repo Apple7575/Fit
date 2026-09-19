@@ -142,14 +142,25 @@ class ExperienceAnalysisOutputTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "verdict"):
             self.validate(output)
 
-    def test_rejects_fabricated_quote_wrong_offset_and_unknown_document(self):
+    def test_repairs_wrong_offset_when_quote_exists_in_document(self):
+        wrong_offset = valid_output()
+        claim = wrong_offset["findings"][0]["claim"]
+        expected_end = claim["end_offset"]
+        claim["end_offset"] -= 1
+        claim["start_offset"] += 1
+
+        validated = self.validate(wrong_offset)
+
+        repaired = validated["findings"][0]["claim"]
+        self.assertEqual(repaired["start_offset"], 0)
+        self.assertEqual(repaired["end_offset"], expected_end)
+        self.assertEqual(repaired["quote"], claim["quote"])
+
+    def test_rejects_fabricated_quote_and_unknown_document(self):
         variants = []
         fabricated = valid_output()
         fabricated["findings"][0]["claim"]["quote"] = "전환율을 30% 높였습니다."
         variants.append(fabricated)
-        wrong_offset = valid_output()
-        wrong_offset["findings"][0]["claim"]["end_offset"] -= 1
-        variants.append(wrong_offset)
         unknown_document = valid_output()
         unknown_document["findings"][0]["claim"]["document_id"] = "unknown"
         variants.append(unknown_document)

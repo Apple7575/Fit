@@ -17,12 +17,14 @@ SCRIPTS = DATA / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import build_rag_corpus
+import load_rag_corpus_staging
 from pipeline.rag_corpus.load import BuildResult
 from pipeline.rag_corpus.source import CompanySourceRows
 from pipeline.rag_corpus.transform import profile_record
 from pipeline.raw_sources.models import EvidenceBatch
 from pipeline.raw_sources.business_report import BusinessReportSource
 from pipeline.raw_sources.dart_archive import DartArchive
+from pipeline.raw_sources.staging import stage_batch
 
 
 FIRST = "00126380"
@@ -100,6 +102,23 @@ def result(corp_code):
 
 
 class BuildRagCorpusCliTest(unittest.TestCase):
+    def test_staging_loader_replaces_company_without_reading_xml(self):
+        factory = ConnectionFactory([FIRST])
+        with tempfile.TemporaryDirectory() as directory:
+            staging_dir = Path(directory)
+            stage_batch(
+                staging_dir, FIRST, EvidenceBatch([], {"documents": 0}, {}),
+                source_signature="archive-v1",
+            )
+            with patch.object(load_rag_corpus_staging, "replace_business_reports") as replace:
+                summary = load_rag_corpus_staging.load_staging(
+                    factory, staging_dir, corp_codes=[FIRST], dry_run=False,
+                )
+
+        self.assertEqual(summary["company_count"], 1)
+        self.assertEqual(summary["record_count"], 0)
+        replace.assert_called_once()
+
     # 이 테스트가 막는 결함: 전용 모드를 선언해도 DART archive를 전달할 수 없는 경우.
     def test_parse_args_accepts_business_report_only_with_dart_archive(self):
         args = build_rag_corpus.parse_args([
@@ -108,6 +127,23 @@ class BuildRagCorpusCliTest(unittest.TestCase):
 
         self.assertTrue(args.business_report_only)
         self.assertEqual(args.dart_archive, Path("dart-reports.zip"))
+
+    def test_parse_args_accepts_json_output_path(self):
+        args = build_rag_corpus.parse_args(["--dry-run", "--output", "result.json"])
+
+        self.assertEqual(args.output, Path("result.json"))
+
+    def test_parse_args_accepts_parallel_workers_and_extract_dir(self):
+        args = build_rag_corpus.parse_args([
+            "--business-report-only", "--dart-archive", "reports.zip",
+            "--workers", "4", "--extract-dir", "dart-cache", "--staging-dir", "rag-stage",
+            "--chunking-profile", "adaptive-v1",
+        ])
+
+        self.assertEqual(args.workers, 4)
+        self.assertEqual(args.extract_dir, Path("dart-cache"))
+        self.assertEqual(args.staging_dir, Path("rag-stage"))
+        self.assertEqual(args.chunking_profile, "adaptive-v1")
 
     # 이 테스트가 막는 결함: 전용 모드의 잘못된 옵션 조합이 DB 접속 뒤에 발견되는 경우.
     def test_main_rejects_business_report_only_without_archive_before_database_connection(self):
@@ -214,7 +250,8 @@ class BuildRagCorpusCliTest(unittest.TestCase):
             with zipfile.ZipFile(archive_path, "w") as archive_file:
                 archive_file.writestr(
                     "dart_local/company_reports.csv",
-                    "corp_name,corp_code,year,rcept_no,rcept_dt,file\n",
+                    "corp_name,corp_code,year,rcept_no,rcept_dt,file\n"
+                    f"테스트기업,{FIRST},2024,20250318000001,20250318,missing.xml\n",
                 )
             with patch.object(build_rag_corpus, "run", return_value={"failures": []}) as run, \
                  patch.object(sys, "argv", [
@@ -225,6 +262,32 @@ class BuildRagCorpusCliTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertTrue(run.call_args.kwargs["business_report_only"])
+        self.assertEqual(run.call_args.args[1], [FIRST])
+
+    def test_main_uses_staging_path_with_one_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive_path = Path(directory) / "dart.zip"
+            extract_dir = Path(directory) / "extracted"
+            staging_dir = Path(directory) / "staging"
+            extract_dir.mkdir()
+            (extract_dir / ".complete").write_text("archive-signature", encoding="utf-8")
+            with zipfile.ZipFile(archive_path, "w") as archive_file:
+                archive_file.writestr(
+                    "dart_local/company_reports.csv",
+                    "corp_name,corp_code,year,rcept_no,rcept_dt,file\n"
+                    f"테스트기업,{FIRST},2024,20250318000001,20250318,missing.xml\n",
+                )
+            with patch.object(build_rag_corpus, "extract_archive", return_value=extract_dir), \
+                 patch.object(build_rag_corpus, "run_parallel_business_reports", return_value={"failures": []}) as parallel, \
+                 patch.object(sys, "argv", [
+                     "build_rag_corpus.py", "--dry-run", "--business-report-only",
+                     "--dart-archive", str(archive_path), "--workers", "1",
+                     "--staging-dir", str(staging_dir),
+                 ]), redirect_stdout(io.StringIO()):
+                exit_code = build_rag_corpus.main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(parallel.call_args.kwargs["staging_dir"], staging_dir)
 
     # 이 테스트가 막는 결함: 플래그 없는 기존 모드에서 정본 조회·외부 원천의 처리 순서가 바뀌는 경우.
     def test_default_mode_keeps_loading_master_sources_before_external_provider(self):
