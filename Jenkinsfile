@@ -307,7 +307,7 @@ pipeline {
                         # 직전 develop 이라 병합된 브랜치의 변경이 그대로 잡힌다.
                         if [ "${FORCE_SEED_LOAD:-false}" != "true" ]; then
                             if ! git diff --name-only HEAD~1 HEAD 2>/dev/null \
-                                 | grep -qE '^data/(curated/seed|config)/'; then
+                                 | grep -qE '^data/(curated/seed|config)/|^data/scripts/(ci_load_seed[.]sh|load_)'; then
                                 echo "시드·설정 변경이 없습니다. 건너뜁니다. (FORCE_SEED_LOAD 로 강제 가능)"
                                 exit 0
                             fi
