@@ -77,6 +77,143 @@ def parse_xml_bytes(raw: bytes, name: str = "<bytes>"):
     raise RuntimeError(f"디코딩 실패: {name}")
 
 
+def parse_xml_bytes_strict(raw: bytes, name: str = "<bytes>"):
+    """RAG 경로에서 복구하되, 원문이 복구한 루트까지 닫혔는지 확인한다."""
+    for enc in ("utf-8", "cp949", "euc-kr"):
+        try:
+            text = raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+        if text.lstrip().startswith("<?xml"):
+            text = text.split("?>", 1)[-1]
+        parser = etree.XMLParser(recover=True, huge_tree=True, resolve_entities=False)
+        root = etree.fromstring(text.encode("utf-8"), parser)
+        if root is None:
+            raise etree.XMLSyntaxError("XML root could not be recovered", 0, 0, 0)
+        if not _ends_with_root_closing_tag(text, root):
+            raise etree.XMLSyntaxError("XML payload is missing its root closing tag", 0, 0, 0)
+        return root, enc
+    raise RuntimeError(f"디코딩 실패: {name}")
+
+
+def _ends_with_root_closing_tag(text: str, root) -> bool:
+    """실제 markup의 root 종료 태그만 허용한다.
+
+    `recover=True`는 잘린 comment나 CDATA도 root 아래로 복구한다. 원문을
+    lexical하게 훑어 그 내부와 attribute quote의 문자열을 종료 태그로 오인하지 않는다.
+    """
+    local_name = root.tag.rsplit("}", 1)[-1] if isinstance(root.tag, str) else ""
+    tag = f"{root.prefix}:{local_name}" if root.prefix else local_name
+    if not tag:
+        return False
+
+    index = 0
+    while index < len(text):
+        if text[index] != "<":
+            index += 1
+            continue
+        if text.startswith("<!--", index):
+            end = text.find("-->", index + 4)
+            if end < 0:
+                return False
+            index = end + 3
+            continue
+        if text.startswith("<![CDATA[", index):
+            end = text.find("]]>", index + 9)
+            if end < 0:
+                return False
+            index = end + 3
+            continue
+        if text.startswith("<?", index):
+            end = text.find("?>", index + 2)
+            if end < 0:
+                return False
+            index = end + 2
+            continue
+
+        root_close_end = _root_closing_tag_end(text, index, tag)
+        if root_close_end is not None:
+            if not text[root_close_end:].strip():
+                return True
+            index = root_close_end
+            continue
+
+        if text.startswith("<!", index):
+            end = _declaration_end(text, index)
+        else:
+            end = _markup_end(text, index)
+        if end is None:
+            return False
+        if end < 0:
+            index = -end
+        else:
+            index = end
+    return False
+
+
+def _root_closing_tag_end(text: str, index: int, tag: str) -> int | None:
+    prefix = f"</{tag}"
+    if not text.startswith(prefix, index):
+        return None
+    index += len(prefix)
+    while index < len(text) and text[index].isspace():
+        index += 1
+    return index + 1 if index < len(text) and text[index] == ">" else None
+
+
+def _markup_end(text: str, start: int) -> int | None:
+    quote = None
+    index = start + 1
+    while index < len(text):
+        char = text[index]
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        elif char == "<":
+            return -index
+        elif char == ">":
+            return index + 1
+        index += 1
+    return None
+
+
+def _declaration_end(text: str, start: int) -> int | None:
+    quote = None
+    brackets = 0
+    index = start + 2
+    while index < len(text):
+        char = text[index]
+        if quote:
+            if char == quote:
+                quote = None
+            index += 1
+            continue
+        if text.startswith("<!--", index):
+            end = text.find("-->", index + 4)
+            if end < 0:
+                return None
+            index = end + 3
+            continue
+        if text.startswith("<?", index):
+            end = text.find("?>", index + 2)
+            if end < 0:
+                return None
+            index = end + 2
+            continue
+        if char in ("'", '"'):
+            quote = char
+        elif char == "[":
+            brackets += 1
+        elif char == "]" and brackets:
+            brackets -= 1
+        elif char == ">" and not brackets:
+            return index + 1
+        index += 1
+    return None
+
+
 def load_xml(path: Path):
     """사업보고서 XML 파일 → (root, 인코딩). 해석은 parse_xml_bytes 가 한다."""
     path = Path(path)
@@ -107,7 +244,10 @@ def matrix(table, p: Patterns) -> list[list[str]]:
             for dc in range(cs):
                 grid[(r, c + dc)] = val
                 if rs > 1:
-                    pending[c + dc] = (rs - 1, val)
+                    # 남은 행 수는 이 행을 포함해 rs다. 행 끝에서 1 줄어 다음 rs-1개 행을 덮는다.
+                    # 예전에는 rs-1을 넣고 같은 행 끝에서 바로 줄여 ROWSPAN=2가 자기 행만 덮었다
+                    # (우리금융지주 20260313001235 표 825의 `판매관리비` 행이 한 칸 밀린 원인).
+                    pending[c + dc] = (rs, val)
             c += cs
         pending = {k: (n - 1, v) for k, (n, v) in pending.items() if n - 1 > 0}
         r += 1

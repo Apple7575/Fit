@@ -33,9 +33,10 @@ _SIZED_TYPES = ("VARCHAR", "NUMERIC", "CHAR", "DECIMAL")
 # 앞에서부터 startswith 로 맞춰 보므로 **긴 이름을 먼저** 둔다. "INT" 가 "INTEGER"
 # 앞에 오면 INTEGER 가 INT 로 잘리고 "EGER" 가 남는다.
 _PLAIN_TYPES = (
-    "BIGINT", "INTEGER", "INT", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
-    "JSONB", "JSON", "DATE", "TIMESTAMPTZ", "TIMESTAMP", "UUID",
+    "BIGINT[]", "BIGINT", "INTEGER", "INT", "SMALLINT", "BOOLEAN", "TEXT[]", "TEXT",
+    "JSONB", "JSON", "DATE", "TIMESTAMPTZ", "TIMESTAMP", "UUID", "BYTEA",
 )
+_TYPE_ALIASES = {"INT": "INTEGER"}
 _CONSTRAINT_STARTS = ("CONSTRAINT", "PRIMARY KEY", "UNIQUE", "CHECK", "FOREIGN KEY", "EXCLUDE")
 
 
@@ -180,13 +181,13 @@ def _parse_type(definition: str) -> tuple[str, str]:
     text = definition.strip()
     upper = text.upper()
     for name in _SIZED_TYPES:
-        if upper.startswith(name):
+        if re.match(rf"{name}(?=\s|\(|$)", upper):
             m = re.match(rf"{name}\s*(\(\s*\d+\s*(?:,\s*\d+\s*)?\))?", text, re.IGNORECASE)
             size = (m.group(1) or "").replace(" ", "")
             return name + size, text[m.end():].strip()
     for name in _PLAIN_TYPES:
-        if upper.startswith(name):
-            return name, text[len(name):].strip()
+        if re.match(rf"{re.escape(name)}(?=\s|$)", upper):
+            return _TYPE_ALIASES.get(name, name), text[len(name):].strip()
     raise ValueError(f"모르는 컬럼 타입: {definition!r}")
 
 
