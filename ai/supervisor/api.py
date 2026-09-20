@@ -6,12 +6,14 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException
 
+from ai.company_analysis.api import get_company_chat_service
 from ai.jd_coaching.api import get_analysis_service
 from ai.jd_coaching.baseline import load_qwen_config
 from ai.news_intelligence.api import get_news_service
 from ai.position_coaching.api import get_position_service
 from ai.supervisor.adapters import (
     AgentRegistry,
+    CompanyAgentAdapter,
     JdAgentAdapter,
     NewsAgentAdapter,
     PositionAgentAdapter,
@@ -39,8 +41,10 @@ def assemble_supervisor_service(
     position_provider: Callable[[], Any],
     writing_provider: Callable[[], Any],
     news_provider: Callable[[], Any] | None = None,
+    company_provider: Callable[[], Any] | None = None,
 ) -> SupervisorService:
     resolved_news_provider = news_provider or get_news_service
+    resolved_company_provider = company_provider or get_company_chat_service
     registry = AgentRegistry(
         [
             # 총괄 아래에서 실행되는 담당의 조회는 모두 도구 프록시를 거친다.
@@ -48,6 +52,7 @@ def assemble_supervisor_service(
             PositionAgentAdapter(position_provider),
             WritingAgentAdapter(writing_provider),
             NewsAgentAdapter(lambda: instrument_news_service(resolved_news_provider())),
+            CompanyAgentAdapter(resolved_company_provider),
         ]
     )
     return SupervisorService(build_supervisor_graph(supervisor_model, registry))
@@ -71,6 +76,7 @@ def get_supervisor_service() -> SupervisorService:
         position_provider=get_position_service,
         writing_provider=get_writing_service,
         news_provider=get_news_service,
+        company_provider=get_company_chat_service,
     )
 
 
@@ -99,6 +105,7 @@ def create_run(
             and request.agent_contexts.position is None
             and request.agent_contexts.writing is None
             and request.agent_contexts.news is None
+            and request.agent_contexts.company is None
         ):
             raise NoAvailableAgentError("no agent context was provided")
         if request.lead is not None and getattr(request.agent_contexts, request.lead) is None:

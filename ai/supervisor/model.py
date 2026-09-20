@@ -16,7 +16,7 @@ PLAN_SCHEMA = {
         "selected_agents": {
             "type": "array",
             "minItems": 1,
-            "items": {"type": "string", "enum": ["jd", "position", "writing", "news"]},
+            "items": {"type": "string", "enum": ["jd", "position", "writing", "news", "company"]},
         },
         "reason": {"type": "string", "minLength": 1},
     },
@@ -88,6 +88,7 @@ class QwenSupervisorModel:
                 "position": "백엔드 경험의 문제·행동·검증·결과 구체성 검토",
                 "writing": "자기소개서 첨삭 또는 작성 방식 설명",
                 "news": "기업·산업·직무 변화의 기사 근거와 JD 관련성 분석",
+                "company": "공시(사업보고서·확정 재무 지표) 기반 기업 분석 리포트와 기업 관련 질의응답. 뉴스·주가·평판은 다루지 않음",
             },
         }
         if validation_error is not None:

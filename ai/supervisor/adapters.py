@@ -135,6 +135,30 @@ class NewsAgentAdapter:
         return response.model_dump(mode="json")
 
 
+class CompanyAgentAdapter:
+    """기업 분석 담당. 총괄이 든 대화를 history 로 넘기고 저장은 하지 않는다(answer 는 stateless)."""
+
+    name = "company"
+
+    def __init__(self, service: Any) -> None:
+        self._service_provider = service if callable(service) else lambda: service
+
+    def is_available(self, context: Mapping[str, Any] | None) -> bool:
+        return bool(context and context.get("corp_code"))
+
+    def execute(self, instruction, documents, conversation, context, prior_results=()):
+        history = [
+            {"role": str(item.get("role", "USER")), "content": str(item.get("content", ""))}
+            for item in conversation
+            if isinstance(item, Mapping)
+        ]
+        return self._service_provider().answer(
+            corp_code=context["corp_code"],
+            message=instruction,
+            history=history,
+        )
+
+
 class AgentRegistry:
     def __init__(self, adapters: Sequence[SupervisorAgentAdapter]) -> None:
         self._adapters = {adapter.name: adapter for adapter in adapters}
