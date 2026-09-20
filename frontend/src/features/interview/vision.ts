@@ -250,7 +250,10 @@ function buildSlouchEvents(neck: number[], t: number[]): ClipEvent[] {
   return events;
 }
 
-// 임계값(초안)
+/*
+ * 아래 숫자도 일반적인 권장 범위지 정답이 아니다 (delivery.ts 의 임계값과 같은 성격).
+ * 화면에서는 단정 대신 "조금 ~한 편"으로 적고, 재지 못한 경우는 warn 이 아니라 none 으로 둔다.
+ */
 export const FRAMING_OK = 0.8;
 export const FRONTAL_OK = 0.7;
 export const GAZE_OK = 0.6;
@@ -273,46 +276,47 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     rows.push(
       m.inFrameRatio >= FRAMING_OK
         ? row('얼굴 위치', pct(m.inFrameRatio), 'good')
-        : row('얼굴 위치', pct(m.inFrameRatio), 'warn', '얼굴을 화면 가운데에 두세요'),
+        : row('얼굴 위치', pct(m.inFrameRatio), 'warn', '화면을 조금 벗어난 편이에요. 가운데에 두면 좋아요'),
     );
     rows.push(
       m.frontalRatio >= FRONTAL_OK
         ? row('정면 유지', pct(m.frontalRatio), 'good')
-        : row('정면 유지', pct(m.frontalRatio), 'warn', '고개를 정면으로 향해 보세요'),
+        : row('정면 유지', pct(m.frontalRatio), 'warn', '고개가 조금 돌아간 편이에요'),
     );
     rows.push(
       m.gazeRatio >= GAZE_OK
         ? row('카메라 응시', pct(m.gazeRatio), 'good')
-        : row('카메라 응시', pct(m.gazeRatio), 'warn', '렌즈를 보며 말해 보세요'),
+        : row('카메라 응시', pct(m.gazeRatio), 'warn', '시선이 렌즈를 조금 비껴간 편이에요'),
     );
     rows.push(
       m.headMovement <= MOVEMENT_WARN
         ? row('고개 흔들림', '안정적', 'good')
-        : row('고개 흔들림', '잦음', 'warn', '고개 움직임을 줄여 보세요'),
+        : row('고개 흔들림', '조금 잦음', 'warn', '고개가 자주 움직인 편이에요'),
     );
     rows.push(
       m.headDownRatio <= HEAD_DOWN_WARN
         ? row('고개 각도', '든 상태 유지', 'good')
-        : row('고개 각도', `숙임 ${pct(m.headDownRatio)}`, 'warn', '말할 때 고개를 들고 정면을 보세요'),
+        : row('고개 각도', `숙임 ${pct(m.headDownRatio)}`, 'warn', '말할 때 고개가 내려가는 편이에요'),
     );
   } else {
-    rows.push(row('얼굴 인식', '잘 안 됨', 'warn', '조명을 밝히고 카메라와의 거리를 맞춰 보세요'));
+    // 인식 실패는 사용자가 고칠 점이 아니다. 고칠 것으로 세지 않고 안내만 한다
+    rows.push(row('얼굴 인식', '재지 못함', 'none', '조명을 밝히고 카메라와의 거리를 맞춰 보세요'));
   }
   if (m.hasPose) {
     rows.push(
       m.slouchRatio <= SLOUCH_WARN
         ? row('상체 자세', '바르게 유지', 'good')
-        : row('상체 자세', `구부정 ${pct(m.slouchRatio)}`, 'warn', '등을 펴고 어깨를 열어 앉아 보세요'),
+        : row('상체 자세', `구부정 ${pct(m.slouchRatio)}`, 'warn', '등이 조금 굽은 편이에요. 어깨를 열어 앉아 보세요'),
     );
     rows.push(
       m.postureStable >= POSTURE_OK
         ? row('상체 안정', '안정적', 'good')
-        : row('상체 안정', '흔들림', 'warn', '상체를 편안히 고정해 보세요'),
+        : row('상체 안정', '조금 흔들림', 'warn', '상체가 자주 움직인 편이에요'),
     );
     rows.push(
       m.postureTiltDeg <= TILT_WARN
         ? row('어깨 수평', '반듯함', 'good')
-        : row('어깨 수평', `${m.postureTiltDeg}° 기울어짐`, 'warn', '한쪽으로 기울지 않게 앉아 보세요'),
+        : row('어깨 수평', `${m.postureTiltDeg}° 기울어짐`, 'warn', '한쪽으로 조금 기운 편이에요'),
     );
   }
   return rows;

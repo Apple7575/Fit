@@ -83,7 +83,8 @@ export function EvidenceCards({
                   <span
                     className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${tone.chip}`}
                   >
-                    {g.warnCount > 0 ? `${g.warnCount}개 고칠 것` : '모두 좋아요'}
+                    {/* 권장 범위를 벗어났다는 뜻이지 틀렸다는 뜻이 아니다. "고칠 것"이라고 단정하지 않는다 */}
+                    {g.warnCount > 0 ? `${g.warnCount}개 살펴보기` : '모두 좋아요'}
                   </span>
                   <span className={`mt-1 block ${T.caption}`}>{groupStatus(g)}</span>
                 </span>
@@ -205,6 +206,14 @@ function GroupModal({
           <div>
             <p className={T.label}>어떻게 쟀나요</p>
             <p className={`mt-1 ${T.body}`}>{HOW[row.key] ?? '이 브라우저에서 계산한 값이에요.'}</p>
+            {/*
+              기준을 숨기면 점수처럼 읽힌다. 일반적인 권장 범위일 뿐이라는 걸 값과 같은 자리에서 밝힌다
+              (임계값은 delivery.ts·vision.ts 에 초안으로 적혀 있다).
+            */}
+            <p className={`mt-2 ${T.caption}`}>
+              여기서 쓰는 기준은 일반적인 권장 범위예요. 회사와 직무, 질문에 따라 알맞은 값이 다를 수
+              있으니 참고로만 봐 주세요.
+            </p>
           </div>
 
           <Evidence
