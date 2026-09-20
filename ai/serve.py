@@ -6,6 +6,7 @@
     /news/...          news_intelligence — 근거 기반 뉴스·트렌드 분석 (/news/internal/...)
     /supervisor/...    supervisor — 동적 에이전트 오케스트레이션
     /writing/...       writing_coaching — 자소서 작성 코칭 (/writing/internal/...)
+    /company/...       company_analysis — 공시 기반 기업 분석 리포트 (/company/internal/...)
 
 프록시가 /ai/ 를 떼고 넘기므로 외부 주소는 /ai/jd/... 가 된다. 앱이 늘면 여기서
 같은 방식으로 mount 한다(예: /rag). AI_ROOT_PATH(=/ai) 를 uvicorn root_path 로 넣어
@@ -24,6 +25,7 @@ LOGGER = logging.getLogger("ai.serve")
 
 
 def build_app() -> FastAPI:
+    from ai.company_analysis.api import app as company_app
     from ai.jd_coaching.api import app as jd_app
     from ai.news_intelligence.api import app as news_app
     from ai.position_coaching.api import app as position_app
@@ -54,6 +56,7 @@ def build_app() -> FastAPI:
                 "news": "/news",
                 "supervisor": "/supervisor",
                 "writing": "/writing",
+                "company": "/company",
             },
         }
 
@@ -62,6 +65,7 @@ def build_app() -> FastAPI:
     root.mount("/news", news_app)
     root.mount("/supervisor", supervisor_app)
     root.mount("/writing", writing_app)
+    root.mount("/company", company_app)
     return root
 
 

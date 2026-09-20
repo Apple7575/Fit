@@ -90,6 +90,13 @@ company_activity,amount,7,"NUMERIC(24,4)",YES,,,,금액(원). 미공시는 NULL 
 company_activity,rcept_no,8,VARCHAR(14),YES,,,,근거 공시 접수번호 14자리,opendart,주요사항보고서:rcept_no,raw,20260310002820,no,
 company_activity,updated_at,9,TIMESTAMPTZ,NO,,,,이 행을 마지막으로 적재한 시각,database,,default:now(),2026-09-07T12:00:00+09:00,no,
 company_activity,counterparty,10,VARCHAR(300),YES,,,,"거래 상대. 타법인 출자의 피출자회사, 인수의 피인수사, 양수도 상대다. 원천은 타법인 출자현황의 inv_prm. 현재 /activities 응답에는 나가지 않는다",opendart,otrCprInvstmntSttus:inv_prm,derived:공백 정리,삼성전기㈜,no,피출자회사. 현재 /activities 응답에는 나가지 않는다
+company_analysis_report,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,,,,,,no,
+company_analysis_report,status,2,VARCHAR(10),NO,,,,,,,,,no,
+company_analysis_report,fiscal_year,3,INTEGER,YES,,,,,,,,,no,
+company_analysis_report,report,4,JSONB,YES,,,,,,,,,no,
+company_analysis_report,error,5,TEXT,YES,,,,,,,,,no,
+company_analysis_report,requested_at,6,TIMESTAMPTZ,NO,,,,,,,,,no,
+company_analysis_report,updated_at,7,TIMESTAMPTZ,NO,,,,,,,,,no,
 company_metric,corp_code,1,VARCHAR(8),NO,"FK,PK",company,corp_code,DART 고유번호 8자리. company 를 참조한다,derived,dart_financial_account.corp_code,raw,00126380,no,
 company_metric,fiscal_year,2,SMALLINT,NO,PK,,,회계연도. 사업 구성은 해마다 바뀌므로 키에 들어간다,derived,dart_financial_account.bsns_year,raw,2025,no,
 company_metric,metric_code,3,VARCHAR(40),NO,"FK,PK",metric,metric_code,지표 코드. metric 카탈로그를 참조한다,derived,,derived:지표 카탈로그 매핑,revenue,no,
