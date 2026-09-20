@@ -115,6 +115,28 @@ class FormTablesTest(unittest.TestCase):
         self.assertEqual(forms[0].status, "MISALIGNED")
         self.assertEqual(forms[0].misaligned_reason, "pattern_mismatch:상장여부")
 
+    def test_two_digit_year_dates_are_accepted(self):
+        # POSCO홀딩스 실측: 최초취득일자가 '22.03 형식이라 날짜로 인정해야 열 밀림으로 오판하지 않는다
+        doc = _doc("""<TITLE>3. 타법인출자 현황(상세)</TITLE>
+          <TABLE><THEAD><TR><TD>법인명</TD><TD>상장여부</TD><TD>최초취득일자</TD><TD>출자목적</TD><TD>최초취득금액</TD><TD>기말잔액</TD></TR></THEAD>
+          <TBODY>
+            <TR><TD>(주)포스코</TD><TD>비상장</TD><TD>'22.03</TD><TD>경영참여</TD><TD>29,699,590</TD><TD>29,699,590</TD></TR>
+            <TR><TD>포스코플랜텍</TD><TD>비상장</TD><TD>'10.06</TD><TD>단순투자</TD><TD>19,437</TD><TD>19,437</TD></TR>
+          </TBODY></TABLE>""")
+        self.assertEqual(form_tables(doc, report_year=2025)[0].status, "OK")
+
+    def test_executive_tenure_stays_text(self):
+        # 검수 판정: 재직기간에 '31'·'9년 2개월'·'2022.01.27~현재' 가 섞여 숫자형이 성립하지 않는다
+        doc = _doc("""<TITLE>1. 임원 및 직원 등의 현황</TITLE>
+          <TABLE><THEAD><TR><TD>성명</TD><TD>직위</TD><TD>담당업무</TD><TD>소유주식수</TD><TD>재직기간</TD></TR></THEAD>
+          <TBODY>
+            <TR><TD>황경순</TD><TD>부사장</TD><TD>센터장</TD><TD>1,000</TD><TD>31</TD></TR>
+            <TR><TD>김병기</TD><TD>대표이사</TD><TD>사업부장</TD><TD>11,160</TD><TD>9년 2개월</TD></TR>
+          </TBODY></TABLE>""")
+        rows = {(r.row_labels[0], r.column_key): r for r in form_tables(doc, report_year=2025)[0].rows}
+        self.assertEqual((rows[("황경순", "재직기간")].value_num, rows[("황경순", "재직기간")].parse_status), (None, "TEXT"))
+        self.assertEqual(rows[("황경순", "소유주식수")].value_num, 1000.0, "주식 수는 여전히 숫자")
+
     def test_footnote_only_table_is_not_a_form(self):
         doc = _doc("""<TITLE>1. 임원 및 직원 등의 현황</TITLE>
           <TABLE><TBODY><TR><TD>※ 상기 직원수는 등기임원 제외 기준이며 1인평균급여액은 월평균 인원수로 나눈 값입니다. 평균근속연수 산정 기준은 다음과 같습니다.</TD></TR></TBODY></TABLE>""")

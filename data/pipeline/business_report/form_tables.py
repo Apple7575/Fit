@@ -34,15 +34,18 @@ class FormSpec:
     numeric: tuple[str, ...] = ()     # 숫자여야 하는 머리글 이름(부분 일치). 열 밀림 판정에 쓴다.
     default_unit: str | None = None   # 단위 메타가 비었을 때
     patterns: tuple[tuple[str, str], ...] = ()  # (머리글 이름, 값 정규식). 값 절반 이상이 안 맞으면 열 밀림
+    text_columns: tuple[str, ...] = ()  # 값이 숫자처럼 보여도 문자로 둘 열. 재직기간 '31'·'9년 2개월'·'2022.01.27~현재' 가 한 열에 섞인다(검수 판정 2026-09-19)
 
 
-_DATE = r"^\d{4}[.\-/]\d{1,2}([.\-/]\d{1,2})?$|^\d{4}년"
+# 2008.05.16 · 2008-05-16 · 2008년 05월 16일 · '22.03 (POSCO홀딩스 실측) · 22.03
+_DATE = r"^\d{4}[.\-/]\d{1,2}([.\-/]\d{1,2})?$|^\d{4}년|^'?\d{2}[.\-/]\d{1,2}([.\-/]\d{1,2})?$"
 FORM_SPECS: tuple[FormSpec, ...] = (
     # DART 직원 등 현황: 성별·기간 구분별 직원 수, 평균근속연수, 급여. 단위는 표 밖 '(단위 : 백만원)' 에 있고 표본 5개사 모두 못 찾았다.
     FormSpec("EMPLOYEE_STATUS", "직원 현황", re.compile(r"임원\s*및\s*직원"), ("평균근속연수", "1인평균급여액"), ("연간급여총액", "1인평균급여액"), "백만원"),
     # DART 미등기임원 보수 현황: 구분(미등기임원) · 인원수 · 연간급여 총액 · 1인평균 급여액. 실측 값(덕산테코피아 10명 1,219)은 백만원 단위다.
     FormSpec("EXECUTIVE_PAY", "미등기임원 보수", re.compile(r"임원\s*및\s*직원"), ("인원수", "1인평균급여액"), ("인원수", "연간급여총액", "1인평균급여액"), "백만원"),
-    FormSpec("EXECUTIVE_STATUS", "임원 현황", re.compile(r"임원\s*및\s*직원"), ("성명", "직위", "담당업무"), (), None, (("출생년월", r"^\d{4}[.\-/]\d{1,2}$|^\d{4}년"),)),
+    FormSpec("EXECUTIVE_STATUS", "임원 현황", re.compile(r"임원\s*및\s*직원"), ("성명", "직위", "담당업무"), (), None, (("출생년월", r"^\d{4}[.\-/]\d{1,2}$|^\d{4}년"),),
+             ("재직기간", "임기만료일", "출생년월", "출생연월", "선임", "해임")),
     FormSpec("AFFILIATE_LIST", "계열회사 현황", re.compile(r"계열회사"), ("기업명", "법인등록번호"), (), None, (("상장여부", r"^(상장|비상장|코스닥|코스피|코넥스)"),)),
     FormSpec("EQUITY_INVESTMENT", "타법인출자 현황", re.compile(r"타법인\s*출자"), ("법인명", "최초취득일자", "출자목적", "기말잔액"), ("최초취득금액", "기말잔액>수량", "기말잔액>지분율", "기말잔액>장부가액"), "백만원",
              (("상장여부", r"^(상장|비상장)"), ("최초취득일자", _DATE))),
@@ -62,7 +65,9 @@ _PERIOD = re.compile(r"제\s*(\d{1,3})\s*기|((?:19|20)\d{2})\s*년?")
 class FormRow:
     form_code: str
     table_index: int
-    row_no: int
+    row_no: int            # 본문 행 번호(머리글·단위 줄 제외, 0부터)
+    matrix_row: int        # 표 행렬(`table.m`)에서의 행 번호. 청크의 row_start·row_end 와 같은 좌표
+    col_no: int            # 행렬 열 번호
     row_labels: tuple[str, ...]
     column_key: str
     value_text: str
@@ -121,13 +126,21 @@ def _looks_like_header_row(row: list[str]) -> bool:
 
 def split_header(table: Table) -> tuple[list[list[str]], list[list[str]], str | None]:
     """(머리글 행들, 본문 행들, 표 안에서 찾은 단위). 단위만 있는 줄은 머리글에서 뺀다."""
+    header, body, unit, _ = split_header_with_offset(table)
+    return header, body, unit
+
+
+def split_header_with_offset(table: Table) -> tuple[list[list[str]], list[list[str]], str | None, int]:
+    """`split_header` 에 더해 본문 첫 행의 행렬 번호(단위 줄 + 머리글 줄 수)를 돌려준다."""
     rows = [list(r) for r in table.m]
     unit: str | None = None
+    skipped = 0
     while rows and _is_unit_line(rows[0]):
         unit = unit or _unit_from_row(rows[0])
         rows.pop(0)
+        skipped += 1
     if not rows:
-        return [], [], unit
+        return [], [], unit, skipped
     count = table.header_rows
     if count <= 0:
         count = 0
@@ -140,7 +153,7 @@ def split_header(table: Table) -> tuple[list[list[str]], list[list[str]], str | 
     # 첫 본문 행이 머리글과 똑같이 반복되는 경우(둘째 머리글 줄이 TBODY 에 있음)
     while count < len(rows) and count < 3 and _looks_like_header_row(rows[count]) and _repeats_header(rows[:count], rows[count]):
         count += 1
-    return rows[:count], rows[count:], unit
+    return rows[:count], rows[count:], unit, skipped + count
 
 
 def _repeats_header(header: list[list[str]], row: list[str]) -> bool:
@@ -237,7 +250,7 @@ def form_tables(document: Document, *, report_year: int) -> list[FormTable]:
     for table in document.tables:
         if table.excluded_reason or not table.m:
             continue
-        header, body, unit_in_table = split_header(table)
+        header, body, unit_in_table, body_offset = split_header_with_offset(table)
         paths = header_paths(header)
         spec = detect_form(table, paths)
         if spec is None:
@@ -256,10 +269,10 @@ def form_tables(document: Document, *, report_year: int) -> list[FormTable]:
                 text = squash(row[col])
                 if not text:
                     continue
-                number = parse_number(text)
+                number = None if any(name in paths[col] for name in spec.text_columns) else parse_number(text)
                 status = "MISALIGNED" if reason else ("NUMBER" if number is not None else "TEXT")
                 form.rows.append(FormRow(
-                    spec.code, table.idx, row_no, labels, paths[col], text, number,
+                    spec.code, table.idx, row_no, body_offset + row_no, col, labels, paths[col], text, number,
                     unit if number is not None else None, period_year(paths[col], report_year, latest),
                     status, table.entity_scope, table.title,
                 ))
