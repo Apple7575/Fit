@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestFollowup } from './api';
 import { computeDelivery, countSyllables, PACE_MAX, PACE_MIN, type ClipEvent } from './delivery';
+import { GuideStrip } from './GuideImage';
+import { POSTURE_FIGURES } from './guideFigures';
 import { useAudioMeter, useRecorder, useSpeech, useWebcam } from './hooks';
 import { Icon } from './icons';
 import { saveItem } from './localVideo';
@@ -235,6 +237,7 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
     return (
       <div className="mx-auto max-w-[1320px] px-5 py-6 lg:px-8">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,1fr)] lg:items-start">
+          <div className="space-y-5">
           <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
             <video className="h-full w-full object-cover" muted playsInline ref={videoRef} style={{ transform: 'scaleX(-1)' }} />
             <PersonGuide />
@@ -246,6 +249,10 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
             <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 to-transparent px-4 py-3 text-[11px] text-white/70">
               점선 안에 얼굴과 어깨가 들어오게 앉아 주세요
             </p>
+          </div>
+
+          {/* 끝나고 "등이 굽었습니다"를 듣는 것보다, 시작 전에 보는 편이 낫다 */}
+          <GuideStrip figures={POSTURE_FIGURES} title="이렇게 앉으면 됩니다" />
           </div>
 
           <aside>
@@ -297,6 +304,22 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
               />
             </ul>
 
+            {/*
+              "내 얼굴을 찍는데 왜" 라는 망설임을 없애는 문장이다. 11px 회색 각주로 두면 아무도
+              읽지 않으므로, 시작 버튼 위에 제대로 적는다.
+            */}
+            <div className="mt-5 rounded-2xl border border-emerald-200/70 bg-emerald-50/50 p-4">
+              <p className="flex items-center gap-2 text-[14px] font-bold text-emerald-900">
+                {/* className 은 기본 크기를 덮어쓴다. 크기를 함께 적지 않으면 아이콘이 칸을 다 먹는다 */}
+                <Icon className="size-4 shrink-0 text-emerald-600" name="check" />
+                영상은 이 브라우저 밖으로 나가지 않습니다
+              </p>
+              <p className="mt-1.5 text-[12px] leading-5 break-keep text-emerald-800/80">
+                녹화도 표정·자세 분석도 이 기기 안에서만 돌아갑니다. 서버로 보내는 것은 받아쓴 답변
+                글자뿐입니다.
+              </p>
+            </div>
+
             <button
               className="mt-4 w-full rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-slate-950 disabled:opacity-40"
               disabled={status !== 'live'}
@@ -305,9 +328,6 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
             >
               {queue.length}문항 면접 시작
             </button>
-            <p className="mt-2 text-[11px] leading-5 text-slate-400">
-              녹화 영상은 이 브라우저에만 저장되고 서버로 보내지 않습니다. 답변 텍스트만 분석에 사용됩니다.
-            </p>
           </aside>
         </div>
       </div>

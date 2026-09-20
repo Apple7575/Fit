@@ -174,6 +174,18 @@ describe('CompanyDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('예전 구획 주소로 들어와도 요약 한 장을 보여준다', async () => {
+    vi.stubGlobal('fetch', stubFetchByUrl());
+
+    // 다섯 구획은 요약에 이어 붙었다. 구획만 그리는 화면에 갇히면 스크롤해도 그 구획밖에 안 보인다
+    renderAt('/companies/00126380/issues');
+
+    // 이슈 구획이 나오고
+    expect(await screen.findByRole('heading', { name: '요즘 무슨 일' })).toBeInTheDocument();
+    // 그 위의 다른 구획도 같은 화면에 있다
+    expect(await screen.findByRole('heading', { name: '업계에서 어디쯤' })).toBeInTheDocument();
+  });
+
   it('성장 분석 탭은 기준연도 핵심지표와 5년 추이를 보여준다', async () => {
     const fetchMock = stubFetchByUrl();
     vi.stubGlobal('fetch', fetchMock);
@@ -189,17 +201,18 @@ describe('CompanyDetailPage', () => {
     // 헤더 구간은 시계열 응답의 range(2021~2025)에서 온다
     expect(await screen.findByText('최근 5년 성장 분석 (2021–2025)')).toBeInTheDocument();
     // 기준연도는 기본정보의 dataYear(2025) 를 그대로 넘기고, 연도 없는 선행 호출은 없다
+    // (요약 한 장이라 히어로와 성장 구획이 각각 부르므로 횟수가 아니라 연도를 본다)
     const metricsCalls = fetchMock.mock.calls
       .map((call) => String(call[0]))
       .filter((url) => /\/metrics(\?|$)/.test(url));
-    expect(metricsCalls).toEqual([
-      expect.stringContaining('year=2025'),
-    ]);
+    expect(metricsCalls.length).toBeGreaterThan(0);
+    expect(metricsCalls.every((url) => url.includes('year=2025'))).toBe(true);
     // 5년 추이도 같은 기준연도를 to 로 넘기고, from 은 서버(to-4)에 맡긴다
+    // (다른 구획도 시계열을 쓰므로 그중 성장 추이 호출만 본다)
     const trendCalls = fetchMock.mock.calls
       .map((call) => String(call[0]))
       .filter((url) => url.includes('/metrics/timeseries'));
-    expect(trendCalls).toEqual([expect.stringContaining('timeseries?to=2025')]);
+    expect(trendCalls).toContainEqual(expect.stringContaining('timeseries?to=2025'));
   });
 
   it('집중 분야 탭은 확정 영역을 보여주고 조건부 영역은 404 면 안내로 대체한다', async () => {

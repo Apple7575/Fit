@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useCoverLetters } from '../cover-letter/queries';
+import { GuideImage } from './GuideImage';
 import { InterviewCompanyField } from './InterviewCompanyField';
 import { TYPE_OPTIONS } from './styles';
 import type { InterviewConfig, InterviewType } from './types';
+
+/** 유형별 그림. 파일이 없으면 GuideImage 가 조용히 빠지고 글자만 남는다 */
+const TYPE_FIGURE: Record<InterviewType, string> = {
+  technical: 'type-technical.png',
+  behavioral: 'type-behavioral.png',
+};
 
 interface InterviewSetupProps {
   loading: boolean;
@@ -81,12 +88,13 @@ export function InterviewSetup({ loading, onStart }: InterviewSetupProps) {
         </Card>
 
         <Card step="03" title="어떤 면접">
-          <div className="space-y-2">
+          {/* 세로로 쌓으면 이 카드만 두 배로 길어져 세 장의 줄이 맞지 않는다 */}
+          <div className="grid grid-cols-2 gap-2">
             {TYPE_OPTIONS.map((option) => {
               const on = type === option.value;
               return (
                 <button
-                  className={`w-full rounded-xl border p-3 text-left transition ${
+                  className={`w-full overflow-hidden rounded-xl border text-left transition ${
                     on
                       ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-300'
                       : 'border-slate-200 bg-white hover:bg-slate-50'
@@ -95,10 +103,20 @@ export function InterviewSetup({ loading, onStart }: InterviewSetupProps) {
                   onClick={() => setType(option.value)}
                   type="button"
                 >
-                  <span className={`block text-sm font-bold ${on ? 'text-blue-700' : 'text-slate-800'}`}>
-                    {option.label}
+                  {/* 글자만 있으면 두 유형이 어떻게 다른지 와닿지 않는다. 고르지 않은 쪽은 눌러 둔다 */}
+                  <GuideImage
+                    alt=""
+                    className={`aspect-[16/10] w-full object-cover transition ${on ? '' : 'opacity-60 saturate-50'}`}
+                    name={TYPE_FIGURE[option.value]}
+                  />
+                  <span className="block p-2.5">
+                    <span className={`block text-[13px] font-bold ${on ? 'text-blue-700' : 'text-slate-800'}`}>
+                      {option.label}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-4 break-keep text-slate-500">
+                      {option.desc}
+                    </span>
                   </span>
-                  <span className="mt-0.5 block text-xs text-slate-500">{option.desc}</span>
                 </button>
               );
             })}

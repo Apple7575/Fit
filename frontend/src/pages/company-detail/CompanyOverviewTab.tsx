@@ -46,13 +46,6 @@ const NEXT_SCREEN = 'snap-start scroll-mt-[108px] pb-16';
 export function CompanyOverviewTab() {
   const { corpCode, detailState, retryDetail } = useOutletContext<CompanyDetailOutletContext>();
 
-  // #growth 처럼 구획을 가리키며 들어오면 그 자리로 데려간다 (브라우저 기본 이동은 구획이
-  // 아직 빈 판이라 엉뚱한 곳에 선다)
-  useEffect(() => {
-    const id = window.location.hash.slice(1);
-    if (id) jumpToSection(id);
-  }, []);
-
   const notFound =
     detailState.status === 'error' &&
     (detailState.error.status === 404 || detailState.error.code === 'COMPANY_NOT_FOUND');
@@ -97,6 +90,19 @@ interface SummaryBodyProps {
 
 /** 기준연도가 확정된 뒤에만 마운트되어 모든 조회를 한 번씩, 맞는 연도로 한다 */
 function SummaryBody({ corpCode, detail }: SummaryBodyProps) {
+  /*
+   * #issues 처럼 구획을 가리키며 들어오면 그 자리로 데려간다. 예전 구획 주소(/companies/x/issues)도
+   * 여기로 넘어온다.
+   *
+   * <p>기업 정보를 기다리는 동안에는 화면에 빈 판 하나뿐이라 그때 옮기면 갈 곳이 없다.
+   * 그래서 요약 본문이 붙는 이 시점에 옮긴다 (브라우저 기본 이동도 구획이 아직 빈 판이라
+   * 엉뚱한 곳에 선다).
+   */
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (id) jumpToSection(id);
+  }, []);
+
   const year = detail?.dataYear ?? null;
   const industryCode = detail?.industryCode ?? null;
   const profile = useCompanyProfile(corpCode);

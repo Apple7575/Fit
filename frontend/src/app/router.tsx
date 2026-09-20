@@ -4,15 +4,11 @@ import {
   Navigate,
   type RouteObject,
 } from 'react-router-dom';
+import { COMPANY_SECTIONS } from '../features/company-detail/questions';
 import { AgentRoomListPage } from '../pages/agent-room/AgentRoomListPage';
 import { AgentRoomPage } from '../pages/agent-room/AgentRoomPage';
-import { CompanyBusinessTab } from '../pages/company-detail/CompanyBusinessTab';
-import { CompanyComparisonTab } from '../pages/company-detail/CompanyComparisonTab';
-import { CompanyGrowthTab } from '../pages/company-detail/CompanyGrowthTab';
 import { CompanyDetailPage } from '../pages/company-detail/CompanyDetailPage';
 import { CompanySearchPage } from '../pages/companies/CompanySearchPage';
-import { CompanyFocusTab } from '../pages/company-detail/CompanyFocusTab';
-import { CompanyIssuesTab } from '../pages/company-detail/CompanyIssuesTab';
 import { CompanyOverviewTab } from '../pages/company-detail/CompanyOverviewTab';
 import { CoverLetterListPage } from '../pages/cover-letter/CoverLetterListPage';
 import { CoverLetterWorkspacePage } from '../pages/cover-letter/CoverLetterWorkspacePage';
@@ -88,11 +84,15 @@ const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate replace to="overview" /> },
       { path: 'overview', element: <CompanyOverviewTab /> },
-      { path: 'business', element: <CompanyBusinessTab /> },
-      { path: 'growth', element: <CompanyGrowthTab /> },
-      { path: 'focus', element: <CompanyFocusTab /> },
-      { path: 'comparison', element: <CompanyComparisonTab /> },
-      { path: 'issues', element: <CompanyIssuesTab /> },
+      /*
+       * 다섯 구획은 요약 한 장에 모두 이어 붙었다(CompanyOverviewTab). 구획만 따로 그리는
+       * 화면을 남겨 두면 거기서는 그 구획밖에 안 보여, 한 페이지에 다 있다는 약속이 깨진다.
+       * 예전 주소·북마크·공유 링크는 요약의 해당 자리로 보낸다 (요약이 해시를 보고 데려간다).
+       */
+      ...COMPANY_SECTIONS.map((section) => ({
+        path: section,
+        element: <Navigate replace to={`../overview#${section}`} />,
+      })),
     ],
   },
   {
