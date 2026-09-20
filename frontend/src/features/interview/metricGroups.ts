@@ -36,14 +36,14 @@ const DEFS: Array<{ key: string; title: string; icon: IconName; about: string; k
     title: '시선과 표정',
     icon: 'eye',
     about: '카메라를 보며 정면을 유지했는지',
-    keys: ['얼굴 위치', '정면 유지', '카메라 응시', '얼굴 인식'],
+    keys: ['얼굴 위치', '정면 유지', '카메라 응시', '표정', '얼굴 인식'],
   },
   {
     key: 'posture',
     title: '자세',
     icon: 'posture',
     about: '고개와 상체를 바르게 두었는지',
-    keys: ['고개 각도', '고개 흔들림', '상체 자세', '상체 안정', '어깨 수평'],
+    keys: ['고개 각도', '고개 기울기', '고개 흔들림', '상체 자세', '상체 안정', '어깨 수평', '손짓'],
   },
 ];
 

@@ -208,23 +208,24 @@ function NewInterview() {
   };
 
   // 오래 걸리는 두 단계는 지금 무엇을 하는 중인지 차례로 말해 준다. 같은 시간도 짧게 느껴진다
+  /*
+   * 오래 걸리는 두 단계는 기다림을 한 덩어리로 둔다. 진행 문구 한 줄 아래에 팁 카드 하나.
+   * 돌멩이가 뛰는 화면을 따로 얹으면 볼 것이 둘로 갈라져 둘 다 안 읽힌다.
+   */
   if (phase === 'generating')
     return (
       <Shell>
-        <LoadingScreen
-          message={[
-            '회사 자료를 읽고 있어요',
-            '직무에 맞는 질문을 고르고 있어요',
-            '곧 시작합니다',
-          ]}
+        <TipCarousel
+          className="px-6 py-16"
+          message={['회사 자료를 읽고 있어요', '직무에 맞는 질문을 고르고 있어요', '곧 시작합니다']}
         />
       </Shell>
     );
   if (phase === 'analyzing')
     return (
       <Shell>
-        <LoadingScreen
-          className="pb-8"
+        <TipCarousel
+          className="px-6 py-16"
           message={[
             '답변을 옮겨 적고 있어요',
             '시선과 표정을 살펴보고 있어요',
@@ -232,8 +233,6 @@ function NewInterview() {
             '리포트를 정리하고 있어요 (최대 1분)',
           ]}
         />
-        {/* 최대 1분이다. 그냥 기다리게 두지 않고 바로 다음 면접에 쓸 것을 읽게 한다 */}
-        <TipCarousel className="px-6 pb-16" />
       </Shell>
     );
   if (phase === 'saving') return <Shell><Loading message="면접 결과를 저장하고 있습니다…" /></Shell>;

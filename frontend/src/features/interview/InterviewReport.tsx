@@ -14,12 +14,13 @@ import { getClipsByLocalSession, getClipsByServerId } from './localVideo';
 import { NonverbalDetail } from './NonverbalOverview';
 import { nonverbalGauges } from './nonverbalGauges';
 import { DeliveryDetail } from './ReportBody';
+import { TrackedClip } from './TrackedClip';
 import { ReportOverview, type OverviewRow } from './ReportOverview';
 import { buildAxes, buildHighlights } from './reportSummary';
 import { CARD, T } from './reportTokens';
 import { KIND_STYLE, SOURCE_BADGE, TYPE_LABEL } from './styles';
 import type { FeedbackPoint, InterviewType, QuestionSource } from './types';
-import { averageNonverbal, describeNonverbal, type NonverbalMetrics } from './vision';
+import { averageNonverbal, describeNonverbal, type NonverbalMetrics, type VisionSample } from './vision';
 
 export interface ReportItem {
   seq: number;
@@ -55,6 +56,8 @@ interface LocalItem {
   /** 음성 근거(이퀄라이저)용 파형. 옛 기록엔 없다 */
   wave: number[] | null;
   waveStepMs: number | null;
+  /** 영상 위에 겹쳐 그릴 프레임별 추적값. 옛 기록엔 없다 */
+  samples: VisionSample[] | null;
 }
 
 /** 문항 seq → 로컬 녹화 URL + 전달·비언어 지표. 언마운트 시 objectURL 을 해제한다. */
@@ -88,6 +91,7 @@ function useLocalItems(localSessionId?: string, serverInterviewId?: number): Map
             events: r.events ?? null,
             wave: r.wave ?? null,
             waveStepMs: r.waveStepMs ?? null,
+            samples: r.samples ?? null,
           });
         }
         setMap(next);
@@ -373,12 +377,12 @@ function QuestionPanel({
           <div>
             {local?.url ? (
               <>
-                <video
-                  className="w-full rounded-xl bg-black"
-                  controls
+                {/* 말로 "시선이 흔들렸습니다"라고 하는 것보다 그때의 내 얼굴 위에 얹어 보여준다 */}
+                <TrackedClip
                   onLoadedMetadata={fixWebmDuration}
-                  ref={videoRef}
+                  samples={local.samples}
                   src={local.url}
+                  videoRef={videoRef}
                 />
                 {marks.length > 0 && (
                   <div className="mt-2">
