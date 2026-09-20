@@ -112,6 +112,83 @@ class ClaimCheckTest(unittest.TestCase):
         self.assertEqual(numeric_claim_violations("HBM4는 2,048개의 I/O를 적용했습니다.", [table]), [])
         self.assertEqual([v.code for v in numeric_claim_violations("연구비는 2,048입니다.", [table])], ["money_unit_missing"])
 
+    def test_entity_scope_rule(self):
+        from ai.company_analysis.claim_check import entity_scope_violations, is_plausible_entity
+
+        sub = CitedText("s", "표 머리글: 구분 | 2025년\n영업이익 | 22,133", is_table=True, unit="백만원", scope="우리자산운용")
+        self.assertEqual([v.code for v in entity_scope_violations("우리금융지주의 2025년 영업이익은 22,133백만원입니다.", [sub], "우리금융지주")], ["segment_as_company"])
+        self.assertEqual(entity_scope_violations("자회사 우리자산운용의 영업이익은 22,133백만원입니다.", [sub], "우리금융지주"), [])
+        self.assertEqual(entity_scope_violations("우리금융지주는 은행·카드 등 자회사를 둔 지주회사입니다.", [sub], "우리금융지주"), [], "숫자를 안 쓰면 검사하지 않는다")
+        own = CitedText("o", "표 머리글: 구분 | 2025년\n영업이익 | 36,748", is_table=True, unit="억원", scope="우리금융지주")
+        self.assertEqual(entity_scope_violations("우리금융지주의 영업이익은 36,748억원입니다.", [own], "우리금융지주"), [], "회사 자신의 표는 통과")
+        junk = CitedText("j", "표 머리글: 구분 | 금액\n대출 | 12,345", is_table=True, unit="백만원", scope="장기카드대출 업무")
+        self.assertEqual(entity_scope_violations("대출 잔액은 12,345백만원입니다.", [junk], "신한카드"), [], "법인명이 아닌 제목은 적용하지 않는다")
+        self.assertTrue(is_plausible_entity("우리은행"))
+        self.assertTrue(is_plausible_entity("동양생명보험"))
+        self.assertFalse(is_plausible_entity("2022년 전체 이사회 평가 결과"))
+        self.assertFalse(is_plausible_entity("국내 신용등급 체계 및 등급정의"))
+
+    def test_caption_numbers_keep_their_own_unit(self):
+        from ai.company_analysis.claim_check import fix_unit_mismatches
+
+        table = CitedText(
+            "t",
+            "표 캡션: 동양생명보험의 2025년말 총자산은 35조 3,472억원으로 증가하였습니다.\n표 머리글: (단위: 백만원)\n총자산 | 35,347,200",
+            is_table=True, unit="백만원", header="표 머리글: (단위: 백만원)",
+        )
+        self.assertEqual(numeric_claim_violations("총자산은 35조 3,472억원입니다.", [table]), [], "캡션 숫자는 캡션 단위가 맞다")
+        self.assertEqual([v.code for v in numeric_claim_violations("총자산은 35조 3,472백만원입니다.", [table])], ["unit_mismatch"], "캡션 숫자의 단위는 원문 단위(억원)를 따라야 한다")
+        self.assertEqual(fix_unit_mismatches("총자산은 35조 3,472억원입니다.", [table]), "총자산은 35조 3,472억원입니다.", "원문과 같으면 그대로")
+        self.assertEqual(fix_unit_mismatches("총자산은 35조 3,472백만원입니다.", [table]), "총자산은 35조 3,472억원입니다.", "캡션 숫자는 원문 단위로 고친다")
+        self.assertEqual(fix_unit_mismatches("총자산은 35,347,200억원입니다.", [table]), "총자산은 35,347,200백만원입니다.", "행 숫자는 표 단위로 고친다")
+
+    def test_trailing_next_table_heading_clears_wrong_scope(self):
+        rows = [{
+            "evidence_id": "x", "corp_code": "01350869", "title": "r", "published_at": PUBLISHED,
+            "content": "표 캡션: 동양생명보험의 총자산은 35조 3,472억원입니다. | 【 우리카드 】\n표 머리글: (단위: 백만원)\n총자산 | 35,347,200",
+            "metadata": {"rcept_no": RCEPT, "content_type": "TABLE", "section_index": 13, "section_title": "3. 재무상태", "table_index": 1, "unit": "백만원"},
+            "scope_name": "우리카드",
+        }]
+        report = report_from_rows(rows)
+        chunk = report.chunks[0]
+        self.assertIsNone(chunk.entity_scope, "캡션 끝 제목과 같은 소속은 다음 표의 것이라 지운다")
+        self.assertNotIn("우리카드", chunk.content)
+        self.assertTrue(chunk.content.startswith("표 캡션: 동양생명보험의 총자산은"))
+        rows[0]["scope_name"] = "동양생명보험"
+        self.assertEqual(report_from_rows(rows).chunks[0].entity_scope, "동양생명보험", "다른 소속이면 유지한다")
+
+    def test_fix_unit_mismatches_rewrites_wrong_won_unit(self):
+        from ai.company_analysis.claim_check import fix_unit_mismatches
+
+        table = CitedText("t", "표 머리글: 구분 | 2025년 | 2024년\n영업이익 | 22,133 | 14,220", is_table=True, unit="백만원")
+        fixed = fix_unit_mismatches("영업이익은 22,133억원이며 전년 14,220억 원에서 늘었습니다.", [table])
+        self.assertEqual(fixed, "영업이익은 22,133백만원이며 전년 14,220백만원에서 늘었습니다.")
+        self.assertEqual(numeric_claim_violations(fixed, [table]), [])
+        self.assertEqual(fix_unit_mismatches("영업이익은 22,133백만원입니다.", [table]), "영업이익은 22,133백만원입니다.")
+        self.assertEqual(fix_unit_mismatches("직원 22,133명입니다.", [table]), "직원 22,133명입니다.", "원화 단위가 아니면 건드리지 않는다")
+
+    def test_company_as_segment_rule(self):
+        from ai.company_analysis.claim_check import company_as_segment_violations
+
+        parent = CitedText("p", "표 머리글: 항목 | 2025년\n영업이익 | 3.7", is_table=True, unit="조원")
+        sub = CitedText("s", "표 머리글: 구분 | 2025년\n영업이익 | 22,133", is_table=True, unit="백만원", scope="우리자산운용")
+        scopes = {"우리은행", "우리자산운용"}
+        self.assertEqual(
+            [v.code for v in company_as_segment_violations("우리은행의 2025년 영업이익은 3.7조원입니다.", [parent], scopes, "우리금융지주")],
+            ["company_as_segment"],
+        )
+        self.assertEqual(company_as_segment_violations("우리자산운용의 영업이익은 22,133백만원입니다.", [sub], scopes, "우리금융지주"), [])
+        self.assertEqual(company_as_segment_violations("우리금융지주의 영업이익은 3.7조원이며 우리은행 등 자회사를 둡니다.", [parent], scopes, "우리금융지주"), [], "회사 이름이 같은 문장에 있으면 검사하지 않는다")
+        self.assertEqual(company_as_segment_violations("우리은행은 시중은행입니다.", [parent], scopes, "우리금융지주"), [], "숫자가 없으면 통과")
+
+    def test_market_stat_rule(self):
+        from ai.company_analysis.claim_check import market_stat_violations
+
+        self.assertEqual([v.code for v in market_stat_violations("SK하이닉스는 2025년 HBM에서 $1,356억을 기록했습니다.", "SK하이닉스")], ["market_stat_as_company"])
+        self.assertEqual(market_stat_violations("2025년 세계 DRAM 시장은 US$1,356억 규모입니다.", "SK하이닉스"), [], "시장 주어는 허용")
+        self.assertEqual(market_stat_violations("SK하이닉스의 매출은 97.1조원입니다.", "SK하이닉스"), [], "원화는 검사하지 않는다")
+        self.assertEqual(market_stat_violations("SK하이닉스가 참여하는 HBM 시장은 $1,356억으로 전망됩니다.", "SK하이닉스"), [], "회사가 나와도 시장을 말하면 허용")
+
     def test_malformed_grouping(self):
         self.assertEqual([v.code for v in numeric_claim_violations("-43,0백만원", [CitedText("x", "43,0")])][0], "malformed_number")
 
@@ -153,6 +230,21 @@ class BundleAndSchemaTest(unittest.TestCase):
         self.assertIn("peers:00164779", competitors.ids)
         market = build_bundle(PLANS["COMPETITORS_MARKET"], _business_report(), report)
         self.assertIn("e-share", market.ids)
+
+    def test_scoped_table_is_labelled_and_enforced(self):
+        scoped = _chunk("e-sub", 16, "7. 기타 참고사항", "표 머리글: 구분 | 2025년\n영업이익 | 22,133", table=True, unit="백만원")
+        scoped = EvidenceChunk(**{**scoped.__dict__, "entity_scope": "우리자산운용", "metadata": {}})
+        report = BusinessReport(corp_code="00164779", rcept_no=RCEPT, report_name="r", published_at=PUBLISHED, chunks=(scoped,))
+        base = build_deterministic_report(_facts(), generated_at=NOW).model_copy(update={"corp_name": "우리금융지주"})
+        bundle = build_bundle(PLANS["COMPETITORS_MARKET"], report, base)  # 표 청크를 넣는 계획
+        entry = next(e for e in bundle.payload if e["evidence_id"] == "e-sub")
+        self.assertTrue(entry["content"].startswith("소속 법인: 우리자산운용"))
+        self.assertEqual(entry["entity_scope"], "우리자산운용")
+        self.assertEqual(bundle.cited_texts["e-sub"].scope, "우리자산운용")
+        from ai.company_analysis.narrative import _check
+
+        self.assertEqual(_check("우리금융지주의 영업이익은 22,133백만원입니다.", ["e-sub"], bundle), [])
+        self.assertTrue(_check("우리자산운용의 영업이익은 22,133백만원입니다.", ["e-sub"], bundle))
 
     def test_bundle_never_exceeds_context_budget(self):
         from ai.company_analysis.narrative import MAX_EVIDENCE_CHARS

@@ -39,6 +39,60 @@ def build_batch(payload: bytes, *, max_chars: int = 1500):
 
 
 class BusinessReportSourceTest(unittest.TestCase):
+    def test_table_entity_scope_follows_explicit_heading_and_resets_at_title(self):
+        payload = """<DOCUMENT><TITLE>3. 재무상태 및 영업실적</TITLE>
+          <P>【 우리자산운용 】</P>
+          <TABLE><TR><TD>영업이익</TD><TD>22,133</TD></TR></TABLE>
+          <P>단위: 백만원</P>
+          <TABLE><TR><TD>매출</TD><TD>64,547</TD></TR></TABLE>
+          <P>【 우리은행 】</P>
+          <TABLE><TR><TD>영업이익</TD><TD>3,520,741</TD></TR></TABLE>
+          <TITLE>4. 다음 장</TITLE>
+          <TABLE><TR><TD>영업이익</TD><TD>100</TD></TR></TABLE>
+        </DOCUMENT>""".encode()
+
+        document = Document(payload, rcept_no="20260313001235")
+
+        self.assertEqual(
+            [table.entity_scope for table in document.tables],
+            ["우리자산운용", "우리자산운용", "우리은행", None],
+        )
+
+    def test_generic_bracket_heading_is_not_a_company_name(self):
+        payload = """<DOCUMENT><TITLE>영업실적</TITLE>
+          <P>【 자산운용업: 우리자산운용 】</P>
+          <TABLE><TR><TD>영업이익</TD><TD>22,133</TD></TR></TABLE>
+          <P>【 은행계정 】</P>
+          <TABLE><TR><TD>수익</TD><TD>1,000</TD></TR></TABLE>
+        </DOCUMENT>""".encode()
+
+        document = Document(payload, rcept_no="20260313001235")
+
+        self.assertEqual([table.entity_scope for table in document.tables],
+                         ["우리자산운용", "우리자산운용"])
+
+    def test_group_category_heading_does_not_create_entity_scope(self):
+        payload = """<DOCUMENT><TITLE>실적</TITLE>
+          <P>【 은행 주요 자회사의 현황 】</P>
+          <TABLE><TR><TD>영업이익</TD><TD>22,133</TD></TR></TABLE>
+        </DOCUMENT>""".encode()
+
+        document = Document(payload, rcept_no="20260313001235")
+
+        self.assertIsNone(document.tables[0].entity_scope)
+
+    def test_group_category_heading_ends_previous_entity_scope(self):
+        payload = """<DOCUMENT><TITLE>실적</TITLE>
+          <P>【 우리은행 】</P>
+          <TABLE><TR><TD>영업이익</TD><TD>100</TD></TR></TABLE>
+          <P>【 은행 주요 자회사의 현황 】</P>
+          <TABLE><TR><TD>영업이익</TD><TD>200</TD></TR></TABLE>
+        </DOCUMENT>""".encode()
+
+        document = Document(payload, rcept_no="20260313001235")
+
+        self.assertEqual([table.entity_scope for table in document.tables], ["우리은행", None])
+
     def test_profile_controls_text_and_table_limits_and_evidence_identity(self):
         payload = (
             "<DOCUMENT><TITLE>사업</TITLE><P>" + "가" * 1600 + "</P>"

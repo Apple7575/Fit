@@ -19,7 +19,17 @@ from pathlib import Path
 from typing import Any
 
 from .chat_store import Conversation, ConversationStore, StoredMessage
-from .claim_check import CitedText, numeric_claim_violations, share_claim_violations
+from .claim_check import (
+    CitedText,
+    Violation,
+    company_as_segment_violations,
+    entity_scope_violations,
+    fix_unit_mismatches,
+    is_plausible_entity,
+    market_stat_violations,
+    numeric_claim_violations,
+    share_claim_violations,
+)
 from .contracts import ChatMessage, ChatNeed, ChatRequest, ChatResponse, Citation, CompanyReport, ConversationHistory
 from .evidence import BusinessReport, BusinessReportRepository
 from .llm import StructuredCompletionClient
@@ -50,14 +60,19 @@ class ChatEvidence:
     payload: list[dict[str, Any]] = field(default_factory=list)
     citations: dict[str, Citation] = field(default_factory=dict)
     cited_texts: dict[str, CitedText] = field(default_factory=dict)
+    company_name: str = ""
+    known_scopes: set[str] = field(default_factory=set)
 
-    def add(self, evidence_id: str, *, title: str, content: str, citation: Citation, is_table: bool = False, unit: str | None = None) -> None:
+    def add(self, evidence_id: str, *, title: str, content: str, citation: Citation, is_table: bool = False, unit: str | None = None, scope: str | None = None) -> None:
         if evidence_id in self.citations:
             return
-        self.payload.append({"evidence_id": evidence_id, "title": title, "content": content})
+        entry = {"evidence_id": evidence_id, "title": title, "content": content}
+        if scope:
+            entry["entity_scope"] = scope
+        self.payload.append(entry)
         self.citations[evidence_id] = citation
         header = next((line for line in content.splitlines() if line.startswith("표 머리글:")), "")
-        self.cited_texts[evidence_id] = CitedText(evidence_id, content, is_table=is_table, unit=unit, header=header)
+        self.cited_texts[evidence_id] = CitedText(evidence_id, content, is_table=is_table, unit=unit, header=header, scope=scope)
 
     @property
     def ids(self) -> list[str]:
@@ -116,6 +131,8 @@ def chunk_evidence(hits: list[Hit], bundle: ChatEvidence) -> None:
         content = chunk.content if len(chunk.content) <= MAX_CHUNK_CHARS else chunk.content[:MAX_CHUNK_CHARS]
         if chunk.is_table and chunk.unit:
             content = f"표 단위: {chunk.unit}\n{content}"
+        if chunk.is_table and chunk.entity_scope:
+            content = f"소속 법인: {chunk.entity_scope} (이 표의 숫자는 {chunk.entity_scope} 의 것이다)\n{content}"
         bundle.add(
             chunk.evidence_id,
             title=f"{chunk.report_name} · {chunk.section_title}".strip(" ·"),
@@ -123,6 +140,7 @@ def chunk_evidence(hits: list[Hit], bundle: ChatEvidence) -> None:
             citation=chunk.citation(),
             is_table=chunk.is_table,
             unit=chunk.unit,
+            scope=chunk.entity_scope if chunk.is_table else None,
         )
 
 
@@ -228,18 +246,19 @@ class CompanyChatService:
             raise RuntimeError(f"리포트를 만들 수 없습니다: {request.corp_code}")
         history = self._store.history(conversation.conversation_id, limit=MAX_HISTORY)
 
-        bundle = ChatEvidence()
+        bundle = ChatEvidence(company_name=report.corp_name)
         report_evidence(report, bundle)
         business_report = self._reports.latest(request.corp_code)
         if business_report is not None:
+            bundle.known_scopes = _known_scopes(business_report)
             chunk_evidence(self._retriever.search(business_report, request.message, top_k=MAX_EVIDENCE), bundle)
 
         output, usage = self._ask(report, bundle, history, request.message)
-        answer, citations, needs = self._verify(output, bundle)
+        answer, citations, needs, violations = self._verify(output, bundle)
         if answer is None:
-            # 숫자가 근거와 어긋났다. 규칙을 상기시켜 한 번 다시 묻는다.
-            output, usage = self._ask(report, bundle, history, request.message, retry_note=True)
-            answer, citations, needs = self._verify(output, bundle)
+            # 숫자·주체가 근거와 어긋났다. 무엇이 어긋났는지 알려 주고 한 번 다시 묻는다.
+            output, usage = self._ask(report, bundle, history, request.message, retry_note=_retry_note(violations))
+            answer, citations, needs, violations = self._verify(output, bundle)
         if answer is None:
             answer, citations = INSUFFICIENT_ANSWER, []
 
@@ -283,10 +302,11 @@ class CompanyChatService:
         report = stored.report
         if report is None:
             raise RuntimeError(f"리포트를 만들 수 없습니다: {corp_code}")
-        bundle = ChatEvidence()
+        bundle = ChatEvidence(company_name=report.corp_name)
         report_evidence(report, bundle)
         business_report = self._reports.latest(corp_code)
         if business_report is not None:
+            bundle.known_scopes = _known_scopes(business_report)
             chunk_evidence(self._retriever.search(business_report, message, top_k=MAX_EVIDENCE), bundle)
         turns = [
             StoredMessage("h", "h", str(item.get("role", "USER")).upper(), str(item.get("content", "")), self._clock())
@@ -294,10 +314,10 @@ class CompanyChatService:
             if str(item.get("content", "")).strip()
         ]
         output, usage = self._ask(report, bundle, turns, message)
-        answer, citations, needs = self._verify(output, bundle)
+        answer, citations, needs, violations = self._verify(output, bundle)
         if answer is None:
-            output, usage = self._ask(report, bundle, turns, message, retry_note=True)
-            answer, citations, needs = self._verify(output, bundle)
+            output, usage = self._ask(report, bundle, turns, message, retry_note=_retry_note(violations))
+            answer, citations, needs, violations = self._verify(output, bundle)
         if answer is None:
             answer, citations = INSUFFICIENT_ANSWER, []
         return {
@@ -322,7 +342,7 @@ class CompanyChatService:
             raise ConversationMismatchError(f"대화 {request.conversation_id} 는 {conversation.corp_code} 의 대화입니다")
         return conversation
 
-    def _ask(self, report: CompanyReport, bundle: ChatEvidence, history: list[StoredMessage], message: str, *, retry_note: bool = False) -> tuple[dict[str, Any], dict[str, int] | None]:
+    def _ask(self, report: CompanyReport, bundle: ChatEvidence, history: list[StoredMessage], message: str, *, retry_note: str | None = None) -> tuple[dict[str, Any], dict[str, int] | None]:
         context = {
             "company": {"corp_code": report.corp_code, "name": report.corp_name, "fiscal_year": report.fiscal_year, "report_stage": report.stage},
             "evidence": bundle.payload,
@@ -330,7 +350,7 @@ class CompanyChatService:
         }
         system = self._prompt
         if retry_note:
-            system += "\n\n주의: 직전 답의 숫자가 근거와 맞지 않았다. 근거에 적힌 숫자와 단위만 그대로 쓰고, 계산한 값은 쓰지 않는다."
+            system += "\n\n" + retry_note
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(context, ensure_ascii=False, separators=(",", ":")) + f"\n\n질문: {message}"},
@@ -340,7 +360,8 @@ class CompanyChatService:
         return output, usage
 
     @staticmethod
-    def _verify(output: dict[str, Any], bundle: ChatEvidence) -> tuple[str | None, list[Citation], list[ChatNeed]]:
+    def _verify(output: dict[str, Any], bundle: ChatEvidence) -> tuple[str | None, list[Citation], list[ChatNeed], list[Violation]]:
+        """(답, 인용, needs, 위반). 답이 None 이면 위반 목록이 이유다."""
         answer = _clean(output.get("answer"))
         ids = [i for i in output.get("citation_ids") or [] if i in bundle.citations]
         needs: list[ChatNeed] = []
@@ -348,14 +369,32 @@ class CompanyChatService:
             reason = _clean(output.get("needs_reason")) or "최근 뉴스·시황 정보가 필요합니다."
             needs.append(ChatNeed(agent="news", reason=reason[:1_000]))
         if not answer:
-            return None, [], needs
+            return None, [], needs, []
         cited = [bundle.cited_texts[i] for i in ids]
-        if numeric_claim_violations(answer, cited) or share_claim_violations(answer, cited):
+        subject_violations = (
+            entity_scope_violations(answer, cited, bundle.company_name)
+            + market_stat_violations(answer, bundle.company_name)
+            + company_as_segment_violations(answer, cited, bundle.known_scopes, bundle.company_name)
+        )
+        if subject_violations:
+            return None, [], needs, subject_violations
+        violations = numeric_claim_violations(answer, cited) + share_claim_violations(answer, cited)
+        if violations and all(v.code == "unit_mismatch" for v in violations):
+            # 표 단위를 알고 있으니 다시 묻지 않고 단위만 고친다(22,133억원 → 22,133백만원).
+            repaired = fix_unit_mismatches(answer, cited)
+            if repaired != answer and not (numeric_claim_violations(repaired, cited) or share_claim_violations(repaired, cited)):
+                answer, violations = repaired, []
+        if violations:
             # 모델이 인용을 빠뜨렸을 수 있다(실측: 재무 표만 인용하고 이익률 표는 안 인용). 이번에 넣어 준
             # 근거 전체에서 다시 찾아 통과하면 숫자를 담은 근거를 인용에 보태고, 그래도 안 되면 버린다.
             everything = list(bundle.cited_texts.values())
-            if numeric_claim_violations(answer, everything) or share_claim_violations(answer, everything):
-                return None, [], needs
+            wide = (
+                numeric_claim_violations(answer, everything)
+                + share_claim_violations(answer, everything)
+                + entity_scope_violations(answer, everything, bundle.company_name)
+            )
+            if wide:
+                return None, [], needs, wide
             ids = ids + _holders_of(answer, bundle, ids)
         citations: list[Citation] = []
         seen: set[str] = set()
@@ -365,7 +404,18 @@ class CompanyChatService:
                 continue
             seen.add(citation.source_id)
             citations.append(citation)
-        return answer[:4_000], citations[:20], needs
+        return answer[:4_000], citations[:20], needs, []
+
+
+def _known_scopes(report: BusinessReport) -> set[str]:
+    return {c.entity_scope for c in report.chunks if c.entity_scope and is_plausible_entity(c.entity_scope)}
+
+
+def _retry_note(violations: list[Violation]) -> str:
+    """직전 답이 왜 버려졌는지 모델에 구체적으로 알려 준다. '22,133억원' → 표 단위 백만원 같은 실수는 이걸로 고쳐진다."""
+    lines = ["주의: 직전 답이 검증에서 버려졌다. 아래 문제를 고쳐 다시 답한다. 근거에 적힌 숫자와 단위만 그대로 쓰고 계산하지 않는다."]
+    lines += [f"- {v.detail}" for v in violations[:5]]
+    return "\n".join(lines)
 
 
 def _to_message(stored: StoredMessage) -> ChatMessage:

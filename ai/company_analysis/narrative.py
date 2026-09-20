@@ -16,7 +16,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-from .claim_check import CitedText, numeric_claim_violations, share_claim_violations
+from .claim_check import (
+    CitedText,
+    company_as_segment_violations,
+    entity_scope_violations,
+    fix_unit_mismatches,
+    is_plausible_entity,
+    market_stat_violations,
+    numeric_claim_violations,
+    share_claim_violations,
+)
 from .contracts import (
     SECTION_TITLES,
     BulletItem,
@@ -179,6 +188,9 @@ class EvidenceBundle:
     payload: list[dict[str, Any]] = field(default_factory=list)
     citations: dict[str, Citation] = field(default_factory=dict)
     cited_texts: dict[str, CitedText] = field(default_factory=dict)
+    company_name: str = ""
+    # 이 보고서에 등장하는 소속 법인(자회사) 이름. 역방향 주체 검사에 쓴다.
+    known_scopes: set[str] = field(default_factory=set)
 
     def add(
         self,
@@ -191,6 +203,7 @@ class EvidenceBundle:
         unit: str | None = None,
         is_table: bool = False,
         money_table: bool | None = None,
+        scope: str | None = None,
     ) -> None:
         """money_table 이 False 면 숫자 존재만 검사하고 금액 단위 규칙은 건너뛴다(직원 수가 섞인 확정 지표 표)."""
         if evidence_id in self.citations:
@@ -198,11 +211,15 @@ class EvidenceBundle:
         entry = {"evidence_id": evidence_id, "kind": kind, "title": title, "content": content}
         if unit:
             entry["unit"] = unit
+        if scope:
+            entry["entity_scope"] = scope
         self.payload.append(entry)
         self.citations[evidence_id] = citation
         header = next((line for line in content.splitlines() if line.startswith("표 머리글:")), "")
         check_as_table = is_table if money_table is None else money_table
-        self.cited_texts[evidence_id] = CitedText(evidence_id, content, is_table=check_as_table, unit=unit if check_as_table else None, header=header)
+        self.cited_texts[evidence_id] = CitedText(
+            evidence_id, content, is_table=check_as_table, unit=unit if check_as_table else None, header=header, scope=scope
+        )
 
     @property
     def ids(self) -> list[str]:
@@ -227,6 +244,9 @@ def _add_chunks(bundle: EvidenceBundle, chunks: Sequence[EvidenceChunk]) -> None
         content = _truncate_chunk(chunk)
         if chunk.is_table and chunk.unit:
             content = f"표 단위: {chunk.unit}\n{content}"
+        if chunk.is_table and chunk.entity_scope:
+            # 자회사 표임을 모델도 보게 한다. 검증기는 이 이름이 문장에 없으면 버린다.
+            content = f"소속 법인: {chunk.entity_scope} (이 표의 숫자는 {chunk.entity_scope} 의 것이다)\n{content}"
         bundle.add(
             chunk.evidence_id,
             kind="TABLE" if chunk.is_table else "TEXT",
@@ -235,6 +255,7 @@ def _add_chunks(bundle: EvidenceBundle, chunks: Sequence[EvidenceChunk]) -> None
             citation=chunk.citation(),
             unit=chunk.unit,
             is_table=chunk.is_table,
+            scope=chunk.entity_scope if chunk.is_table else None,
         )
 
 
@@ -299,12 +320,13 @@ def _add_peer_table(bundle: EvidenceBundle, report: CompanyReport) -> None:
 
 
 def build_bundle(plan: SectionPlan, business_report: BusinessReport | None, report: CompanyReport) -> EvidenceBundle:
-    bundle = EvidenceBundle()
+    bundle = EvidenceBundle(company_name=report.corp_name)
     if plan.include_metric_tables:
         _add_metric_tables(bundle, report)
     if plan.include_peer_table:
         _add_peer_table(bundle, report)
     if business_report is not None:
+        bundle.known_scopes = {c.entity_scope for c in business_report.chunks if c.entity_scope and is_plausible_entity(c.entity_scope)}
         _add_chunks(bundle, business_report.select(plan.text_patterns, content_types=("TEXT",), max_chars=plan.text_budget))
         if plan.table_patterns:
             _add_chunks(bundle, business_report.select(plan.table_patterns, content_types=("TABLE",), max_chars=plan.table_budget))
@@ -445,6 +467,12 @@ def _clean(text: Any, title: str | None = None) -> str:
 _NUMBER_TOKEN = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
 
 
+def _repair(text: str, ids: Sequence[str], bundle: EvidenceBundle) -> str:
+    """검사 전에 표 단위 오류를 코드가 고친다. 숫자는 바꾸지 않는다."""
+    cited = [bundle.cited_texts[i] for i in ids if i in bundle.cited_texts]
+    return fix_unit_mismatches(text, cited) if cited else text
+
+
 def _check(text: str, ids: Sequence[str], bundle: EvidenceBundle) -> list[Citation]:
     """숫자 검사를 통과하면 인용 목록을, 아니면 빈 목록을 돌려준다.
 
@@ -455,10 +483,21 @@ def _check(text: str, ids: Sequence[str], bundle: EvidenceBundle) -> list[Citati
     citations = [bundle.citations[i] for i in ids if i in bundle.citations]
     if not citations:
         return []
+    # 주체 오류는 인용을 보태도 고쳐지지 않으므로 먼저 본다.
+    if (
+        entity_scope_violations(text, cited, bundle.company_name)
+        or market_stat_violations(text, bundle.company_name)
+        or company_as_segment_violations(text, cited, bundle.known_scopes, bundle.company_name)
+    ):
+        return []
     if not (numeric_claim_violations(text, cited) or share_claim_violations(text, cited)):
         return citations
     everything = list(bundle.cited_texts.values())
-    if numeric_claim_violations(text, everything) or share_claim_violations(text, everything):
+    if (
+        numeric_claim_violations(text, everything)
+        or share_claim_violations(text, everything)
+        or entity_scope_violations(text, everything, bundle.company_name)
+    ):
         return []
     # 인용한 근거에 없는 숫자만, 온전한 토큰으로 맞는 근거만, 최대 4건 보탠다("35.5" 가 "135.5" 에 맞지 않게).
     already = " ".join(row.content for row in cited).replace(",", "")
@@ -495,6 +534,7 @@ def _items(raw_items: Any, bundle: EvidenceBundle, conversion: Conversion) -> li
         text = _clean(raw.get("text"))
         if not text:
             continue
+        text = _repair(text, raw.get("citation_ids") or [], bundle)
         citations = _check(text, raw.get("citation_ids") or [], bundle)
         if not citations:
             conversion.dropped += 1
@@ -542,6 +582,7 @@ def convert_output(plan: SectionPlan, output: dict[str, Any], bundle: EvidenceBu
             text = _clean(raw.get("text"), spec.title)
             if not text:
                 continue
+            text = _repair(text, raw.get("citation_ids") or [], bundle)
             citations = _check(text, raw.get("citation_ids") or [], bundle)
             if not citations:
                 conversion.dropped += 1

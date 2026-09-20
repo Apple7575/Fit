@@ -15,6 +15,20 @@ from ..patterns import Patterns, patterns as default_patterns
 TEXT_TAGS = ("P", "SPAN", "TU")
 MAX_TABLE_EXPANDED_CHARS = 8_000_000
 _UNIT_SCOPE = re.compile(r"단위\s*[)\]]?\s*[::]?\s*([^)\]|]{0,20})")
+_ENTITY_HEADING = re.compile(r"【\s*([^【】]+?)\s*】")
+_NON_ENTITY_HEADINGS = {"해외현지법인", "계열회사", "종속회사", "관계회사"}
+_NON_ENTITY_HEADING_WORDS = re.compile(r"주요|현황|해외|자회사|종속회사|BTL|계정")
+_GROUP_HEADING_WORDS = re.compile(r"주요|현황|해외|자회사|종속회사|BTL|계열회사|관계회사")
+
+
+def _entity_heading_value(text: str) -> str | None:
+    match = _ENTITY_HEADING.fullmatch(text)
+    if not match:
+        return None
+    name = match.group(1).rsplit(":", 1)[-1].strip()
+    if not name or name in _NON_ENTITY_HEADINGS or _NON_ENTITY_HEADING_WORDS.search(name):
+        return None
+    return name
 _SPACE = re.compile(r"\s+")
 
 
@@ -87,6 +101,7 @@ class Table:
     m: list[list[str]]
     excluded_reason: str | None = None
     header_rows: int = 0
+    entity_scope: str | None = None
 
     @property
     def rows(self) -> int:
@@ -253,6 +268,7 @@ class Document:
         current = Section(title="")
         self.sections.append(current)
         recent: list[str] = []
+        entity_scope: str | None = None
         paragraph_index = 0
         table_index = 0
         for element in root.iter():
@@ -261,6 +277,7 @@ class Document:
                 current = Section(title=squash("".join(element.itertext())))
                 self.sections.append(current)
                 recent = []
+                entity_scope = None
                 paragraph_index = 0
             elif tag in TEXT_TAGS:
                 if _is_in_table(element) or _has_text_ancestor(element):
@@ -271,6 +288,11 @@ class Document:
                 if text:
                     current.paragraphs.append(text)
                     recent = (recent + [text])[-4:]
+                    heading = _entity_heading_value(text)
+                    if heading:
+                        entity_scope = heading
+                    elif _ENTITY_HEADING.fullmatch(text) and _GROUP_HEADING_WORDS.search(text):
+                        entity_scope = None
             elif tag == "TABLE":
                 if _has_nested_table(element):
                     excluded_reason = "nested_table_container"
@@ -299,6 +321,7 @@ class Document:
                     m=table_matrix,
                     excluded_reason=excluded_reason,
                     header_rows=len(element.findall("./THEAD/TR")),
+                    entity_scope=entity_scope,
                 )
                 self.tables.append(table)
                 current.tables.append(table)

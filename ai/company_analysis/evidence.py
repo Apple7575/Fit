@@ -35,6 +35,8 @@ class EvidenceChunk:
     order: int  # 절 안 순서(chunk_index 또는 table_index)
     content: str
     unit: str | None = None
+    # 표 위 【 법인명 】 제목에서 뽑은 소속 법인(rag_evidence_entity_scope). 자회사 표를 본사 실적으로 읽지 않게 한다.
+    entity_scope: str | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict, compare=False, hash=False)
 
     @property
@@ -120,6 +122,26 @@ def _int(value: Any, default: int = 0) -> int:
         return default
 
 
+_TRAILING_HEADING = re.compile(r"\s*\|?\s*【\s*([^【】]+?)\s*】\s*$")
+
+
+def _repair_scope(content: str, scope: str | None) -> tuple[str, str | None]:
+    """캡션 줄 끝의 【 X 】 는 다음 표의 제목이 이 표 캡션에 섞인 것이다(우리금융지주 실측: 동양생명보험
+    총자산 캡션 끝에 【 우리카드 】). 소속이 그 X 와 같으면 잘못 붙은 것이므로 소속을 지우고 제목도 떼어 낸다."""
+    lines = content.splitlines()
+    if not lines or not lines[0].startswith("표 캡션:"):
+        return content, scope
+    match = _TRAILING_HEADING.search(lines[0])
+    if not match:
+        return content, scope
+    heading = match.group(1).strip()
+    lines[0] = lines[0][: match.start()].rstrip()
+    repaired = "\n".join(lines)
+    if scope and heading.replace(" ", "") == scope.replace(" ", ""):
+        return repaired, None
+    return repaired, scope
+
+
 def chunk_from_row(row: Mapping[str, Any]) -> EvidenceChunk:
     metadata = row.get("metadata") or {}
     if not isinstance(metadata, Mapping):
@@ -127,6 +149,9 @@ def chunk_from_row(row: Mapping[str, Any]) -> EvidenceChunk:
     content_type = str(metadata.get("content_type") or "TEXT").upper()
     order_key = "table_index" if content_type == "TABLE" else "chunk_index"
     unit = metadata.get("unit")
+    scope = row.get("scope_name")
+    scope = str(scope).strip() if isinstance(scope, str) and scope.strip() else None
+    content, scope = _repair_scope(str(row["content"]), scope)
     return EvidenceChunk(
         evidence_id=str(row["evidence_id"]),
         corp_code=str(row["corp_code"]),
@@ -137,8 +162,9 @@ def chunk_from_row(row: Mapping[str, Any]) -> EvidenceChunk:
         section_title=str(metadata.get("section_title") or "").strip(),
         content_type=content_type,
         order=_int(metadata.get(order_key)),
-        content=str(row["content"]),
+        content=content,
         unit=str(unit).strip() if isinstance(unit, str) and unit.strip() else None,
+        entity_scope=scope,
         metadata=dict(metadata),
     )
 
@@ -173,6 +199,15 @@ SELECT evidence_id, corp_code, title, published_at, content, metadata
   FROM rag_evidence
  WHERE corp_code = %(corp_code)s AND source_type = %(source_type)s
    AND metadata->>'rcept_no' = %(rcept_no)s
+"""
+
+# 소속 법인 보조 테이블(V32)이 있으면 함께 읽는다. 없는 DB 에서는 CHUNKS_SQL 로 물러난다.
+CHUNKS_WITH_SCOPE_SQL = """
+SELECT e.evidence_id, e.corp_code, e.title, e.published_at, e.content, e.metadata, s.scope_name
+  FROM rag_evidence e
+  LEFT JOIN rag_evidence_entity_scope s ON s.evidence_id = e.evidence_id
+ WHERE e.corp_code = %(corp_code)s AND e.source_type = %(source_type)s
+   AND e.metadata->>'rcept_no' = %(rcept_no)s
 """
 
 
@@ -233,7 +268,14 @@ class PostgresBusinessReportRepository:
             rcept_no = row[0] if row else None
             if not rcept_no:
                 return None
-            cursor.execute(CHUNKS_SQL, {**params, "rcept_no": rcept_no})
+            chunk_params = {**params, "rcept_no": rcept_no}
+            try:
+                cursor.execute(CHUNKS_WITH_SCOPE_SQL, chunk_params)
+            except Exception as error:  # noqa: BLE001 — 보조 테이블이 없는 DB(UndefinedTable)
+                if type(error).__name__ != "UndefinedTable":
+                    raise
+                connection.rollback()
+                cursor.execute(CHUNKS_SQL, chunk_params)
             names = [column.name for column in cursor.description]
             rows = [dict(zip(names, values)) for values in cursor.fetchall()]
         return report_from_rows(rows)

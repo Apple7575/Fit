@@ -188,6 +188,46 @@ def _document_records(
     return EvidenceBatch(records, dict(sorted(inputs.items())), dict(sorted(excluded.items())))
 
 
+def scoped_table_evidence_ids(
+    document: Document, ref: DartDocumentRef, profile: ChunkingProfile,
+) -> list[tuple[int, str]]:
+    """명시적 소속 법인이 있는 표의 기존 근거 ID만 재현한다.
+
+    백필은 본문 청크·메타데이터·해시를 만들 필요가 없다. 다만 표 중복 제거와
+    행 단위 ID 좌표는 기존 `_document_records`와 동일해야 한다.
+    """
+    result: list[tuple[int, str]] = []
+    for section_index, section in enumerate(document.sections):
+        if _excluded_section_reason(squash(section.title)):
+            continue
+        seen_tables: set[str] = set()
+        for table in section.tables:
+            if table.excluded_reason:
+                continue
+            unit, _, _ = document.unit(table)
+            table_key = content_hash({
+                "caption": squash(table.caption),
+                "rows": [[squash(cell) for cell in row] for row in table.m],
+                "unit": unit,
+            })
+            if table_key in seen_tables:
+                continue
+            seen_tables.add(table_key)
+            if not table.entity_scope:
+                continue
+            for chunk in _table_chunks(table.caption, table.m, max_chars=profile.table_max_chars):
+                identity = (
+                    f"dart_business_report:{ref.corp_code}:{ref.rcept_no}:{section_index}:"
+                    f"table:{table.idx}:{chunk.row_start}:{chunk.row_end}"
+                )
+                if profile.name:
+                    identity = identity.replace("dart_business_report:", f"dart_business_report:{profile.name}:", 1)
+                if chunk.row_part_index is not None:
+                    identity += f":part:{chunk.row_part_index}"
+                result.append((table.idx, stable_evidence_id(identity)))
+    return result
+
+
 def _metadata(
     document: Document, ref: DartDocumentRef, section_title: str, section_index: int, *, content_type: str,
     chunking_profile: str | None = None,
