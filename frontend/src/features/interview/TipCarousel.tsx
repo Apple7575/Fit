@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { StepText } from '../../components/brand/LoadingScreen';
 import { prefersReducedMotion } from '../../hooks/useInView';
 import { GuideImage } from './GuideImage';
 import { INTERVIEW_TIPS } from './interviewTips';
@@ -14,7 +15,14 @@ const HOLD_MS = 6000;
  * 진행 상태가 아니라 읽을거리이므로 끝에서 처음으로 돌아간다(로딩 문구와 달리 멈추지 않는다).
  * 모션을 줄인 환경에서는 넘기지 않고 첫 장만 둔다.
  */
-export function TipCarousel({ className = '' }: { className?: string }) {
+export function TipCarousel({
+  className = '',
+  /** 지금 무엇을 하는 중인지. 주면 팁 위에 한 줄로 붙는다 */
+  message,
+}: {
+  className?: string;
+  message?: string[];
+}) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -30,6 +38,15 @@ export function TipCarousel({ className = '' }: { className?: string }) {
 
   return (
     <section aria-labelledby="tip-title" className={`mx-auto w-full max-w-md ${className}`}>
+      {/*
+        기다림은 한 덩어리여야 한다. 돌멩이가 뛰는 화면 아래에 팁 카드를 또 쌓으면 눈이
+        갈라진다. 진행 상황은 팁 위에 한 줄로만 둔다.
+      */}
+      {message && (
+        <div aria-busy="true" aria-live="polite" className="mb-6 text-center" role="status">
+          <StepText onDark={false} steps={message} />
+        </div>
+      )}
       <p className={`text-center ${T.label}`} id="tip-title">
         기다리는 동안 — 면접 팁
       </p>

@@ -21,12 +21,12 @@ const TRIO: CharacterKey[] = ['fox', 'chick', 'otter'];
 const STEP_MS = 2600;
 
 /**
- * 차례로 바뀌는 문구 한 줄.
+ * 차례로 바뀌는 문구 한 줄. 돌멩이 없이 문구만 필요한 화면(면접 기다림)에서도 쓴다.
  *
  * <p>부모가 문구 목록을 key 로 주므로, 목록이 바뀌면 이 컴포넌트가 새로 달리며 처음부터 시작한다.
  * (효과 안에서 되돌리면 한 박자 늦게 바뀌어 이전 단계 글자가 잠깐 남는다.)
  */
-function StepText({ steps, onDark }: { steps: string[]; onDark: boolean }) {
+export function StepText({ steps, onDark }: { steps: string[]; onDark: boolean }) {
   const count = steps.length;
   const [step, setStep] = useState(0);
 
