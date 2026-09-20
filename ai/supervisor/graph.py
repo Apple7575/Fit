@@ -30,6 +30,28 @@ from ai.supervisor.model import PlanOutputError, SupervisorModel
 from ai.supervisor.tools import tool_scope
 
 
+CLARIFICATION_HEADING = "덧붙여, 더 고치려면 이것을 알려 주세요"
+
+
+def _with_clarification(message: str, clarification: str) -> str:
+    """종합 끝에 글쓰기 담당의 되물음을 붙인다.
+
+    되물음은 사용자가 답해야 답이 나오는 질문이라 묻히면 안 된다. 그렇다고 종합 안에 섞으면
+    다른 담당이 낸 답까지 질문처럼 읽힌다. 그래서 종합을 먼저 내고 끝에 따로 세운다.
+    """
+    text = (message or "").strip()
+    tail = (clarification or "").strip()
+    if not tail:
+        return text
+    if not text:
+        return tail
+    if tail in text:
+        # 종합 모델이 이미 같은 말을 적었다. 두 번 쓰지 않는다.
+        return text
+    return f"{text}\n\n{CLARIFICATION_HEADING}\n{tail}"
+
+
+
 class SupervisorState(TypedDict, total=False):
     instruction: str
     documents: list[dict[str, Any]]
@@ -476,34 +498,34 @@ def build_supervisor_graph(
             ),
             None,
         )
+        clarification = ""
         if writing_result is not None:
             writing_message = writing_result.result.get("message")
-            if writing_result.result.get("status") == "CLARIFICATION_REQUIRED":
-                return {
-                    "final_message": (
-                        writing_message if isinstance(writing_message, str) else ""
-                    )
-                }
+            writing_text = writing_message if isinstance(writing_message, str) else ""
             if len(successes) == 1:
-                return {
-                    "final_message": (
-                        writing_message if isinstance(writing_message, str) else ""
-                    )
-                }
+                # 글쓰기 혼자 답했다. 종합할 것이 없으니 그 말을 그대로 쓴다.
+                return {"final_message": writing_text}
+            if writing_result.result.get("status") == "CLARIFICATION_REQUIRED":
+                # 되물음은 답이 아니라 사용자에게 던지는 질문이다. 이것만 내보내면 다른 담당이
+                # 낸 답이 묻히므로, 종합을 먼저 내고 끝에 따로 붙인다.
+                clarification = writing_text
         try:
             message = model.aggregate(
                 instruction=state["instruction"],
                 plan=state["plan"],
                 results=successes,
             )
-            return {"final_message": message, "_used_model": True}
+            return {
+                "final_message": _with_clarification(message, clarification),
+                "_used_model": True,
+            }
         except Exception:
             message = "\n".join(
                 f"[{item.agent}] "
                 + json.dumps(item.result, ensure_ascii=False, sort_keys=True)
                 for item in successes
             )
-        return {"final_message": message}
+        return {"final_message": _with_clarification(message, clarification)}
 
     builder = StateGraph(SupervisorState)
     builder.add_node("validate_input", validate_input)

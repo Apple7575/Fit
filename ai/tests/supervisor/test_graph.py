@@ -587,6 +587,35 @@ class SupervisorGraphTest(unittest.TestCase):
         self.assertEqual(result["final_message"], clarification)
         self.assertEqual(model.aggregate_calls, [])
 
+    def test_clarification_is_appended_when_other_agents_answered(self):
+        """되물음만 내보내면 다른 담당이 낸 답이 묻힌다. 종합을 먼저 내고 끝에 붙인다."""
+        clarification = "본인이 수행한 행동을 알려주세요."
+        model = FakeModel(
+            [SupervisorPlan(selected_agents=["company", "writing"], reason="둘 다 본다")]
+        )
+        company = RecordingAdapter("company", result={"message": "매출 186.3조원"})
+        writing = RecordingAdapter(
+            "writing",
+            result={
+                "status": "CLARIFICATION_REQUIRED",
+                "message": clarification,
+                "revision": None,
+            },
+        )
+
+        result = invoke_graph(
+            model,
+            AgentRegistry([company, writing]),
+            {
+                "company": {"corp_code": "00164742"},
+                "writing": {"question": "협업 경험", "char_limit": 700},
+            },
+        )
+
+        self.assertIn("종합 결과", result["final_message"])
+        self.assertTrue(result["final_message"].endswith(clarification))
+        self.assertEqual(len(model.aggregate_calls), 1)
+
     def test_selected_agents_execute_in_parallel_threads(self):
         model = FakeModel(
             [SupervisorPlan(selected_agents=["jd", "position"], reason="둘 다 검토")]
