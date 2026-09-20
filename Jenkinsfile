@@ -326,35 +326,11 @@ pipeline {
                             echo "받음: $(find "$D" -type f | wc -l) 파일"
                         '
 
-                        # ── 2. 돌린다 (stdin 이 비어 heredoc 을 쓸 수 있다)
-                        $SSH "$HOST" "CA_ENV=$DEPLOY_ENV bash -s" <<'REMOTE'
-flock -w 900 /tmp/ca-seedload.lock -c '
-  set -e
-  D=/home/ubuntu/dataload
-  cfg=/home/ubuntu/app/infra/.env.$CA_ENV
-  # 값에 특수문자가 있어 source 하면 깨진다 — 줄에서 뽑는다 (실측: line 44 오류).
-  PW=$(grep -E "^POSTGRES_PASSWORD=" "$cfg" | cut -d= -f2- | tr -d "\r")
-  DB=$(grep -E "^POSTGRES_DB=" "$cfg" | cut -d= -f2- | tr -d "\r")
-  US=$(grep -E "^POSTGRES_USER=" "$cfg" | cut -d= -f2- | tr -d "\r")
-
-  run() {
-    docker run --rm --network "ca-${CA_ENV}_appnet" \
-      -v "$D":/repo -w /repo/data \
-      -e DATABASE_URL="postgresql://${US}:${PW}@postgres:5432/${DB}" \
-      -e PYTHONIOENCODING=utf-8 -e PIP_DISABLE_PIP_VERSION_CHECK=1 \
-      python:3.12-slim sh -c "pip install -q \"psycopg[binary]>=3.1\" \"python-dotenv>=1.0\" \"PyYAML>=6.0\" && $1"
-  }
-
-  echo "── company 먼저 (나머지가 FK 를 건다)"
-  run "python scripts/load_company.py"
-  echo "── 무엇이 들어가는지 먼저 본다"
-  run "python scripts/load_seed_csv.py --dry-run"
-  echo "── 적재"
-  run "python scripts/load_seed_csv.py"
-
-  rm -rf "$D"
-'
-REMOTE
+                        # ── 2. 돌린다. 셸은 꾸러미 안의 스크립트에 둔다 — 여기에 중첩하면
+                        #    Groovy 가 이스케이프한 따옴표를 풀어 짝이 어긋난다 (빌드 22 실패).
+                        $SSH "$HOST" "CA_ENV=$DEPLOY_ENV \
+                            flock -w 900 /tmp/ca-seedload.lock \
+                            bash /home/ubuntu/dataload/data/scripts/ci_load_seed.sh"
                     '''
                 }
             }
