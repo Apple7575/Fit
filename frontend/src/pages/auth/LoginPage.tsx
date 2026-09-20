@@ -46,7 +46,7 @@ export function LoginPage() {
   return (
     <AuthLayout
       character="fox"
-      headline="오늘은 어느 회사를 볼까요?"
+      headline="돌아오셨네요, 이어서 볼까요?"
       lines={[
         '어서 오세요, 기다렸어요',
         '지난번 보던 회사 이어서 볼까요?',

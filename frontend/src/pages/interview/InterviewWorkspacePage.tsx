@@ -161,9 +161,32 @@ function NewInterview() {
     }
   };
 
-  if (phase === 'generating') return <Shell><Loading message="면접 질문을 구성하고 있습니다…" /></Shell>;
+  // 오래 걸리는 두 단계는 지금 무엇을 하는 중인지 차례로 말해 준다. 같은 시간도 짧게 느껴진다
+  if (phase === 'generating')
+    return (
+      <Shell>
+        <LoadingScreen
+          message={[
+            '회사 자료를 읽고 있어요',
+            '직무에 맞는 질문을 고르고 있어요',
+            '곧 시작합니다',
+          ]}
+        />
+      </Shell>
+    );
   if (phase === 'analyzing')
-    return <Shell><Loading message="AI가 답변 내용을 분석하고 있습니다… (최대 1분 정도 걸릴 수 있어요)" /></Shell>;
+    return (
+      <Shell>
+        <LoadingScreen
+          message={[
+            '답변을 옮겨 적고 있어요',
+            '시선과 표정을 살펴보고 있어요',
+            '말하기 속도를 재고 있어요',
+            '리포트를 정리하고 있어요 (최대 1분)',
+          ]}
+        />
+      </Shell>
+    );
   if (phase === 'saving') return <Shell><Loading message="면접 결과를 저장하고 있습니다…" /></Shell>;
 
   if (phase === 'session' && config) {

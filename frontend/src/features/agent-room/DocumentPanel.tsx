@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import type { QueryState } from '../../hooks/useApiQuery';
 import type { CoverLetter } from '../cover-letter/types';
 
@@ -21,11 +22,7 @@ export function DocumentPanel({
 }) {
 
   if (state.status === 'loading') {
-    return (
-      <p className="text-[13px] text-slate-400" role="status">
-        자소서를 불러오는 중…
-      </p>
-    );
+    return <LoadingScreen compact message="자소서를 불러오는 중" />;
   }
 
   if (state.status === 'error') {
