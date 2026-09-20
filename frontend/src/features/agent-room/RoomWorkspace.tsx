@@ -1,5 +1,6 @@
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { characterForAgent } from '../../components/brand/characters';
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isNotFound } from '../../api/client';
@@ -34,11 +35,7 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
   });
 
   if (room.status === 'loading') {
-    return (
-      <p role="status" className="text-[14px] text-slate-400">
-        불러오는 중…
-      </p>
-    );
+    return <LoadingScreen compact message="검토 방을 여는 중" />;
   }
   if (room.status === 'error') {
     // 없거나 접근 불가한 방(404 ROOM_NOT_FOUND)은 재시도해도 같은 404 → 목록으로 유도한다.
