@@ -275,12 +275,19 @@ public class TurnService {
      * <p>총괄은 {@code room.agents} 에 없고 담당이 2명 이상일 때 붙는다 — 혼자 있는 방에는
      * 조정할 것이 없다.
      */
+    /**
+     * 이 턴에 자리를 만들 담당.
+     *
+     * <p>기업 담당은 {@link AgentContexts} 가 기업 코드를 찾았을 때만 넣는다. 방이 골랐는데
+     * 코드가 없으면 여기서 자리만 만들어 둔다 — 자리가 없으면 "설정을 먼저 채워 주세요" 를
+     * 띄울 곳이 없어 턴 자체가 열리지 않는다.
+     */
     private static List<String> participants(Room room, TurnContext context) {
         List<String> keys = new ArrayList<>(AgentContexts.of(context).agentKeys());
         boolean companyPicked = room.getAgents().stream()
                 .map(RoomAgent::agentKey)
                 .anyMatch(AgentType.COMPANY.key()::equals);
-        if (companyPicked) {
+        if (companyPicked && !keys.contains(AgentType.COMPANY.key())) {
             keys.add(AgentType.COMPANY.key());
         }
         if (keys.size() >= 2) {

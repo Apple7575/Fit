@@ -63,16 +63,32 @@ public class TurnExecutor {
         runLocalAgentsAndSupervisor(turnId, context);
     }
 
+    /**
+     * 기업 담당만 있는 방은 그 담당 API 를 직접 부르고, 담당이 여럿인 방은 총괄에게 맡긴다.
+     *
+     * <p>전담 방은 그 담당과 둘이 이야기하는 자리다. 총괄을 거치면 왕복만 하나 늘고 종합할
+     * 것도 없다 — 뉴스 담당이 이미 같은 이유로 총괄을 우회한다({@code SupervisorTurnRunner}).
+     *
+     * <p>반대로 담당이 여럿이면 총괄로 보내야 한다. 따로 돌리면 총괄이 기업 담당의 답을 보지
+     * 못해 종합에서 빠지고, 기업 담당이 뉴스를 요청해도({@code needs}) 전달되지 않는다.
+     */
     private void runLocalAgentsAndSupervisor(Long turnId, TurnContext context) {
-        List<Message> slots = messageRepository.findByParentMessageIdOrderByIdAsc(turnId);
+        if (!isSoloCompanyRoom(context)) {
+            supervisorTurnRunner.run(turnId, context);
+            return;
+        }
 
+        List<Message> slots = messageRepository.findByParentMessageIdOrderByIdAsc(turnId);
         CompletableFuture<Void> local = CompletableFuture.allOf(slots.stream()
                 .filter(slot -> AgentType.COMPANY.key().equals(slot.getAgentKey()))
                 .map(slot -> CompletableFuture.runAsync(
                         () -> agentTaskRunner.run(slot.getId(), context), agentTaskExecutor))
                 .toArray(CompletableFuture[]::new));
-
-        supervisorTurnRunner.run(turnId, context);
         local.join();
+    }
+
+    private static boolean isSoloCompanyRoom(TurnContext context) {
+        return context.roomAgentKeys().size() == 1
+                && context.roomAgentKeys().contains(AgentType.COMPANY.key());
     }
 }
