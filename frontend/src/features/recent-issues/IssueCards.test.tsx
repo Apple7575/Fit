@@ -160,7 +160,7 @@ describe('IssueKpiRow / IssueDistributionCard', () => {
     expect(screen.getByText(/중요 이슈 수 · 투자 이슈 · 기술 이슈 은\(는\)/)).toBeInTheDocument();
   });
 
-  it('hides the distribution card when nothing was classified', () => {
+  it('explains the distribution card when nothing was classified', () => {
     const { container } = render(
       <IssueDistributionCard
         onRetry={() => {}}
@@ -170,7 +170,7 @@ describe('IssueKpiRow / IssueDistributionCard', () => {
         }}
       />,
     );
-    expect(container).toBeEmptyDOMElement();
+    expect(container).not.toBeEmptyDOMElement();
   });
 
   it('draws one donut arc per category with the total in the middle', () => {
@@ -210,7 +210,7 @@ describe('IssueKpiRow / IssueDistributionCard', () => {
 describe('TopNewsCard', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('renders ranked items with category and importance, and hides when empty', async () => {
+  it('renders ranked items with category and importance, and explains when empty', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -233,6 +233,6 @@ describe('TopNewsCard', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok({ items: [] })));
     const second = render(<TopNewsCard corpCode="B" />);
     await waitFor(() => expect(second.container.querySelector('[role="status"]')).toBeNull());
-    expect(second.container).toBeEmptyDOMElement();
+    expect(second.container).not.toBeEmptyDOMElement();
   });
 });

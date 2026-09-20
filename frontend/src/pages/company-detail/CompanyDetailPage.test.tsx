@@ -153,9 +153,9 @@ describe('CompanyDetailPage', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: '삼성전자' }),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByRole('heading', { name: '다섯 질문으로 보는 이 회사' }),
-    ).toBeInTheDocument();
+    // 다섯 구획이 요약 한 장에 이어 붙는다
+    expect(await screen.findByRole('heading', { name: '어떤 회사인가' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '업계에서 어디쯤' })).toBeInTheDocument();
     // 기준 칩
     expect(screen.getByText('최근 공시 기준')).toBeInTheDocument();
   });
@@ -202,7 +202,7 @@ describe('CompanyDetailPage', () => {
     expect(trendCalls).toEqual([expect.stringContaining('timeseries?to=2025')]);
   });
 
-  it('집중 분야 탭은 확정 영역을 보여주고 조건부 영역은 404 면 숨긴다', async () => {
+  it('집중 분야 탭은 확정 영역을 보여주고 조건부 영역은 404 면 안내로 대체한다', async () => {
     vi.stubGlobal('fetch', stubFetchByUrl());
 
     renderAt('/companies/00126380/focus');
@@ -217,9 +217,9 @@ describe('CompanyDetailPage', () => {
       await screen.findByRole('heading', { name: '인력 변화' }),
     ).toBeInTheDocument();
     expect((await screen.findAllByText('증설')).length).toBeGreaterThan(0);
-    expect(
-      screen.queryByRole('heading', { name: '사업 방향' }),
-    ).not.toBeInTheDocument();
+    // 조건부 영역은 자리를 지키되 왜 비었는지 알려 준다
+    expect(screen.getByRole('heading', { name: '사업 방향' })).toBeInTheDocument();
+    expect(screen.getByText(/사업 방향 정보가 아직 없어요/)).toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: '집중 분야 요약' }),
     ).not.toBeInTheDocument();
@@ -291,9 +291,7 @@ describe('CompanyDetailPage', () => {
       await screen.findByRole('heading', { level: 1, name: '기업 분석' }),
     ).toBeInTheDocument();
     // 조건부 섹션은 별개 요청이라 정상 표시된다
-    expect(
-      await screen.findByRole('heading', { name: '다섯 질문으로 보는 이 회사' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '어떤 회사인가' })).toBeInTheDocument();
     // 실패를 "정보 없음"으로 위장하지 않고 안내 + 다시 시도를 보여준다
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /기업 기본정보를 불러오지 못했습니다/,

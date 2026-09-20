@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { useInView } from '../../hooks/useInView';
 import { CompanyMedia } from './CompanyMedia';
 import { industryGroupOf } from './industryGroups';
@@ -61,11 +60,6 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                       alt={`${corpName ?? '기업'} 포인트 ${i + 1}`}
                       className="size-full transition duration-700 group-hover:scale-[1.04]"
                       group={group}
-                      fallback={
-                        <div className="flex size-full items-center justify-center">
-                          <CharacterSlot character={p.coach} size={120} />
-                        </div>
-                      }
                       slot={`point-${p.key}`}
                     />
                     <span className="absolute left-3 top-3 flex size-8 items-center justify-center rounded-full bg-white/45 text-sm font-extrabold text-slate-900 ring-1 ring-white/50 backdrop-blur-md">
@@ -76,7 +70,6 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                     <p className="text-lg font-extrabold leading-snug text-slate-950 break-keep">{p.fact}</p>
                     <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 break-keep">{p.action}</p>
                     <div className="mt-4 flex items-center gap-2 text-xs font-bold text-slate-400">
-                      <CharacterSlot character={p.coach} interactive={false} size={22} />
                       <span className="ml-auto text-blue-600 transition group-hover:text-blue-700">
                         근거 보기 <span aria-hidden="true">→</span>
                       </span>

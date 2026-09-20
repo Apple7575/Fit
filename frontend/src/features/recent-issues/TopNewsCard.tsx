@@ -1,3 +1,4 @@
+import { EmptyCard } from '../../components/common/EmptyCard';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { categoryChipClass } from './categoryStyle';
 import { useTopNews } from './hooks';
@@ -19,7 +20,7 @@ export function TopNewsCard({ corpCode }: TopNewsCardProps) {
     return (
       <div
         aria-busy="true"
-        className="h-40 animate-pulse rounded-3xl border border-slate-200 bg-white"
+        className="h-40 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
         role="status"
       >
         <span className="sr-only">중요 뉴스를 불러오는 중입니다</span>
@@ -34,12 +35,18 @@ export function TopNewsCard({ corpCode }: TopNewsCardProps) {
       </InlineNotice>
     );
   }
-  if (state.data.length === 0) return null;
+  if (state.data.length === 0) {
+    return (
+      <EmptyCard title="중요 이슈">
+        중요도를 매긴 이슈가 아직 없어요. 아래 최신 뉴스로 흐름을 볼 수 있습니다.
+      </EmptyCard>
+    );
+  }
 
   return (
     <section
       aria-labelledby="top-news-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <h3 className="text-base font-extrabold text-slate-950" id="top-news-title">
         중요 뉴스 TOP {state.data.length}

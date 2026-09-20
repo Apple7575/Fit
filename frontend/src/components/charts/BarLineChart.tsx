@@ -1,5 +1,6 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { niceTicks, symmetricTicks, useContainerWidth } from './chartMath';
+import { ChartTooltip, useChartHover } from './ChartTooltip';
 
 export interface BarLinePoint {
   label: string;
@@ -41,6 +42,8 @@ export function BarLineChart({
 }: BarLineChartProps) {
   const tableId = useId();
   const { ref, width: W } = useContainerWidth();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const hover = useChartHover(svgRef);
   const PLOT_W = W - PAD.left - PAD.right;
   const slot = points.length > 0 ? PLOT_W / points.length : PLOT_W;
   const barW = Math.min(56, slot * 0.42);
@@ -75,8 +78,26 @@ export function BarLineChart({
   });
   if (current.length) segments.push(current.join(' '));
 
+  /** 막대 안이거나 증가율 점 가까이일 때만 값을 보여 준다 */
+  const hitTest = (x: number, y: number) => {
+    for (let i = 0; i < points.length; i++) {
+      const cx = xCenter(i);
+      if (Math.abs(x - cx) > barW / 2 + 4) continue;
+      const p = points[i];
+      if (p.value !== null) {
+        const top = Math.min(yOf(p.value), yOf(0));
+        const bottom = Math.max(yOf(p.value), yOf(0));
+        if (y >= top - 14 && y <= bottom) return i;
+      }
+      if (p.rate !== null && Math.abs(y - yOfRate(p.rate)) <= 16) return i;
+    }
+    return null;
+  };
+
+  const hovered = hover.point ? points[hover.point.index] : null;
+
   return (
-    <div ref={ref}>
+    <div className="relative" ref={ref}>
       <p className="mb-3 flex flex-wrap gap-4 text-xs font-semibold text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="inline-block h-2.5 w-4 rounded-sm bg-blue-600" />
@@ -96,6 +117,9 @@ export function BarLineChart({
         className="block w-full max-w-full overflow-visible"
         data-testid="bar-line-chart"
         height={H}
+        onMouseLeave={hover.clear}
+        onMouseMove={(e) => hover.track(e, hitTest)}
+        ref={svgRef}
         role="img"
         viewBox={`0 0 ${W} ${H}`}
       >
@@ -249,7 +273,41 @@ export function BarLineChart({
             </g>
           ),
         )}
+        {hover.point && (
+          <line
+            className="stroke-slate-400"
+            strokeDasharray="3 3"
+            strokeWidth={1}
+            x1={xCenter(hover.point.index)}
+            x2={xCenter(hover.point.index)}
+            y1={PAD.top}
+            y2={PAD.top + PLOT_H}
+          />
+        )}
       </svg>
+
+      {hovered && hover.point && (
+        <ChartTooltip
+          rows={[
+            { label: valueName, value: hovered.value === null ? '미제공' : formatValue(hovered.value) },
+            ...(hasRates
+              ? [
+                  {
+                    label: rateName,
+                    value:
+                      hovered.rate === null
+                        ? '미제공'
+                        : `${hovered.rate > 0 ? '+' : ''}${hovered.rate.toFixed(1)}%`,
+                  },
+                ]
+              : []),
+          ]}
+          title={hovered.label}
+          width={W}
+          x={hover.point.x}
+          y={hover.point.y}
+        />
+      )}
 
       <table className="sr-only" id={tableId}>
         <caption>{title}</caption>

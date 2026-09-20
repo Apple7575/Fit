@@ -44,7 +44,7 @@ describe('SegmentRevenueCard', () => {
     ).toHaveLength(2);
   });
 
-  it('공시 부문이 하나도 없으면 아무것도 렌더하지 않는다', () => {
+  it('공시 부문이 하나도 없으면 왜 없는지 알려 준다', () => {
     const { container } = render(
       <SegmentRevenueCard
         segments={[{ code: 'A', revenue: null, revenueShare: null }]}
@@ -52,6 +52,7 @@ describe('SegmentRevenueCard', () => {
       />,
     );
 
-    expect(container).toBeEmptyDOMElement();
+    expect(container).not.toBeEmptyDOMElement();
+    expect(screen.getByText(/사업부별 매출을 공시하지 않는 기업/)).toBeInTheDocument();
   });
 });

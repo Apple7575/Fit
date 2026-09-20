@@ -194,7 +194,7 @@ describe('ComparisonResult', () => {
     expect(screen.getByText(/기준 2025년/)).toBeInTheDocument();
   });
 
-  it('hides insights when empty and explains when there are no companies', () => {
+  it('explains insights when empty and when there are no companies', () => {
     const { unmount } = render(
       <ComparisonResult
         comparison={comparison}
@@ -203,7 +203,9 @@ describe('ComparisonResult', () => {
         trends={trendsOk}
       />,
     );
-    expect(screen.queryByRole('heading', { name: '핵심 인사이트' })).not.toBeInTheDocument();
+    // 비어도 카드는 자리를 지키고 왜 없는지 알려 준다
+    expect(screen.getByRole('heading', { name: '핵심 인사이트' })).toBeInTheDocument();
+    expect(screen.getByText(/비교 인사이트는 아직 준비 중/)).toBeInTheDocument();
     unmount();
 
     render(

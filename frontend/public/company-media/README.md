@@ -17,9 +17,22 @@ medical · electrical · steel · food · construction · media · logistics · 
 | `point-direction.*` | 방향(키워드·R&D) 카드 | 960×720 |
 | `point-momentum.*` | 흐름(실적 변화·뉴스) 카드 | 960×720 |
 | `point-rank.*` | 업계 순위 카드 | 960×720 |
+| `point-issues.*` | 최근 이슈 구획 머리 | 1600×600 (가로로 긴 띠) |
 | `credits.json` | 사진 출처 (아래) | |
 
-찾는 순서는 영상 → jpg → png 이다. 파일이 없는 칸은 브랜드색 바탕(배경)이나 코치 캐릭터(포인트)로 대체된다.
+`point-*` 사진은 두 군데에 쓰인다. "알아둘 세 가지" 카드(4:3)와 그 아래 구획 머리 띠(가로로 긴 배경)다.
+구획 머리는 왼쪽에 흰 글씨가 앉으므로 **왼쪽이 비교적 단순한 사진**이 좋다.
+
+| 구획 | 쓰는 사진 |
+| --- | --- |
+| 01 사업 | `point-business` |
+| 02 성장 | `point-momentum` |
+| 03 집중 분야 | `point-direction` |
+| 04 산업 비교 | `point-rank` |
+| 05 최근 이슈 | `point-issues` |
+
+찾는 순서는 영상 → jpg → png 이다. 구획 머리는 해당 사진이 없으면 `hero` 로, 그것도 없으면
+브랜드색 바탕으로 떨어진다. 그래서 `hero` 한 장만 있어도 화면은 깨지지 않는다.
 
 ## 출처 표기 (`credits.json`)
 

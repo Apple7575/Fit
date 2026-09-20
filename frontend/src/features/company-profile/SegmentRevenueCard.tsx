@@ -1,3 +1,5 @@
+import { EmptyCard } from '../../components/common/EmptyCard';
+import { useState } from 'react';
 import { formatAmount } from '../../utils/formatAmount';
 import type { ProfileSegment } from './types';
 
@@ -15,9 +17,14 @@ export function SegmentRevenueCard({
   segments,
   totalRevenue,
 }: SegmentRevenueCardProps) {
+  const [hover, setHover] = useState<string | null>(null);
   const disclosed = segments.filter((s) => s.revenue !== null);
   if (disclosed.length === 0) {
-    return null;
+    return (
+      <EmptyCard title="사업부 매출">
+        사업부별 매출을 공시하지 않는 기업이에요. 전체 매출은 성장 구획에서 볼 수 있습니다.
+      </EmptyCard>
+    );
   }
 
   const sum = disclosed.reduce((acc, s) => acc + (s.revenue ?? 0), 0);
@@ -35,10 +42,12 @@ export function SegmentRevenueCard({
   });
   const undisclosed = segments.filter((s) => s.revenue === null);
 
+  const hoveredArc = arcs.find((arc) => arc.segment.code === hover) ?? null;
+
   return (
     <section
       aria-labelledby="segment-revenue-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <h2
         className="text-xl font-extrabold text-slate-950"
@@ -49,30 +58,44 @@ export function SegmentRevenueCard({
 
       <div className="mt-6 flex flex-col items-center gap-8 sm:flex-row">
         <div className="relative size-44 shrink-0">
-          <svg aria-hidden="true" className="size-full" viewBox="0 0 42 42">
+          <svg
+            aria-hidden="true"
+            className="size-full"
+            onMouseLeave={() => setHover(null)}
+            viewBox="0 0 42 42"
+          >
             {arcs.map(({ segment, ratio, offset, color }) => (
               <circle
+                className="transition-[stroke-width] duration-150"
                 cx="21"
                 cy="21"
                 data-testid="donut-arc"
                 fill="none"
                 key={segment.code}
+                onMouseEnter={() => setHover(segment.code)}
+                opacity={hover && hover !== segment.code ? 0.45 : 1}
                 r={RADIUS}
                 stroke={color}
                 strokeDasharray={`${ratio} ${100 - ratio}`}
                 strokeDashoffset={offset}
-                strokeWidth="6"
+                strokeWidth={hover === segment.code ? 8 : 6}
               />
             ))}
           </svg>
-          {totalRevenue !== null && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-xs font-medium text-slate-500">
-                전체 매출
+          {/* 조각에 올리면 가운데 글씨가 그 부문 값으로 바뀐다 */}
+          {(hoveredArc || totalRevenue !== null) && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+              <span className="text-xs font-medium break-keep text-slate-500">
+                {hoveredArc ? hoveredArc.segment.code : '전체 매출'}
               </span>
-              <span className="text-sm font-extrabold text-slate-950">
-                {formatAmount(totalRevenue)} 원
+              <span className="text-sm font-extrabold text-slate-950 tabular-nums">
+                {formatAmount(hoveredArc ? (hoveredArc.segment.revenue ?? 0) : (totalRevenue ?? 0))} 원
               </span>
+              {hoveredArc && (
+                <span className="text-xs font-semibold text-slate-500 tabular-nums">
+                  {(hoveredArc.segment.revenueShare ?? hoveredArc.ratio).toFixed(1)}%
+                </span>
+              )}
             </div>
           )}
         </div>
