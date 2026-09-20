@@ -322,7 +322,9 @@ pipeline {
                             D=/home/ubuntu/dataload
                             rm -rf "$D.new" && mkdir -p "$D.new"
                             tar xzf - -C "$D.new"
-                            rm -rf "$D" && mv "$D.new" "$D"
+                            rm -rf "$D" 2>/dev/null \
+                              || docker run --rm -v /home/ubuntu:/h python:3.12-slim rm -rf /h/dataload
+                            mv "$D.new" "$D"
                             echo "받음: $(find "$D" -type f | wc -l) 파일"
                         '
 

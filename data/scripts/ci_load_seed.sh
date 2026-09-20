@@ -40,6 +40,7 @@ run() {
     -v "$D":/repo -w /repo/data \
     -e DATABASE_URL="postgresql://${US}:${PW}@postgres:5432/${DB}" \
     -e PYTHONIOENCODING=utf-8 -e PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    -e PYTHONDONTWRITEBYTECODE=1 \
     python:3.12-slim sh -c "pip install -q 'psycopg[binary]>=3.1' 'python-dotenv>=1.0' 'PyYAML>=6.0' && $1"
 }
 
@@ -51,4 +52,11 @@ echo "── 적재"
 run "python scripts/load_seed_csv.py"
 
 # 이 스크립트도 $D 안에 있지만, 셸이 이미 연 fd 로 읽으므로 지워도 끝까지 돈다.
-rm -rf "$D"
+#
+# 컨테이너가 root 로 도는 탓에 __pycache__ 가 root 소유로 남아 ubuntu 가 못 지웠다.
+# 적재를 다 끝내고 이 줄에서 빌드가 떨어졌다 (빌드 39). 위의 PYTHONDONTWRITEBYTECODE
+# 로 이제 안 만들지만, 옛 찌꺼기가 남아 있을 수 있으니 못 지우면 컨테이너를 빌려
+# 지운다 — 다음 빌드의 보내기 단계도 같은 rm 에서 걸린다.
+if ! rm -rf "$D" 2>/dev/null; then
+  docker run --rm -v "$(dirname "$D")":/h python:3.12-slim rm -rf "/h/$(basename "$D")"
+fi
