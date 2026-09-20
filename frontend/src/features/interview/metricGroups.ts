@@ -80,11 +80,22 @@ export function groupMetrics(rows: MetricRow[]): MetricGroup[] {
   return groups;
 }
 
-/** 묶음 상태 한 줄. 고칠 것이 있으면 그 이름을, 없으면 모두 적정이라고 알린다. */
+/**
+ * 묶음 상태 한 줄. 볼 것이 있으면 그 이름을, 없으면 개수로 알린다.
+ *
+ * <p>재지 못한 항목(none)이 섞여 있으면 "모두 적정"이라고 말하지 않는다. 마이크가 꺼져 있어서
+ * 못 잰 것을 적정이라고 하면 거짓말이 된다.
+ */
 export function groupStatus(group: MetricGroup): string {
-  if (group.warnCount === 0) return `${group.rows.length}개 항목 모두 적정`;
-  return group.rows
-    .filter((r) => r.tone === 'warn')
-    .map((r) => r.key)
-    .join(' · ');
+  if (group.warnCount > 0) {
+    return group.rows
+      .filter((r) => r.tone === 'warn')
+      .map((r) => r.key)
+      .join(' · ');
+  }
+  const unmeasured = group.rows.filter((r) => r.tone === 'none').length;
+  if (unmeasured === 0) return `${group.rows.length}개 항목 모두 적정`;
+  const measured = group.rows.length - unmeasured;
+  if (measured === 0) return `${unmeasured}개 항목 재지 못함`;
+  return `${measured}개 적정 · ${unmeasured}개 재지 못함`;
 }

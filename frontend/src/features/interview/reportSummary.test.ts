@@ -80,4 +80,23 @@ describe('buildAxes', () => {
     expect(allGood.map((a) => a.tone)).toEqual(['good', 'good', 'good']);
     expect(allGood[0].detail).toBe('강점 1개');
   });
+
+  it('재지 못한 항목은 적정으로 세지 않는다', () => {
+    const axes = buildAxes(
+      [{ no: '1', points: [] }],
+      [row('말 속도', '재지 못함', 'none'), row('답변 길이', '40초', 'good')],
+      null,
+    );
+    // 못 잰 항목이 고리에 들어가면 없는 측정이 점수가 된다
+    expect(axes[1]).toMatchObject({ ok: 1, total: 1, tone: 'good' });
+  });
+
+  it('하나도 못 쟀으면 부르는 쪽이 준 까닭을 그대로 쓴다', () => {
+    const axes = buildAxes([{ no: '1', points: [] }], [row('말 속도', '재지 못함', 'none')], null, {
+      delivery: '녹화한 브라우저에서만 볼 수 있어요',
+      manner: '녹화한 브라우저에서만 볼 수 있어요',
+    });
+    expect(axes[1]).toMatchObject({ status: '측정 없음', detail: '녹화한 브라우저에서만 볼 수 있어요' });
+    expect(axes[2].detail).toBe('녹화한 브라우저에서만 볼 수 있어요');
+  });
 });

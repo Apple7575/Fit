@@ -168,10 +168,22 @@ export function InterviewReport({
     nonverbalRollup ? describeNonverbal(nonverbalRollup) : [],
   );
   const mannerGauges = nonverbalRollup ? nonverbalGauges(nonverbalRollup) : [];
+  /*
+   * 녹화가 한 건도 없다는 건 두 가지 뜻이다. 방금 장비를 끄고 봤거나, 다른 기기·브라우저에서
+   * 저장한 것을 지금 열었거나. 뒤쪽인데 "카메라를 켜면 봐 드려요"라고 하면 켰던 사람에게는
+   * 고장으로 읽힌다. 저장본(serverInterviewId)인데 이 브라우저에 녹화가 없으면 그렇게 말해 준다.
+   */
+  const elsewhere = serverInterviewId != null && local.size === 0;
   const axes = buildAxes(
     numbered,
     deliveryRows,
     mannerGauges.length > 0 ? { ok: mannerGauges.filter((g) => g.ok).length, total: mannerGauges.length } : null,
+    elsewhere
+      ? {
+          delivery: '녹화한 브라우저에서만 볼 수 있어요',
+          manner: '녹화한 브라우저에서만 볼 수 있어요',
+        }
+      : { delivery: '마이크가 꺼져 있었어요', manner: '카메라를 켜면 봐 드려요' },
   );
 
   const focus = highlights.find((h) => h.tone === 'fix') ?? null;
