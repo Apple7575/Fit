@@ -176,6 +176,55 @@ class RoomServiceTest {
     }
 
     @Test
+    @DisplayName("공고 없는 방의 채용공고 담당은 준비 안 됨이다 — 채울 설정이 없다고 준비된 것이 아니다")
+    void jobPostingAgentIsNotReadyWithoutAPosting() {
+        Room room = Room.create(USER, LETTER, "합동", List.of(
+                new RoomAgent("jd", Map.of()), new RoomAgent("writing", Map.of())));
+        given(roomRepository.findByIdAndUserId(31L, USER)).willReturn(Optional.of(room));
+
+        assertThat(readyByAgent(service().detail(USER, 31L)))
+                .containsEntry("jd", false)
+                .containsEntry("writing", true);
+    }
+
+    @Test
+    @DisplayName("공고가 붙어 있으면 채용공고 담당이 준비된다")
+    void jobPostingAgentIsReadyWithAPosting() {
+        Room room = Room.create(USER, LETTER, "ctx-1", "합동", List.of(
+                new RoomAgent("jd", Map.of()), new RoomAgent("writing", Map.of())));
+        // 목을 먼저 만들어 둔다. given(...) 안에서 다른 목을 세우면 Mockito 가 미완성 스터빙으로 본다.
+        JobContext context = jobContext("ctx-1", "네이버", "서버 개발");
+        given(roomRepository.findByIdAndUserId(31L, USER)).willReturn(Optional.of(room));
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+
+        assertThat(readyByAgent(service().detail(USER, 31L))).containsEntry("jd", true);
+    }
+
+    @Test
+    @DisplayName("뉴스 담당은 기업만 골라 두고 공고가 없으면 준비 안 됨이다 — 둘을 겹쳐 본다")
+    void newsAgentNeedsBothCompanyAndPosting() {
+        Room room = Room.create(USER, LETTER, "합동", List.of(
+                new RoomAgent("news", Map.of("corpCodes", List.of("00126380"))),
+                new RoomAgent("writing", Map.of())));
+        given(roomRepository.findByIdAndUserId(31L, USER)).willReturn(Optional.of(room));
+
+        assertThat(readyByAgent(service().detail(USER, 31L))).containsEntry("news", false);
+    }
+
+    @Test
+    @DisplayName("포지션 담당은 직무를 안 적었어도 공고에 직무명이 있으면 준비된다")
+    void positionAgentFallsBackToThePostingsPositionName() {
+        Room room = Room.create(USER, LETTER, "ctx-1", "합동", List.of(
+                new RoomAgent("position", Map.of()), new RoomAgent("writing", Map.of())));
+        // 목을 먼저 만들어 둔다. given(...) 안에서 다른 목을 세우면 Mockito 가 미완성 스터빙으로 본다.
+        JobContext context = jobContext("ctx-1", "네이버", "서버 개발");
+        given(roomRepository.findByIdAndUserId(31L, USER)).willReturn(Optional.of(room));
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+
+        assertThat(readyByAgent(service().detail(USER, 31L))).containsEntry("position", true);
+    }
+
+    @Test
     @DisplayName("방에 없는 에이전트의 설정은 바꿀 수 없다")
     void cannotConfigureAgentThatIsNotInRoom() {
         Room room = Room.create(USER, LETTER, "글쓰기 전담", List.of(new RoomAgent("writing", Map.of())));
@@ -396,6 +445,19 @@ class RoomServiceTest {
         JobContext context = Mockito.mock(JobContext.class);
         given(context.getContextId()).willReturn(contextId);
         return context;
+    }
+
+    private static JobContext jobContext(String contextId, String companyName, String positionName) {
+        JobContext context = jobContext(contextId);
+        given(context.getCompanyName()).willReturn(companyName);
+        given(context.getPositionName()).willReturn(positionName);
+        return context;
+    }
+
+    /** 방 상세가 내려준 담당별 ready. */
+    private static Map<String, Boolean> readyByAgent(RoomResponse response) {
+        return response.agents().stream().collect(java.util.stream.Collectors.toMap(
+                RoomResponse.Agent::agentKey, RoomResponse.Agent::ready));
     }
 
     /** 새로 저장된 방 전부. */
