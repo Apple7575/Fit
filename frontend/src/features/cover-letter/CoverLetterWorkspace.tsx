@@ -2,13 +2,19 @@ import { useState } from 'react';
 import { ApiError, isRateLimited } from '../../api/client';
 import { CompanyPicker } from './CompanyPicker';
 import { parseJobPosting, registerJobPosting } from './api';
-import type { CoverLetterInput } from './types';
+import type { CoverLetterInput, PendingJobPosting } from './types';
 
 interface CoverLetterWorkspaceProps {
   initial: CoverLetterInput;
   isLoggedIn: boolean;
   alreadySaved?: boolean;
-  onSave: (input: CoverLetterInput) => Promise<void>;
+  /** 방금 저장하고 들어온 화면. 새 자소서를 저장하면 주소가 갈리므로 그때 이어서 알린다. */
+  justSaved?: boolean;
+  /**
+   * 자소서만 저장한다. 아직 등록하지 않은 공고가 있으면 두 번째 인자로 함께 넘긴다 —
+   * 등록이 수십 초 걸려 저장을 붙잡아 둘 수 없으니, 화면을 넘긴 뒤에 받는 쪽에서 잇는다.
+   */
+  onSave: (input: CoverLetterInput, pendingPosting: PendingJobPosting | null) => Promise<void>;
   /** 저장한 뒤 멀티에이전트 검토 화면으로 넘긴다. 방은 저장된 자소서에 붙기 때문이다. */
   onReview: (input: CoverLetterInput) => Promise<void>;
   onBack?: () => void;
@@ -38,6 +44,7 @@ export function CoverLetterWorkspace({
   initial,
   isLoggedIn,
   alreadySaved,
+  justSaved,
   onSave,
   onReview,
   onBack,
@@ -52,10 +59,12 @@ export function CoverLetterWorkspace({
   const [items, setItems] = useState<WorkItem[]>(() => initial.items.map(toWorkItem));
   const [dirty, setDirty] = useState(false);
   const [savedOnce, setSavedOnce] = useState(alreadySaved ?? false);
+  // 방금 저장했다는 알림. 다시 고치기 시작하면 사실이 아니게 되므로 그때 내린다.
+  const [justSavedNotice, setJustSavedNotice] = useState(justSaved ?? false);
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  // 확인만 해 둔 공고. 저장할 때 이 주소로 등록한다.
-  const [posting, setPosting] = useState<{ url: string; sourceKey: string | null } | null>(null);
+  // 확인만 해 둔 공고. 이 주소로 등록한다.
+  const [posting, setPosting] = useState<PendingJobPosting | null>(null);
   // 등록해 둔 공고와, 그때의 회사·직무. 그 뒤에 회사나 직무를 바꾸면 다시 등록해야 한다.
   const [registered, setRegistered] = useState<{ id: string; of: string } | null>(() =>
     initial.jobContextId
@@ -64,7 +73,10 @@ export function CoverLetterWorkspace({
   );
   const [registering, setRegistering] = useState(false);
 
-  const touch = () => setDirty(true);
+  const touch = () => {
+    setDirty(true);
+    setJustSavedNotice(false);
+  };
 
   const editItem = (key: string, next: Partial<WorkItem>) => {
     setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...next } : item)));
@@ -118,30 +130,39 @@ export function CoverLetterWorkspace({
     })),
   });
 
-  /**
-   * 저장 직전에 공고를 등록해 식별자를 붙인다. 검토 방은 자소서에 적힌 이 값을 물려받는다.
-   *
-   * 등록은 모델이 공고를 요구사항 단위로 정리하므로 수십 초 걸린다. 그동안 버튼이 "공고
-   * 분석 중…" 으로 남는다. 같은 회사·직무로 이미 등록해 뒀으면 다시 부르지 않는다.
-   *
-   * 실패해도 저장은 그대로 진행한다. 공고는 선택 항목이라 써 둔 글을 못 담게 할 이유가 없다.
-   */
-  const inputForSaving = async (): Promise<CoverLetterInput> => {
-    const base = buildInput();
+  /** 아직 등록하지 않은 공고. 같은 회사·직무로 이미 등록해 뒀으면 등록할 것이 없다. */
+  const postingToRegister = (base: CoverLetterInput): PendingJobPosting | null => {
     const key = postingKey(base.targetCompany, base.targetPosition);
-    if (!posting || registered?.of === key) {
+    return !posting || registered?.of === key ? null : posting;
+  };
+
+  /**
+   * 검토 직전에 공고를 등록해 식별자를 붙인다. 검토 방은 자소서에 적힌 이 값을 물려받는다.
+   *
+   * 등록은 모델이 공고를 요구사항 단위로 정리하므로 수십 초 걸린다. 그동안 검토 버튼이
+   * "공고 분석 중…" 으로 남는다. 검토는 이 값이 있어야 제 일을 하므로 기다린다.
+   *
+   * 실패해도 검토는 그대로 연다. 공고는 선택 항목이라 써 둔 글을 못 보게 할 이유가 없다.
+   */
+  const inputForReview = async (): Promise<CoverLetterInput> => {
+    const base = buildInput();
+    const pending = postingToRegister(base);
+    if (!pending) {
       return base;
     }
 
     setRegistering(true);
     try {
       const context = await registerJobPosting(
-        posting.url,
+        pending.url,
         base.targetCompany ?? null,
         base.targetPosition ?? null,
-        posting.sourceKey,
+        pending.sourceKey,
       );
-      setRegistered({ id: context.jobContextId, of: key });
+      setRegistered({
+        id: context.jobContextId,
+        of: postingKey(base.targetCompany, base.targetPosition),
+      });
       return { ...base, jobContextId: context.jobContextId };
     } catch {
       return { ...base, jobContextId: null };
@@ -150,12 +171,15 @@ export function CoverLetterWorkspace({
     }
   };
 
+  /** 저장은 공고 등록을 기다리지 않는다. 자소서를 먼저 넘기고 등록은 받는 쪽이 뒤에서 잇는다. */
   const save = async () => {
     setSaving(true);
     try {
-      await onSave(await inputForSaving());
+      const base = buildInput();
+      await onSave(base, postingToRegister(base));
       setDirty(false);
       setSavedOnce(true);
+      setJustSavedNotice(true);
     } finally {
       setSaving(false);
     }
@@ -164,7 +188,7 @@ export function CoverLetterWorkspace({
   const review = async () => {
     setReviewing(true);
     try {
-      await onReview(await inputForSaving());
+      await onReview(await inputForReview());
     } finally {
       setReviewing(false);
     }
@@ -190,27 +214,22 @@ export function CoverLetterWorkspace({
         </div>
       )}
 
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <input
-            value={title}
-            onChange={(event) => {
-              setTitle(event.target.value);
-              touch();
-            }}
-            placeholder="제목을 입력하세요 (예: 2026 상반기 백엔드 신입 지원)"
-            className="w-full rounded-lg border border-transparent bg-transparent text-2xl font-bold tracking-tight text-slate-950 placeholder:text-slate-300 focus:border-slate-300 focus:bg-white focus:px-3 focus:py-1 focus:outline-none"
-          />
-          <p className="mt-1 text-sm text-slate-500">문항을 추가·삭제하고 답변을 수정한 뒤 저장하세요.</p>
-        </div>
-        <SaveArea
-          isLoggedIn={isLoggedIn}
-          dirty={dirty}
-          savedOnce={savedOnce}
-          saving={saving}
-          registering={registering}
-          onSave={save}
+      <div className="mb-5">
+        <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor="cl-title">
+          제목
+        </label>
+        {/* 테두리를 늘 보여준다. 눌러야 박스가 나타나면 고칠 수 있는 칸인 줄 모른다. */}
+        <input
+          id="cl-title"
+          value={title}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            touch();
+          }}
+          placeholder="제목을 입력하세요 (예: 2026 상반기 백엔드 신입 지원)"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-2xl font-bold tracking-tight text-slate-950 placeholder:text-[17px] placeholder:font-normal placeholder:text-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
+        <p className="mt-1.5 text-sm text-slate-500">문항을 추가·삭제하고 답변을 수정한 뒤 저장하세요.</p>
       </div>
 
       <JobPostingBar onParsed={applyPosting} />
@@ -349,14 +368,25 @@ export function CoverLetterWorkspace({
       </button>
 
       <div className="mt-6 flex flex-col items-end gap-1.5">
-        <button
-          onClick={review}
-          disabled={reviewing || registering || !hasWriting}
-          className="rounded-xl bg-slate-900 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-          type="button"
-        >
-          {registering ? '공고 분석 중…' : reviewing ? '여는 중…' : 'AI 검토'}
-        </button>
+        <div className="flex items-center gap-2">
+          <SaveArea
+            isLoggedIn={isLoggedIn}
+            dirty={dirty}
+            savedOnce={savedOnce}
+            saving={saving}
+            registering={registering}
+            justSaved={justSavedNotice}
+            onSave={save}
+          />
+          <button
+            onClick={review}
+            disabled={reviewing || registering || !hasWriting}
+            className="rounded-xl bg-slate-900 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            type="button"
+          >
+            {registering ? '공고 분석 중…' : reviewing ? '여는 중…' : 'AI 검토'}
+          </button>
+        </div>
         <p className="text-[12px] text-slate-400">
           {!hasWriting
             ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
@@ -518,42 +548,49 @@ function SaveArea({
   savedOnce,
   saving,
   registering,
+  justSaved,
   onSave,
 }: {
   isLoggedIn: boolean;
   dirty: boolean;
   savedOnce: boolean;
   saving: boolean;
-  /** 공고를 등록하는 중. 저장의 한 단계라 버튼을 같이 잠근다. */
+  /** AI 검토가 공고를 등록하는 중. 저장과 겹치면 헛돌므로 그동안 잠가 둔다. */
   registering: boolean;
+  /** 방금 저장했다. 열자마자 저장된 상태인 것(savedOnce)과 달리 사용자가 막 누른 결과다. */
+  justSaved: boolean;
   onSave: () => void;
 }) {
+  // AI 검토 버튼과 나란히 서므로 크기를 맞춘다. 로그인 안내는 화면 위 배너가 이미 하고 있다.
   if (!isLoggedIn) {
     return (
-      <div className="text-right">
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:bg-slate-300"
-          type="button"
-        >
-          {saving ? '이동 중…' : '로그인하고 저장'}
-        </button>
-        <p className="mt-1 text-[11.5px] text-slate-400">저장하려면 로그인이 필요해요</p>
-      </div>
+      <button
+        onClick={onSave}
+        disabled={saving}
+        className="rounded-xl bg-blue-600 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:bg-slate-300"
+        type="button"
+      >
+        {saving ? '이동 중…' : '로그인하고 저장'}
+      </button>
     );
   }
 
   return (
     <div className="flex items-center gap-2">
-      {savedOnce && !dirty && <span className="text-[12.5px] font-medium text-emerald-600">저장됨 ✓</span>}
+      {justSaved ? (
+        <span role="status" className="text-[13px] font-semibold text-emerald-600">
+          저장했습니다 ✓
+        </span>
+      ) : (
+        savedOnce && !dirty && <span className="text-[12.5px] font-medium text-emerald-600">저장됨 ✓</span>
+      )}
       <button
         onClick={onSave}
         disabled={saving || registering || (savedOnce && !dirty)}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        className="rounded-xl bg-blue-600 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         type="button"
       >
-        {registering ? '공고 분석 중…' : saving ? '저장 중…' : '저장'}
+        {saving ? '저장 중…' : '저장'}
       </button>
     </div>
   );
