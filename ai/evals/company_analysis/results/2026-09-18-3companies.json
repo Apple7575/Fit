@@ -1,0 +1,572 @@
+{
+ "summary": {
+  "generated_at": "20260918-123046",
+  "corp_codes": [
+   "00164742",
+   "00266961",
+   "00155319"
+  ],
+  "elapsed_s": 155,
+  "facts": {
+   "correct": 17,
+   "abstain": 0,
+   "wrong": 1,
+   "error": 0,
+   "total": 18,
+   "accuracy": 0.944,
+   "wrong_rate": 0.056,
+   "avg_latency_s": 6.8
+  },
+  "retrieval": {
+   "questions": 23,
+   "bm25": {
+    "recall@1": 0.217,
+    "recall@3": 0.391,
+    "recall@5": 0.522,
+    "recall@8": 0.696,
+    "mrr": 0.343
+   },
+   "vector": {
+    "recall@1": 0.391,
+    "recall@3": 0.478,
+    "recall@5": 0.565,
+    "recall@8": 0.609,
+    "mrr": 0.447
+   },
+   "hybrid": {
+    "recall@1": 0.304,
+    "recall@3": 0.478,
+    "recall@5": 0.565,
+    "recall@8": 0.696,
+    "mrr": 0.43
+   }
+  }
+ },
+ "facts": [
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "revenue",
+   "question": "현대자동차의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 186254472000000.0,
+   "expected_tokens": [
+    "186.3조원"
+   ],
+   "answer": "현대자동차의 2025년 매출액은 186.3조원입니다. 이는 전년 대비 6.3% 증가한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 8.7,
+   "citations": 2
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "operating_profit",
+   "question": "현대자동차의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 11467851000000.0,
+   "expected_tokens": [
+    "11.5조원"
+   ],
+   "answer": "현대자동차의 2025년 영업이익은 11.5조원입니다. 이는 전년 대비 19.5% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 6.6,
+   "citations": 3
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "net_income",
+   "question": "현대자동차의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 10364775000000.0,
+   "expected_tokens": [
+    "10.4조원"
+   ],
+   "answer": "현대자동차의 2025년 당기순이익은 10.4조원입니다.",
+   "verdict": "correct",
+   "latency_s": 5.8,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "employee_count",
+   "question": "현대자동차 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 72598.0,
+   "expected_tokens": [
+    "72,598명"
+   ],
+   "answer": "현대자동차는 2025년 기준으로 72,598명의 직원을 보유하고 있습니다.",
+   "verdict": "correct",
+   "latency_s": 6.5,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "operating_margin",
+   "question": "현대자동차의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 6.2,
+   "expected_tokens": [
+    "6.2%"
+   ],
+   "answer": "현대자동차의 2025년 영업이익률은 6.2%입니다. 이는 전년 대비 19.5% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 6.1,
+   "citations": 4
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "debt_ratio",
+   "question": "현대자동차의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 189.0,
+   "expected_tokens": [
+    "189.0%"
+   ],
+   "answer": "현대자동차의 2025년 부채비율은 189.0%입니다. 이는 전년 대비 상승한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 5.8,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "revenue",
+   "question": "NAVER의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 12035007218975.0,
+   "expected_tokens": [
+    "12.0조원"
+   ],
+   "answer": "NAVER의 2025년 매출액은 12.0조원입니다.",
+   "verdict": "correct",
+   "latency_s": 7.4,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "operating_profit",
+   "question": "NAVER의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 2208138388720.0,
+   "expected_tokens": [
+    "2.2조원"
+   ],
+   "answer": "NAVER의 2025년 영업이익은 2.2조원입니다. 이는 전년 대비 11.6% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 7.7,
+   "citations": 4
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "net_income",
+   "question": "NAVER의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 1818746310015.0,
+   "expected_tokens": [
+    "1.8조원"
+   ],
+   "answer": "NAVER의 2025년 당기순이익은 1.8조원입니다.",
+   "verdict": "correct",
+   "latency_s": 5.0,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "employee_count",
+   "question": "NAVER 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 5047.0,
+   "expected_tokens": [
+    "5,047명"
+   ],
+   "answer": "NAVER의 2025년 직원 수는 5047명입니다.",
+   "verdict": "correct",
+   "latency_s": 5.8,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "operating_margin",
+   "question": "NAVER의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 18.3,
+   "expected_tokens": [
+    "18.3%"
+   ],
+   "answer": "NAVER의 2025년 영업이익률은 18.3%입니다.",
+   "verdict": "correct",
+   "latency_s": 5.4,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "debt_ratio",
+   "question": "NAVER의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 41.9,
+   "expected_tokens": [
+    "41.9%"
+   ],
+   "answer": "NAVER의 2025년 부채비율은 0.2932입니다. 이는 총부채를 총자본으로 나눈 비율로, 건전한 자본구조를 유지하기 위한 지표입니다.",
+   "verdict": "wrong",
+   "latency_s": 6.5,
+   "citations": 1
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "revenue",
+   "question": "POSCO홀딩스의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 69094886192787.0,
+   "expected_tokens": [
+    "69.1조원"
+   ],
+   "answer": "POSCO홀딩스의 2025년 매출액은 69.1조원입니다. 이는 전년 대비 4.9% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 10.7,
+   "citations": 2
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "operating_profit",
+   "question": "POSCO홀딩스의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 1827063210829.0,
+   "expected_tokens": [
+    "1.8조원"
+   ],
+   "answer": "POSCO홀딩스의 2025년 영업이익은 1.8조원입니다. 이는 전년 대비 15.9% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 8.2,
+   "citations": 2
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "net_income",
+   "question": "POSCO홀딩스의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 504403472266.0,
+   "expected_tokens": [
+    "0.5조원"
+   ],
+   "answer": "POSCO홀딩스의 2025년 당기순이익은 0.5조원입니다.",
+   "verdict": "correct",
+   "latency_s": 6.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "employee_count",
+   "question": "POSCO홀딩스 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 524.0,
+   "expected_tokens": [
+    "524명"
+   ],
+   "answer": "POSCO홀딩스의 2025년 직원 수는 524명입니다. 이는 전년 대비 0.6% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 6.4,
+   "citations": 2
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "operating_margin",
+   "question": "POSCO홀딩스의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 2.6,
+   "expected_tokens": [
+    "2.6%"
+   ],
+   "answer": "POSCO홀딩스의 2025년 영업이익률은 2.6%입니다. 이는 전체 매출 대비 수익성의 지표로, 전년 대비 15.9% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 7.0,
+   "citations": 1
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "debt_ratio",
+   "question": "POSCO홀딩스의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 68.6,
+   "expected_tokens": [
+    "68.6%"
+   ],
+   "answer": "POSCO홀딩스의 2025년 부채비율은 68.6%입니다. 이는 2023년 69.2%에서 소폭 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 7.4,
+   "citations": 1
+  }
+ ],
+ "retrieval": [
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-6c1841d3120c1ee94f2e925792391534",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사의 주가와 발행 내역은 어떻게 되나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 5,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-752b411ef726e5e40c4f8d56e2833994",
+   "section_title": "5. 정관에 관한 사항",
+   "question": "이 회사 정관 개정 주요 내용이 뭐예요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-62734402d9fba4f5063f6f8bc0302e4b",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사가 자기주식을 어떻게 활용하고 있나요?",
+   "ranks": {
+    "bm25": 5,
+    "vector": 1,
+    "hybrid": 2
+   }
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-1d756d118894239ce80e499e248343c9",
+   "section_title": "1. 회사의 개요",
+   "question": "이 회사가 운영하는 주요 사업은 무엇인가요?",
+   "ranks": {
+    "bm25": 7,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-9a85a304bc11f1ab8c2e0e3f5d7a18f1",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사는 직원들에게 어떤 방식으로 보상을 하고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-e69dbb2ed84fa88a5038829885881d7f",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사 경영진은 최근 5년간 많이 바뀌었나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-88578e24bb7a28f993d116dd5f467c61",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사의 자기주식 매입 계획은 어떻게 되나요?",
+   "ranks": {
+    "bm25": 7,
+    "vector": 3,
+    "hybrid": 5
+   }
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-3fc81f59dfe3d8f26b701a086bc3fa72",
+   "section_title": "1. 회사의 개요",
+   "question": "이 회사의 신용등급 체계는 어떤 기관에서 어떻게 평가하나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-7d583b646742d8fe5ceaae0dd7bb29d6",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 최근 몇 번이나 합병을 진행했나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-e7fb8e3574ad5c05d9be9af0e0c38496",
+   "section_title": "5. 위험관리 및 파생거래",
+   "question": "이 회사의 손실충당금은 어떻게 설정되나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": null,
+    "hybrid": 6
+   }
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-8d1173b79e1fbdffd0bc47568bbfe83d",
+   "section_title": "1. 사업의 개요",
+   "question": "이 회사의 주요 수익을 내는 서비스는 뭔가요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": 4
+   }
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-6349546f74189e57b6c7096756beeba6",
+   "section_title": "3. 원재료 및 생산설비",
+   "question": "이 회사는 어떤 시설에 투자하고 있나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 3,
+    "hybrid": 2
+   }
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-75ce814ff8585111eeb3b0884230db0a",
+   "section_title": "2. 주요 제품 및 서비스",
+   "question": "이 회사의 핀테크 사업은 어떤 서비스로 구성되어 있나요?",
+   "ranks": {
+    "bm25": 6,
+    "vector": 1,
+    "hybrid": 2
+   }
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-01bcc62a7c248d52b399833d5d3c2a11",
+   "section_title": "4. 매출 및 수주상황",
+   "question": "이 회사의 주요 판매 경로와 전략은 뭐예요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-6fe5677f41d3d237d609cf19af4193ca",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사가 자기주식을 어떻게 관리하고 있나요?",
+   "ranks": {
+    "bm25": 8,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-62312c267601abdf0c75efaadb9c0aba",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 최근에 주목받은 주요 성과는 뭐예요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-7ef5b84758a4faa270e0c14090095bbe",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사의 유동성 관리 방식과 현금자산 현황은 어때요?",
+   "ranks": {
+    "bm25": 5,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-e7ad518c2798681389007f5afa187280",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사의 자동화 사업부문은 어떤 분야에서 주로 활동하나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 4,
+    "hybrid": 2
+   }
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-db0e8e05aa6cb159d8b69b6b9d57b4ad",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 분할될 때 채무는 어떻게 나뉘나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": null,
+    "hybrid": 7
+   }
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-b47d02bef19676852dbafec8ff3fbdb8",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 해외에서 어떤 사업을 하고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-afd65f929678d9bcceeb781f6949d004",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 해외에서 어떤 사업을 하고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-2ef1bb138fc35be2504e1fc9073c6718",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 자산 취득을 위해 얼마나 많은 약정금액을 가지고 있나요?",
+   "ranks": {
+    "bm25": 4,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-3f14651704ceab7e48e52cf5b917fb0b",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사는 어떻게 신용위험을 관리하고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 6,
+    "hybrid": 8
+   }
+  }
+ ]
+}

@@ -1,0 +1,732 @@
+{
+ "summary": {
+  "generated_at": "20260918-122144",
+  "corp_codes": [
+   "00164779",
+   "00126380",
+   "01350869",
+   "01021666"
+  ],
+  "elapsed_s": 224,
+  "facts": {
+   "correct": 21,
+   "abstain": 1,
+   "wrong": 0,
+   "error": 0,
+   "total": 22,
+   "accuracy": 0.955,
+   "wrong_rate": 0.0,
+   "avg_latency_s": 8.1
+  },
+  "retrieval": {
+   "questions": 32,
+   "bm25": {
+    "recall@1": 0.344,
+    "recall@3": 0.5,
+    "recall@5": 0.562,
+    "recall@8": 0.625,
+    "mrr": 0.431
+   },
+   "vector": {
+    "recall@1": 0.312,
+    "recall@3": 0.531,
+    "recall@5": 0.562,
+    "recall@8": 0.656,
+    "mrr": 0.434
+   },
+   "hybrid": {
+    "recall@1": 0.375,
+    "recall@3": 0.5,
+    "recall@5": 0.625,
+    "recall@8": 0.656,
+    "mrr": 0.459
+   }
+  }
+ },
+ "facts": [
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "revenue",
+   "question": "SK하이닉스의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 97146675000000.0,
+   "expected_tokens": [
+    "97.1조원"
+   ],
+   "answer": "SK하이닉스의 2025년 매출액은 97.1조원입니다. 이는 전년 대비 46.8% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 7.6,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "operating_profit",
+   "question": "SK하이닉스의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 47206319000000.0,
+   "expected_tokens": [
+    "47.2조원"
+   ],
+   "answer": "SK하이닉스의 2025년 영업이익은 47.2조원입니다.",
+   "verdict": "correct",
+   "latency_s": 8.7,
+   "citations": 4
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "net_income",
+   "question": "SK하이닉스의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 42947902000000.0,
+   "expected_tokens": [
+    "42.9조원"
+   ],
+   "answer": "SK하이닉스의 2025년 당기순이익은 42조 9,479억원입니다. 이는 반도체 시황 개선에 따른 판가 상승 및 판매량 증가의 영향을 받았습니다.",
+   "verdict": "correct",
+   "latency_s": 6.8,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "employee_count",
+   "question": "SK하이닉스 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 34549.0,
+   "expected_tokens": [
+    "34,549명"
+   ],
+   "answer": "2025년 기준 SK하이닉스의 직원 수는 34,549명입니다.",
+   "verdict": "correct",
+   "latency_s": 5.2,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "operating_margin",
+   "question": "SK하이닉스의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 48.6,
+   "expected_tokens": [
+    "48.6%"
+   ],
+   "answer": "SK하이닉스의 2025년 영업이익률은 48.6%입니다. 이는 전년 대비 13.1%p 상승한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 6.9,
+   "citations": 4
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "debt_ratio",
+   "question": "SK하이닉스의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 45.9,
+   "expected_tokens": [
+    "45.9%"
+   ],
+   "answer": "SK하이닉스의 2025년 부채비율은 45.9%입니다. 이는 자본총계 대비 부채총계의 비율을 나타냅니다.",
+   "verdict": "correct",
+   "latency_s": 5.4,
+   "citations": 1
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "revenue",
+   "question": "삼성전자의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 333605938000000.0,
+   "expected_tokens": [
+    "333.6조원"
+   ],
+   "answer": "삼성전자의 2025년 매출액은 333.6조원입니다.",
+   "verdict": "correct",
+   "latency_s": 8.5,
+   "citations": 2
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "operating_profit",
+   "question": "삼성전자의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 43601051000000.0,
+   "expected_tokens": [
+    "43.6조원"
+   ],
+   "answer": "삼성전자의 2025년 영업이익은 43.6조원입니다. 이는 전년 대비 33.2% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 8.2,
+   "citations": 4
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "net_income",
+   "question": "삼성전자의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 45206805000000.0,
+   "expected_tokens": [
+    "45.2조원"
+   ],
+   "answer": "삼성전자의 2025년 당기순이익은 45.2조원입니다.",
+   "verdict": "correct",
+   "latency_s": 6.6,
+   "citations": 3
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "employee_count",
+   "question": "삼성전자 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 128881.0,
+   "expected_tokens": [
+    "128,881명"
+   ],
+   "answer": "삼성전자의 2025년 기준 직원 수는 128,881명입니다.",
+   "verdict": "correct",
+   "latency_s": 5.9,
+   "citations": 1
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "operating_margin",
+   "question": "삼성전자의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 13.1,
+   "expected_tokens": [
+    "13.1%"
+   ],
+   "answer": "삼성전자의 2025년 영업이익률은 13.1%입니다.",
+   "verdict": "correct",
+   "latency_s": 6.4,
+   "citations": 2
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "debt_ratio",
+   "question": "삼성전자의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 29.9,
+   "expected_tokens": [
+    "29.9%"
+   ],
+   "answer": "삼성전자의 2025년 부채비율은 29.9%입니다.",
+   "verdict": "correct",
+   "latency_s": 7.0,
+   "citations": 2
+  },
+  {
+   "corp_code": "01350869",
+   "corp_name": "우리금융지주",
+   "metric": "operating_profit",
+   "question": "우리금융지주의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 3674808000000.0,
+   "expected_tokens": [
+    "3.7조원"
+   ],
+   "answer": "우리금융지주의 2025년 영업이익은 3.7조원입니다. 이는 전년 대비 13.6% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 8.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "01350869",
+   "corp_name": "우리금융지주",
+   "metric": "net_income",
+   "question": "우리금융지주의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 3227508000000.0,
+   "expected_tokens": [
+    "3.2조원"
+   ],
+   "answer": "우리금융지주의 2025년 당기순이익은 3.2조원입니다.",
+   "verdict": "correct",
+   "latency_s": 7.6,
+   "citations": 4
+  },
+  {
+   "corp_code": "01350869",
+   "corp_name": "우리금융지주",
+   "metric": "employee_count",
+   "question": "우리금융지주 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 114.0,
+   "expected_tokens": [
+    "114명"
+   ],
+   "answer": "우리금융지주 직원 수는 2025년 기준 114명입니다.",
+   "verdict": "correct",
+   "latency_s": 9.3,
+   "citations": 3
+  },
+  {
+   "corp_code": "01350869",
+   "corp_name": "우리금융지주",
+   "metric": "debt_ratio",
+   "question": "우리금융지주의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 1488.7,
+   "expected_tokens": [
+    "1488.7%"
+   ],
+   "answer": "우리금융지주의 2025년 부채비율은 1488.7%입니다. 이는 전년 대비 약간 상승한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 7.2,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "revenue",
+   "question": "덕산테코피아의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 112078954483.0,
+   "expected_tokens": [
+    "1120.8억원"
+   ],
+   "answer": "덕산테코피아의 2025년 매출액은 1,120.8억원입니다.",
+   "verdict": "correct",
+   "latency_s": 6.9,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "operating_profit",
+   "question": "덕산테코피아의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": -43026410473.0,
+   "expected_tokens": [
+    "-430.3억원"
+   ],
+   "answer": "덕산테코피아의 2025년 영업이익은 -430.3억원입니다.",
+   "verdict": "correct",
+   "latency_s": 7.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "net_income",
+   "question": "덕산테코피아의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": -105550462258.0,
+   "expected_tokens": [
+    "-1055.5억원"
+   ],
+   "answer": "공시 자료(사업보고서·확정 지표)에서 이 질문에 답할 근거를 찾지 못했습니다. 질문을 조금 더 구체적으로 해 주시거나 다른 항목을 물어봐 주세요.",
+   "verdict": "abstain",
+   "latency_s": 28.8,
+   "citations": 0
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "employee_count",
+   "question": "덕산테코피아 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 328.0,
+   "expected_tokens": [
+    "328명"
+   ],
+   "answer": "덕산테코피아의 2025년 기준 직원 수는 328명입니다.",
+   "verdict": "correct",
+   "latency_s": 5.9,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "operating_margin",
+   "question": "덕산테코피아의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": -38.4,
+   "expected_tokens": [
+    "-38.4%"
+   ],
+   "answer": "덕산테코피아의 2025년 영업이익률은 -38.4%입니다.",
+   "verdict": "correct",
+   "latency_s": 7.4,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "debt_ratio",
+   "question": "덕산테코피아의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 507.4,
+   "expected_tokens": [
+    "507.4%"
+   ],
+   "answer": "덕산테코피아의 2025년 부채비율은 507.4%입니다.",
+   "verdict": "correct",
+   "latency_s": 5.6,
+   "citations": 1
+  }
+ ],
+ "retrieval": [
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-5627b9f7f670b3a544f119be46595d47",
+   "section_title": "3. 재무상태 및 영업실적",
+   "question": "이 회사 자산 손상 관련해서 더 자세히 알려줄 수 있어?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-627dc8a08811d3f3f16baa514c810a9a",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 활동하는 분야는 뭔가요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-468a898b409c1fb9d888af1a297f667a",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 낸드플래시 시장에서 어떤 경쟁력을 가지고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-8162bc9b2e6467c4ac890fd4eb7a106e",
+   "section_title": "4. 유동성 및 자금조달과 지출",
+   "question": "이 회사가 인텔의 NAND 사업부를 왜 인수했나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": null,
+    "hybrid": 5
+   }
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-508d3ffc1ab16ca396403033647817d4",
+   "section_title": "4. 유동성 및 자금조달과 지출",
+   "question": "이 회사의 현금자산은 얼마나 늘었고, 유동성은 건전한가요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-27769e7bf17270a90aad2813252d0f64",
+   "section_title": "4. 매출 및 수주상황",
+   "question": "이 회사의 주요 판매 경로와 전략은 뭐예요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-7cded97306781d4e3fd8022700f3f488",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 어떤 반도체 제품을 생산했나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-ff7ccc87bbf16dcc39509b3225e8751f",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 2050년까지 재생에너지 100% 사용을 어떻게 실현할 계획인가요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-02a05594b89649713581ef8bf1a0cf2b",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 TV 시장에서 어떤 전략으로 점유율을 늘렸나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 2,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-a6b7a6062a6c1f00b99acadce128d3d6",
+   "section_title": "2. 주요 제품 및 서비스",
+   "question": "이 회사가 주로 어떤 제품을 생산하고 판매하나요?",
+   "ranks": {
+    "bm25": 6,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-c7d9876376da90e95efd31c8533d7324",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 온실가스 배출량을 어떻게 관리하고 있나요?",
+   "ranks": {
+    "bm25": 4,
+    "vector": 4,
+    "hybrid": 4
+   }
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-5e55306a71d4ccf446f6c8c5b6763d57",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사의 2025년 신제품에는 어떤 친환경 기술이 적용되었나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-73083f36ea66325d8a74c50cbcd04dff",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 공통 비용과 자산을 어떻게 각 부문에 배분하나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-e5def430c7943109584b9945f9760bd4",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사의 주력 제품은 뭐야?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-094aef91fc744a1bf8081af7e2aa73c6",
+   "section_title": "4. 유동성 및 자금조달과 지출",
+   "question": "이 회사의 유동성 관리 전략은 어떤 방식으로 이루어지나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-ee6b92812f74d20f30a0811a2d0a63c6",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 반도체 분야에서 어떤 제품을 주로 생산하고 있나요?",
+   "ranks": {
+    "bm25": 8,
+    "vector": null,
+    "hybrid": 6
+   }
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-c624c91b5706c094bcacb221c4dd3f75",
+   "section_title": "4. 유동성 및 자금조달과 지출",
+   "question": "이 회사가 유동성 위기에 어떻게 대비하고 있나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 3,
+    "hybrid": 2
+   }
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-bd27addafdf6373a7129fc096a971027",
+   "section_title": "2. 영업의 현황",
+   "question": "이 회사는 어떤 분야에서 주로 사업을 하고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-43bedd0fb0e09a5d2743aa0111034bfc",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사는 어떤 투자 분야에 주로 초점을 맞추고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-28972c9e9c8c4a57a6097602c8cee6e8",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사의 디지털 채널 강화 전략은 어떤 부분에 중점을 두고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-fa565ac3f425bcb7743ea53597121eb1",
+   "section_title": "3. 재무상태 및 영업실적",
+   "question": "이 회사는 자본비율을 어떻게 개선했나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 2,
+    "hybrid": 5
+   }
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-88813d73534900dc1fc9216b92592629",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 생명보험 경쟁력 확보를 위해 어떤 전략을 택하고 있나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-03a00a24ae9297aeb7312d89c6ccd90b",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사는 경쟁력 강화를 위해 어떤 전략을 택하고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-264af8f5535b797c2a2178ea3ada18a2",
+   "section_title": "3. 재무상태 및 영업실적",
+   "question": "이 회사 자산손상 관련해서 궁금한 게 있는데, 자산손상이 연결회사에 큰 영향을 주나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 2,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-c6ba7921961ed1825384facbdcfedb58",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 전기차용 타이어 소재를 어떻게 개발하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-03d1a16cb5390a5617e1c74b924b6cf4",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 반도체와 타이어 산업에 얼마나 의존하고 있나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-6c863fab5406b902822cefb4524d7a11",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 활동하는 OLED 소재 시장은 어떻게 성장하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 6,
+    "hybrid": 3
+   }
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-486117104a7b5e3887abcf8818d1d347",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 어떤 분야에서 경쟁력을 가지고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 8,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-70e22f2e6ed2f2decf407edec3c7fe22",
+   "section_title": "3. 재무상태 및 영업실적",
+   "question": "이 회사의 영업적자 원인과 흑자전환 계획은 뭐예요?",
+   "ranks": {
+    "bm25": 4,
+    "vector": 3,
+    "hybrid": 3
+   }
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-752974f31355dfc9d680327988dccdce",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 활동하는 산업 분야는 뭔가요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 6,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-c290a68ed2da2431c5f89ca0e4536c0e",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 OLED와 반도체 분야에서 어떤 역할을 하고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 2,
+    "hybrid": 5
+   }
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-8c29823214a7db9689c4d9476d90f0d3",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 반도체와 OLED 산업에서 어떤 경쟁력을 가지고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 2,
+    "hybrid": 2
+   }
+  }
+ ]
+}

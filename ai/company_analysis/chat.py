@@ -4,6 +4,10 @@
 근거 8개를 고르고 → 리포트 블록 + 근거 + 최근 대화를 Qwen 에 넣어 JSON 답을 받고 → 답의 숫자를
 인용 근거와 대조해(claim_check) 어긋나면 한 번 다시 묻고, 그래도 어긋나면 근거 부족으로 답한다 →
 대화를 저장한다. 뉴스가 필요하면 needs 에 남겨 총괄이 뉴스 담당에 1홉 위임할 수 있게 한다.
+
+표준 지표 하나를 묻는 질문(매출액·영업이익·당기순이익·직원 수·영업이익률·부채비율·ROE …)은 답이 확정 지표
+하나로 정해지므로, 모델 답의 숫자를 확정값과 대조해 어긋나면 모델 답을 버리고 확정값 문장으로 바꾼다
+(metric_answer). 실측 오답 3건(다른 연도·다른 정의·단위 실수)이 모두 이 유형이었다.
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ from .claim_check import (
 from .contracts import ChatMessage, ChatNeed, ChatRequest, ChatResponse, Citation, CompanyReport, ConversationHistory
 from .evidence import BusinessReport, BusinessReportRepository
 from .llm import StructuredCompletionClient
+from .metric_answer import MetricQuery, answer_matches, detect_metric_query, deterministic_answer, expected_value
 from .retrieval import CompanyRetriever, Hit
 from .service import CompanyAnalysisService
 
@@ -253,14 +258,7 @@ class CompanyChatService:
             bundle.known_scopes = _known_scopes(business_report)
             chunk_evidence(self._retriever.search(business_report, request.message, top_k=MAX_EVIDENCE), bundle)
 
-        output, usage = self._ask(report, bundle, history, request.message)
-        answer, citations, needs, violations = self._verify(output, bundle)
-        if answer is None:
-            # 숫자·주체가 근거와 어긋났다. 무엇이 어긋났는지 알려 주고 한 번 다시 묻는다.
-            output, usage = self._ask(report, bundle, history, request.message, retry_note=_retry_note(violations))
-            answer, citations, needs, violations = self._verify(output, bundle)
-        if answer is None:
-            answer, citations = INSUFFICIENT_ANSWER, []
+        answer, citations, needs, output, usage = self._resolve(report, bundle, history, request.message)
 
         now = self._clock()
         user = self._store.append(StoredMessage(self._new_id(), conversation.conversation_id, "USER", request.message, now))
@@ -313,13 +311,7 @@ class CompanyChatService:
             for item in (history or [])[-MAX_HISTORY:]
             if str(item.get("content", "")).strip()
         ]
-        output, usage = self._ask(report, bundle, turns, message)
-        answer, citations, needs, violations = self._verify(output, bundle)
-        if answer is None:
-            output, usage = self._ask(report, bundle, turns, message, retry_note=_retry_note(violations))
-            answer, citations, needs, violations = self._verify(output, bundle)
-        if answer is None:
-            answer, citations = INSUFFICIENT_ANSWER, []
+        answer, citations, needs, output, usage = self._resolve(report, bundle, turns, message)
         return {
             "corp_code": corp_code,
             "corp_name": report.corp_name,
@@ -330,6 +322,39 @@ class CompanyChatService:
             "report_stage": report.stage,
             "usage": usage,
         }
+
+    def _resolve(
+        self, report: CompanyReport, bundle: ChatEvidence, history: list[StoredMessage], message: str
+    ) -> tuple[str, list[Citation], list[ChatNeed], dict[str, Any], dict[str, int] | None]:
+        """모델에 묻고 검증한 뒤 (답, 인용, needs, 모델 출력, usage) 를 돌려준다. 답은 항상 문자열이다.
+
+        표준 지표 질문이면 모델 답의 숫자를 확정값과 대조한다. 어긋나거나 검증에 실패하면 다시 묻지 않고
+        확정값 문장으로 바꾼다. 확정값이 없는 연도는 모델이 근거로 답했으면 그 답을 두고, 아니면
+        있는 연도를 알려 주는 회피 문장을 쓴다. 그 밖의 질문은 한 번 다시 묻고, 그래도 어긋나면 근거 부족으로 답한다.
+        """
+        facts = self._analysis.facts(report.corp_code)
+        query = detect_metric_query(message, facts) if facts is not None else None
+        if query is not None and any(scope in message for scope in bundle.known_scopes):
+            # "우리자산운용 영업이익?" 처럼 자회사 수치를 묻는다. 확정 지표는 이 기업(지주사) 값이므로 쓰지 않는다.
+            query = None
+        output, usage = self._ask(report, bundle, history, message)
+        answer, citations, needs, violations = self._verify(output, bundle)
+        if query is not None:
+            expected = expected_value(facts, query)
+            if expected is not None and (answer is None or not answer_matches(answer, query, expected)):
+                LOGGER.info("표준 지표 답 교체: corp=%s metric=%s year=%s model_answer=%r", report.corp_code, query.code, query.fiscal_year, answer)
+                fixed = deterministic_answer(facts, query)
+                return fixed.text, fixed.citations, needs, output, usage
+            if expected is None and answer is None:
+                return deterministic_answer(facts, query).text, [], needs, output, usage
+            return answer, citations, needs, output, usage
+        if answer is None:
+            # 숫자·주체가 근거와 어긋났다. 무엇이 어긋났는지 알려 주고 한 번 다시 묻는다.
+            output, usage = self._ask(report, bundle, history, message, retry_note=_retry_note(violations, bundle))
+            answer, citations, needs, violations = self._verify(output, bundle)
+        if answer is None:
+            return INSUFFICIENT_ANSWER, [], needs, output, usage
+        return answer, citations, needs, output, usage
 
     def _conversation(self, request: ChatRequest) -> Conversation:
         if request.conversation_id is None:
@@ -411,10 +436,19 @@ def _known_scopes(report: BusinessReport) -> set[str]:
     return {c.entity_scope for c in report.chunks if c.entity_scope and is_plausible_entity(c.entity_scope)}
 
 
-def _retry_note(violations: list[Violation]) -> str:
-    """직전 답이 왜 버려졌는지 모델에 구체적으로 알려 준다. '22,133억원' → 표 단위 백만원 같은 실수는 이걸로 고쳐진다."""
+def _retry_note(violations: list[Violation], bundle: ChatEvidence | None = None) -> str:
+    """직전 답이 왜 버려졌는지 모델에 구체적으로 알려 준다. '22,133억원' → 표 단위 백만원 같은 실수는 이걸로 고쳐진다.
+
+    숫자가 근거에 없었으면 확정 지표 표를 다시 보여 준다(덕산테코피아 실측: 당기순이익 -1,055.5억원을
+    -105,550억원으로 두 번 연속 잘못 씀).
+    """
     lines = ["주의: 직전 답이 검증에서 버려졌다. 아래 문제를 고쳐 다시 답한다. 근거에 적힌 숫자와 단위만 그대로 쓰고 계산하지 않는다."]
     lines += [f"- {v.detail}" for v in violations[:5]]
+    if bundle is not None and any(v.code in ("number_not_in_evidence", "ratio_not_in_evidence") for v in violations):
+        tables = [e for e in bundle.payload if e["evidence_id"].startswith("report:financials:")][:2]
+        if tables:
+            lines.append("참고 — 확정 지표 표(이 값을 그대로 쓴다):")
+            lines += [f"[{e['evidence_id']}]\n{e['content'][:600]}" for e in tables]
     return "\n".join(lines)
 
 
