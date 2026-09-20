@@ -60,7 +60,7 @@ export function IndustryComparisonSection({
       {waitingForCandidates ? (
         <div
           aria-busy="true"
-          className="h-56 animate-pulse rounded-3xl border border-slate-200 bg-white"
+          className="h-56 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
           role="status"
         >
           <span className="sr-only">산업 비교를 불러오는 중입니다</span>
@@ -100,7 +100,7 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
     <>
       <section
         aria-label="비교 조건"
-        className="rounded-3xl border border-slate-200 bg-white px-5 py-3 shadow-sm"
+        className="rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70 px-5 py-3 shadow-sm"
       >
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <div className="flex items-center gap-2 lg:border-r lg:border-slate-100 lg:pr-5">
@@ -137,7 +137,7 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
       {state.status === 'loading' && (
         <div
           aria-busy="true"
-          className="h-72 animate-pulse rounded-3xl border border-slate-200 bg-white"
+          className="h-72 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
           role="status"
         >
           <span className="sr-only">산업 비교를 불러오는 중입니다</span>
@@ -211,7 +211,7 @@ export function ComparisonResult({
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
         <section
           aria-labelledby="comparison-chart-title"
-          className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+          className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
         >
           <h3 className="text-base font-extrabold text-slate-950" id="comparison-chart-title">
             {label} 5개년 비교{' '}
@@ -259,7 +259,7 @@ export function ComparisonResult({
 
       <section
         aria-labelledby="comparison-table-title"
-        className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+        className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
       >
         <h3 className="text-base font-extrabold text-slate-950" id="comparison-table-title">
           기업 지표 비교{' '}

@@ -52,16 +52,16 @@ describe('FocusSummaryCard', () => {
     expect(screen.getByText('AI 분석')).toBeInTheDocument();
   });
 
-  it('hides itself when the direction is missing or the request failed', () => {
+  it('explains itself when the direction is missing or the request failed', () => {
     const { container, unmount } = render(
       <FocusSummaryCard state={{ status: 'success', data: { ...focusData, direction: null } }} />,
     );
-    expect(container).toBeEmptyDOMElement();
+    expect(container).not.toBeEmptyDOMElement();
     unmount();
     const second = render(
       <FocusSummaryCard state={{ status: 'error', error: new ApiError(404, 'X', 'x') }} />,
     );
-    expect(second.container).toBeEmptyDOMElement();
+    expect(second.container).not.toBeEmptyDOMElement();
   });
 
   it('dedupes chips across keywords and new business', () => {
@@ -91,7 +91,7 @@ describe('DirectionCard / RndCard', () => {
     expect(screen.getByText('실제 데이터')).toBeInTheDocument();
   });
 
-  it('shows 미제공 for missing R&D numbers and hides cards without data', () => {
+  it('shows 미제공 for missing R&D numbers and explains cards without data', () => {
     render(
       <RndCard
         state={{
@@ -105,7 +105,7 @@ describe('DirectionCard / RndCard', () => {
     const { container } = render(
       <DirectionCard state={{ status: 'success', data: { ...focusData, direction: null } }} />,
     );
-    expect(container).toBeEmptyDOMElement();
+    expect(container).not.toBeEmptyDOMElement();
   });
 });
 
@@ -174,7 +174,7 @@ describe('EvidenceCard', () => {
     expect(buildEvidenceRows(null, [], { year: null, employeeTotalChange: null, segments: [] })).toEqual([]);
   });
 
-  it('renders the rows and hides itself when there is nothing to say', () => {
+  it('renders the rows and explains itself when there is nothing to say', () => {
     render(<EvidenceCard activities={activitiesOk} focus={focusOk} workforce={workforceOk} />);
     expect(screen.getByRole('heading', { name: '판단 근거' })).toBeInTheDocument();
     expect(screen.getAllByRole('listitem')).toHaveLength(4);
@@ -186,7 +186,7 @@ describe('EvidenceCard', () => {
         workforce={{ status: 'success', data: { year: null, employeeTotalChange: null, segments: [] } }}
       />,
     );
-    expect(container).toBeEmptyDOMElement();
+    expect(container).not.toBeEmptyDOMElement();
   });
 });
 

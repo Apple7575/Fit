@@ -1,5 +1,6 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { niceTicks, useContainerWidth } from './chartMath';
+import { ChartTooltip, useChartHover } from './ChartTooltip';
 
 export interface BarChartItem {
   label: string;
@@ -34,6 +35,8 @@ export function BarChart({
 }: BarChartProps) {
   const tableId = useId();
   const { ref, width: W } = useContainerWidth();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const hover = useChartHover(svgRef);
   const H = height;
   const PLOT_W = W - PAD.left - PAD.right;
   const PLOT_H = H - PAD.top - PAD.bottom;
@@ -47,14 +50,32 @@ export function BarChart({
   const vMax = ticks[ticks.length - 1];
   const yOf = (v: number) => PAD.top + PLOT_H - ((v - vMin) / (vMax - vMin || 1)) * PLOT_H;
 
+  /** 막대 안에 있을 때만 */
+  const hitTest = (x: number, y: number) => {
+    for (let i = 0; i < items.length; i++) {
+      if (Math.abs(x - xCenter(i)) > barW / 2 + 4) continue;
+      const v = items[i].value;
+      if (v === null) continue;
+      const top = Math.min(yOf(v), yOf(0));
+      const bottom = Math.max(yOf(v), yOf(0));
+      if (y >= top - 14 && y <= bottom) return i;
+    }
+    return null;
+  };
+
+  const hovered = hover.point ? items[hover.point.index] : null;
+
   return (
-    <div ref={ref}>
+    <div className="relative" ref={ref}>
       <svg
         aria-describedby={tableId}
         aria-label={title}
         className="block w-full max-w-full overflow-visible"
         data-testid="bar-chart"
         height={H}
+        onMouseLeave={hover.clear}
+        onMouseMove={(e) => hover.track(e, hitTest)}
+        ref={svgRef}
         role="img"
         viewBox={`0 0 ${W} ${H}`}
       >
@@ -147,6 +168,22 @@ export function BarChart({
           );
         })}
       </svg>
+
+      {hovered && hover.point && (
+        <ChartTooltip
+          rows={[
+            {
+              label: valueName,
+              value: hovered.value === null ? '미제공' : formatValue(hovered.value),
+              emphasis: hovered.highlight,
+            },
+          ]}
+          title={hovered.label}
+          width={W}
+          x={hover.point.x}
+          y={hover.point.y}
+        />
+      )}
 
       <table className="sr-only" id={tableId}>
         <caption>{title}</caption>

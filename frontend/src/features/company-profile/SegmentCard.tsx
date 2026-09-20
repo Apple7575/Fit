@@ -10,7 +10,7 @@ export function SegmentCard({ segments }: SegmentCardProps) {
   return (
     <section
       aria-labelledby="segment-card-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <h2
         className="text-xl font-extrabold text-slate-950"

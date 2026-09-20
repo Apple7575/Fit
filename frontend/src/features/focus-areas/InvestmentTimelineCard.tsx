@@ -16,7 +16,7 @@ export function InvestmentTimelineCard({ state, onRetry, limit = 6 }: Investment
   return (
     <section
       aria-labelledby="investment-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-extrabold text-slate-950" id="investment-title">
