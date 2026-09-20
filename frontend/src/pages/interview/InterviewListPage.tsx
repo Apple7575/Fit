@@ -13,7 +13,18 @@ import { TYPE_ACCENT, TYPE_LABEL } from '../../features/interview/styles';
 import type { InterviewSummary } from '../../features/interview/types';
 import { useCompanyBrand } from '../../features/interview/useCompanyBrand';
 import { formatDateDots } from '../../utils/formatDate';
+import { glideToElement } from '../../utils/glideScroll';
 import { InterviewHeader } from './InterviewHeader';
+
+/** 첫 화면 배경. 기업 화면과 같은 언어로 시작해 세 기능이 한 서비스로 읽히게 한다 */
+const HERO_VIDEO = '/interview-media/hero.mp4';
+const HERO_POSTER = '/interview-media/hero.jpg';
+
+/** 기록 목록이 시작되는 자리. 첫 화면의 칩이 여기로 굴러간다 */
+const LIST_ID = 'my-interviews';
+
+/** 첫 화면에 얹을 기록 수. 한 줄에 네 칸이면 제목을 가리지 않는다 */
+const HERO_MAX = 4;
 
 export function InterviewListPage() {
   const { user, loading } = useAuth();
@@ -30,12 +41,7 @@ export function InterviewListPage() {
   // 모의 면접은 로그인 전용이다. 게스트는 로그인으로 보낸다.
   if (!user) return <Navigate replace to="/login?redirect=/interviews" />;
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <InterviewHeader />
-      <ListBody />
-    </div>
-  );
+  return <ListBody />;
 }
 
 function ListBody() {
@@ -43,6 +49,15 @@ function ListBody() {
   const { state, retry } = useInterviews();
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [localIds, setLocalIds] = useState<Set<number>>(new Set());
+  // 영상 위에서는 헤더를 투명하게 띄우고, 첫 화면을 벗어나면 흰 유리로 되돌린다
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // 이 브라우저에 녹화가 남아 있는 면접을 표시하기 위해 한 번 로드한다.
   useEffect(() => {
@@ -71,63 +86,186 @@ function ListBody() {
     retry();
   };
 
+  const all = state.status === 'success' ? state.data : [];
+  // 첫 화면에 얹을 만큼만. 넘치는 것은 아래 전체 목록에서 본다
+  const onHero = all.slice(0, HERO_MAX);
+  const overflow = all.length > HERO_MAX;
+  // 첫 화면에 다 담기면 아래에 아무것도 없다. 그때 밝게 끝내면 뭔가 더 있는 것처럼 보인다
+  const hasBelow = overflow || state.status !== 'success';
+
   return (
-    // 리포트·면접 화면과 같은 폭을 쓴다
-    <div className="mx-auto max-w-[1320px] px-5 py-6 lg:px-8">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[20px] font-extrabold text-slate-950">내 모의 면접</h1>
-          <p className={`mt-1 ${T.caption}`}>면접을 선택해 결과를 다시 보거나, 새 면접을 시작하세요. 결과는 나에게만 보입니다.</p>
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <InterviewHeader floating scrolled={scrolled} />
+
+      {/* 화면 전체가 면접장 영상. 빈 의자를 보여 줘서 "내가 저기 앉는다"로 시작한다 */}
+      <section className="relative isolate overflow-hidden bg-slate-950 text-white">
+        <div aria-hidden="true" className="absolute inset-0">
+          <video
+            autoPlay
+            className="size-full object-cover"
+            loop
+            muted
+            playsInline
+            poster={HERO_POSTER}
+            preload="metadata"
+            src={HERO_VIDEO}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80" />
+          {/*
+            아래는 다음 내용과 같은 색으로 녹인다. 영상이 검정으로 끝나고 흰 바탕이 바로 시작하면
+            가로줄이 하나 그어진 것처럼 보인다.
+          */}
+          <div
+            className={`absolute inset-x-0 bottom-0 h-56 bg-gradient-to-b from-transparent ${
+              hasBelow ? 'via-slate-950/80 to-slate-50' : 'to-slate-950'
+            }`}
+          />
         </div>
-        <button
-          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          onClick={() => navigate('/interviews/new')}
-          type="button"
-        >
-          <Icon name="mic" />새 면접
-        </button>
-      </div>
 
-      {state.status === 'loading' && (
-        <div className={CARD}>
-          <LoadingScreen compact message="면접 기록을 불러오는 중" />
-        </div>
-      )}
-
-      {state.status === 'error' && (
-        <InlineNotice onRetry={retry}>목록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
-      )}
-
-      {state.status === 'success' &&
-        (state.data.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
-            <p className={T.bodyStrong}>아직 진행한 면접이 없습니다.</p>
-            <p className={`mt-1 ${T.caption}`}>새 면접을 시작하고 답변에 대한 AI 피드백을 받아 보세요.</p>
+        {/* 기업 검색 화면과 같은 짜임: 제목은 위쪽 가운데, 아래쪽은 바로 열 수 있는 것들 */}
+        <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-24 pb-16">
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <h1 className="display-lg text-balance">면접관 앞에 앉아 보세요</h1>
+            <p className="mt-3 max-w-[46ch] text-[15px] break-keep text-white/70">
+              회사 자료로 만든 질문에 답하고, 말투와 자세까지 돌아봅니다. 녹화한 영상은 이 브라우저
+              밖으로 나가지 않습니다.
+            </p>
             <button
-              className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-blue-700"
+              className="mt-8 flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
               onClick={() => navigate('/interviews/new')}
               type="button"
             >
-              첫 면접 시작하기
+              <Icon name="mic" />새 면접 시작
             </button>
           </div>
-        ) : (
-          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {state.data.map((interview) => (
-              <InterviewCard
-                confirming={confirmingId === interview.id}
-                hasLocal={localIds.has(interview.id)}
-                interview={interview}
-                key={interview.id}
-                onAskDelete={() => setConfirmingId(interview.id)}
-                onCancelDelete={() => setConfirmingId(null)}
-                onConfirmDelete={() => void remove(interview.id)}
-                onOpen={() => navigate(`/interviews/${interview.id}`)}
-              />
-            ))}
-          </ul>
-        ))}
+
+          {/* 내 기록을 첫 화면에서 바로 연다. 아래로 내려가서 찾게 하지 않는다 */}
+          {onHero.length > 0 && (
+            <section aria-labelledby="hero-list-title" className="mt-10 border-t border-white/15 pt-6">
+              <div className="flex items-baseline justify-center gap-3">
+                <p className="text-[12px] font-semibold text-white/50" id="hero-list-title">
+                  내 모의 면접
+                </p>
+                {overflow && (
+                  <button
+                    className="text-[12px] font-semibold text-white/50 transition hover:text-white"
+                    // 헤더(57) 바로 아래에 목록 머리가 놓이게
+                    onClick={() => glideToElement(LIST_ID, 56)}
+                    type="button"
+                  >
+                    전체 {all.length}개 보기 ↓
+                  </button>
+                )}
+              </div>
+              <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {onHero.map((interview) => (
+                  <li key={interview.id}>
+                    <HeroCard
+                      interview={interview}
+                      onOpen={() => navigate(`/interviews/${interview.id}`)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {state.status === 'success' && all.length === 0 && (
+            <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] text-white/50">
+              아직 진행한 면접이 없습니다. 첫 면접을 시작하면 여기에 쌓입니다.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* 리포트·면접 화면과 같은 폭을 쓴다. 첫 화면에 다 담기는 동안에는 그리지 않는다 */}
+      {hasBelow && (
+        <div className="mx-auto w-full max-w-[1320px] scroll-mt-14 px-5 pt-4 pb-12 lg:px-8" id={LIST_ID}>
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-[20px] font-extrabold text-slate-950">내 모의 면접</h2>
+              <p className={`mt-1 ${T.caption}`}>면접을 선택해 결과를 다시 보거나, 새 면접을 시작하세요. 결과는 나에게만 보입니다.</p>
+            </div>
+            <button
+              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              onClick={() => navigate('/interviews/new')}
+              type="button"
+            >
+              <Icon name="mic" />새 면접
+            </button>
+          </div>
+
+          {state.status === 'loading' && (
+            <div className={CARD}>
+              <LoadingScreen compact message="면접 기록을 불러오는 중" />
+            </div>
+          )}
+
+          {state.status === 'error' && (
+            <InlineNotice onRetry={retry}>목록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
+          )}
+
+          {state.status === 'success' && (
+            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {all.map((interview) => (
+                <InterviewCard
+                  confirming={confirmingId === interview.id}
+                  hasLocal={localIds.has(interview.id)}
+                  interview={interview}
+                  key={interview.id}
+                  onAskDelete={() => setConfirmingId(interview.id)}
+                  onCancelDelete={() => setConfirmingId(null)}
+                  onConfirmDelete={() => void remove(interview.id)}
+                  onOpen={() => navigate(`/interviews/${interview.id}`)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+/**
+ * 첫 화면(영상 위)에 얹는 압축 카드.
+ *
+ * <p>아래 목록의 큰 카드를 그대로 올리면 영상과 제목을 다 덮는다. 여기서는 어디 면접이었는지만
+ * 알아보면 되므로 로고·회사·직무·날짜 한 줄씩으로 줄이고, 자세한 것은 눌러서 본다.
+ * 헤더와 같은 유리 재질을 써서 사진 위에서도 겉돌지 않는다.
+ */
+function HeroCard({ interview, onOpen }: { interview: InterviewSummary; onOpen: () => void }) {
+  const brand = useCompanyBrand(interview.targetCompany);
+  const company = interview.targetCompany ?? '모의 면접';
+  return (
+    <button
+      className="flex w-full items-center gap-2.5 rounded-xl bg-white/10 px-3 py-2.5 text-left ring-1 ring-white/20 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 hover:ring-white"
+      onClick={onOpen}
+      type="button"
+    >
+      {/* 로고는 장식이다. 읽어 주는 이름은 회사명 하나로 둔다 */}
+      <span aria-hidden="true" className="shrink-0">
+        {/*
+          corpCode 는 후보 이미지를 처음부터 다시 시도할지 가르는 키로만 쓴다. 아직 못 찾은
+          회사는 이름을 대신 넣어 둔다 (아래 큰 카드와 같은 방식). 로고가 없으면 이니셜 아바타.
+        */}
+        <CompanyLogo
+          className="rounded-lg"
+          corpCode={brand?.corpCode ?? company}
+          corpName={company}
+          homepageUrl={brand?.homepageUrl ?? null}
+          size={28}
+        />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-bold">{company}</span>
+        <span className="mt-0.5 block truncate text-[11px] opacity-60">
+          {interview.targetPosition || TYPE_LABEL[interview.interviewType]}
+          <span className="mx-1">·</span>
+          {formatDateDots(interview.createdAt)}
+        </span>
+      </span>
+    </button>
   );
 }
 

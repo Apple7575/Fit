@@ -28,19 +28,32 @@ export function SegmentRevenueCard({
   }
 
   const sum = disclosed.reduce((acc, s) => acc + (s.revenue ?? 0), 0);
-  let cursor = 25; // 12시 방향에서 시작
-  const arcs = disclosed.map((segment, index) => {
-    const ratio = sum > 0 ? ((segment.revenue ?? 0) / sum) * 100 : 0;
-    const arc = {
+  // 색은 공시된 순서대로 정해 둔다. 그래프에서 빠지는 항목도 범례에서는 같은 색을 쓴다
+  const colorOf = new Map(disclosed.map((s, i) => [s.code, COLORS[i % COLORS.length]]));
+
+  /*
+   * 매출이 0 이하인 항목은 호로 그릴 수 없다 (연결 조정처럼 빼는 몫이 음수로 공시된다).
+   * 길이가 음수인 stroke-dasharray 는 값 전체가 무효가 되어 그 조각이 원 하나를 꽉 채워
+   * 버리고, 마지막에 그려지므로 앞의 조각들을 전부 덮는다. 그래서 호에서는 뺀다.
+   */
+  const positives = disclosed.filter((s) => (s.revenue ?? 0) > 0);
+  const arcTotal = positives.reduce((acc, s) => acc + (s.revenue ?? 0), 0);
+  const arcs = positives.map((segment, index) => {
+    const before = positives.slice(0, index).reduce((acc, s) => acc + (s.revenue ?? 0), 0);
+    return {
       segment,
-      ratio,
-      offset: cursor,
-      color: COLORS[index % COLORS.length],
+      ratio: arcTotal > 0 ? ((segment.revenue ?? 0) / arcTotal) * 100 : 0,
+      // 12시 방향에서 시작해 시계 반대로 쌓는다
+      offset: 25 - (arcTotal > 0 ? (before / arcTotal) * 100 : 0),
+      color: colorOf.get(segment.code) ?? COLORS[0],
     };
-    cursor -= ratio;
-    return arc;
   });
+  const excluded = disclosed.filter((s) => (s.revenue ?? 0) <= 0);
   const undisclosed = segments.filter((s) => s.revenue === null);
+
+  /** 범례에 적는 비중. 공시값이 있으면 그대로 쓰고, 없으면 전체(음수 포함) 대비로 낸다 */
+  const shareOf = (segment: ProfileSegment) =>
+    segment.revenueShare ?? (sum > 0 ? ((segment.revenue ?? 0) / sum) * 100 : 0);
 
   const hoveredArc = arcs.find((arc) => arc.segment.code === hover) ?? null;
 
@@ -93,7 +106,7 @@ export function SegmentRevenueCard({
               </span>
               {hoveredArc && (
                 <span className="text-xs font-semibold text-slate-500 tabular-nums">
-                  {(hoveredArc.segment.revenueShare ?? hoveredArc.ratio).toFixed(1)}%
+                  {shareOf(hoveredArc.segment).toFixed(1)}%
                 </span>
               )}
             </div>
@@ -101,7 +114,8 @@ export function SegmentRevenueCard({
         </div>
 
         <ul className="w-full min-w-0 flex-1 space-y-2.5">
-          {arcs.map(({ segment, ratio, color }) => (
+          {/* 범례는 공시된 것을 그대로 다 적는다 (그래프에서 빠진 음수 항목도 값은 보여준다) */}
+          {disclosed.map((segment) => (
             <li
               className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-2.5 text-sm"
               key={segment.code}
@@ -109,7 +123,7 @@ export function SegmentRevenueCard({
               <span
                 aria-hidden="true"
                 className="size-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: color }}
+                style={{ backgroundColor: colorOf.get(segment.code) }}
               />
               <span className="min-w-0 flex-1 truncate font-bold text-slate-900">
                 {segment.code}
@@ -118,7 +132,7 @@ export function SegmentRevenueCard({
                 {formatAmount(segment.revenue ?? 0)} 원
               </span>
               <span className="w-14 text-right font-semibold text-slate-500">
-                {(segment.revenueShare ?? ratio).toFixed(1)}%
+                {shareOf(segment).toFixed(1)}%
               </span>
             </li>
           ))}
@@ -140,7 +154,16 @@ export function SegmentRevenueCard({
         </ul>
       </div>
 
-      <p className="mt-5 text-xs text-slate-400">* 연결 기준 매출액</p>
+      <p className="mt-5 text-xs break-keep text-slate-400">
+        * 연결 기준 매출액
+        {excluded.length > 0 && (
+          <>
+            {' · '}
+            {excluded.map((s) => s.code).join(', ')}
+            처럼 매출이 음수인 항목(연결 조정 등)은 그래프에서 빼고 비중만 적었습니다.
+          </>
+        )}
+      </p>
     </section>
   );
 }

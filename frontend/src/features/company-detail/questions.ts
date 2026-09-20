@@ -57,6 +57,12 @@ export const COMPANY_QUESTIONS: readonly CompanyQuestion[] = [
   },
 ];
 
+/**
+ * 요약 한 장 안에서 구획 id 로 쓰는 다섯 이름. 예전 탭 주소와 같은 글자라
+ * /companies/x/issues 같은 옛 링크를 /overview#issues 로 보낼 때도 그대로 쓴다.
+ */
+export const COMPANY_SECTIONS = COMPANY_QUESTIONS.map((q) => q.tab);
+
 export const QUESTION_BY_TAB = Object.fromEntries(
   COMPANY_QUESTIONS.map((q) => [q.tab, q]),
 ) as Record<CompanyQuestion['tab'], CompanyQuestion>;

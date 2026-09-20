@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import { useInView } from '../../hooks/useInView';
+import { jumpToSection } from '../../pages/company-detail/sectionJump';
 import { CompanyMedia } from './CompanyMedia';
 import { industryGroupOf } from './industryGroups';
 import type { FitPoint } from './buildFitPoints';
@@ -51,9 +51,17 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                 key={p.key}
                 style={{ '--reveal-delay': `${i * 120}ms` } as never}
               >
-                <Link
+                {/*
+                  근거는 같은 페이지 아래에 이미 이어 붙어 있다. 다른 주소로 보내면 거기서는
+                  그 구획밖에 안 보여, 스크롤로 다음 질문까지 읽는 흐름이 끊긴다.
+                */}
+                <a
                   className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70 transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  to={`../${p.tab}`}
+                  href={`#${p.tab}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    jumpToSection(p.tab);
+                  }}
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-50">
                     <CompanyMedia
@@ -75,7 +83,7 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                       </span>
                     </div>
                   </div>
-                </Link>
+                </a>
               </li>
             );
           })}
