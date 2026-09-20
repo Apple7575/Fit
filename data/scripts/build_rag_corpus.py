@@ -28,7 +28,7 @@ from pipeline.rag_corpus.source import load_company_source_rows  # noqa: E402
 from pipeline.rag_corpus.models import EvidenceRecord  # noqa: E402
 from pipeline.raw_sources.business_report import BusinessReportSource  # noqa: E402
 from pipeline.raw_sources.dart_archive import DartArchive, extract_archive  # noqa: E402
-from pipeline.raw_sources.chunking_profiles import chunking_profile_names  # noqa: E402
+from pipeline.raw_sources.chunking_profiles import chunking_profile_names, get_chunking_profile  # noqa: E402
 from pipeline.raw_sources.parallel import iter_parallel_batches  # noqa: E402
 from pipeline.raw_sources.models import EvidenceBatch  # noqa: E402
 
@@ -282,7 +282,9 @@ def main() -> int:
                         args.extract_dir or args.dart_archive.with_suffix(".extracted"),
                     )
                 else:
-                    providers.append(BusinessReportSource(archive))
+                    providers.append(BusinessReportSource(
+                        archive, profile=get_chunking_profile(args.chunking_profile),
+                    ))
             if parallel_archive_dir is not None:
                 staging_dir = args.staging_dir or (
                     args.output.parent / "company-rag-staging" if args.output
