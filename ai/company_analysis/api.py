@@ -34,7 +34,7 @@ from .contracts import (
     ConversationHistory, ReportGenerateRequest, ReportStatus,
 )
 from .evidence import PostgresBusinessReportRepository
-from .llm import QwenConfig, QwenStructuredClient
+from .llm import QwenConfig, build_structured_client
 from .narrative import NarrativeEnricher
 from .repository import PostgresCompanyFactsRepository
 from .retrieval import CompanyRetriever, RemoteQueryEncoder
@@ -122,7 +122,7 @@ def build_enrichers() -> tuple:
     from .table_facts import PostgresTableFactsRepository
 
     table_facts = PostgresTableFactsRepository(_connect_factory(resolve_rag_database_url()))
-    return (NarrativeEnricher(QwenStructuredClient(config), reports, table_facts=table_facts),)
+    return (NarrativeEnricher(build_structured_client(config), reports, table_facts=table_facts),)
 
 
 @lru_cache(maxsize=1)
@@ -140,7 +140,7 @@ def get_company_chat_service() -> CompanyChatService:
         analysis=analysis,
         reports=reports,
         retriever=retriever,
-        client=QwenStructuredClient(config),
+        client=build_structured_client(config),
         store=PostgresConversationStore(connect),
     )
 

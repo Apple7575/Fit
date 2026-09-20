@@ -117,6 +117,11 @@ services:
       - QWEN_BASE_URL=${VLLM_BASE_URL:-http://70.12.130.105:8000}/v1
       # 서빙 중인 모델 ID 는 main 하나다 (GET /v1/models 로 확인).
       - QWEN_MODEL=${QWEN_MODEL:-main}
+      # LLM 공급자. vllm(사내 GPU, 기본) | gms(SSAFY GMS 경유 Gemini).
+      # 담당 하나만 옮겨 보려면 <PREFIX>_LLM_PROVIDER 로 덮어쓴다 (예: COMPANY_ANALYSIS_LLM_PROVIDER).
+      - LLM_PROVIDER=${LLM_PROVIDER:-vllm}
+      - COMPANY_ANALYSIS_LLM_PROVIDER=${COMPANY_ANALYSIS_LLM_PROVIDER:-}
+      - GMS_MODEL=${GMS_MODEL:-}
       - QWEN_API_KEY=${LLM_KEY:-}
       # 공고에서 회사명·직무명을 뽑는 보완 추출에만 쓴다. 비면 그 보완만 꺼지고 크롤링은 돈다.
       - GMS_KEY=${GMS_KEY:-}
