@@ -62,18 +62,15 @@ export function SiteHeader({
   scrolled = false,
 }: SiteHeaderProps) {
   const { pathname } = useLocation();
-  // 어두운 영상 위에 떠 있는 동안만 글자를 흰색으로
-  const light = overlay && !scrolled;
+  // 어두운 사진·영상 위에 떠 있는 동안만 글자를 흰색으로
+  const light = (overlay || floating) && !scrolled;
   const tone = LINK_TONE[light ? 'light' : 'dark'];
 
-  // 치워 둔 헤더는 보이지도, 탭 이동으로 잡히지도 않아야 한다
-  const away = floating && !scrolled;
-
   const frame = floating
-    ? `fixed inset-x-0 top-0 z-30 border-b transition-[transform,background-color,border-color,opacity] duration-300 ${
-        away
-          ? '-translate-y-full border-transparent bg-transparent opacity-0'
-          : 'translate-y-0 border-slate-200/70 bg-white/70 opacity-100 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-xl'
+    ? `fixed inset-x-0 top-0 z-30 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
+        light
+          ? 'border-transparent bg-transparent'
+          : 'border-slate-200/70 bg-white/70 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-xl'
       }`
     : overlay
       ? `absolute inset-x-0 top-0 z-30 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
@@ -84,7 +81,7 @@ export function SiteHeader({
       : 'sticky top-0 z-30 border-b border-slate-200 bg-white';
 
   return (
-    <header className={frame} data-scrolled={overlay || floating ? scrolled : undefined} inert={away}>
+    <header className={frame} data-scrolled={overlay || floating ? scrolled : undefined}>
       <div className="mx-auto flex min-h-14 max-w-[1720px] flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <Link aria-label={`${BRAND_NAME} 홈`} className="flex shrink-0 items-center gap-2" to="/">
@@ -97,11 +94,22 @@ export function SiteHeader({
           </Link>
           {breadcrumb && (
             <nav aria-label="브레드크럼" className="hidden min-w-0 md:block">
-              <ol className="flex items-center gap-2 text-sm text-slate-500">
+              {/* 사진·영상 위에 떠 있을 때는 흰 글씨라야 읽힌다 */}
+              <ol className={`flex items-center gap-2 text-sm ${light ? 'text-white/50' : 'text-slate-500'}`}>
                 {(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i, all) => (
                   <li className="flex min-w-0 items-center gap-2" key={crumb}>
                     <span aria-hidden="true">/</span>
-                    <span className={`truncate font-bold ${i === all.length - 1 ? 'text-blue-600' : 'text-slate-500'}`}>
+                    <span
+                      className={`truncate font-bold ${
+                        i === all.length - 1
+                          ? light
+                            ? 'text-white'
+                            : 'text-blue-600'
+                          : light
+                            ? 'text-white/60'
+                            : 'text-slate-500'
+                      }`}
+                    >
                       {crumb}
                     </span>
                   </li>

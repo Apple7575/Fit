@@ -5,6 +5,16 @@
 `src/features/company-summary/industryGroups.ts` 에 있다. 표에 없는 업종은 `life` 그룹으로 간다.
 로고만 기업별이며, 파일을 두지 않고 logo.dev → Google 파비콘 → 이니셜 순으로 자동 조회한다.
 
+## 화면 하나가 쓰는 사진
+
+| 파일 | 용도 | 규격 |
+| --- | --- | --- |
+| `search-hero.mp4` · `search-hero.jpg` | 기업 분석 검색 화면 첫 화면 배경 | 1920×1080 권장(720p 도 가능) · 8~12초 무음 루프 · 4MB 이하 |
+
+가운데에 제목과 검색창이 앉는다. **가운데 60% 는 단순한 장면**이어야 글씨가 묻히지 않는다.
+특정 기업을 알아볼 수 있는 간판·로고는 넣지 않는다(그 회사 페이지로 오해한다).
+jpg 는 영상이 뜨기 전과 영상을 못 트는 환경에서 쓰는 정지 화면이라, 영상의 한 프레임이면 된다.
+
 ## 폴더
 
 `industry/{group}/` — group 은 semiconductor · machinery · software · bio · chemical · finance · retail · auto ·
