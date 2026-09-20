@@ -21,9 +21,6 @@ const CHROME_REVEAL_Y = 80;
 
 const scrolledPast = () => window.scrollY > CHROME_REVEAL_Y;
 
-/** 첫 화면이 다 뜬 뒤 헤더가 내려오기까지 */
-const HEADER_DELAY_MS = 2500;
-
 /** 첫 화면을 사진에 통째로 내주는 탭. 나머지 탭은 평소처럼 헤더가 붙어 있다 */
 const isImmersive = (pathname: string) => pathname.endsWith('/overview');
 
@@ -58,16 +55,6 @@ export function CompanyDetailPage() {
     root.classList.add('snap-first-screen');
     return () => root.classList.remove('snap-first-screen');
   }, [immersive]);
-
-  /**
-   * 첫 화면을 사진에 내주더라도 헤더가 아주 없으면 길을 잃는다.
-   * 그래서 내용이 다 뜬 뒤 잠깐(1초) 두었다가 헤더와 서브바를 내려 준다.
-   */
-  useEffect(() => {
-    if (!immersive || revealed || state.status === 'loading') return;
-    const id = window.setTimeout(() => setRevealed(true), HEADER_DELAY_MS);
-    return () => window.clearTimeout(id);
-  }, [immersive, revealed, state.status]);
 
   useEffect(() => {
     if (revealed) return;
