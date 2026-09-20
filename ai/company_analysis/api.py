@@ -29,7 +29,10 @@ from fastapi import Depends, FastAPI, HTTPException, Response, status
 
 from .chat import CompanyChatService, ConversationMismatchError, ConversationNotFoundError
 from .chat_store import PostgresConversationStore
-from .contracts import ChatRequest, ChatResponse, CompanyReport, ConversationHistory, ReportGenerateRequest, ReportStatus
+from .contracts import (
+    ChatRequest, ChatResponse, CompanyMessageRequest, CompanyMessageResponse, CompanyReport,
+    ConversationHistory, ReportGenerateRequest, ReportStatus,
+)
 from .evidence import PostgresBusinessReportRepository
 from .llm import QwenConfig, QwenStructuredClient
 from .narrative import NarrativeEnricher
@@ -226,6 +229,31 @@ def create_app(service_provider=get_company_analysis_service, chat_provider=get_
             raise HTTPException(status_code=404, detail={"code": "CONVERSATION_NOT_FOUND"})
         except ConversationMismatchError:
             raise HTTPException(status_code=409, detail={"code": "CONVERSATION_CORP_MISMATCH"})
+
+    @app.post("/internal/messages", response_model=CompanyMessageResponse)
+    def create_message(payload: CompanyMessageRequest, chat_service: CompanyChatService = chat_dependency):
+        """무상태 한 번 답. 담당 방이 직접 부른다 — 대화는 백엔드가 들고 있으므로 저장하지 않는다.
+
+        총괄이 어댑터로 부르는 `answer()` 와 같은 경로를 탄다. 두 경로가 다른 답을 내지 않도록
+        여기서 로직을 복제하지 않고 그대로 위임한다.
+        """
+        try:
+            result = chat_service.answer(
+                corp_code=payload.corp_code,
+                message=payload.message,
+                history=[
+                    {"role": item.role, "content": item.content}
+                    for item in payload.conversation
+                ],
+            )
+        except CompanyNotFoundError:
+            raise HTTPException(status_code=404, detail={"code": "COMPANY_NOT_FOUND"})
+        except RuntimeError as error:
+            # 리포트를 만들 수 없는 기업(확정 데이터 없음). 담당 방에 쓸 답이 없다.
+            raise HTTPException(
+                status_code=422, detail={"code": "REPORT_UNAVAILABLE"}
+            ) from error
+        return CompanyMessageResponse.model_validate(result)
 
     @app.get("/internal/conversations/{conversation_id}", response_model=ConversationHistory)
     def conversation(conversation_id: str, chat_service: CompanyChatService = chat_dependency):

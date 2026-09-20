@@ -17,6 +17,7 @@ import java.util.Set;
 final class EvidenceMapper {
 
     private static final int MAX_SNIPPET = 1_000;
+    private static final String DART_DOCUMENT_URL = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=";
 
     private EvidenceMapper() {
     }
@@ -69,6 +70,36 @@ final class EvidenceMapper {
                         trimmed(nullable(signal, "summary")),
                         nullable(source, "url")));
             }
+        }
+        return List.copyOf(evidences);
+    }
+
+    /**
+     * 기업 담당을 직접 부른 응답에는 {@code evidence[]} 가 없다. 서술에 달린 인용
+     * ({@code citations[]})이 같은 자리를 대신한다. 파이썬 총괄의 변환과 같은 규칙이다.
+     *
+     * <p>접수번호가 있으면 DART 원문 링크를 만들고 앞 네 자리를 연도로 쓴다. 기사와 달리
+     * 인용마다 제목이 없으므로 기업명을 제목으로 둔다 — 화면에서 출처를 구분할 이름이 필요하다.
+     */
+    static List<Evidence> fromCompanyCitations(JsonNode citations, String corpName) {
+        if (citations == null || !citations.isArray()) {
+            return List.of();
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        List<Evidence> evidences = new ArrayList<>();
+        for (JsonNode node : citations) {
+            String sourceId = text(node, "source_id");
+            if (sourceId.isBlank() || !seen.add(sourceId)) {
+                continue;
+            }
+            String receipt = text(node, "rcept_no");
+            evidences.add(new Evidence(
+                    nullable(node, "source_type"),
+                    corpName == null || corpName.isBlank() ? null : corpName,
+                    year(receipt),
+                    null,
+                    trimmed(nullable(node, "excerpt")),
+                    receipt.isBlank() ? null : DART_DOCUMENT_URL + receipt));
         }
         return List.copyOf(evidences);
     }
