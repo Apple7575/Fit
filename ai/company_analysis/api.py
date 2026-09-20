@@ -116,7 +116,10 @@ def build_enrichers() -> tuple:
     except (OSError, RuntimeError, ValueError) as error:
         LOGGER.warning("narrative disabled: %s", error)
         return ()
-    return (NarrativeEnricher(QwenStructuredClient(config), reports),)
+    from .table_facts import PostgresTableFactsRepository
+
+    table_facts = PostgresTableFactsRepository(_connect_factory(resolve_rag_database_url()))
+    return (NarrativeEnricher(QwenStructuredClient(config), reports, table_facts=table_facts),)
 
 
 @lru_cache(maxsize=1)
