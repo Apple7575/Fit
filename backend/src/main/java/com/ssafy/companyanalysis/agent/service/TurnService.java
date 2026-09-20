@@ -195,7 +195,8 @@ public class TurnService {
                 jobContext.map(JobContext::getContextId).orElse(null),
                 jobContext.map(JobContext::getPositionName).orElse(null),
                 conversationOf(room.getId()),
-                configsOf(room));
+                configsOf(room),
+                AUTO_REVIEW_INSTRUCTION.equals(content));
     }
 
     /**

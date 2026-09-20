@@ -28,6 +28,7 @@ import java.util.Map;
 public class CompanyAnalysisClient {
 
     private static final String PATH = "/company/internal/messages";
+    private static final String REPORT_PATH = "/company/internal/reports/";
     private static final String AGENT_NAME = "기업 RAG 담당";
     private static final int MAX_MESSAGE = 4_000;
     private static final int MAX_CONVERSATION = 20;
@@ -80,6 +81,29 @@ public class CompanyAnalysisClient {
         }
         return new Answer(answer, EvidenceMapper.fromCompanyCitations(
                 response.path("citations"), response.path("corp_name").asString("")));
+    }
+
+    /**
+     * 저장된 리포트를 받아 말풍선용 마크다운으로 푼다. 검토 방에 들어온 첫 턴에서 한 번 쓴다.
+     *
+     * <p>서술 블록이 아직 없으면({@code DETERMINISTIC}) 숫자 블록만 담긴 리포트가 온다. 그래도
+     * 표·KPI 는 다 들어 있어 보여 줄 값은 있다 — 서술은 몇 분 뒤 채워지므로 그 사실만 덧붙인다.
+     */
+    public Answer report(String corpCode) {
+        if (!properties.hasBaseUrl()) {
+            throw new BusinessException(ErrorCode.AI_UNAVAILABLE,
+                    AGENT_NAME + " AI 서버 주소가 설정되지 않았습니다.");
+        }
+        JsonNode report = AgentAiCall.get(supervisorAiRestClient, REPORT_PATH + corpCode, AGENT_NAME);
+        String text = CompanyReportText.of(report);
+        if (text.isBlank()) {
+            throw new BusinessException(ErrorCode.AI_FAILED, AGENT_NAME + " 이 빈 리포트를 돌려줬습니다.");
+        }
+        if (DETERMINISTIC.equals(report.path("stage").asString(""))) {
+            text = text + ENRICHING_NOTICE;
+        }
+        return new Answer(text, EvidenceMapper.fromCompanyReportSources(
+                report.path("sources"), report.path("corp_name").asString("")));
     }
 
     private static String trim(String value, int limit) {

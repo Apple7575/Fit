@@ -19,6 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
  * 것은 기업 RAG 담당뿐이고, 무상태 대화 API 를 직접 부른다({@link CompanyAnalysisClient}).
  * 담당 하나뿐인 방에 총괄을 거치면 왕복이 하나 더 붙는다 — 뉴스 담당과 같은 이유다.
  *
+ * <p>방에 들어와 도는 첫 턴({@code autoReview})만 다르다. 그때는 사용자가 물은 것이 없으므로
+ * 답 대신 기업 리포트를 통째로 펼친다. 다른 담당은 자소서를 지적하지만 기업 담당이 가진 것은
+ * 기업 설명이라, 먼저 보여 주고 대화를 그 위에서 이어 가는 편이 자연스럽다.
+ *
  * <p>한 번의 실행이 한 트랜잭션이다. 실패해도 그 메시지만 FAILED 로 남기고 예외를 삼킨다.
  * 턴 전체는 계속 간다.
  */
@@ -61,8 +65,11 @@ public class AgentTaskRunner {
                 message.fail(type.displayName() + " 에이전트 설정의 기업 코드가 올바르지 않습니다.");
                 return;
             }
-            CompanyAnalysisClient.Answer answer = companyAnalysisClient.answer(
-                    context.userMessage(), corpCode, context.jobContextId(), context.conversation());
+            // 첫 턴에는 물어본 것이 없다. 기업 리포트를 통째로 펼쳐 놓고, 대화는 그 다음부터다.
+            CompanyAnalysisClient.Answer answer = context.autoReview()
+                    ? companyAnalysisClient.report(corpCode)
+                    : companyAnalysisClient.answer(
+                            context.userMessage(), corpCode, context.jobContextId(), context.conversation());
             message.succeed(answer.message(), answer.evidence(), List.of());
         } catch (Exception e) {
             log.warn("에이전트 실행 실패: messageId={}, agent={}, reason={}",

@@ -168,7 +168,7 @@ class SupervisorTurnRunnerTest {
         everyAgent.put("writing", Map.of());
         return new TurnContext(
                 List.of(new TurnContext.CoverLetterPart(1, "지원동기", "저는 API 를 만들었습니다.", 1000)),
-                "봐줘", "ctx-1", "백엔드", List.of(), everyAgent);
+                "봐줘", "ctx-1", "백엔드", List.of(), everyAgent, false);
     }
 
     /** 아직 아무 문항도 쓰지 않은 방. 보낼 문서가 없어 뉴스 담당만 돌 수 있다. */
@@ -176,7 +176,7 @@ class SupervisorTurnRunnerTest {
         return new TurnContext(
                 List.of(new TurnContext.CoverLetterPart(1, "지원동기", "   ", 1000)),
                 "요즘 이 회사 어때?", "ctx-1", null, List.of(),
-                Map.of("news", Map.of("corpCodes", List.of("00126380"))));
+                Map.of("news", Map.of("corpCodes", List.of("00126380"))), false);
     }
 
     private static Message withId(Message message, long id) {

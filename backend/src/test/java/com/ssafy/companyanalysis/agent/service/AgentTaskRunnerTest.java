@@ -56,6 +56,21 @@ class AgentTaskRunnerTest {
     }
 
     @Test
+    @DisplayName("방에 들어와 도는 첫 턴에는 대화 대신 기업 리포트를 펼친다")
+    void firstTurnShowsTheReportInsteadOfChatting() {
+        Message message = slotOf(AgentType.COMPANY);
+        given(companyAnalysisClient.report("00126380"))
+                .willReturn(new CompanyAnalysisClient.Answer("## 삼성전자 기업 분석", List.of()));
+
+        runner.run(MESSAGE_ID, contextOf(AgentType.COMPANY, Map.of("corpCodes", List.of("00126380")), true));
+
+        assertThat(message.getStatus()).isEqualTo(MessageStatus.DONE);
+        assertThat(message.getContent()).isEqualTo("## 삼성전자 기업 분석");
+        Mockito.verify(companyAnalysisClient, Mockito.never())
+                .answer(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyList());
+    }
+
+    @Test
     @DisplayName("담당 API 가 실패하면 그 자리만 실패로 남는다")
     void companyAgentFailureStaysInItsOwnSlot() {
         Message message = slotOf(AgentType.COMPANY);
@@ -109,8 +124,12 @@ class AgentTaskRunnerTest {
     }
 
     private static TurnContext contextOf(AgentType type, Map<String, Object> config) {
+        return contextOf(type, config, false);
+    }
+
+    private static TurnContext contextOf(AgentType type, Map<String, Object> config, boolean autoReview) {
         return new TurnContext(
                 List.of(new TurnContext.CoverLetterPart(1, "문항", "답변", 500)),
-                "봐줘", null, null, List.of(), Map.of(type.key(), config));
+                "봐줘", null, null, List.of(), Map.of(type.key(), config), autoReview);
     }
 }

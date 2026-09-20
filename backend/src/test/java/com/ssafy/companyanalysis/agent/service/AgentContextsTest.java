@@ -160,7 +160,7 @@ class AgentContextsTest {
             everyAgent.put(key, configs.getOrDefault(key, Map.of()));
         }
         return new TurnContext(List.of(parts), "봐줘", jobContextId, jobPositionName,
-                List.of(), everyAgent);
+                List.of(), everyAgent, false);
     }
 
     /** 담당 하나만 있는 전담 방. */
@@ -169,7 +169,7 @@ class AgentContextsTest {
                                         String jobContextId,
                                         TurnContext.CoverLetterPart... parts) {
         return new TurnContext(List.of(parts), "봐줘", jobContextId, "백엔드",
-                List.of(), Map.of(agentKey, config));
+                List.of(), Map.of(agentKey, config), false);
     }
 
     private static TurnContext.CoverLetterPart part(int seq, String question, String answer,

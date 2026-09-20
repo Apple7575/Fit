@@ -104,6 +104,33 @@ final class EvidenceMapper {
         return List.copyOf(evidences);
     }
 
+    /**
+     * 리포트의 {@code sources[]} → 근거. 인용과 달리 제목·발행일·링크가 이미 들어 있어
+     * 그대로 옮긴다. 리포트가 통째로 한 말풍선이라 근거도 보고서 단위다.
+     */
+    static List<Evidence> fromCompanyReportSources(JsonNode sources, String corpName) {
+        if (sources == null || !sources.isArray()) {
+            return List.of();
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        List<Evidence> evidences = new ArrayList<>();
+        for (JsonNode node : sources) {
+            String receipt = text(node, "rcept_no");
+            if (!receipt.isBlank() && !seen.add(receipt)) {
+                continue;
+            }
+            String title = text(node, "title");
+            evidences.add(new Evidence(
+                    "DART_BUSINESS_REPORT",
+                    title.isBlank() ? (corpName == null || corpName.isBlank() ? null : corpName) : title,
+                    year(text(node, "published_at")),
+                    null,
+                    null,
+                    nullable(node, "url")));
+        }
+        return List.copyOf(evidences);
+    }
+
     private static Integer year(String isoDate) {
         if (isoDate.length() < 4) {
             return null;
