@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   averageDelivery,
   describeDelivery,
@@ -8,6 +9,7 @@ import {
   type DeliveryMetrics,
 } from './delivery';
 import { EvidenceCards } from './Evidence';
+import { Icon } from './icons';
 import { getClipsByLocalSession, getClipsByServerId } from './localVideo';
 import { NonverbalDetail } from './NonverbalOverview';
 import { nonverbalGauges } from './nonverbalGauges';
@@ -275,7 +277,16 @@ export function InterviewReport({
           rows={rows}
         />
       ) : (
-        current && <QuestionPanel item={current} local={local.get(current.seq)} />
+        current && (
+          <QuestionPanel
+            company={company}
+            interviewType={interviewType}
+            item={current}
+            local={local.get(current.seq)}
+            position={position}
+            serverInterviewId={serverInterviewId ?? null}
+          />
+        )
       )}
       </div>
     </div>
@@ -312,10 +323,20 @@ function TabButton({
 function QuestionPanel({
   item,
   local,
+  company,
+  position,
+  interviewType,
+  serverInterviewId,
 }: {
   item: ReportItem & { no: string };
   local: LocalItem | undefined;
+  company: string | null;
+  position: string | null;
+  interviewType: InterviewType;
+  /** 저장된 면접일 때만 다시 연습할 수 있다 (돌아올 자리가 있어야 한다) */
+  serverInterviewId: number | null;
 }) {
+  const navigate = useNavigate();
   const badge = SOURCE_BADGE[item.sourceType];
   const improvements = item.points.filter((p) => p.kind === 'IMPROVEMENT');
   const strengths = item.points.filter((p) => p.kind === 'STRENGTH');
@@ -429,6 +450,35 @@ function QuestionPanel({
             <p className={`mt-1.5 ${T.body}`}>
               {item.transcript || <span className="text-slate-400">답변 없음</span>}
             </p>
+
+            {/*
+              읽고 나면 할 일이 있어야 한다. 다섯 문항을 처음부터 다시 보는 건 부담이 크므로
+              걸린 문항 하나만 다시 답해 보게 한다. 질문을 그대로 들고 가므로 질문 생성도
+              하지 않는다 (2분이면 끝난다).
+            */}
+            {serverInterviewId !== null && (
+              <button
+                className="mt-4 flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-slate-700"
+                onClick={() =>
+                  navigate('/interviews/new', {
+                    state: {
+                      practice: {
+                        question: item.question,
+                        sourceType: item.sourceType,
+                        fromInterviewId: serverInterviewId,
+                        fromNo: item.no,
+                        targetCompany: company,
+                        targetPosition: position,
+                        interviewType,
+                      },
+                    },
+                  })
+                }
+                type="button"
+              >
+                <Icon className="size-4" name="redo" />이 문항만 다시 연습하기
+              </button>
+            )}
           </div>
         </div>
       </section>

@@ -1,6 +1,6 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
-import { useState } from 'react';
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, isRateLimited, isRetryable } from '../../api/client';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
@@ -9,6 +9,8 @@ import { attachServerId } from '../../features/interview/localVideo';
 import { InterviewReport, type ReportItem } from '../../features/interview/InterviewReport';
 import { InterviewSession } from '../../features/interview/InterviewSession';
 import { InterviewSetup } from '../../features/interview/InterviewSetup';
+import { TipCarousel } from '../../features/interview/TipCarousel';
+import { readPractice, readPracticedFrom } from '../../features/interview/practice';
 import { useInterview } from '../../features/interview/queries';
 import type {
   AnalyzeResult,
@@ -25,10 +27,29 @@ export function InterviewWorkspacePage() {
   return id ? <SavedInterview id={Number(id)} /> : <NewInterview />;
 }
 
-function Shell({ children, breadcrumb }: { children: React.ReactNode; breadcrumb?: string | string[] }) {
+function Shell({
+  children,
+  breadcrumb,
+  /** 첫 화면을 사진에 내주는 화면용. 사진 위에서는 헤더를 투명하게 띄운다 */
+  floating = false,
+}: {
+  children: React.ReactNode;
+  breadcrumb?: string | string[];
+  floating?: boolean;
+}) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (!floating) return;
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [floating]);
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <InterviewHeader breadcrumb={breadcrumb} />
+      <InterviewHeader breadcrumb={breadcrumb} floating={floating} scrolled={scrolled} />
       {children}
     </div>
   );
@@ -50,12 +71,32 @@ function NewInterview() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   // 기업 분석에서 넘어온 ?corpCode=&company= 가 로그인 후에도 남도록 검색 문자열째 되돌려준다
-  const { pathname, search } = useLocation();
+  const { pathname, search, state: navState } = useLocation();
+  /*
+   * 리포트에서 "이 문항만 다시 연습하기"로 넘어온 경우. 질문을 그대로 들고 오므로 설정도
+   * 질문 생성도 건너뛰고 바로 면접으로 들어간다 (AI 한도를 태우지 않는다).
+   */
+  const [practice] = useState(() => readPractice(navState));
 
-  const [phase, setPhase] = useState<Phase>('setup');
+  const [phase, setPhase] = useState<Phase>(practice ? 'session' : 'setup');
   const [localSessionId] = useState(() => crypto.randomUUID());
-  const [config, setConfig] = useState<InterviewConfig | null>(null);
-  const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
+  const [config, setConfig] = useState<InterviewConfig | null>(() =>
+    practice
+      ? {
+          corpCode: null,
+          targetCompany: practice.targetCompany,
+          targetPosition: practice.targetPosition,
+          interviewType: practice.interviewType,
+          coverLetterId: null,
+          questionCount: 1,
+          // 한 문항만 다시 보는 자리다. 꼬리질문까지 붙으면 "2분이면 끝난다"가 깨진다
+          followupEnabled: false,
+        }
+      : null,
+  );
+  const [questions, setQuestions] = useState<GeneratedQuestion[]>(() =>
+    practice ? [{ seq: 1, question: practice.question, sourceType: practice.sourceType }] : [],
+  );
   const [sessionItems, setSessionItems] = useState<SessionItem[]>([]);
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +157,12 @@ function NewInterview() {
     const created = await createInterview(input);
     // 로컬 녹화에 서버 면접 id 를 새겨, 저장본 리포트에서 되돌려볼 수 있게 한다.
     await attachServerId(localSessionId, created.id).catch(() => {});
-    navigate(`/interviews/${created.id}`);
+    // 연습으로 만든 기록이면 어느 면접의 몇 번 문항이었는지 넘겨 돌아갈 길을 남긴다
+    navigate(`/interviews/${created.id}`, {
+      state: practice
+        ? { practicedFrom: { interviewId: practice.fromInterviewId, no: practice.fromNo } }
+        : undefined,
+    });
   };
 
   const finish = async (items: SessionItem[]) => {
@@ -178,6 +224,7 @@ function NewInterview() {
     return (
       <Shell>
         <LoadingScreen
+          className="pb-8"
           message={[
             '답변을 옮겨 적고 있어요',
             '시선과 표정을 살펴보고 있어요',
@@ -185,6 +232,8 @@ function NewInterview() {
             '리포트를 정리하고 있어요 (최대 1분)',
           ]}
         />
+        {/* 최대 1분이다. 그냥 기다리게 두지 않고 바로 다음 면접에 쓸 것을 읽게 한다 */}
+        <TipCarousel className="px-6 pb-16" />
       </Shell>
     );
   if (phase === 'saving') return <Shell><Loading message="면접 결과를 저장하고 있습니다…" /></Shell>;
@@ -197,7 +246,10 @@ function NewInterview() {
           questions={questions}
           localSessionId={localSessionId}
           onFinish={finish}
-          onExit={() => setPhase('setup')}
+          // 연습으로 들어왔으면 돌아갈 설정 화면이 없다. 보고 있던 리포트로 되돌린다
+          onExit={() =>
+            practice ? navigate(`/interviews/${practice.fromInterviewId}`) : setPhase('setup')
+          }
         />
       </Shell>
     );
@@ -257,13 +309,13 @@ function NewInterview() {
 
   // setup
   return (
-    <Shell>
-      {error && (
-        <div className="mx-auto max-w-4xl px-6 pt-6">
-          <InlineNotice>{error}</InlineNotice>
-        </div>
-      )}
-      <InterviewSetup loading={false} onStart={(c) => void start(c)} />
+    // 준비 화면도 위쪽을 사진에 내준다. 목록 첫 화면과 같은 말투로 이어진다
+    <Shell floating>
+      <InterviewSetup
+        error={error}
+        loading={false}
+        onStart={(c) => void start(c)}
+      />
     </Shell>
   );
 }
@@ -327,8 +379,26 @@ function SavedLoaded({ id }: { id: number }) {
 }
 
 function SavedReport({ interview }: { interview: Interview }) {
+  // 연습으로 막 만들어진 기록이면 어디서 왔는지 알려 주고 돌아갈 길을 남긴다
+  // (새로고침하면 사라지는 안내다. 서버에는 연습이라는 표시가 없다)
+  const { state } = useLocation();
+  const from = readPracticedFrom(state);
+
   return (
     <div>
+      {from && (
+        <div className="mx-auto max-w-[1320px] px-5 pt-4 lg:px-8">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-blue-50 px-4 py-3 text-[13px] break-keep text-blue-900">
+            <span className="font-bold">다시 연습한 기록입니다.</span>
+            <Link
+              className="font-semibold text-blue-700 underline"
+              to={`/interviews/${from.interviewId}`}
+            >
+              원래 면접{from.no && ` Q${from.no}`} 으로 돌아가기
+            </Link>
+          </p>
+        </div>
+      )}
       <InterviewReport
         company={interview.targetCompany ?? null}
         position={interview.targetPosition ?? null}
