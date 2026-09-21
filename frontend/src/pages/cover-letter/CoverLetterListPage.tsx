@@ -1,6 +1,6 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { deleteCoverLetter } from '../../features/cover-letter/api';
 import { useCoverLetters } from '../../features/cover-letter/queries';
@@ -122,6 +122,7 @@ function Hero({
 
 function MemberHome() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state, retry } = useCoverLetters();
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [scrolled] = useScrolled();
@@ -137,6 +138,12 @@ function MemberHome() {
   const overflow = all.length > HERO_MAX;
   // 저장한 자소서가 하나라도 있으면 첫 화면의 미리보기와 별개로 아래 전체 목록도 제공한다.
   const hasBelow = all.length > 0 || state.status !== 'success';
+
+  // 작성 화면의 '목록으로'에서 들어오면 영상 첫 화면이 아니라 저장 목록을 바로 보여 준다.
+  useEffect(() => {
+    if (location.hash !== `#${LIST_ID}` || !hasBelow) return;
+    glideToElement(LIST_ID, 106);
+  }, [hasBelow, location.hash]);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-950">
