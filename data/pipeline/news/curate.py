@@ -23,7 +23,7 @@ from pathlib import Path
 from pipeline.news import flyway
 from pipeline.news.csvio import read_csv, write_csv
 from pipeline.news.schema import (
-    PROVIDER, SEED_FIELDS, SEED_IDENTITY_COLUMNS, SEED_SCHEMA_VERSION,
+    PROVIDER, SEED_COLUMN_FILL, SEED_FIELDS, SEED_IDENTITY_COLUMNS, SEED_SCHEMA_VERSION,
     SEED_SOURCE_DEFAULT, SEED_TABLE,
 )
 
@@ -78,7 +78,11 @@ def _limits(schema: flyway.Schema) -> dict[str, int]:
 
 
 def seed_header(schema: flyway.Schema) -> list[str]:
-    """Flyway 컬럼 순서에서 identity 를 뺀 헤더. SEED_FIELDS 와 일치해야 한다."""
+    """Flyway 컬럼 순서에서 identity 를 뺀 헤더. **이것이 시드 헤더의 정본이다.**
+
+    `SEED_FIELDS` 는 지금 스키마를 적어 둔 사본이라 낡을 수 있다 (V34 가 들어오면
+    그렇게 된다). 낡았다는 사실은 verify 9번이 알려 준다.
+    """
     table = schema.table(SEED_TABLE)
     return [c.name for c in table.ordered() if c.name not in SEED_IDENTITY_COLUMNS]
 
@@ -95,9 +99,14 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
     `dropped` 에 남겨 무엇이 왜 빠졌는지 셀 수 있게 한다.
     """
     resolved = schema or flyway.load()
+    # 헤더는 **스키마에서 받는다.** 상수에 맞추라고 요구하면 컬럼이 바뀌는 날
+    # (V34) 시드가 통째로 멈춘다. 대신 "채울 줄 모르는 컬럼" 만 막는다.
     header = seed_header(resolved)
-    if header != SEED_FIELDS:
-        raise ValueError(f"Flyway 컬럼과 SEED_FIELDS 가 다르다: {header} != {SEED_FIELDS}")
+    unknown = [c for c in header if c not in SEED_COLUMN_FILL]
+    if unknown:
+        raise ValueError(
+            f"시드에 어떻게 채울지 모르는 컬럼이 있다: {unknown}. "
+            "pipeline/news/schema.py 의 SEED_COLUMN_FILL 에 적고 값을 넣어라")
     limits = _limits(resolved)
 
     result = CurateResult()
@@ -155,20 +164,34 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
                 continue
             seen_url[key] = row["article_key"]
 
-        seed = {
+        # 값은 **이름으로** 채우고 헤더에 있는 것만 내보낸다. 스키마가 바뀌어도
+        # (V34 가 source·guid 를 publisher·provider_article_id 로 옮긴다) 같은
+        # 코드가 양쪽을 만든다.
+        provider_url = (row.get("rss_link") or row.get("google_url") or "").strip()
+        values = {
             "corp_code": row["corp_code"],
             "title": title,
             "published_at": row.get("published_at") or "",
             "original_url": original_url,
             "source": row.get("publisher", "") if source_column == "publisher" else PROVIDER,
             "collected_at": collected_at,
-            # V17 이 더한 확정 ERD 의 중복 방지 키. staged 가 RSS item/guid 를 그대로
-            # 들고 있어 옮기기만 하면 된다. 없으면 빈 칸(NULL)이고, UNIQUE 는
-            # (corp_code, guid) 라 NULL 인 행끼리는 서로 충돌하지 않는다.
+            # V17 이 더한 중복 방지 키. staged 가 RSS item/guid 를 그대로 들고 있어
+            # 옮기기만 하면 된다. 없으면 빈 칸(NULL)이고 NULL 끼리는 충돌하지 않는다.
             "guid": row.get("guid") or "",
+            # ── V34 이후의 자리들 (지금 스키마에는 없어 헤더에서 걸러진다)
+            "provider": PROVIDER,
+            "provider_url": provider_url,
+            "provider_article_id": row.get("guid") or "",
+            "publisher": row.get("publisher", ""),
+            # 구글 링크를 원문 주소로 푸는 세 방법이 모두 실패했다 (2026-09-21 실측).
+            # 못 채우는 값을 지어내지 않는다.
+            "normalized_url": "",
+            # 본문은 저장 근거가 없다 (news-poc/90-source-review.md).
+            "body_text": "",
         }
         for column in AI_COLUMNS:
-            seed[column] = ""
+            values[column] = ""
+        seed = {c: values.get(c, "") for c in header}
 
         violations = [
             f"{name}_exceeds_{limit}" for name, limit in limits.items()
@@ -207,7 +230,7 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
         "table": SEED_TABLE,
         "seed_schema_version": SEED_SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "header": SEED_FIELDS,
+        "header": header,
         "identity_columns_excluded": SEED_IDENTITY_COLUMNS,
         "source_column_maps_to": source_column,
         "flyway_files": resolved.applied_files,
@@ -240,7 +263,9 @@ def _count(rows: list[dict], key: str) -> dict[str, int]:
 def write(result: CurateResult, seed_dir: Path | None = None) -> dict[str, Path]:
     directory = seed_dir or SEED_DIR
     seed_path = directory / f"{SEED_TABLE}.csv"
-    write_csv(seed_path, SEED_FIELDS, result.rows)
+    # 헤더는 build() 가 스키마에서 정한 것을 쓴다 — 상수를 다시 보면 컬럼이
+    # 바뀌는 날 CSV 와 계보가 서로 다른 헤더를 말하게 된다.
+    write_csv(seed_path, result.summary.get("header") or SEED_FIELDS, result.rows)
 
     # seed_dir 을 직접 준 경우(테스트)에는 manifest 도 그 트리 안에 둔다.
     manifest_dir = SEED_MANIFEST_DIR if seed_dir is None else directory.parents[1] / "manifests" / "seed"

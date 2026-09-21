@@ -104,6 +104,30 @@ SEED_FIELDS = [
 # (V13 주석도 "수집 출처"로만 적혀 있다). 기본값은 publisher 다 —
 # provider 는 manifest·staged 에 상수로 남아 있어 잃을 것이 없는데, publisher 는
 # 현재 스키마에 다른 자리가 없어 버리면 언론사 표시 근거가 사라진다.
+# 시드 컬럼을 무엇으로 채우는지. **여기 없는 컬럼이 스키마에 생기면 시드를 만들지
+# 않고 멈춘다** (`curate.build`) — 새 컬럼을 조용히 빈 칸으로 내보내지 않으려는 것이다.
+#
+# 아래 여섯은 아직 스키마에 없다. 확정 ERD 대조(MR !209 의 V34)가 들어오면 생기고,
+# 그때 `source`·`guid` 는 사라진다. **두 모양 모두에서 시드가 만들어지도록** 미리
+# 적어 둔다 — 마이그레이션이 머지되는 순간 적재가 멈추는 것을 피한다.
+SEED_COLUMN_FILL = {
+    "corp_code": "staged.corp_code (매핑 결과)",
+    "title": "staged.title",
+    "published_at": "staged.published_at",
+    "original_url": "언론사 원문 주소가 있으면 그것, 없으면 구글 뉴스 링크",
+    "source": "publisher 또는 provider (--source-column)",
+    "importance_score": "비운다 — AI 분석 미채택 (2026-09-21 팀장 확정)",
+    "collected_at": "staged.collected_at",
+    "guid": "staged.guid (RSS item/guid)",
+    # ↓ V34 (MR !209) 가 들어오면 생기는 컬럼
+    "provider": "google_news_rss 상수",
+    "provider_url": "제공처가 준 링크 = 구글 뉴스 링크",
+    "provider_article_id": "staged.guid — guid 가 옮겨 갈 자리다",
+    "publisher": "staged.publisher — source 가 담던 값이다",
+    "normalized_url": "비운다 — 구글 링크를 원문 주소로 풀지 못한다 (2026-09-21 실측)",
+    "body_text": "비운다 — 본문 저장은 근거가 없다 (news-poc/90-source-review.md)",
+}
+
 SEED_SOURCE_CHOICES = ("publisher", "provider")
 SEED_SOURCE_DEFAULT = "publisher"
 
