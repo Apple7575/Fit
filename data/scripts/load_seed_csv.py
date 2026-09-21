@@ -94,6 +94,23 @@ def natural_key(table: str, schema=None) -> tuple[str, ...]:
 CLEANUP_SCOPE: dict[str, str] = {"company_metric": "metric_code"}
 # 자연키가 없어 범위를 좁혀 갈아끼우는 표
 REPLACE_TABLES = ("company_activity",)
+
+# **시드가 유일한 생산자인 표.** 여기서는 시드에 없는 기업의 행도 지운다.
+#
+# 왜 필요한가: 지금까지는 "시드에 든 기업" 안에서만 지웠다. 그래서 **시드에서 빠진
+# 기업**(파싱이 표를 버렸거나 유니버스가 줄었다)의 옛 행이 DB 에 남는다. 2026-09-21
+# 하루에만 세 번 나왔다 — 아침 dev 24행, 저녁 dev·prod 각 131행. 사람이 매번 찾아
+# 지우고 있었다.
+#
+# company_metric 은 여기 넣지 않는다. `rd_ratio` 를 다른 경로가 넣으므로 시드 밖 행이
+# 정상이다 (CLEANUP_SCOPE 주석 참고). news_article 도 뺀다 — 시드가 기업 100곳으로
+# 좁고, 실험용으로 좁게 만든 시드를 실수로 적재하면 나머지가 통째로 날아간다.
+SEED_OWNS_ALL = ("company_text", "segment_metric", "company_activity")
+
+# 시드 밖 행을 이 비율 넘게 지우게 되면 멈춘다. 좁은 시드를 잘못 적재하는 사고를
+# 막는 자리다 — 시드 생성의 행수 급감 가드(pipeline/seed_guard.py)와 같은 생각이고,
+# 이쪽은 **적재 직전**에 한 번 더 본다.
+PRUNE_LIMIT = 0.05
 TABLES = tuple(NATURAL_KEY_CANDIDATES) + REPLACE_TABLES
 
 
@@ -131,11 +148,28 @@ def _corp_scope(rows: list[dict]) -> list[str]:
     return sorted({r["corp_code"] for r in rows if r.get("corp_code")})
 
 
+def prune_plan(table: str, db_rows_by_corp: dict[str, int], seed_scope: set[str],
+               limit: float = PRUNE_LIMIT) -> tuple[list[str], int, float, bool]:
+    """시드에 없는 기업을 추린다 → (기업 목록, 지울 행수, 비율, 허용선 초과 여부).
+
+    DB 를 타지 않는 순수 함수다. 판단을 SQL 안에 묻어 두면 시험할 길이 없다.
+    """
+    if table not in SEED_OWNS_ALL:
+        return [], 0, 0.0, False
+    victims = sorted(c for c in db_rows_by_corp if c not in seed_scope)
+    doomed = sum(db_rows_by_corp[c] for c in victims)
+    total = sum(db_rows_by_corp.values())
+    ratio = (doomed / total) if total else 0.0
+    return victims, doomed, ratio, ratio > limit
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--only", nargs="+", choices=TABLES, help="이 표만 적재한다")
     ap.add_argument("--dry-run", action="store_true", help="넣지 않고 건수만 본다")
+    ap.add_argument("--allow-prune", action="store_true",
+                    help=f"시드 밖 행을 {PRUNE_LIMIT:.0%} 넘게 지우게 돼도 진행한다")
     args = ap.parse_args()
     tables = args.only or list(TABLES)
 
@@ -161,17 +195,37 @@ def main() -> int:
                        .format(sql.Identifier(table)), (scope,))
                 in_scope = cur.fetchone()[0]
 
+            # 시드가 유일한 생산자인 표는 **시드에서 빠진 기업**의 행도 지운다.
+            by_corp: dict[str, int] = {}
+            if table in SEED_OWNS_ALL:
+                with conn.cursor() as cur:
+                    cur.execute(sql.SQL("SELECT corp_code, count(*) FROM {} "
+                                        "GROUP BY 1").format(sql.Identifier(table)))
+                    by_corp = {c: n for c, n in cur.fetchall()}
+            victims, doomed, ratio, over = prune_plan(table, by_corp, set(scope))
+
             if args.dry_run:
+                extra_note = (f" · 시드 밖 {len(victims)}곳 {doomed:,}행 ({ratio:.1%})"
+                              if victims else "")
                 print(f"{table:<18} 시드 {len(rows):>6,}행 · 기업 {len(scope):>4} · "
-                      f"DB 전체 {before:>6,} (범위 안 {in_scope:,})")
+                      f"DB 전체 {before:>6,} (범위 안 {in_scope:,}){extra_note}")
                 continue
 
+            if over and not args.allow_prune:
+                print(f"중단: {table} 의 시드 밖 행이 {doomed:,}행({ratio:.1%})이다. "
+                      f"허용선 {PRUNE_LIMIT:.0%} 를 넘는다.")
+                print("       좁은 시드를 잘못 적재하는 것인지 먼저 보라. "
+                      "맞다면 --allow-prune 을 붙인다.")
+                return 1
+
             if table in REPLACE_TABLES:
-                # 자연키가 없다. 범위를 좁혀 지우고 다시 넣는다 — 한 트랜잭션이다.
+                # 자연키가 없다. 지우고 다시 넣는다 — 한 트랜잭션이다.
+                # 시드가 유일한 생산자라 **시드 밖 기업까지** 지운다 (SEED_OWNS_ALL).
                 with conn.cursor() as cur:
+                    codes = sorted(set(scope) | set(victims))
                     cur.execute(
                         sql.SQL("DELETE FROM {} WHERE corp_code = ANY(%s)")
-                           .format(sql.Identifier(table)), (scope,))
+                           .format(sql.Identifier(table)), (codes,))
                     removed = cur.rowcount
                 cols = [c for c in rows[0] if c != "id"]
                 with conn.cursor() as cur:
@@ -218,10 +272,17 @@ def main() -> int:
                                 for i, c in enumerate(key))),
                     tuple(params))
                 removed = cur.rowcount
+                if victims:
+                    cur.execute(
+                        sql.SQL("DELETE FROM {} WHERE corp_code = ANY(%s)")
+                           .format(sql.Identifier(table)), (victims,))
+                    removed += cur.rowcount
             conn.commit()
             after = db.count(conn, table)
+            pruned = (f" · 시드 밖 {len(victims)}곳 {doomed:,}행 포함"
+                      if victims else "")
             print(f"{table:<18} 신규 {stats.inserted:>6,} · 갱신 {stats.updated:>6,} · "
-                  f"지움 {removed:>4,} → 총 {after:,}행")
+                  f"지움 {removed:>4,} → 총 {after:,}행{pruned}")
 
     if args.dry_run:
         print("\n--dry-run: 적재하지 않았다.")
