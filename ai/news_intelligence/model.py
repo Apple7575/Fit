@@ -53,6 +53,28 @@ class _SignalsOutput(StrictModel):
 COVERAGE_SCHEMA = _CoverageOutput.model_json_schema()
 SIGNALS_SCHEMA = _SignalsOutput.model_json_schema()
 
+# 대소문자만 고르는 열거 필드. 스키마에 enum 을 넣어 보내도 모델이 'company' 처럼 소문자로
+# 돌려주는 일이 있어(GMS 실측), 그대로 strict 검증에 넣으면 신호 전부를 버린다. 값의 뜻은
+# 같으므로 검증 전에 대문자로 맞춘다. 알 수 없는 값은 그대로 두어 검증이 잡게 한다.
+_ENUM_KEYS = frozenset({"scope", "company", "industry", "role", "evidence_level"})
+_ENUM_LIST_KEYS = frozenset({"requested_scopes"})
+
+
+def _uppercase_enums(value: Any) -> Any:
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        for key, item in value.items():
+            if key in _ENUM_KEYS and isinstance(item, str):
+                out[key] = item.strip().upper()
+            elif key in _ENUM_LIST_KEYS and isinstance(item, list):
+                out[key] = [part.strip().upper() if isinstance(part, str) else part for part in item]
+            else:
+                out[key] = _uppercase_enums(item)
+        return out
+    if isinstance(value, list):
+        return [_uppercase_enums(item) for item in value]
+    return value
+
 # V1 preparation checks are server-owned; model prose is never returned in this field.
 _PREPARATION_BY_SCOPE = {
     "COMPANY": "해당 기업 변화와 관련된 본인 경험이 있는지 확인하세요.",
@@ -147,17 +169,36 @@ def _validate_content(
     draft: SignalDraft, sources: Sequence[NewsCandidate], context: NewsContext,
 ) -> None:
     """Reject lexical mismatches and unsafe prose; this does not prove semantic entailment."""
+    _validate_article_claims(draft, sources)
+    _validate_jd_relevance(draft, context)
+
+
+def _validate_article_claims(draft: SignalDraft, sources: Sequence[NewsCandidate]) -> None:
     article_text = " ".join(source.title for source in sources)
-    jd_text = " ".join([context.position_name, context.jd_text, *_context_strings(context.role_elements)])
-    for claim, evidence in (
-        (draft.title, article_text), (draft.summary, article_text), (draft.jd_relevance, jd_text),
-    ):
-        if not _grounded_clauses(claim, evidence) or not _quantities(claim) <= _quantities(evidence):
+    for claim in (draft.title, draft.summary):
+        if not _grounded_clauses(claim, article_text) or not _quantities(claim) <= _quantities(article_text):
             raise NewsOutputError("news content lacks grounded evidence")
-    for text in (draft.title, draft.summary, draft.jd_relevance):
-        normalized = _normalize(text)
-        if _ANSWER_MARKER.search(re.sub(r"[\W_]+", "", normalized)) or _FIRST_PERSON.search(normalized):
-            raise NewsOutputError("news content exceeds analysis boundaries")
+        _reject_unsafe_prose(claim)
+
+
+def _validate_jd_relevance(draft: SignalDraft, context: NewsContext) -> None:
+    jd_text = " ".join([context.position_name, context.jd_text, *_context_strings(context.role_elements)])
+    if not _grounded_clauses(draft.jd_relevance, jd_text) or not _quantities(draft.jd_relevance) <= _quantities(jd_text):
+        raise NewsOutputError("news content lacks grounded evidence")
+    _reject_unsafe_prose(draft.jd_relevance)
+
+
+def _reject_unsafe_prose(text: str) -> None:
+    normalized = _normalize(text)
+    if _ANSWER_MARKER.search(re.sub(r"[\W_]+", "", normalized)) or _FIRST_PERSON.search(normalized):
+        raise NewsOutputError("news content exceeds analysis boundaries")
+
+
+# 모델이 jd_relevance 에 JD 문구 대신 기사 제목을 그대로 넣는 일이 잦다(GMS 실측: 초안 3건
+# 전부). 그러면 근거 검증에서 셋 다 떨어져 기사를 찾았는데도 "응답을 만들지 못했습니다" 가
+# 된다. 기사 쪽 주장(title·summary)이 제목에 근거하면 신호는 살리고, JD 연결 문장만 서버
+# 문구로 바꾼다 — preparation_checks 를 서버가 갖는 것과 같은 원칙이다.
+_JD_RELEVANCE_FALLBACK = "JD의 {position_name} 직무와 관련해 살펴볼 기사입니다."
 
 
 class NewsModel(Protocol):
@@ -225,7 +266,7 @@ class QwenNewsModel:
     def classify_coverage(
         self, context: NewsContext, candidates: Sequence[NewsCandidate], instruction: str,
     ) -> CoverageAssessment:
-        output = self._call(context, candidates, instruction, coverage=True)
+        output = _uppercase_enums(self._call(context, candidates, instruction, coverage=True))
         try:
             return _CoverageOutput.model_validate(output, strict=True)
         except (ValueError, TypeError) as error:
@@ -236,7 +277,7 @@ class QwenNewsModel:
         conversation: Sequence[ConversationMessage],
     ) -> list[SignalDraft]:
         # History can contain applicant documents or unrelated facts; do not send it.
-        output = self._call(context, candidates, instruction, coverage=False)
+        output = _uppercase_enums(self._call(context, candidates, instruction, coverage=False))
         try:
             drafts = _SignalsOutput.model_validate(output, strict=True).signals
         except (ValueError, TypeError) as error:
@@ -256,10 +297,16 @@ class QwenNewsModel:
         for draft in kept:
             sources = resolve_sources(draft.source_ids, candidates)  # 출처 id 오류는 그대로 실패
             try:
-                _validate_content(draft, sources, context)
+                _validate_article_claims(draft, sources)
             except NewsOutputError as error:
                 first_error = first_error or error
                 continue
+            try:
+                _validate_jd_relevance(draft, context)
+            except NewsOutputError:
+                draft = draft.model_copy(update={
+                    "jd_relevance": _JD_RELEVANCE_FALLBACK.format(position_name=context.position_name),
+                })
             grounded.append(draft)
         if kept and not grounded and first_error is not None:
             raise first_error
