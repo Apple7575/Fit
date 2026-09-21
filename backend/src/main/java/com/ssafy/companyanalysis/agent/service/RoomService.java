@@ -97,6 +97,9 @@ public class RoomService {
         // 채용공고·뉴스 담당이 볼 것이 없어 자기 자리에서 안내로 떨어진다.
         String contextId = existingContextId(coverLetter.getContextId());
 
+        // 자소서 저장 뒤 공고 분석이 끝난 경우에도 전에 생성된 방이 새 공고를 보게 한다.
+        existing.forEach(room -> room.setJobContextId(contextId));
+
         List<Room> created = new ArrayList<>();
         for (AgentType type : selectable) {
             boolean already = existing.stream().anyMatch(room -> isSoloRoomFor(room, type));
