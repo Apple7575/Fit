@@ -35,6 +35,9 @@ from .doc import Document
 
 # 목록 셀을 항목으로 쪼갠다. '등' 으로 끝나는 꼬리는 항목이 아니다.
 _SPLIT = re.compile(r"[,·ㆍ/]|\s및\s")
+# 슬래시는 대개 나열이지만("샤시/칵핏모듈", "제동/조향") 한 낱말 안에 들어가는 관용어도 있다.
+# 그런 것은 자르기 전에 임시로 치환해 살린다.
+_GLUED = (("A/S", "AS"), ("I/O", "IO"))
 _TAIL = re.compile(r"\s*등\s*$")
 
 # 제품 목록 열 헤더. 삼성전자 '주요 제품', NAVER '주요영업', 크래프톤 '품목'
@@ -52,9 +55,15 @@ class TextResult:
 def _items(cell: str, tp) -> list[str]:
     """셀 하나 → 항목 목록. 'TV, 모니터, 냉장고 등' → [TV, 모니터, 냉장고]"""
     out = []
-    for part in _SPLIT.split(squash(cell)):
+    text = squash(cell)
+    for glued, token in _GLUED:
+        text = text.replace(glued, token)
+    for part in _SPLIT.split(text):
+        for glued, token in _GLUED:
+            part = part.replace(token, glued)
         s = _TAIL.sub("", squash(part))
-        if not s or len(s) > 60 or tp.null_tokens.match(s):
+        # 한 글자는 제품명이 아니다. 슬래시로 잘린 조각이 여기로 온다.
+        if not s or len(s) < 2 or len(s) > 60 or tp.null_tokens.match(s):
             continue
         if s.isdigit():
             continue
@@ -84,17 +93,28 @@ def main_products(doc: Document, p: Patterns) -> tuple[list[str], int | None]:
         if not (2 <= t.rows <= cap):
             continue
         col = None
-        for r in t.m[:3]:
+        header_end = 0
+        for index, r in enumerate(t.m[:3]):
             for c, cell in enumerate(r):
                 if _PRODUCT_HEADER.search(squash(cell)):
                     col = c
+                    header_end = index + 1
                     break
             if col is not None:
                 break
         if col is None:
             continue
+        # 머리글이 두 줄인 표가 있다(현대자동차 2025: "주요제품|주요제품|구분|2025년|2025년" 아래
+        # "주요제품|주요제품|구분|금액|비중"). 한 줄만 건너뛰면 두 번째 머리글의 "금액"·"비중" 이
+        # 제품명으로 들어간다. 같은 열이 계속 머리글이면 그 줄도 넘긴다.
+        while header_end < len(t.m):
+            row = t.m[header_end]
+            if col < len(row) and _PRODUCT_HEADER.search(squash(row[col])):
+                header_end += 1
+                continue
+            break
         seen: list[str] = []
-        for row in t.m[1:]:
+        for row in t.m[header_end:]:
             if col >= len(row):
                 continue
             name = squash(row[0]) if row else ""
