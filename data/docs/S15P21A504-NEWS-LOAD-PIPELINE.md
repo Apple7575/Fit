@@ -126,6 +126,30 @@ load_seed_csv._check_keys → "자연키가 스키마와 다르다 —
 순서만 맞추면 된다. **V34 를 먼저 넣고 우리 쪽 셋을 같은 날 고치거나, 우리 쪽을 먼저
 고쳐 두고 V34 를 넣는다.** 지금처럼 따로 가면 그 사이에 뉴스 적재가 조용히 멈춘다.
 
+## 7. 잡을 만드는 법 (인프라 담당께)
+
+Jenkins UI 에서 **Pipeline 잡 하나**를 새로 만들어 주세요. 멀티브랜치 쪽에 넣지
+않은 이유는 그쪽이 푸시마다 도는데 이것은 주 1회에 3.8시간짜리이기 때문입니다.
+
+1. 새 항목 → **Pipeline**, 이름 `S15P21A504-news-weekly`
+2. Pipeline → Definition: **Pipeline script from SCM**
+   - SCM: Git · 저장소 주소는 기존 잡과 같고 자격증명도 같습니다 (`gitlab-pat`)
+   - Branch: `*/develop`
+   - **Script Path: `Jenkinsfile.news`**
+3. 저장하고 한 번 **Build with Parameters → DRY_RUN 체크**로 돌려 주세요.
+   받지 않고 무엇을 할지만 찍습니다
+4. 그다음 `CA_ENV=dev` 로 한 번 진짜 돌리면 첫 수집(3.8시간)이 시작됩니다
+
+cron(`H 3 * * 0`)·파라미터·타임아웃은 `Jenkinsfile.news` 안에 있어 UI 에서 따로
+설정할 것이 없습니다. 자격증명 `deploy-ssh` 는 기존 Load-Seed 와 같은 것을 씁니다.
+
+서버에는 `/home/ubuntu/newsdata` 가 생깁니다. 첫 실행이 알아서 만들고, 원본은
+4주 롤링으로 지웁니다(주당 약 120MB).
+
+**종료 코드로 원인이 갈립니다** — 2 는 구글이 막은 것(4xx), 3 은 실패율 초과,
+4 는 적재 락 대기 초과입니다. 셋 다 **DB 를 건드리지 않고** 멈춘 것이라, 다음
+실행이 받은 데까지 이어서 갑니다.
+
 ## 6. 비용
 
 | 일 | 드는 시간 |
