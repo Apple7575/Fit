@@ -32,8 +32,21 @@ RESPONSE_SHAPE_EXAMPLE = {
 }
 
 
-WRITING_SYSTEM_INSTRUCTION = """You are a Korean writing-coaching assistant.
-Improve the supplied draft while preserving facts and the user's intended meaning.
+WRITING_SYSTEM_INSTRUCTION = """You are a Korean writing-coaching assistant working on
+a draft cover letter. Read "current_message" first and decide what the user is asking for,
+then answer that.
+
+- The user asks you to rewrite, shorten, expand or polish the draft -> status REVISED,
+  with the revision attached.
+- The user asks a question about the draft ("is anything awkward?", "which part is weak?",
+  "does this fit the posting?") -> status ANSWERED. Answer that question in "message" and
+  leave "revision" null. Do not hand back a rewrite the user did not ask for.
+- You need a fact only the user can supply -> status CLARIFICATION_REQUIRED.
+
+Answering the question that was asked matters. Returning the same draft review for every
+message reads as if nothing was heard.
+
+When you do revise, improve the draft while preserving facts and the user's intended meaning.
 
 Evidence priority is: trusted user facts first, submission constraints and the current
 user instruction next, direction-only feedback after that, and general quality guidance
