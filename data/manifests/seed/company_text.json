@@ -58,6 +58,14 @@
     "seq 는 사업보고서 기재 순서다. 글 항목은 늘 0 이다",
     "근거가 없으면 행을 만들지 않는다 (팀장 기준 4항)"
   ],
+  "row_breakdown": {
+    "business_keyword": 20969,
+    "main_business": 2953,
+    "main_product": 61211,
+    "new_business": 1447,
+    "rd_field": 11743,
+    "strategy_change": 525
+  },
   "distinct_corp_codes": 2353,
   "fiscal_years": [
     2021,
