@@ -126,7 +126,7 @@ export function InterviewDemo() {
           role="img"
         >
           <div className="relative aspect-video overflow-hidden rounded-[var(--radius-card)] ring-1 ring-white/15">
-            <MediaSlot label="면접 화면 클립" />
+            <MediaSlot label="면접 화면 클립" placeholder="person" />
             {phase === 'answer' && (
               <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-bold text-white">
                 <span className="size-2 animate-pulse rounded-full bg-white" /> REC {mm}:{ss}
@@ -207,13 +207,13 @@ export function InterviewDemo() {
             AI interview
           </p>
           <h2 className="display-lg text-balance" id="interview-title">
-            그 회사 면접관처럼
+            실제 면접관처럼
             <br />
             묻고, 들어줍니다.
           </h2>
-          <p className="body-lg mt-5 max-w-[40ch] text-slate-300">
-            회사 데이터와 내 자소서에서 질문을 뽑고, 말로 답하면 받아씁니다. 답변을 듣고 꼬리질문을
-            한 번 더 던진 뒤, 강점과 개선점을 정리해 줍니다.
+          {/* 첫 장과 같이, 한글이 단어 한가운데서 끊기지 않게 띄어쓰기에서만 줄을 바꾼다 */}
+          <p className="body-lg mt-5 max-w-[40ch] break-keep text-slate-300">
+            질문을 던지면 말로 답하고, 강점과 개선점을 정리해 줍니다.
           </p>
           <div className="mt-8 flex items-end gap-3">
             <CharacterSlot character="owl" size={72} />

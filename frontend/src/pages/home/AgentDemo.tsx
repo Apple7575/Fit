@@ -113,7 +113,8 @@ export function AgentDemo() {
 
       <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_1.1fr]">
         <div>
-          <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-white/50">
+          {/* 머리말 색은 AI 면접 장(AI INTERVIEW)과 같이 간다 */}
+          <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-blue-300">
             Review room
           </p>
           <h2 className="display-lg text-balance" id="agent-title">
@@ -121,9 +122,9 @@ export function AgentDemo() {
             <br />
             코치 다섯이 붙습니다.
           </h2>
-          <p className="body-lg mt-5 max-w-[40ch] text-white/70">
-            채용공고·기업·뉴스·포지션·글쓰기 담당이 각자 관점으로 답하고, 반장이 근거 순서로
-            정리합니다. 감이 아니라 사업보고서와 뉴스에서 찾은 근거로요.
+          {/* 한글은 기본값이면 단어 한가운데서 줄이 바뀐다("답하 / 고,"). 띄어쓰기에서만 끊는다 */}
+          <p className="body-lg mt-5 max-w-[40ch] break-keep text-white/70">
+            다섯이 각자 답하면, 총괄 담당이 근거 순서로 정리합니다.
           </p>
           {/* 줄 간격은 gap-y-1 + 줄바꿈 칸(0높이)이 합쳐져 칩 사이 8px 이 된다 */}
           <ul className="mt-8 flex flex-wrap gap-x-2 gap-y-1" aria-label="코치 목록">
@@ -163,7 +164,15 @@ export function AgentDemo() {
             대화가 쌓이면 이 칸이 화면보다 길어져, 스크롤해도 다음 장으로 넘어가지 않았다
             (한 장씩 넘기는 스냅이 걸리지 않는다). 높이를 묶고 안에서만 흐르게 한다.
           */}
-          <ul className="flex h-[clamp(220px,38svh,420px)] flex-col justify-end gap-3 overflow-hidden">
+          {/*
+            안쪽 여백이 없으면 내용이 잘라내는 경계에 딱 붙는다. 맨 아래 줄은 말풍선 테두리(ring)가
+            상자 바깥에 그려져 통째로 잘리고, 왼쪽 돌멩이도 가장자리가 깎인다. 4px 여유를 둔다.
+
+            대화가 칸을 넘치면 맨 위 말풍선이 중간에서 싹둑 잘린 채 보인다. 위쪽 3rem 을 서서히
+            투명하게 지워, 잘린 자국 대신 위로 흘러 나가는 것처럼 보이게 한다. 말풍선이 몇 개
+            없을 때는 justify-end 라 위쪽이 비어 있으므로 이 페이드가 가리는 것이 없다.
+          */}
+          <ul className="flex h-[clamp(220px,38svh,420px)] flex-col justify-end gap-3 overflow-hidden px-1 pb-1 [mask-image:linear-gradient(to_bottom,transparent_0,#000_3rem,#000_100%)]">
             {SCRIPT.slice(0, shown).map((line, i) => (
               <ChatLine key={i} line={line} />
             ))}

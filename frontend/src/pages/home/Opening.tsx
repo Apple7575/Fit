@@ -1,49 +1,32 @@
-import { forwardRef, useEffect, useState } from 'react';
+import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { BRAND_TAGLINE } from '../../components/layout/brand';
 import { prefersReducedMotion } from '../../hooks/useInView';
 
 /** 여기서 바로 갈 수 있는 세 곳. 기업 검색은 '기업 분석' 안에 있다 */
 const ENTRIES = [
-  { to: '/companies', step: '1', title: '기업 분석', desc: '회사가 무엇을 보고 무엇을 묻는지' },
-  { to: '/cover-letters/new', step: '2', title: '자소서 검토', desc: '코치 다섯이 문단마다 다른 눈으로' },
-  { to: '/interviews', step: '3', title: '모의 면접', desc: '답변과 말투·자세를 영상으로' },
+  { to: '/companies', step: '1', title: '기업 분석' },
+  { to: '/cover-letters/new', step: '2', title: '자소서 검토' },
+  { to: '/interviews', step: '3', title: '모의 면접' },
 ] as const;
 
 const HERO_VIDEO = '/landing/turn.mp4';
 const HERO_POSTER = '/landing/turn.jpg';
 
 /**
- * 카메라가 책상 건너편으로 넘어가는 시점. 그 전까지는 "내가 쓴다", 그 뒤로는 "저쪽에서 본다".
- * 영상 길이(10초)에 맞춘 값이라 영상을 바꾸면 같이 손봐야 한다.
- */
-const TURN_AT_MS = 5200;
-
-/** 넘어가기 전후로 한 줄씩. 영상이 도는 동안 글도 같이 넘어간다 */
-const BEFORE = '열심히 썼습니다.';
-const AFTER = '그런데 저쪽에서는 어떻게 보일까요?';
-
-/**
  * 랜딩 첫 장.
  *
  * <p>이 서비스 이름이 "기업의 눈으로 보는 나의 Fit" 인데 정작 첫 화면에 눈이 뒤집히는 순간이
  * 없었다. 카메라가 책상을 넘어 맞은편으로 돌아가는 영상 한 편이 그 문장을 대신한다.
- * 화면이 넘어가는 그 순간에 글도 같이 바뀐다.
+ * 한때 그 순간에 맞춰 바뀌는 글줄을 얹었지만, 첫 화면에 글이 많아 덜어냈다. 영상만 남긴다.
  *
- * <p>모션을 줄인 설정이면 영상을 돌리지 않고 첫 프레임만 깔고 뒤쪽 문장을 바로 보여준다.
+ * <p>모션을 줄인 설정이면 영상을 돌리지 않고 첫 프레임만 깐다.
  */
 export const Opening = forwardRef<HTMLElement, { onNext: () => void }>(function Opening(
   { onNext },
   ref,
 ) {
   const still = prefersReducedMotion();
-  const [turned, setTurned] = useState(still);
-
-  useEffect(() => {
-    if (still) return;
-    const id = window.setTimeout(() => setTurned(true), TURN_AT_MS);
-    return () => window.clearTimeout(id);
-  }, [still]);
 
   return (
     <section
@@ -72,17 +55,14 @@ export const Opening = forwardRef<HTMLElement, { onNext: () => void }>(function 
 
       <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-24 pb-16">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          {/* 영상이 넘어가는 순간 이 줄도 바뀐다. key 를 주면 새로 떠오른다 */}
-          <p className="anim-pop text-[15px] font-semibold text-white/60" key={turned ? 'a' : 'b'}>
-            {turned ? AFTER : BEFORE}
-          </p>
-
-          <h1 className="display-xl mt-4 max-w-[16ch] text-balance" id="hero-title">
+          <h1 className="display-xl max-w-[16ch] text-balance" id="hero-title">
             {BRAND_TAGLINE}
           </h1>
+          {/* 두 줄로 읽히길 바라는 자리라, 폭에 따라 흔들리지 않게 줄바꿈을 못 박는다 */}
           <p className="mt-5 max-w-[42ch] text-[15px] break-keep text-white/70">
-            회사가 나를 어떻게 볼지 먼저 봅니다. 기업 분석에서 시작해 자소서와 면접까지 같은
-            기준으로 이어집니다.
+            회사가 나를 어떻게 볼지 먼저 봅니다.
+            <br />
+            감이 아니라, 근거로요.
           </p>
 
           <div className="mt-9 flex flex-wrap justify-center gap-3">
@@ -104,28 +84,37 @@ export const Opening = forwardRef<HTMLElement, { onNext: () => void }>(function 
         {/*
           여기서 뭘 할 수 있는지가 첫 화면에 있어야 한다. 기업 목록은 기업 분석 첫 화면이
           이미 보여주므로 랜딩은 세 기능만 세운다.
+
+          카드 석 장에 설명까지 달려 있으면 첫 화면이 글로 꽉 찬다. 화살표로 이어 붙인 한 줄로
+          바꾼다. "같은 기준으로 이어집니다" 를 문장으로 쓰는 대신 모양으로 보여주는 셈이라,
+          위 부제에서 그 문장을 덜어낼 수 있었다.
         */}
-        <ul aria-label="바로 가기" className="mx-auto grid w-full max-w-4xl gap-2 sm:grid-cols-3">
-          {ENTRIES.map((entry) => (
-            <li key={entry.to}>
+        {/* 이름표는 목록에 둔다. nav 로 감싸 옮겼더니 목록의 접근성 이름이 사라졌다 */}
+        <ol
+          aria-label="바로 가기"
+          className="mx-auto flex flex-wrap items-center justify-center gap-x-1 gap-y-2"
+        >
+          {/* 화살표를 뒤따르는 칸과 한 덩어리로 묶는다. 좁은 화면에서 줄이 바뀔 때
+              화살표만 줄 끝에 남지 않고 다음 줄 앞머리로 함께 넘어간다 */}
+          {ENTRIES.map((entry, i) => (
+            <li className="flex items-center gap-1" key={entry.to}>
+              {i > 0 && (
+                <span aria-hidden="true" className="px-1 text-white/30">
+                  →
+                </span>
+              )}
               <Link
-                className="flex h-full items-start gap-3 rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 hover:ring-white"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white/75 ring-1 ring-white/20 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 hover:ring-white"
                 to={entry.to}
               >
-                <span
-                  aria-hidden="true"
-                  className="mt-0.5 text-[12px] font-extrabold opacity-50"
-                >
+                <span aria-hidden="true" className="text-[11px] font-extrabold opacity-50">
                   0{entry.step}
                 </span>
-                <span className="min-w-0">
-                  <span className="block text-[14px] font-extrabold">{entry.title}</span>
-                  <span className="mt-0.5 block text-[12px] break-keep opacity-60">{entry.desc}</span>
-                </span>
+                {entry.title}
               </Link>
             </li>
           ))}
-        </ul>
+        </ol>
 
         <button
           className="mx-auto mt-8 text-[13px] font-semibold text-white/50 transition hover:text-white"
