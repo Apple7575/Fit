@@ -30,7 +30,11 @@ NAME = "gms"
 _LABEL = "GMS"
 
 # Gemini responseSchema 가 아는 키만 남긴다. 나머지는 보내면 400 이다.
-_KEPT_KEYS = frozenset({"type", "format", "description", "nullable", "enum", "items", "properties", "required"})
+_KEPT_KEYS = frozenset({
+    "type", "format", "description", "nullable", "enum", "items", "properties", "required",
+    # 배열 길이는 Gemini 도 지킨다. 떨구면 담당들의 "1~3개" 같은 제약이 사라져 모델이 넘게 낸다.
+    "minItems", "maxItems",
+})
 _TYPES = {
     "object": "OBJECT",
     "array": "ARRAY",

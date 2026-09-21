@@ -36,6 +36,15 @@ class ToGeminiSchemaTest(unittest.TestCase):
         self.assertNotIn("$schema", converted)
         self.assertNotIn("additionalProperties", converted["properties"]["name"])
 
+    def test_array_bounds_survive(self):
+        """떨구면 담당들의 "1~3개" 제약이 사라져 모델이 넘게 낸다 — JD 구조화가 이걸로 깨졌다."""
+        converted = to_gemini_schema({
+            "type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "string"},
+        })
+
+        self.assertEqual(converted["minItems"], 1)
+        self.assertEqual(converted["maxItems"], 3)
+
     def test_nullable_type_array_becomes_nullable_flag(self):
         converted = to_gemini_schema({"type": ["string", "null"]})
 
