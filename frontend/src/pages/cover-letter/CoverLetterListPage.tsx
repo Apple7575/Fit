@@ -17,9 +17,6 @@ const HERO_POSTER = '/cover-letter-media/hero.jpg';
 /** 목록이 시작되는 자리. 첫 화면의 칩이 여기로 굴러간다 */
 const LIST_ID = 'my-cover-letters';
 
-/** 첫 화면에 얹을 개수. 한 줄에 네 칸이면 제목을 가리지 않는다 */
-const HERO_MAX = 4;
-
 export function CoverLetterListPage() {
   const { user, loading } = useAuth();
 
@@ -105,7 +102,7 @@ function Hero({
           <h1 className="display-lg text-balance">회사의 언어로 다시 씁니다</h1>
           {/* 한 줄로 읽히길 바라는 자리다. 46ch 는 한글 42자를 못 담아 줄이 갈렸다 */}
           <p className="mt-3 text-[15px] break-keep text-white/70">
-            쓰던 자소서를 올리면 코치 다섯이 각자 맡은 자료로 읽고 고칠 곳을 짚어 줍니다.
+            작성 중인 자소서를 올리면 코치 다섯이 각자 맡은 자료로 읽고 고칠 곳을 짚어 줍니다.
           </p>
           <button
             className="mt-8 rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
@@ -135,9 +132,7 @@ function MemberHome() {
   };
 
   const all = state.status === 'success' ? state.data : [];
-  const onHero = all.slice(0, HERO_MAX);
-  const overflow = all.length > HERO_MAX;
-  // 저장한 자소서가 하나라도 있으면 첫 화면의 미리보기와 별개로 아래 전체 목록도 제공한다.
+  // 저장한 자소서가 하나라도 있으면 첫 화면 아래에 전체 목록을 붙인다.
   const hasBelow = all.length > 0 || state.status !== 'success';
 
   // 작성 화면의 '목록으로'에서 들어오면 영상 첫 화면이 아니라 저장 목록을 바로 보여 준다.
@@ -155,46 +150,18 @@ function MemberHome() {
         hasBelow={hasBelow}
         onNew={() => navigate('/cover-letters/new', { state: { fresh: true } })}
       >
-        {/* 내 자소서를 첫 화면에서 바로 연다. 아래로 내려가서 찾게 하지 않는다 */}
-        {onHero.length > 0 && (
-          <section aria-labelledby="hero-list-title" className="mt-10 pt-6">
-            <div className="flex items-baseline justify-center gap-3">
-              <p className="text-[12px] font-semibold text-white/50" id="hero-list-title">
-                내 자기소개서
-              </p>
-            </div>
-            <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {onHero.map((letter) => (
-                <li key={letter.id}>
-                  <HeroCard letter={letter} onOpen={() => navigate(`/cover-letters/${letter.id}`)} />
-                </li>
-              ))}
-            </ul>
-            {overflow && (
-              <div className="mt-4 flex justify-center">
-                <button
-                  className="group flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-5 py-2.5 text-[13px] font-bold text-white shadow-lg shadow-black/15 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-white/50 hover:bg-white hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:outline-none"
-                  onClick={() => glideToElement(LIST_ID, 106)}
-                  type="button"
-                >
-                  전체 자소서 보기
-                  <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] text-white/75 transition group-hover:bg-slate-100 group-hover:text-slate-600">
-                    {all.length}
-                  </span>
-                  <svg
-                    aria-hidden="true"
-                    className="size-4 transition-transform group-hover:translate-y-0.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </div>
-            )}
-          </section>
+        {/*
+          첫 화면은 '새로 쓰기' 하나에 집중시키고, 저장한 자소서는 아래 목록에서 본다.
+          랜딩 첫 장이 다음 장으로 내려보내는 것과 같은 한 줄이다.
+        */}
+        {all.length > 0 && (
+          <button
+            className="mx-auto mt-10 text-[13px] font-semibold text-white/50 transition hover:text-white"
+            onClick={() => glideToElement(LIST_ID, 106)}
+            type="button"
+          >
+            내 자소서 보러가기 ↓
+          </button>
         )}
 
         {state.status === 'success' && all.length === 0 && (
@@ -289,23 +256,6 @@ function MemberHome() {
  * <p>아래 목록의 줄 카드를 그대로 올리면 영상과 제목을 다 덮는다. 어느 자소서였는지만
  * 알아보면 되므로 제목·회사·수정일로 줄이고, 자세한 것은 눌러서 본다.
  */
-function HeroCard({ letter, onOpen }: { letter: CoverLetterSummary; onOpen: () => void }) {
-  return (
-    <button
-      className="flex w-full flex-col gap-1 rounded-xl bg-white/10 px-3 py-2.5 text-left ring-1 ring-white/20 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 hover:ring-white"
-      onClick={onOpen}
-      type="button"
-    >
-      <span className="truncate text-[13px] font-bold">{letter.title}</span>
-      <span className="truncate text-[11px] opacity-60">
-        {letter.targetCompany || '회사 미정'}
-        <span className="mx-1">·</span>
-        {formatDateDots(letter.updatedAt)}
-      </span>
-    </button>
-  );
-}
-
 /**
  * 전체 목록의 한 줄. 상단 압축 카드와 같은 반투명 재질·정보 순서를 사용하되,
  * 여러 건을 빠르게 훑을 수 있도록 목록 형태를 유지한다.
