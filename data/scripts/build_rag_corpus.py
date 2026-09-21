@@ -142,6 +142,21 @@ def resolve_company_codes(conn_factory: ConnectionFactory, corp_codes: list[str]
     return selected
 
 
+# 문서 하나 단위의 실패. 그 문서만 빠지고 나머지 해는 그대로 쓸 수 있다.
+#   manifest_missing_xml  아카이브에 그 해 XML 이 아예 없다(정정본 수집 실패 등)
+#   xml_parse_error       XML 은 있는데 읽히지 않는다
+# 기업 전체가 비는 no_source_documents 는 여기 넣지 않는다 — 넣으면 빈 적재로 기존 행을 지운다.
+DOCUMENT_LEVEL_FAILURES = frozenset({"manifest_missing_xml", "xml_parse_error"})
+
+
+def _write_status(dry_run: bool, wrote: bool, failures: list[dict]) -> str:
+    if dry_run:
+        return "dry_run"
+    if not wrote:
+        return "skipped_due_to_source_failure"
+    return "replaced_with_missing_documents" if failures else "replaced"
+
+
 def run(
     conn_factory: ConnectionFactory, corp_codes: list[str] | None, *, dry_run: bool,
     external_providers: Iterable[ExternalEvidenceProvider] = (),
@@ -176,15 +191,24 @@ def run(
                 result = build_business_report_records(corp_code, external)
             else:
                 result = build_company_records(rows, external_records=external) if providers else build_company_records(rows)
-            if not dry_run and not failures:
+            blocking = [f for f in failures if f.get("reason") not in DOCUMENT_LEVEL_FAILURES]
+            # 문서 하나를 못 읽은 것과 기업 전체를 못 읽은 것은 다르다. 앞은 그 해만 빠지고
+            # 나머지 해는 멀쩡하므로 넣는다 — 한 해 때문에 네 해를 버리면 그 기업은 검색에서
+            # 통째로 사라진다.
+            #
+            # 다만 실패가 있는데 결과까지 비면 넣지 않는다. 그 적재는 기존 행을 지우기만 한다.
+            # 실패가 없는데 비는 것은 정상이다(근거가 없는 기업) — 그때는 지우는 것이 맞다.
+            wrote = False
+            if not dry_run and not blocking and (result.records or not failures):
                 if business_report_only:
                     replace_business_reports(conn, corp_code, result.records)
                 else:
                     replace_company(conn, corp_code, result.records)
+                wrote = True
         company_elapsed_ms = int((time.monotonic() - company_started_at) * 1000)
         summary.add(
             corp_code, result, failures=failures,
-            write_status="dry_run" if dry_run else "skipped_due_to_source_failure" if failures else "replaced",
+            write_status=_write_status(dry_run, wrote, failures),
             elapsed_ms=company_elapsed_ms,
         )
         for _, batch in batches:
