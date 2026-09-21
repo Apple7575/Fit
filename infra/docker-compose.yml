@@ -105,10 +105,27 @@ services:
       # jd_coaching 은 backend 와 같은 DB 를 쓴다(Flyway V20·V21 테이블).
       - JD_DATABASE_URL=postgresql://${POSTGRES_USER:-ssafy}:${POSTGRES_PASSWORD:?환경변수에 POSTGRES_PASSWORD 설정 필요}@postgres:5432/${POSTGRES_DB:-company_analysis}
       - JD_MAX_CONCURRENCY=${JD_MAX_CONCURRENCY:-4}
+      # 기업 분석 담당. 확정 지표·리포트는 backend 와 같은 DB 를 쓴다(Flyway V27~V33).
+      - COMPANY_ANALYSIS_DATABASE_URL=postgresql://${POSTGRES_USER:-ssafy}:${POSTGRES_PASSWORD:?환경변수에 POSTGRES_PASSWORD 설정 필요}@postgres:5432/${POSTGRES_DB:-company_analysis}
+      # 사업보고서 청크·임베딩은 따로 둘 수 있다. 배치로 다시 만드는 파생 데이터라 사용자 DB 와
+      # 수명이 다르고 크다. 비우면 위 DB 를 그대로 쓴다.
+      - COMPANY_ANALYSIS_RAG_DATABASE_URL=${COMPANY_ANALYSIS_RAG_DATABASE_URL:-}
+      # 질의 임베딩 서버(OpenAI 호환). 적재 때 쓴 것과 같은 모델이어야 검색이 맞는다.
+      - COMPANY_ANALYSIS_EMBEDDING_BASE_URL=${COMPANY_ANALYSIS_EMBEDDING_BASE_URL:-}
+      - COMPANY_ANALYSIS_EMBEDDING_API_KEY=${COMPANY_ANALYSIS_EMBEDDING_API_KEY:-${LLM_KEY:-}}
+      # 검색이 고를 벡터. 적재 때 쓴 모델·버전과 같아야 한 건이라도 찾는다.
+      # 비우면 코드 기본값(Qwen3-Embedding-0.6B / document-v1)을 쓴다.
+      - COMPANY_ANALYSIS_EMBEDDING_MODEL_NAME=${COMPANY_ANALYSIS_EMBEDDING_MODEL_NAME:-}
+      - COMPANY_ANALYSIS_EMBEDDING_VERSION=${COMPANY_ANALYSIS_EMBEDDING_VERSION:-}
       # backend 와 같은 vLLM. 주소는 VLLM_BASE_URL 에 /v1 을 붙이고, 키는 LLM_KEY 를 재사용한다.
       - QWEN_BASE_URL=${VLLM_BASE_URL:-http://70.12.130.105:8000}/v1
       # 서빙 중인 모델 ID 는 main 하나다 (GET /v1/models 로 확인).
       - QWEN_MODEL=${QWEN_MODEL:-main}
+      # LLM 공급자. vllm(사내 GPU, 기본) | gms(SSAFY GMS 경유 Gemini).
+      # 담당 하나만 옮겨 보려면 <PREFIX>_LLM_PROVIDER 로 덮어쓴다 (예: COMPANY_ANALYSIS_LLM_PROVIDER).
+      - LLM_PROVIDER=${LLM_PROVIDER:-vllm}
+      - COMPANY_ANALYSIS_LLM_PROVIDER=${COMPANY_ANALYSIS_LLM_PROVIDER:-}
+      - GMS_MODEL=${GMS_MODEL:-}
       - QWEN_API_KEY=${LLM_KEY:-}
       # 공고에서 회사명·직무명을 뽑는 보완 추출에만 쓴다. 비면 그 보완만 꺼지고 크롤링은 돈다.
       - GMS_KEY=${GMS_KEY:-}

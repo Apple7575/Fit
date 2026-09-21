@@ -78,7 +78,7 @@ class QwenSupervisorModelTest(unittest.TestCase):
         model = QwenSupervisorModel(
             {"base_url": "http://qwen.test", "model": "qwen", "api_key": "test"}
         )
-        with patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+        with patch("ai.llm.vllm.urllib.request.urlopen") as urlopen:
             urlopen.return_value.__enter__.return_value.read.return_value = (
                 b'{"choices": [{"message": {"content": "not JSON"}}]}'
             )
