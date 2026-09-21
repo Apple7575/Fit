@@ -277,7 +277,8 @@ def _metadata(
     metadata = {
         "parent_id": f"dart-report:{ref.corp_code}:{ref.rcept_no}:{section_index}",
         "rcept_no": ref.rcept_no, "rcept_dt": ref.rcept_dt, "document_file": ref.entry_name,
-        "report_name": ref.report_name, "section_title": section_title, "section_index": section_index,
+        "report_name": ref.report_name, "section_title": _section_label(section_title),
+        "section_index": section_index,
         "section_path": str(section_index), "content_type": content_type,
         "chunk_schema_version": 2, "encoding": document.encoding, **coordinates,
     }
@@ -403,11 +404,44 @@ def _serialized_row_parts(cells: list[str], max_chars: int) -> list[str]:
     return [serialized[offset:offset + max_chars] for offset in range(0, len(serialized), max_chars)]
 
 
+# rag_evidence.title 은 varchar(300) 이다. 절 제목 자리에 표 머리글이 통째로 들어오는 문서가
+# 있어(현대위아 2021년은 2,302자) 넘치면 적재가 통째로 실패한다.
+MAX_TITLE = 300
+
+
+# 임베딩 텍스트는 제목과 구간 이름을 본문 앞에 붙인다(embedding_build.document_embedding_text).
+# 제목은 열 길이에 맞춰 잘리는데 구간 이름은 그대로라, 표 머리글이 절 제목 자리에 들어온
+# 문서에서는 5,864자까지 갔다. 그 텍스트는 임베딩 모델의 입력 한계를 넘어 400 으로 되돌아온다.
+MAX_SECTION_LABEL = 300
+
+
+def _section_label(section_title: str) -> str:
+    """메타데이터에 남길 구간 이름. 임베딩 입력에 들어가므로 제목과 같은 길이로 맞춘다."""
+    label = squash(section_title)
+    return label if len(label) <= MAX_SECTION_LABEL else label[:MAX_SECTION_LABEL - 1] + "…"
+
+
+def _title(ref: DartDocumentRef, section_title: str) -> str:
+    """제목을 열 길이 안에 맞춘다. 기업·연도는 남기고 절 제목만 줄인다.
+
+    앞이 잘리면 어느 기업의 어느 해인지 알 수 없어 검색 결과에서 출처를 구분하지 못한다.
+    """
+    prefix = f"{ref.corp_name} {ref.year}년 사업보고서 · "
+    room = MAX_TITLE - len(prefix)
+    if room <= 0:
+        # 기업명만으로 이미 넘친다. 그런 기업은 없지만 잘라서라도 적재는 시킨다.
+        return prefix[:MAX_TITLE]
+    section = squash(section_title)
+    if len(section) <= room:
+        return prefix + section
+    return prefix + section[:room - 1] + "…"
+
+
 def _record(
     ref: DartDocumentRef, published_at: datetime, section_title: str, identity: str,
     content: str, metadata: dict[str, object],
 ) -> EvidenceRecord:
-    title = f"{ref.corp_name} {ref.year}년 사업보고서 · {section_title}"
+    title = _title(ref, section_title)
     source_url = f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={ref.rcept_no}"
     payload = {
         "title": title, "content": content, "reference_period": str(ref.year),
