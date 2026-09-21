@@ -46,7 +46,7 @@ function GuestHome() {
       <CoverLetterHeader floating scrolled={scrolled} />
       <Hero hasBelow={false} onNew={() => navigate('/cover-letters/new', { state: { fresh: true } })}>
         <p className="mt-10 pt-6 text-center text-[13px] break-keep text-white/50">
-          로그인 없이도 써 볼 수 있어요. 로그인하면 쓰던 자소서가 여기에 남습니다.
+          로그인 없이도 써 볼 수 있어요. 로그인하면 작성 중인 자소서가 여기에 남습니다.
         </p>
       </Hero>
     </div>
