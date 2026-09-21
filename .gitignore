@@ -70,3 +70,6 @@ outputs/position-lora/
 
 # ── Git 격리 작업공간 ──
 .worktrees/
+
+# 배치 실행 산출물(진행 기록·로그). 저장소에 두지 않는다.
+outputs/
