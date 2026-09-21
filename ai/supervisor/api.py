@@ -10,7 +10,7 @@ from ai.company_analysis.api import get_company_chat_service
 from ai.jd_coaching.api import get_analysis_service, get_stateless_chat_service
 from ai.jd_coaching.baseline import load_qwen_config
 from ai.news_intelligence.api import get_news_service
-from ai.position_coaching.api import get_position_service
+from ai.position_coaching.api import get_position_chat_service, get_position_service
 from ai.supervisor.adapters import (
     AgentRegistry,
     CompanyAgentAdapter,
@@ -43,6 +43,7 @@ def assemble_supervisor_service(
     news_provider: Callable[[], Any] | None = None,
     company_provider: Callable[[], Any] | None = None,
     jd_chat_provider: Callable[[], Any] | None = None,
+    position_chat_provider: Callable[[], Any] | None = None,
 ) -> SupervisorService:
     resolved_news_provider = news_provider or get_news_service
     resolved_company_provider = company_provider or get_company_chat_service
@@ -53,7 +54,10 @@ def assemble_supervisor_service(
                 lambda: instrument_jd_service(jd_provider()),
                 jd_chat_provider or get_stateless_chat_service,
             ),
-            PositionAgentAdapter(position_provider),
+            PositionAgentAdapter(
+                position_provider,
+                position_chat_provider or get_position_chat_service,
+            ),
             WritingAgentAdapter(writing_provider),
             NewsAgentAdapter(lambda: instrument_news_service(resolved_news_provider())),
             CompanyAgentAdapter(resolved_company_provider),

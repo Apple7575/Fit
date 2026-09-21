@@ -36,6 +36,19 @@ class FakeJdChatService:
         return self._reply
 
 
+class FakePositionChatService:
+    def __init__(self, reply=None, error=None):
+        self.calls = []
+        self._reply = reply or {"answer": "직무 설명입니다", "referenced_finding_ids": []}
+        self._error = error
+
+    def respond(self, **kwargs):
+        self.calls.append(kwargs)
+        if self._error is not None:
+            raise self._error
+        return self._reply
+
+
 class FakePositionService:
     def __init__(self):
         self.calls = []
@@ -190,6 +203,58 @@ class AgentRegistryTest(unittest.TestCase):
             # 를 몰라 늘 같은 분석을 낸다.
             [{"role": "USER", "content": "검토"}],
         )])
+
+    def test_position_answers_the_question_on_top_of_the_analysis(self):
+        """평가 결과만 돌려주면 무엇을 묻든 같은 답이 된다(QA 실측: 12번 중 4종)."""
+        position, chat = FakePositionService(), FakePositionChatService()
+        context = {
+            "rubric_id": "experience-depth-v1",
+            "position_context": {"position_name": "백엔드 개발자", "priority_requirements": []},
+        }
+
+        result = PositionAgentAdapter(lambda: position, lambda: chat).execute(
+            "이 직무는 무슨 일을 해?",
+            [{"document_id": "essay", "document_type": "SELF_INTRO", "text": "내용"}],
+            [{"role": "USER", "content": "안녕"}],
+            context,
+        )
+
+        self.assertEqual(result["message"], "직무 설명입니다")
+        self.assertEqual(result["analysis_status"], "NO_EXPERIENCE_CLAIM")  # 평가도 남는다
+        self.assertEqual(chat.calls[0]["message"], "이 직무는 무슨 일을 해?")
+        # 이번 질문은 message 로 따로 가므로 이력에 두 번 실리지 않는다.
+        self.assertEqual(chat.calls[0]["history"], [{"role": "USER", "content": "안녕"}])
+
+    def test_position_auto_review_keeps_the_analysis(self):
+        position, chat = FakePositionService(), FakePositionChatService()
+        context = {
+            "rubric_id": "experience-depth-v1",
+            "position_context": {"position_name": "백엔드 개발자", "priority_requirements": []},
+        }
+
+        result = PositionAgentAdapter(lambda: position, lambda: chat).execute(
+            "", [{"document_id": "essay", "document_type": "SELF_INTRO", "text": "내용"}],
+            [], context,
+        )
+
+        self.assertNotEqual(result["message"], "직무 설명입니다")
+        self.assertEqual(chat.calls, [])
+
+    def test_position_chat_failure_falls_back_to_the_analysis(self):
+        position = FakePositionService()
+        chat = FakePositionChatService(error=RuntimeError("모델 죽음"))
+        context = {
+            "rubric_id": "experience-depth-v1",
+            "position_context": {"position_name": "백엔드 개발자", "priority_requirements": []},
+        }
+
+        result = PositionAgentAdapter(lambda: position, lambda: chat).execute(
+            "질문", [{"document_id": "essay", "document_type": "SELF_INTRO", "text": "내용"}],
+            [], context,
+        )
+
+        self.assertEqual(result["analysis_status"], "NO_EXPERIENCE_CLAIM")
+        self.assertTrue(result["message"])
 
     def test_position_rejects_request_without_supported_documents(self):
         position = FakePositionService()

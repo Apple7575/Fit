@@ -82,7 +82,38 @@ class WritingPromptTest(unittest.TestCase):
             "BALANCED",
             "REWRITE",
             "BALANCED",
-            "cannot introduce facts",
+            # 사실 잠금은 그대로다. 문구가 바뀌어도 이 뜻은 남아야 한다.
+            "Never invent a metric, date, employer, technology",
+            "introduce facts",
+        ):
+            with self.subTest(value=value):
+                self.assertIn(value, system)
+
+    def test_system_message_opens_judgment_and_keeps_facts_locked(self):
+        """사실과 판단을 한 문장으로 묶어 두면 초안을 되읊는 앵무새가 된다(실측).
+
+        판단(구조·표현·독자 시각)은 첫 도구로 열고, 사실은 그대로 잠근다. 판단은 message 에만
+        두고 revised_text 에는 사용자가 준 사실만 들어간다 — 여기가 자소서가 오염되는 지점이다.
+        """
+        request = WritingMessageRequest.model_validate({
+            "message": "고쳐줘",
+            "question": "협업 경험",
+            "draft": "API를 개발했습니다.",
+            "char_limit": 500,
+        })
+
+        system = build_writing_messages(request, RUBRIC)[0]["content"]
+
+        for value in (
+            "Facts and judgment are different things",
+            "your first tool, not your last",
+            "the way its reader will",
+            # 자기가 낸 제안을 이어서 쓸 수 있어야 "두 번째 걸로" 가 통한다.
+            "legitimate material for\nexpression and structure",
+            "still not a source of facts",
+            "one thing the user did not ask about",
+            "Do not repeat a point you already made",
+            '"revised_text" may contain only facts already present',
         ):
             with self.subTest(value=value):
                 self.assertIn(value, system)

@@ -88,8 +88,13 @@ class PositionAgentAdapter:
     name = "position"
     supported_document_types = {"SELF_INTRO", "EXPERIENCE"}
 
-    def __init__(self, service_provider: Callable[[], Any]) -> None:
+    def __init__(
+        self,
+        service_provider: Callable[[], Any],
+        chat_provider: Callable[[], Any] | None = None,
+    ) -> None:
         self._service_provider = service_provider
+        self._chat_provider = chat_provider
 
     def is_available(self, context: Mapping[str, Any] | None) -> bool:
         return bool(
@@ -108,8 +113,8 @@ class PositionAgentAdapter:
             raise ValueError(
                 "position agent requires SELF_INTRO or EXPERIENCE document"
             )
-        # 이번에 물은 것을 대화 끝에 붙인다. 서비스가 instruction 을 받는 자리가 없어
-        # 이력만 넘기면 "무엇을 묻는지" 가 빠져 늘 같은 분석이 돌아온다.
+        # 이번에 물은 것을 대화 끝에 붙인다. 평가 자체에도 맥락이 되고, 아래 대화
+        # 서비스에 넘길 이력이기도 하다.
         turns = [dict(item) for item in conversation]
         question = str(instruction or "").strip()
         if question and not (
@@ -124,7 +129,27 @@ class PositionAgentAdapter:
         )
         # 단독 API(/position/internal/analyses)와 같은 모양으로 맞춘다. 백엔드는 결과의
         # message 만 말풍선에 띄우므로 이 키가 없으면 성공해도 "답을 만들지 못했다"로 보인다.
-        return {**analysis, "message": render_position_message(analysis)}
+        evaluated = {**analysis, "message": render_position_message(analysis)}
+        if self._chat_provider is None or not question:
+            return evaluated
+        try:
+            reply = self._chat_provider().respond(
+                position_context=context["position_context"],
+                analysis_result=analysis,
+                documents=supported_documents,
+                message=question,
+                # 방금 붙인 이번 질문은 빼고 넘긴다. 대화 서비스가 message 로 따로 받는다.
+                history=[dict(item) for item in conversation],
+            )
+        except Exception:  # noqa: BLE001
+            # 대화는 평가 위에 얹는 것이다. 여기서 실패해도 평가 결과는 보여 준다 —
+            # 담당을 통째로 실패시키면 사용자는 아무것도 못 본다.
+            LOGGER.exception("position chat failed; falling back to the analysis result")
+            return evaluated
+        answer = str(reply.get("answer") or "").strip()
+        if not answer:
+            return evaluated
+        return {**evaluated, **reply, "message": answer}
 
 
 class WritingAgentAdapter:
