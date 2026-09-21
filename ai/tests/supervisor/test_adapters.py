@@ -26,7 +26,7 @@ class FakeJdService:
 class FakeJdChatService:
     def __init__(self, reply=None, error=None):
         self.calls = []
-        self._reply = reply or {"message": "대화 답변"}
+        self._reply = reply or {"answer": "대화 답변"}
         self._error = error
 
     def respond(self, **kwargs):

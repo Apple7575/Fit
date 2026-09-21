@@ -76,8 +76,12 @@ class JdAgentAdapter:
             # 담당을 통째로 실패시키면 사용자는 아무것도 못 본다.
             LOGGER.exception("jd chat failed; falling back to the analysis result")
             return analysis
-        # 말풍선에 쓸 message 는 대화 쪽 답으로 덮고, 대조 결과는 근거로 함께 남긴다.
-        return {**analysis, **answer}
+        # 대화 서비스는 답을 answer 로 준다. 백엔드 말풍선은 message 를 읽으므로 옮겨 담는다 —
+        # 안 옮기면 대조 목록이 그대로 나가 무엇을 묻든 같은 답이 된다.
+        reply = str(answer.get("answer") or answer.get("message") or "").strip()
+        if not reply:
+            return analysis
+        return {**analysis, **answer, "message": reply}
 
 
 class PositionAgentAdapter:
