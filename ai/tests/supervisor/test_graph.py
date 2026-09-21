@@ -86,9 +86,10 @@ class FakeQwenCaller:
         return {"output": output}
 
 
-def invoke_graph(model, registry, agent_contexts):
+def invoke_graph(model, registry, agent_contexts, agent_selection="auto"):
     return build_supervisor_graph(model, registry).invoke(
         {
+            "agent_selection": agent_selection,
             "instruction": "검토해 줘",
             "documents": [
                 {
@@ -615,6 +616,30 @@ class SupervisorGraphTest(unittest.TestCase):
         self.assertIn("종합 결과", result["final_message"])
         self.assertTrue(result["final_message"].endswith(clarification))
         self.assertEqual(len(model.aggregate_calls), 1)
+
+    def test_agent_selection_all_runs_every_available_agent_without_planning(self):
+        """첫 자동 검토는 고를 질문이 없다. 계획 모델을 부르면 대부분이 '필요 없다' 로 남는다."""
+        model = FakeModel([])  # 계획을 부르면 pop 에서 터진다
+        jd = RecordingAdapter("jd")
+        position = RecordingAdapter("position")
+
+        result = invoke_graph(
+            model,
+            AgentRegistry([jd, position]),
+            {
+                "jd": {"job_context_id": "jctx"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {"position_name": "백엔드", "priority_requirements": []},
+                },
+            },
+            agent_selection="all",
+        )
+
+        self.assertEqual(
+            sorted(item.agent for item in result["agent_results"]), ["jd", "position"]
+        )
+        self.assertEqual(model.plan_errors, [])  # 계획 모델을 부르지 않았다
 
     def test_selected_agents_execute_in_parallel_threads(self):
         model = FakeModel(

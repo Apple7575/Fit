@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -49,7 +50,7 @@ class SupervisorTurnRunnerTest {
     @DisplayName("담당별 결과를 자기 자리에 넣고 총괄 자리에는 종합 문구를 남긴다")
     void everyAgentResultLandsInItsOwnSlot() {
         Map<String, Message> slots = slots("jd", "writing", "supervisor");
-        given(supervisorClient.run(anyString(), any(), any(), any(), any()))
+        given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(new SupervisorClient.Run("SUCCESS", "지원동기 문단을 먼저 고치세요.", "첨삭 요청",
                         List.of(success("jd", "공고가 요구하는 항목이 빠졌습니다."),
                                 success("writing", "첫 문장을 앞으로 올렸습니다.")),
@@ -72,7 +73,7 @@ class SupervisorTurnRunnerTest {
     @DisplayName("총괄이 고르지 않은 담당은 실패가 아니라 넘어갔다고 남긴다")
     void agentsTheSupervisorDidNotPickAreNotFailures() {
         Map<String, Message> slots = slots("jd", "writing", "supervisor");
-        given(supervisorClient.run(anyString(), any(), any(), any(), any()))
+        given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(new SupervisorClient.Run("SUCCESS", "첫 문장을 앞으로 올렸습니다.", "첨삭만 필요",
                         List.of(success("writing", "첫 문장을 앞으로 올렸습니다.")), List.of()));
 
@@ -87,7 +88,7 @@ class SupervisorTurnRunnerTest {
     @DisplayName("담당 하나가 실패해도 나머지 자리와 총괄은 그대로 채워진다")
     void oneFailedAgentDoesNotSinkTheTurn() {
         Map<String, Message> slots = slots("news", "writing", "supervisor");
-        given(supervisorClient.run(anyString(), any(), any(), any(), any()))
+        given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
                 .willReturn(new SupervisorClient.Run("PARTIAL", "뉴스 근거 없이 문장만 다듬었습니다.", null,
                         List.of(new SupervisorClient.AgentResult("news", "FAILED", "",
                                         "기사 저장소를 사용할 수 없습니다.", List.of()),
@@ -109,7 +110,7 @@ class SupervisorTurnRunnerTest {
         Map<String, Message> slots = slots("jd", "writing", "supervisor");
         willThrow(new BusinessException(ErrorCode.AI_UNAVAILABLE,
                 "총괄 AI 서버가 아직 모델에 연결되지 않았습니다."))
-                .given(supervisorClient).run(anyString(), any(), any(), any(), any());
+                .given(supervisorClient).run(anyString(), any(), any(), any(), any(), anyBoolean());
 
         runner.run(TURN_ID, context());
 

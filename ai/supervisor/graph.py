@@ -60,6 +60,7 @@ class SupervisorState(TypedDict, total=False):
     available_agents: list[str]
     plan: SupervisorPlan
     lead: str | None
+    agent_selection: str
     agent_results: Annotated[list[AgentResult], operator.add]
     # 위임: resolve_needs 가 채우고 rerun_requesters 가 소비한다.
     delegation_round: int
@@ -194,6 +195,14 @@ def build_supervisor_graph(
                 selected_agents=[lead], reason=f"lead 모드: {lead} 담당 직접 호출"
             )
             return {"plan": plan, "trace": [plan_trace(plan, "lead", started)]}
+        if state.get("agent_selection") == "all":
+            # 부르는 쪽이 이미 "전부 봐 달라" 고 정했다. 고를 질문이 없으므로 계획 모델을
+            # 부르지 않는다 — 부르면 담당 대부분이 "이 관점은 필요 없다" 로 남는다.
+            plan = SupervisorPlan(
+                selected_agents=state["available_agents"],
+                reason="전원 실행: 부르는 쪽이 담당을 고르지 않는다",
+            )
+            return {"plan": plan, "trace": [plan_trace(plan, "all", started)]}
         validation_error = None
         for _ in range(2):
             try:
