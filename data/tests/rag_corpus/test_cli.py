@@ -101,6 +101,17 @@ def result(corp_code):
     )
 
 
+def _business_report_record():
+    """사업보고서 전용 적재가 받아 주는 최소 근거."""
+    return replace(
+        profile_record({"corp_code": FIRST, "corp_name": "테스트기업", "dart_modify_date": "20260913"}),
+        evidence_id="dart-partial-1",
+        source_identity="dart_business_report:00126380:2024:1",
+        source_type="DART_BUSINESS_REPORT",
+        metadata={"content_type": "TEXT"},
+    )
+
+
 class BuildRagCorpusCliTest(unittest.TestCase):
     def test_staging_loader_replaces_company_without_reading_xml(self):
         factory = ConnectionFactory([FIRST])
@@ -235,6 +246,55 @@ class BuildRagCorpusCliTest(unittest.TestCase):
 
             def inventory(self):
                 return {"documents": 1}
+
+        summary = build_rag_corpus.run(
+            factory, [FIRST], dry_run=False, external_providers=[Provider()], business_report_only=True,
+        )
+
+        self.assertEqual(summary["companies"][FIRST]["write_status"], "skipped_due_to_source_failure")
+        self.assertEqual(factory.connections[1].queries, [])
+
+    # 이 테스트가 막는 결함: 한 해 문서를 못 읽었다고 나머지 해까지 통째로 버리는 경우.
+    # 2,640개사 적재에서 133개사가 이렇게 사라졌다 — 다섯 해 중 한 해가 없다는 이유였다.
+    def test_business_report_only_loads_remaining_years_when_one_document_is_missing(self):
+        factory = ConnectionFactory([FIRST])
+
+        class Provider:
+            def batch(self, corp_code):
+                return EvidenceBatch(
+                    [_business_report_record()], {"documents": 4}, {},
+                    failures=({"reason": "manifest_missing_xml"},),
+                )
+
+            def inventory(self):
+                return {"documents": 4}
+
+        summary = build_rag_corpus.run(
+            factory, [FIRST], dry_run=False, external_providers=[Provider()], business_report_only=True,
+        )
+
+        self.assertEqual(
+            summary["companies"][FIRST]["write_status"], "replaced_with_missing_documents"
+        )
+        # 실제로 적재까지 갔는지 본다. 건너뛰면 이 연결에는 질의가 하나도 없다.
+        self.assertTrue(factory.connections[1].queries)
+        # 빠진 문서는 그대로 보고한다. 무엇이 없는지 못 찾으면 고칠 수도 없다.
+        self.assertEqual(
+            [f["reason"] for f in summary["failures"]], ["manifest_missing_xml"]
+        )
+
+    # 이 테스트가 막는 결함: 문서를 못 읽어 결과가 비었는데 그대로 적재해 기존 근거를 지우는 경우.
+    def test_business_report_only_keeps_existing_records_when_every_document_failed(self):
+        factory = ConnectionFactory([FIRST])
+
+        class Provider:
+            def batch(self, corp_code):
+                return EvidenceBatch(
+                    [], {"documents": 2}, {}, failures=({"reason": "xml_parse_error"},),
+                )
+
+            def inventory(self):
+                return {"documents": 2}
 
         summary = build_rag_corpus.run(
             factory, [FIRST], dry_run=False, external_providers=[Provider()], business_report_only=True,
