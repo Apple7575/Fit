@@ -56,22 +56,41 @@ export function MessageComposer({ roomId, busy, onStarted, onConflict }: Message
   const disabled = busy || sending;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <textarea
-        value={content}
-        rows={3}
-        maxLength={2000}
-        disabled={disabled}
-        placeholder={
-          busy ? '에이전트들이 답하는 중입니다…' : '예: 기술 서술이 충분한지 봐 주세요'
-        }
-        aria-label="에이전트에게 할 말"
-        onChange={(event) => {
-          setContent(event.target.value);
-          if (error) setError(null);
-        }}
-        className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-[14px] leading-relaxed text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-      />
+    <div className="shrink-0 border-t border-slate-200 bg-white p-3">
+      <div className="relative">
+        <textarea
+          value={content}
+          rows={2}
+          maxLength={2000}
+          disabled={disabled}
+          placeholder={
+            busy ? '에이전트들이 답하는 중입니다…' : '예: 기술 서술이 충분한지 봐 주세요'
+          }
+          aria-label="에이전트에게 할 말"
+          onChange={(event) => {
+            setContent(event.target.value);
+            if (error) setError(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            if (!disabled) void submit();
+          }}
+          className="block min-h-[76px] w-full resize-none rounded-xl border border-slate-200 py-2 pl-3 pr-[92px] text-[14px] leading-relaxed text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+        />
+
+        <div className="absolute bottom-2 right-2 flex w-[76px] flex-col items-end gap-1">
+          <span className="text-[10px] tabular-nums text-slate-400">{content.length} / 2000</span>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={disabled}
+            className="rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          >
+            {sending ? '전송 중…' : busy ? '진행 중…' : '보내기'}
+          </button>
+        </div>
+      </div>
 
       {error && (
         <p role="alert" className="mt-1 text-[13px] font-medium text-red-600">
@@ -79,17 +98,6 @@ export function MessageComposer({ roomId, busy, onStarted, onConflict }: Message
         </p>
       )}
 
-      <div className="mt-2 flex items-center justify-between">
-        <span className="text-[11px] text-slate-400">{content.length} / 2000</span>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={disabled}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-        >
-          {sending ? '보내는 중…' : busy ? '진행 중…' : '보내기'}
-        </button>
-      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { CoverLetterHeader } from './CoverLetterHeader';
 
 const STASH_KEY = 'cover-letter:draft';
 const POSTING_STASH_KEY = 'cover-letter:posting';
+const COVER_LETTER_LIST_URL = '/cover-letters#my-cover-letters';
 
 const blankInput = (): CoverLetterInput => ({
   title: '',
@@ -111,7 +112,7 @@ function NewWorkspace() {
         isLoggedIn={!!user}
         onSave={onSave}
         onReview={onReview}
-        onBack={user ? () => navigate('/cover-letters') : undefined}
+        onBack={user ? () => navigate(COVER_LETTER_LIST_URL) : undefined}
       />
     </WorkspaceShell>
   );
@@ -187,7 +188,7 @@ function ExistingLoaded({ id }: { id: number }) {
           {notFound ? (
             <InlineNotice>
               자소서를 찾을 수 없습니다.{' '}
-              <button className="ml-2 font-semibold text-blue-600" onClick={() => navigate('/cover-letters')} type="button">
+              <button className="ml-2 font-semibold text-blue-600" onClick={() => navigate(COVER_LETTER_LIST_URL)} type="button">
                 목록으로
               </button>
             </InlineNotice>
@@ -206,7 +207,7 @@ function ExistingLoaded({ id }: { id: number }) {
           justSaved={justSaved}
           onSave={onSave}
           onReview={onReview}
-          onBack={() => navigate('/cover-letters')}
+          onBack={() => navigate(COVER_LETTER_LIST_URL)}
         />
       )}
     </WorkspaceShell>

@@ -1,6 +1,6 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
+import { SiteHeader } from '../../components/layout/SiteHeader';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { CoverLetterHeader } from '../cover-letter/CoverLetterHeader';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { RoomWorkspace } from '../../features/agent-room/RoomWorkspace';
 
@@ -13,7 +13,7 @@ export function AgentRoomPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <CoverLetterHeader />
+        <SiteHeader />
         <LoadingScreen />
       </div>
     );
@@ -24,8 +24,8 @@ export function AgentRoomPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <CoverLetterHeader />
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <SiteHeader />
+      <div className="mx-auto max-w-[1520px] px-5 py-6 lg:px-8">
         <Link to="/agent-rooms" className="text-[13px] font-medium text-slate-500 hover:text-slate-700">
           ← 검토 방 목록
         </Link>

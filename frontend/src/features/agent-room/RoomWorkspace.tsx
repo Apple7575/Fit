@@ -1,10 +1,7 @@
-import { CharacterSlot } from '../../components/brand/CharacterSlot';
-import { characterForAgent } from '../../components/brand/characters';
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type UIEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { isNotFound } from '../../api/client';
-import { agentSource } from './agentSource';
 import { DocumentPanel } from './DocumentPanel';
 import { MessageComposer } from './MessageComposer';
 import { MessageThread } from './MessageThread';
@@ -16,12 +13,14 @@ import type { Room } from './types';
 
 interface RoomWorkspaceProps {
   roomId: number;
-  /** 대화가 끝나 사이드바의 미리보기가 바뀌었을 때 알린다. */
+  coverLetterSelector?: ReactNode;
+  agentNavigation?: ReactNode;
+  /** 대화가 끝나 에이전트 목록의 미리보기가 바뀌었을 때 알린다. */
   onConversationChanged?: () => void;
 }
 
 /** 검토 방 한 개. 참여 에이전트와 대화. */
-export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspaceProps) {
+export function RoomWorkspace({ roomId, coverLetterSelector, agentNavigation, onConversationChanged }: RoomWorkspaceProps) {
   const { state: room, retry: reloadRoom } = useRoom(roomId);
   const { state: messages, reload: reloadMessages } = useLiveMessages(roomId);
   const [activeTurnId, setActiveTurnId] = useState<number | null>(null);
@@ -29,7 +28,7 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
   const turn = useTurnPolling(roomId, activeTurnId, () => {
     setActiveTurnId(null);
     reloadMessages();
-    // 마지막 대화 시각이 바뀌므로 방과 사이드바도 다시 읽는다.
+    // 마지막 대화 시각이 바뀌므로 방과 에이전트 목록도 다시 읽는다.
     reloadRoom();
     onConversationChanged?.();
   });
@@ -69,6 +68,8 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
   return (
     <RoomBody
       data={room.data}
+      coverLetterSelector={coverLetterSelector}
+      agentNavigation={agentNavigation}
       messages={messages}
       onStarted={setActiveTurnId}
       reloadMessages={reloadMessages}
@@ -79,9 +80,11 @@ export function RoomWorkspace({ roomId, onConversationChanged }: RoomWorkspacePr
   );
 }
 
-/** 방이 확정된 뒤의 본문. 자소서 원문은 여기서 한 번만 불러 두 자리에 나눠 준다 */
+/** 방이 확정된 뒤의 본문. 자소서 원문을 왼쪽에, 에이전트 대화를 오른쪽에 둔다. */
 function RoomBody({
   data,
+  coverLetterSelector,
+  agentNavigation,
   messages,
   turn,
   turnId,
@@ -90,6 +93,8 @@ function RoomBody({
   onStarted,
 }: {
   data: Room;
+  coverLetterSelector?: ReactNode;
+  agentNavigation?: ReactNode;
   messages: ReturnType<typeof useLiveMessages>['state'];
   turn: ReturnType<typeof useTurnPolling>;
   turnId: number | null;
@@ -97,11 +102,13 @@ function RoomBody({
   reloadMessages: () => void;
   onStarted: (id: number) => void;
 }) {
-  // 자소서 원문은 여기서 한 번만 부른다 (넓은 화면의 오른쪽 칸과 접이식 자리가 함께 쓴다)
+  const messageViewport = useRef<HTMLDivElement>(null);
+  const followLatestMessage = useRef(true);
+  const [chatOpen, setChatOpen] = useState(true);
+  const [closedAtMessageCount, setClosedAtMessageCount] = useState(0);
+  // 자소서 원문은 여기서 한 번만 부른다.
   const doc = useOptionalCoverLetter(data.coverLetter?.id ?? null);
   const agentNames = Object.fromEntries(data.agents.map((agent) => [agent.agentKey, agent.name]));
-  // 참여 못 하는 담당. 판단은 서버가 준 ready 하나만 쓴다 (실제로 도는 조건은 백엔드가 안다)
-  const idleAgents = data.agents.filter((agent) => !agent.ready);
 
   // 서버는 최신순으로 주는데 화면은 위에서 아래로 읽는다.
   const thread = messages.status === 'success' ? [...messages.data.messages].reverse() : [];
@@ -110,115 +117,119 @@ function RoomBody({
     turnId !== null ||
     thread.some((message) => message.status === 'PENDING' || message.status === 'RUNNING');
 
+  const lastMessage = thread.at(-1);
+  const waitingCount = (turn?.agents.length ?? 0) + (turn?.supervisor ? 1 : 0);
+  const unreadCount = Math.max(0, thread.length - closedAtMessageCount);
+
+  // 채팅을 처음 열거나 새 답을 기다리는 동안에는 최신 메시지를 보여 준다. 사용자가 이전
+  // 대화를 읽으려고 위로 올렸다면 자동으로 끌어내리지 않는다.
+  useEffect(() => {
+    const viewport = messageViewport.current;
+    if (!viewport || !followLatestMessage.current) return;
+    viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+  }, [chatOpen, lastMessage?.messageId, lastMessage?.status, waitingCount]);
+
+  const rememberScrollPosition = (event: UIEvent<HTMLDivElement>) => {
+    const viewport = event.currentTarget;
+    followLatestMessage.current =
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 80;
+  };
+
+  const handleStarted = (id: number) => {
+    followLatestMessage.current = true;
+    onStarted(id);
+  };
+
   return (
-    // 왼쪽은 대화, 오른쪽은 검토 중인 자소서 원문. 좁은 화면에서는 원문을 대화 위로 접어 둔다.
-    <div className="flex min-w-0 gap-5">
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <header>
-          <h2 className="text-[18px] font-semibold text-slate-800">{data.title}</h2>
-          <p className="mt-0.5 text-[13px] text-slate-500">
-            {data.coverLetter ? data.coverLetter.title : '연결된 자소서 없음'}
-            <span className="mx-1.5 text-slate-300">·</span>
-            에이전트 {data.agents.length}명
-            {data.jobContext && (
-              <>
-                <span className="mx-1.5 text-slate-300">·</span>
-                공고 {data.jobContext.companyName} {data.jobContext.positionName}
-              </>
-            )}
-          </p>
-        </header>
-
-        {/* 담당을 이름이 아니라 "무엇을 읽는지"로 소개한다 */}
-        <ul aria-label="참여 에이전트" className="grid gap-1.5 sm:grid-cols-2">
-          {data.agents.map((agent) => {
-            const source = agentSource(agent, data.jobContext);
-            const idle = !agent.ready;
-            return (
-              <li
-                className={`flex items-start gap-2 rounded-xl border px-3 py-2 ${
-                  idle ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white'
-                }`}
-                key={agent.agentKey}
-              >
-                <span className={`mt-0.5 shrink-0 ${idle ? 'opacity-50' : ''}`}>
-                  <CharacterSlot character={characterForAgent(agent.agentKey)} interactive={false} size={18} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className={`text-[12px] font-semibold ${idle ? 'text-slate-500' : 'text-slate-800'}`}>
-                      {agent.name}
-                    </span>
-                    {agent.auto && <span className="text-[11px] text-slate-400">자동</span>}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] break-keep text-slate-500">
-                    {source.reads}
-                  </span>
-                  {idle && (
-                    <span className="mt-0.5 block text-[11px] break-keep text-slate-400">{source.need}</span>
-                  )}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-
-        {/*
-          빠진 담당 안내. 이미 만들어진 방은 만들 때 정해진 자료를 그대로 쓰므로
-          (RoomService.defaultConfig 은 방 생성 때만 돈다) "자소서를 고치면 지금 방이 바뀐다"고
-          적으면 거짓말이 된다. 언제 반영되는지까지 적는다.
-        */}
-        {data.coverLetter && idleAgents.length > 0 && (
-          <p className="rounded-xl bg-slate-50 px-3 py-2 text-[12px] break-keep text-slate-500">
-            {idleAgents.map((agent) => agent.name).join(', ')}
-            은 지금 방에서 참여하지 않아요. 이 방은 만들 때 정해진 자료를 그대로 씁니다.{' '}
-            <Link className="font-semibold text-blue-600 hover:underline" to={`/cover-letters/${data.coverLetter.id}`}>
-              자소서 고치기
-            </Link>
-            를 누르면 다음에 여는 방부터 반영돼요.
-          </p>
-        )}
-
-        {messages.status === 'error' && (
-          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3">
-            <p className="text-[13px] font-medium text-red-700">{messages.error.message}</p>
-            <button
-              type="button"
-              onClick={reloadMessages}
-              className="mt-1 text-[12px] font-semibold text-red-700 underline"
-            >
-              다시 시도
-            </button>
-          </div>
-        )}
-
-        {data.coverLetter && (
-          <details className="rounded-2xl border border-slate-200 bg-white xl:hidden">
-            <summary className="cursor-pointer px-4 py-3 text-[13px] font-semibold text-slate-700">
-              검토 중인 자소서 보기
-            </summary>
-            <div className="border-t border-slate-100">
-              <DocumentPanel framed={false} retry={doc.retry} state={doc.state} />
-            </div>
-          </details>
-        )}
-
-        <MessageThread messages={thread} running={turn} agentNames={agentNames} />
-
-        <MessageComposer
-          roomId={roomId}
-          busy={busy}
-          onStarted={onStarted}
-          onConflict={reloadMessages}
-        />
-      </div>
-
+    <div
+      className={`min-w-0 transition-[padding] duration-300 ${
+        data.coverLetter && chatOpen ? 'xl:pr-[454px]' : ''
+      }`}
+    >
       {data.coverLetter && (
-        <aside className="hidden w-[340px] shrink-0 xl:block">
-          <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
-            <DocumentPanel retry={doc.retry} state={doc.state} />
+        <section className="min-w-0" aria-label="검토 중인 자소서">
+          <DocumentPanel retry={doc.retry} state={doc.state} />
+        </section>
+      )}
+
+      {chatOpen ? (
+        <aside
+          aria-label="AI 에이전트 피드백"
+          className="fixed inset-x-3 bottom-3 top-3 z-40 min-w-0 xl:inset-x-auto xl:bottom-6 xl:right-8 xl:top-14 xl:z-20 xl:w-[430px]"
+        >
+          <div className="hidden xl:absolute xl:top-4 xl:right-full xl:z-0 xl:block xl:translate-x-3">
+            {agentNavigation}
+          </div>
+
+          <div className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-2xl">
+            <div className="relative shrink-0 bg-slate-50 p-3">
+              {coverLetterSelector}
+              <button
+                type="button"
+                aria-label="AI 피드백 닫기"
+                onClick={() => {
+                  setClosedAtMessageCount(thread.length);
+                  setChatOpen(false);
+                }}
+                className="absolute right-5 top-4 z-10 grid h-7 w-7 place-items-center text-xl leading-none text-slate-400 transition hover:text-slate-800"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="shrink-0 border-b border-slate-200 bg-slate-50 px-3 pb-3 xl:hidden">
+              {agentNavigation}
+            </div>
+
+            <section aria-label="에이전트와 대화" className="flex min-h-0 flex-1 flex-col bg-white">
+
+            <div
+              ref={messageViewport}
+              onScroll={rememberScrollPosition}
+              className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60 px-4 py-4 overscroll-contain"
+            >
+              {messages.status === 'error' && (
+                <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3">
+                  <p className="text-[13px] font-medium text-red-700">{messages.error.message}</p>
+                  <button
+                    type="button"
+                    onClick={reloadMessages}
+                    className="mt-1 text-[12px] font-semibold text-red-700 underline"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              )}
+
+              <MessageThread messages={thread} running={turn} agentNames={agentNames} />
+            </div>
+
+            <MessageComposer
+              roomId={roomId}
+              busy={busy}
+              onStarted={handleStarted}
+              onConflict={reloadMessages}
+            />
+            </section>
           </div>
         </aside>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            followLatestMessage.current = true;
+            setChatOpen(true);
+          }}
+          className="fixed bottom-6 right-5 z-20 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-[14px] font-bold text-white shadow-xl transition hover:bg-blue-700 lg:right-8"
+        >
+          AI 피드백 열기
+          {unreadCount > 0 && (
+            <span className="grid min-w-5 place-items-center rounded-full bg-white px-1.5 py-0.5 text-[11px] text-blue-700">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+          {busy && unreadCount === 0 && <span className="h-2 w-2 animate-pulse rounded-full bg-white" />}
+        </button>
       )}
     </div>
   );
