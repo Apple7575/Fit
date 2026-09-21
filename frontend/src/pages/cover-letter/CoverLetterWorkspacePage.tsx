@@ -1,5 +1,5 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
@@ -104,8 +104,7 @@ function NewWorkspace() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <CoverLetterHeader />
+    <WorkspaceShell>
       <CoverLetterWorkspace
         initial={initial}
         initialPosting={initialPosting}
@@ -114,6 +113,28 @@ function NewWorkspace() {
         onReview={onReview}
         onBack={user ? () => navigate('/cover-letters') : undefined}
       />
+    </WorkspaceShell>
+  );
+}
+
+/**
+ * 쓰는 화면의 껍데기. 첫 화면을 영상에 내주므로 헤더와 서브바를 위로 치워 두고,
+ * 조금이라도 내리면 반투명 유리로 내려온다 — 기업 검색·자소서 첫 화면과 같다.
+ */
+function WorkspaceShell({ children }: { children: ReactNode }) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-950">
+      <CoverLetterHeader floating scrolled={scrolled} />
+      {children}
     </div>
   );
 }
@@ -157,15 +178,12 @@ function ExistingLoaded({ id }: { id: number }) {
     (state.error.status === 404 || state.error.code === 'COVER_LETTER_NOT_FOUND');
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <CoverLetterHeader />
+    <WorkspaceShell>
+      {state.status === 'loading' && <LoadingScreen />}
 
-      {state.status === 'loading' && (
-        <LoadingScreen />
-      )}
-
+      {/* 못 불러온 경우에는 영상을 깔지 않는다. 읽을 것이 안내 한 줄뿐이다 */}
       {state.status === 'error' && (
-        <div className="mx-auto max-w-6xl px-6 py-8">
+        <div className="mx-auto max-w-6xl px-6 pt-28 pb-8">
           {notFound ? (
             <InlineNotice>
               자소서를 찾을 수 없습니다.{' '}
@@ -191,6 +209,6 @@ function ExistingLoaded({ id }: { id: number }) {
           onBack={() => navigate('/cover-letters')}
         />
       )}
-    </div>
+    </WorkspaceShell>
   );
 }

@@ -37,6 +37,11 @@ async function confirmPosting(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByDisplayValue('삼성전자');
 }
 
+/** 한 화면에 한 가지만 둔다. AI 검토는 문항을 쓰는 화면에 있다. */
+async function goToItems(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: '문항 1' }));
+}
+
 describe('CoverLetterWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -112,6 +117,7 @@ describe('CoverLetterWorkspace', () => {
     );
     await confirmPosting(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
+    await goToItems(user);
 
     expect(screen.getByRole('button', { name: '공고 분석 중…' })).toBeDisabled();
     expect(onSave).not.toHaveBeenCalled();
@@ -125,6 +131,7 @@ describe('CoverLetterWorkspace', () => {
     const onReview = vi.fn().mockResolvedValue(undefined);
     render(<CoverLetterWorkspace initial={initial} isLoggedIn={false} onSave={vi.fn()} onReview={onReview} />);
     await confirmPosting(user);
+    await goToItems(user);
     await user.click(screen.getByRole('button', { name: 'AI 검토' }));
     expect(registerJobPosting).not.toHaveBeenCalled();
     expect(onReview.mock.calls[0][1]).toEqual({ url: 'https://jobs.example.com/1', sourceKey: 'key-1' });
@@ -136,6 +143,7 @@ describe('CoverLetterWorkspace', () => {
     vi.mocked(registerJobPosting).mockRejectedValue(new Error('AI unavailable'));
     render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={onReview} />);
     await confirmPosting(user);
+    await goToItems(user);
     await user.click(screen.getByRole('button', { name: 'AI 검토' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('채용공고 분석에 실패했습니다');
     expect(onReview).not.toHaveBeenCalled();
@@ -155,6 +163,7 @@ describe('CoverLetterWorkspace', () => {
       <CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={onReview} />,
     );
     await confirmPosting(user);
+    await goToItems(user);
     await user.click(screen.getByRole('button', { name: 'AI 검토' }));
 
     expect(registerJobPosting).toHaveBeenCalledWith(
