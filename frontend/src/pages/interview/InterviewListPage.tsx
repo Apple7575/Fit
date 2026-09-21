@@ -5,6 +5,7 @@ import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { CompanyLogo } from '../../features/company-summary/CompanyLogo';
 import { deleteInterview } from '../../features/interview/api';
+import { readDraft, relativeTime, type InterviewDraft } from '../../features/interview/draft';
 import { Icon } from '../../features/interview/icons';
 import { deleteByServerId, listServerIdsWithClips } from '../../features/interview/localVideo';
 import { useInterviews } from '../../features/interview/queries';
@@ -45,10 +46,13 @@ export function InterviewListPage() {
 }
 
 function ListBody() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { state, retry } = useInterviews();
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [localIds, setLocalIds] = useState<Set<number>>(new Set());
+  // 도중에 끊긴 면접이 있으면 "이어서 진행"을 띄운다. 초안은 이 브라우저에만 유저별로 남는다.
+  const [draft] = useState<InterviewDraft | null>(() => (user ? readDraft(user.id) : null));
   // 영상 위에서는 헤더를 투명하게 띄우고, 첫 화면을 벗어나면 흰 유리로 되돌린다
   const [scrolled, setScrolled] = useState(false);
 
@@ -130,8 +134,34 @@ function ListBody() {
               회사 자료로 만든 질문에 답하고, 말투와 자세까지 돌아봅니다. 녹화한 영상은 이 브라우저
               밖으로 나가지 않습니다.
             </p>
+            {/* 도중에 끊긴 면접이 있으면, 새 면접보다 먼저 이어서 진행할 길을 내준다 */}
+            {draft && (
+              <div className="mt-8 w-full max-w-md rounded-2xl bg-white/10 px-4 py-3 text-left ring-1 ring-white/25 backdrop-blur">
+                <p className="text-[12px] font-semibold text-white/60">진행 중이던 면접</p>
+                <p className="mt-0.5 truncate text-[14px] font-bold text-white">
+                  {draft.config.targetCompany || '모의 면접'}
+                  {draft.config.targetPosition && (
+                    <span className="font-medium text-white/70"> · {draft.config.targetPosition}</span>
+                  )}
+                </p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="text-[12px] text-white/50">{relativeTime(draft.updatedAt)} 중단</span>
+                  <button
+                    className="rounded-full bg-white px-4 py-1.5 text-[13px] font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
+                    onClick={() => navigate('/interviews/new?resume=1')}
+                    type="button"
+                  >
+                    이어서 진행하기
+                  </button>
+                </div>
+              </div>
+            )}
             <button
-              className="mt-8 flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
+              className={`flex items-center gap-2 rounded-full px-7 py-3 text-sm font-bold transition hover:-translate-y-0.5 hover:shadow-lg ${
+                draft
+                  ? 'mt-3 bg-white/10 text-white ring-1 ring-white/25 backdrop-blur hover:bg-white/20'
+                  : 'mt-8 bg-white text-slate-950'
+              }`}
               onClick={() => navigate('/interviews/new')}
               type="button"
             >

@@ -15,6 +15,12 @@ interface InterviewSessionProps {
   questions: GeneratedQuestion[];
   /** 로컬 녹화를 묶는 세션 id. 저장 후 서버 면접 id 와 매칭한다. */
   localSessionId: string;
+  /** 이어서 진행할 때 되살린 문항들(답변 포함). 없으면 questions 로 새로 시작한다. */
+  initialItems?: SessionItem[];
+  /** 이어서 진행할 때 되돌아갈 문항 위치. */
+  initialIdx?: number;
+  /** 문항이 끝나거나 넘어갈 때마다 진행 상황을 밖에 알린다(초안 저장용). */
+  onProgress?: (items: SessionItem[], idx: number) => void;
   onFinish: (items: SessionItem[]) => void;
   onExit: () => void;
 }
@@ -25,7 +31,16 @@ type FupStatus = 'idle' | 'loading' | 'result' | 'empty' | 'error';
 const PREP_SECONDS = 3;
 
 /** 영상 면접 진행. 문항별 웹캠 녹화 + 실시간 STT. 답변 후 옵션으로 꼬리질문을 받는다. 영상은 이 브라우저에만 저장된다. */
-export function InterviewSession({ config, questions, localSessionId, onFinish, onExit }: InterviewSessionProps) {
+export function InterviewSession({
+  config,
+  questions,
+  localSessionId,
+  initialItems,
+  initialIdx,
+  onProgress,
+  onFinish,
+  onExit,
+}: InterviewSessionProps) {
   const { videoRef, status, stream } = useWebcam();
   const speech = useSpeech();
   const recorder = useRecorder(stream);
@@ -33,9 +48,12 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
   const vision = useVision(videoRef);
 
   const [queue, setQueue] = useState<SessionItem[]>(() =>
-    questions.map((q) => ({ question: q.question, sourceType: q.sourceType, transcript: '', isFollowup: false })),
+    initialItems && initialItems.length > 0
+      ? initialItems
+      : questions.map((q) => ({ question: q.question, sourceType: q.sourceType, transcript: '', isFollowup: false })),
   );
-  const [idx, setIdx] = useState(0);
+  // 되살린 위치. 큐 밖을 가리키면(데이터 어긋남) 마지막 문항으로 눌러 담는다.
+  const [idx, setIdx] = useState(() => Math.min(Math.max(initialIdx ?? 0, 0), Math.max(queue.length - 1, 0)));
   // 카메라·마이크를 먼저 확인한 뒤 첫 질문으로 넘어간다
   const [checked, setChecked] = useState(false);
   const [phase, setPhase] = useState<Phase>('ready');
@@ -157,6 +175,8 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
     } catch {
       /* 저장 실패(용량 초과 등)는 무시 — 분석에는 영향 없음 */
     }
+    // 답한 내용을 초안에 남긴다. 여기서 끊겨도 이 문항까지는 되살아난다(녹화는 위에서 IndexedDB 에 저장됨).
+    onProgress?.(queue, idx);
     // 꼬리질문은 자동 생성하지 않는다. 사용자가 음성 인식 오류를 직접 고친 뒤 버튼으로 요청한다(requestFollowupNow).
   };
 
@@ -211,15 +231,16 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
     if (!fup) return;
     followed.current.add(idx);
     const item: SessionItem = { question: fup.question, sourceType: 'followup', transcript: '', isFollowup: true };
-    setQueue((prev) => {
-      const next = prev.slice();
-      next.splice(idx + 1, 0, item);
-      return next;
-    });
+    // 다음 초안 저장에 그대로 넘길 수 있도록 새 큐를 미리 만든다.
+    const nextQueue = queue.slice();
+    nextQueue.splice(idx + 1, 0, item);
+    setQueue(nextQueue);
     cancelFollowup();
     setConfirmed(false);
-    setIdx(idx + 1);
+    const nextIdx = idx + 1;
+    setIdx(nextIdx);
     setPhase('ready');
+    onProgress?.(nextQueue, nextIdx);
   };
 
   const next = () => {
@@ -228,8 +249,10 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
     if (isLast) {
       onFinish(queue);
     } else {
-      setIdx(idx + 1);
+      const nextIdx = idx + 1;
+      setIdx(nextIdx);
       setPhase('ready');
+      onProgress?.(queue, nextIdx);
     }
   };
 
