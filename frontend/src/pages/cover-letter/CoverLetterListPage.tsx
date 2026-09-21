@@ -1,6 +1,6 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { deleteCoverLetter } from '../../features/cover-letter/api';
 import { useCoverLetters } from '../../features/cover-letter/queries';
@@ -31,25 +31,99 @@ export function CoverLetterListPage() {
     );
   }
 
-  // 게스트는 목록이 없다 — 바로 작성 화면으로 보낸다.
-  if (!user) return <Navigate replace to="/cover-letters/new" />;
-
-  return <ListBody />;
+  /*
+   * 게스트도 이 화면을 본다. 전에는 바로 작성 화면으로 보냈는데, 그러면 무엇을 해 주는
+   * 서비스인지 한 번도 못 보고 빈 입력칸부터 만나게 된다. 목록만 없고 화면은 같다.
+   */
+  return user ? <MemberHome /> : <GuestHome />;
 }
 
-function ListBody() {
+/** 로그인 전. 목록 조회를 하지 않는다 — 401 이 나면 전역 처리가 로그인으로 튕긴다 */
+function GuestHome() {
   const navigate = useNavigate();
-  const { state, retry } = useCoverLetters();
-  const [confirmingId, setConfirmingId] = useState<number | null>(null);
-  // 영상 위에서는 헤더와 서브바를 치워 두고, 첫 화면을 벗어나면 흰 유리로 되돌린다
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled] = useScrolled();
 
+  return (
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <CoverLetterHeader floating scrolled={scrolled} />
+      <Hero hasBelow={false} onNew={() => navigate('/cover-letters/new', { state: { fresh: true } })}>
+        <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] break-keep text-white/50">
+          로그인 없이도 써 볼 수 있어요. 로그인하면 쓰던 자소서가 여기에 남습니다.
+        </p>
+      </Hero>
+    </div>
+  );
+}
+
+/** 영상 위에서는 헤더와 서브바를 치워 두고, 첫 화면을 벗어나면 흰 유리로 되돌린다 */
+function useScrolled(): [boolean, (v: boolean) => void] {
+  const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+  return [scrolled, setScrolled];
+}
+
+/** 첫 화면 한 장. 아래에 붙는 내용(내 자소서 또는 안내)은 children 으로 받는다 */
+function Hero({
+  hasBelow,
+  onNew,
+  children,
+}: {
+  /** 아래에 내용이 이어지는지. 없으면 어둡게 끝낸다 */
+  hasBelow: boolean;
+  onNew: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <section className="relative isolate overflow-hidden bg-slate-950 text-white">
+      <div aria-hidden="true" className="absolute inset-0">
+        <video
+          autoPlay
+          className="size-full object-cover"
+          loop
+          muted
+          playsInline
+          poster={HERO_POSTER}
+          preload="metadata"
+          src={HERO_VIDEO}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/80" />
+        <div
+          className={`absolute inset-x-0 bottom-0 h-52 bg-gradient-to-b from-transparent ${
+            hasBelow ? 'via-slate-950/80 to-slate-50' : 'to-slate-950'
+          }`}
+        />
+      </div>
+
+      <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-28 pb-16">
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <h1 className="display-lg text-balance">회사의 언어로 다시 씁니다</h1>
+          <p className="mt-3 max-w-[46ch] text-[15px] break-keep text-white/70">
+            쓰던 자소서를 올리면 코치 다섯이 각자 맡은 자료로 읽고 고칠 곳을 짚어 줍니다.
+          </p>
+          <button
+            className="mt-8 rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
+            onClick={onNew}
+            type="button"
+          >
+            새 자소서 쓰기
+          </button>
+        </div>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function MemberHome() {
+  const navigate = useNavigate();
+  const { state, retry } = useCoverLetters();
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [scrolled] = useScrolled();
 
   const remove = async (id: number) => {
     setConfirmingId(null);
@@ -68,76 +142,44 @@ function ListBody() {
       <CoverLetterHeader floating scrolled={scrolled} />
 
       {/* 화면 한 장이 쓰는 자리. 기업 검색·모의 면접 첫 화면과 같은 짜임이다 */}
-      <section className="relative isolate overflow-hidden bg-slate-950 text-white">
-        <div aria-hidden="true" className="absolute inset-0">
-          <video
-            autoPlay
-            className="size-full object-cover"
-            loop
-            muted
-            playsInline
-            poster={HERO_POSTER}
-            preload="metadata"
-            src={HERO_VIDEO}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/80" />
-          <div
-            className={`absolute inset-x-0 bottom-0 h-52 bg-gradient-to-b from-transparent ${
-              hasBelow ? 'via-slate-950/80 to-slate-50' : 'to-slate-950'
-            }`}
-          />
-        </div>
+      <Hero
+        hasBelow={hasBelow}
+        onNew={() => navigate('/cover-letters/new', { state: { fresh: true } })}
+      >
+        {/* 내 자소서를 첫 화면에서 바로 연다. 아래로 내려가서 찾게 하지 않는다 */}
+        {onHero.length > 0 && (
+          <section aria-labelledby="hero-list-title" className="mt-10 border-t border-white/15 pt-6">
+            <div className="flex items-baseline justify-center gap-3">
+              <p className="text-[12px] font-semibold text-white/50" id="hero-list-title">
+                내 자기소개서
+              </p>
+              {overflow && (
+                <button
+                  className="text-[12px] font-semibold text-white/50 transition hover:text-white"
+                  onClick={() => glideToElement(LIST_ID, 106)}
+                  type="button"
+                >
+                  전체 {all.length}개 보기 ↓
+                </button>
+              )}
+            </div>
+            <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {onHero.map((letter) => (
+                <li key={letter.id}>
+                  <HeroCard letter={letter} onOpen={() => navigate(`/cover-letters/${letter.id}`)} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-        <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-28 pb-16">
-          <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <h1 className="display-lg text-balance">회사의 언어로 다시 씁니다</h1>
-            <p className="mt-3 max-w-[46ch] text-[15px] break-keep text-white/70">
-              쓰던 자소서를 올리면 코치 다섯이 각자 맡은 자료로 읽고 고칠 곳을 짚어 줍니다.
-            </p>
-            <button
-              className="mt-8 rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
-              onClick={() => navigate('/cover-letters/new', { state: { fresh: true } })}
-              type="button"
-            >
-              새 자소서 쓰기
-            </button>
-          </div>
-
-          {/* 내 자소서를 첫 화면에서 바로 연다. 아래로 내려가서 찾게 하지 않는다 */}
-          {onHero.length > 0 && (
-            <section aria-labelledby="hero-list-title" className="mt-10 border-t border-white/15 pt-6">
-              <div className="flex items-baseline justify-center gap-3">
-                <p className="text-[12px] font-semibold text-white/50" id="hero-list-title">
-                  내 자기소개서
-                </p>
-                {overflow && (
-                  <button
-                    className="text-[12px] font-semibold text-white/50 transition hover:text-white"
-                    onClick={() => glideToElement(LIST_ID, 106)}
-                    type="button"
-                  >
-                    전체 {all.length}개 보기 ↓
-                  </button>
-                )}
-              </div>
-              <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {onHero.map((letter) => (
-                  <li key={letter.id}>
-                    <HeroCard letter={letter} onOpen={() => navigate(`/cover-letters/${letter.id}`)} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {state.status === 'success' && all.length === 0 && (
-            <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] break-keep text-white/50">
-              아직 저장된 자소서가 없습니다. 채용공고 주소를 넣으면 지원 회사와 직무를 대신 채워
-              드려요.
-            </p>
-          )}
-        </div>
-      </section>
+        {state.status === 'success' && all.length === 0 && (
+          <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] break-keep text-white/50">
+            아직 저장된 자소서가 없습니다. 채용공고 주소를 넣으면 지원 회사와 직무를 대신 채워
+            드려요.
+          </p>
+        )}
+      </Hero>
 
       {/* 첫 화면에 다 담기는 동안에는 그리지 않는다 */}
       {hasBelow && (
