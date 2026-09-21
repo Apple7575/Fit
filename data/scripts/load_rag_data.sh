@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# export_rag_data.sh 가 만든 파일을 서비스 DB 에 적재한다.
+# export_rag_data.py 가 만든 파일을 서비스 DB 에 적재한다.
 #
 #   bash data/scripts/load_rag_data.sh <파일 디렉터리> --container <pg 컨테이너> [--db company_analysis] [--user ssafy]
 #   bash data/scripts/load_rag_data.sh <파일 디렉터리> --url postgresql://user:pw@host:5432/company_analysis
