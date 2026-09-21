@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import type { CompanyDetail } from '../../features/company-detail/api';
 import { useCompanyProfile } from '../../features/company-profile/useCompanyProfile';
@@ -46,24 +46,44 @@ const NEXT_SCREEN = 'snap-start scroll-mt-[108px] pb-16';
 export function CompanyOverviewTab() {
   const { corpCode, detailState, retryDetail } = useOutletContext<CompanyDetailOutletContext>();
 
+  /*
+   * 없는 기업이거나 코드 모양이 틀린 경우. 4xx 는 전부 "이 주소로는 볼 수 없다" 는 뜻이라
+   * 다시 시도를 권하지 않는다 (주소를 손으로 바꿔 들어오는 경우가 실제로 있다).
+   */
   const notFound =
     detailState.status === 'error' &&
-    (detailState.error.status === 404 || detailState.error.code === 'COMPANY_NOT_FOUND');
+    (detailState.error.code === 'COMPANY_NOT_FOUND' ||
+      (detailState.error.status >= 400 && detailState.error.status < 500));
   const detail = detailState.status === 'success' ? detailState.data : null;
 
   return (
     <div className="space-y-8">
-      {detailState.status === 'error' && (
+      {/*
+        없는 기업이면 사진 한 장을 내주지 않는다. 볼 것이 없는데 화면만 크게 차지하고,
+        스냅이 한 칸 내려가면서 안내를 지나쳐 버린다. 대신 돌아갈 길을 준다.
+      */}
+      {notFound && (
+        <div className={`${SHELL} py-24 text-center`}>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-950">
+            이 기업을 찾을 수 없습니다
+          </h1>
+          <p className="mx-auto mt-2 max-w-[42ch] text-sm break-keep text-slate-500">
+            주소의 기업코드({corpCode})가 맞는지 확인해 주세요. 회사 이름으로 찾으면 더 빠릅니다.
+          </p>
+          <Link
+            className="mt-6 inline-block rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-slate-700"
+            to="/companies"
+          >
+            기업 검색으로
+          </Link>
+        </div>
+      )}
+
+      {detailState.status === 'error' && !notFound && (
         <div className={`${SHELL} pt-6`}>
-          {notFound ? (
-            <InlineNotice>
-              기업 정보를 찾을 수 없습니다. 기업코드({corpCode})를 확인해 주세요.
-            </InlineNotice>
-          ) : (
-            <InlineNotice onRetry={retryDetail}>
-              기업 기본정보를 불러오지 못했습니다. {detailState.error.message}
-            </InlineNotice>
-          )}
+          <InlineNotice onRetry={retryDetail}>
+            기업 기본정보를 불러오지 못했습니다. {detailState.error.message}
+          </InlineNotice>
         </div>
       )}
 
@@ -73,8 +93,6 @@ export function CompanyOverviewTab() {
           <span className="sr-only">기업 기본정보를 불러오는 중입니다</span>
         </section>
       )}
-
-      {notFound && <CompanyHero corpCode={corpCode} description={null} detail={null} metrics={null} tagline={null} />}
 
       {!notFound && detailState.status !== 'loading' && (
         <SummaryBody corpCode={corpCode} detail={detail} />

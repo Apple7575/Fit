@@ -4,6 +4,10 @@ import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { CHARACTER_BY_KEY, COACHES, type CharacterKey } from '../../components/brand/characters';
 import { prefersReducedMotion, useInView } from '../../hooks/useInView';
 
+/** 자소서 화면과 같은 영상. 랜딩에서 본 장면이 그 화면에서 다시 나온다 */
+const HERO_VIDEO = '/cover-letter-media/hero.mp4';
+const HERO_POSTER = '/cover-letter-media/hero.jpg';
+
 interface Line {
   who: CharacterKey | 'user';
   text: string;
@@ -88,21 +92,36 @@ export function AgentDemo() {
   return (
     <section
       aria-labelledby="agent-title"
-      className="snap-start flex min-h-screen items-center bg-white pt-14"
+      className="relative isolate snap-start flex min-h-screen items-center overflow-hidden bg-slate-950 pt-14 text-white"
       id="agents"
       ref={ref}
     >
-      <div className="mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_1.1fr]">
+      {/* 자소서 화면이 쓰는 영상 그대로. 같은 영상이 두 곳에 나오면 "아까 그 화면" 으로 이어진다 */}
+      <div aria-hidden="true" className="absolute inset-0">
+        <video
+          autoPlay
+          className="size-full object-cover"
+          loop
+          muted
+          playsInline
+          poster={HERO_POSTER}
+          preload="metadata"
+          src={HERO_VIDEO}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950/88 via-slate-950/78 to-slate-950/90" />
+      </div>
+
+      <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_1.1fr]">
         <div>
-          <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-blue-600">
+          <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-white/50">
             Review room
           </p>
-          <h2 className="display-lg text-balance text-slate-950" id="agent-title">
+          <h2 className="display-lg text-balance" id="agent-title">
             자소서 하나에
             <br />
             코치 다섯이 붙습니다.
           </h2>
-          <p className="body-lg mt-5 max-w-[40ch] text-slate-600">
+          <p className="body-lg mt-5 max-w-[40ch] text-white/70">
             채용공고·기업·뉴스·포지션·글쓰기 담당이 각자 관점으로 답하고, 반장이 근거 순서로
             정리합니다. 감이 아니라 사업보고서와 뉴스에서 찾은 근거로요.
           </p>
@@ -112,7 +131,7 @@ export function AgentDemo() {
               <Fragment key={coach.key}>
                 {/* 넷·하나로 갈라지면 아랫줄이 허전하다. 넷째 앞에서 줄을 바꿔 셋·둘로 나눈다 */}
                 {i === 3 && <li aria-hidden="true" className="basis-full" />}
-                <li className="inline-flex items-center gap-2 rounded-full bg-slate-50 py-1 pl-1 pr-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-200">
+                <li className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1 pl-1 pr-3 text-sm font-semibold text-white/80 ring-1 ring-white/20 backdrop-blur">
                   <CharacterSlot character={coach.key} interactive={false} size={26} />
                   {coach.role}
                 </li>
@@ -120,7 +139,7 @@ export function AgentDemo() {
             ))}
           </ul>
           <Link
-            className="mt-8 inline-flex items-center gap-1 rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[var(--shadow-lift)]"
+            className="mt-8 inline-flex items-center gap-1 rounded-full bg-white px-6 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
             to="/cover-letters/new"
           >
             자소서 써 보기 <span aria-hidden="true">›</span>
@@ -130,7 +149,7 @@ export function AgentDemo() {
         {/* 대화 창 */}
         <div
           aria-label="검토 방 대화 예시"
-          className="relative overflow-hidden rounded-[var(--radius-card)] bg-slate-50 p-4 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70 sm:p-6"
+          className="relative overflow-hidden rounded-[var(--radius-card)] bg-white p-4 shadow-2xl ring-1 ring-white/20 sm:p-6"
           role="img"
         >
           <div className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -140,7 +159,11 @@ export function AgentDemo() {
               <span className="size-1.5 animate-pulse rounded-full bg-blue-600" /> 답하는 중
             </span>
           </div>
-          <ul className="flex min-h-[420px] flex-col justify-end gap-3">
+          {/*
+            대화가 쌓이면 이 칸이 화면보다 길어져, 스크롤해도 다음 장으로 넘어가지 않았다
+            (한 장씩 넘기는 스냅이 걸리지 않는다). 높이를 묶고 안에서만 흐르게 한다.
+          */}
+          <ul className="flex h-[clamp(220px,38svh,420px)] flex-col justify-end gap-3 overflow-hidden">
             {SCRIPT.slice(0, shown).map((line, i) => (
               <ChatLine key={i} line={line} />
             ))}

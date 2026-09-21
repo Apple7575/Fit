@@ -1,6 +1,7 @@
 import { useId, useRef } from 'react';
 import { niceTicks, symmetricTicks, useContainerWidth } from './chartMath';
 import { ChartTooltip, useChartHover } from './ChartTooltip';
+import { lineSegments } from './lineSegments';
 
 export interface BarLinePoint {
   label: string;
@@ -66,17 +67,8 @@ export function BarLineChart({
   const rMax = hasRates ? rTicks[rTicks.length - 1] : 1;
   const yOfRate = (r: number) => PAD.top + rateH / 2 - (r / (rMax || 1)) * (rateH / 2);
 
-  // 증가율 선: null 에서 끊는다
-  const segments: string[] = [];
-  let current: string[] = [];
-  points.forEach((p, i) => {
-    if (p.rate !== null) current.push(`${xCenter(i)},${yOfRate(p.rate)}`);
-    else if (current.length) {
-      segments.push(current.join(' '));
-      current = [];
-    }
-  });
-  if (current.length) segments.push(current.join(' '));
+  // 증가율 선: 값이 없는 해는 건너뛰고 잇되, 건너뛴 구간은 점선으로 구분한다
+  const rateLine = lineSegments(points.map((p) => p.rate), xCenter, yOfRate);
 
   /** 막대 안이거나 증가율 점 가까이일 때만 값을 보여 준다 */
   const hitTest = (x: number, y: number) => {
@@ -239,7 +231,20 @@ export function BarLineChart({
           );
         })}
 
-        {segments.map((pts) => (
+        {rateLine.bridges.map((pts) => (
+          <polyline
+            className="stroke-sky-400"
+            data-testid="line-bridge"
+            fill="none"
+            key={pts}
+            points={pts}
+            strokeDasharray="4 4"
+            strokeLinecap="round"
+            strokeOpacity={0.55}
+            strokeWidth={2}
+          />
+        ))}
+        {rateLine.solid.map((pts) => (
           <polyline
             className="stroke-sky-400"
             fill="none"

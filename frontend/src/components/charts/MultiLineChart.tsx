@@ -1,4 +1,5 @@
 import { useId, useRef } from 'react';
+import { lineSegments } from './lineSegments';
 import { niceTicks, useContainerWidth } from './chartMath';
 import { ChartTooltip, useChartHover } from './ChartTooltip';
 
@@ -50,19 +51,10 @@ export function MultiLineChart({
   const vMax = ticks[ticks.length - 1];
   const yOf = (v: number) => PAD.top + PLOT_H - ((v - vMin) / (vMax - vMin || 1)) * PLOT_H;
 
-  const segmentsOf = (s: LineSeries) => {
-    const out: string[] = [];
-    let cur: string[] = [];
-    s.points.forEach((p, i) => {
-      if (p.y !== null) cur.push(`${xOf(i)},${yOf(p.y)}`);
-      else if (cur.length) {
-        out.push(cur.join(' '));
-        cur = [];
-      }
-    });
-    if (cur.length) out.push(cur.join(' '));
-    return out;
-  };
+  // 중간 해의 값이 없어도 선을 끊지 않는다. 건너뛴 구간만 점선으로 구분한다
+  const segmentsOf = (s: LineSeries) =>
+    lineSegments(s.points.map((p) => p.y), xOf, yOf);
+  const hasGap = series.some((s) => segmentsOf(s).bridges.length > 0);
 
   /** 어느 점 가까이인지. 가로로 가깝고, 그 해의 어떤 선 위에라도 세로로 가까워야 한다 */
   const hitTest = (x: number, y: number) => {
@@ -140,7 +132,20 @@ export function MultiLineChart({
 
         {series.map((s) => (
           <g data-series={s.label} data-testid="line-series" key={s.label}>
-            {segmentsOf(s).map((pts) => (
+            {segmentsOf(s).bridges.map((pts) => (
+              <polyline
+                data-testid="line-bridge"
+                fill="none"
+                key={pts}
+                points={pts}
+                stroke={s.color}
+                strokeDasharray="4 4"
+                strokeLinecap="round"
+                strokeOpacity={0.55}
+                strokeWidth={s.emphasis ? 3 : 2}
+              />
+            ))}
+            {segmentsOf(s).solid.map((pts) => (
               <polyline
                 fill="none"
                 key={pts}
@@ -205,6 +210,16 @@ export function MultiLineChart({
             </li>
           );
         })}
+        {/* 점선이 있으면 왜 있는지 말해 준다. 그냥 이어 놓으면 없는 값을 있는 것처럼 읽는다 */}
+        {hasGap && (
+          <li className="inline-flex items-center gap-1.5 text-slate-400">
+            <span
+              aria-hidden="true"
+              className="inline-block h-0 w-4 border-t-2 border-dashed border-slate-400"
+            />
+            값이 없는 해를 건너뛴 구간
+          </li>
+        )}
       </ul>
 
       <table className="sr-only" id={tableId}>

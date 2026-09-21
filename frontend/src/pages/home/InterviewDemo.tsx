@@ -4,6 +4,10 @@ import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { MediaSlot } from '../../components/brand/MediaSlot';
 import { prefersReducedMotion, useInView } from '../../hooks/useInView';
 
+/** 모의 면접 화면과 같은 영상 */
+const HERO_VIDEO = '/interview-media/hero.mp4';
+const HERO_POSTER = '/interview-media/hero.jpg';
+
 const QUESTIONS = [
   {
     tag: '회사 데이터',
@@ -95,11 +99,26 @@ export function InterviewDemo() {
   return (
     <section
       aria-labelledby="interview-title"
-      className="snap-start flex min-h-screen items-center bg-slate-950 pt-14 text-white"
+      className="relative isolate snap-start flex min-h-screen items-center overflow-hidden bg-slate-950 pt-14 text-white"
       id="interview"
       ref={ref}
     >
-      <div className="mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_1fr]">
+      {/* 모의 면접 화면이 쓰는 영상 그대로. 빈 의자가 이 구획의 뜻을 그대로 말한다 */}
+      <div aria-hidden="true" className="absolute inset-0">
+        <video
+          autoPlay
+          className="size-full object-cover"
+          loop
+          muted
+          playsInline
+          poster={HERO_POSTER}
+          preload="metadata"
+          src={HERO_VIDEO}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950/88 via-slate-950/78 to-slate-950/92" />
+      </div>
+
+      <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_1fr]">
         {/* 면접 화면 목업 */}
         <div
           aria-label="모의 면접 화면 예시"
