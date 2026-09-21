@@ -83,7 +83,7 @@ company,homepage_url,15,VARCHAR(300),YES,,,,DART 기업개황 hm_url. 기업 헤
 company_activity,id,1,BIGINT,NO,PK,,,대리 키. DB 가 생성하며 시드 CSV 에 넣지 않는다,database,,identity,1,no,
 company_activity,corp_code,2,VARCHAR(8),NO,FK,company,corp_code,DART 고유번호 8자리,opendart,company.corp_code,raw,00126380,no,
 company_activity,fiscal_year,3,SMALLINT,NO,,,,사업연도. 원천이 사건이 아니라 연도별 기말 잔액 스냅샷이라 확정 ERD 의 started_on·ended_on 대신 이 축을 쓴다 (S15P21A504-120 합의),opendart,,derived:사업연도,2025,no,
-company_activity,activity_type,4,VARCHAR(20),NO,,,,API 의 type 파라미터 값과 같다. facility/corporate_invest/ma/transfer,opendart,,constant,facility,no,facility/corporate_invest/ma/transfer. API 의 type 파라미터 값과 같다
+company_activity,activity_type,4,VARCHAR(20),NO,,,,API 의 type 파라미터 값과 같다. facility/corporate_invest/ma/transfer,opendart,,constant,facility,no,우리가 쓰는 값은 facility·corporate_invest 둘이다. API 의 type 파라미터에는 ma·transfer 도 있지만 2026-09-21 에 수집하지 않기로 했다 (원천이 주요사항보고서다)
 company_activity,field_name,5,VARCHAR(200),YES,,,,투자 분야. 예: 파운드리. 미기재는 NULL,opendart,주요사항보고서,derived:추출 결과,파운드리,no,
 company_activity,purpose,6,VARCHAR(500),YES,,,,투자 목적. 예: 미국 테일러 공장 생산능력 확대. 미기재는 NULL,opendart,주요사항보고서,derived:추출 결과,미국 테일러 공장 생산능력 확대,no,
 company_activity,amount,7,"NUMERIC(24,4)",YES,,,,금액(원). 미공시는 NULL 이며 0 과 다른 사실이다,opendart,주요사항보고서,derived:원 단위,44000000000000,no,
@@ -244,9 +244,9 @@ news_article,id,1,BIGINT,NO,PK,,,목록 key · 상세 이동 · /news/top 연결
 news_article,corp_code,2,VARCHAR(8),NO,"FK,UK",company,corp_code,이 뉴스를 붙인 기업. DART 고유번호 8자리,derived,requests.json:query → staged.corp_code,derived:검색어를 company_universe.csv 의 corp_name·dart_corp_name 과 정확·정규화 일치로 매핑,00126380,no,RSS 에 기업 식별자가 없다. 매핑 실패 행은 시드에 넣지 않고 사유를 남긴다
 news_article,title,3,VARCHAR(500),NO,,,,기사 제목. 응답의 title,google_news_rss,rss:item/title → staged.title,derived:끝의 ' - <언론사>' 접미사만 제거,"삼성전자, 테일러 공장 가동",possible,기사 제목에 인물명이 들어올 수 있다. 제3자 저작물이므로 저장·표시 조건 확인 필요
 news_article,published_at,5,TIMESTAMPTZ,YES,,,,기사 발행 시각. 응답에는 서울 기준 날짜(YYYY-MM-DD)로 나간다. NULL 이면 기간 조회에 걸리지 않아 세 API 어디에도 나가지 않는다,google_news_rss,rss:item/pubDate → staged.published_at,derived:RFC 2822 → UTC ISO 8601. 시간대 누락은 NULL,2026-09-05T23:30:00+00:00,no,"저장은 UTC, 기간 구분은 KST(staged.published_date_kst), 응답은 서울 기준 날짜"
-news_article,original_url,6,VARCHAR(1000),YES,,,,언론사 직접 원문 URL. 확보하지 못하면 NULL,google_news_rss,rss:item/link → staged.original_url,derived:Google 경유 주소가 아닌 외부 링크만 후보로 남긴다,https://n.example/article/1,no,Google 경유 rss_link 를 여기 넣지 않는다. 외부 링크도 접근 검증 전 후보다
+news_article,original_url,6,VARCHAR(1000),YES,,,,기사 링크. 실제로는 구글 뉴스 링크가 들어간다 — 원문 주소로 푸는 세 방법(오프라인 해독·리다이렉트 추적·구글 내부 API)이 2026-09-21 실측에서 모두 실패했다. 매체명은 source 에 있다,google_news_rss,rss:item/link → staged.original_url,derived:Google 경유 주소가 아닌 외부 링크만 후보로 남긴다,https://n.example/article/1,no,Google 경유 rss_link 를 여기 넣지 않는다. 외부 링크도 접근 검증 전 후보다
 news_article,source,7,VARCHAR(50),YES,,,,수집 출처. 확정 ERD 에 없던 컬럼이고 Notion 에 함께 반영한다,google_news_rss,rss:item/source → staged.publisher,derived:기본 publisher,테스트일보,no,합의 필요 — 컬럼이 하나뿐이라 provider(google_news_rss)와 publisher(언론사)를 함께 담을 수 없다. provider 컬럼 추가를 제안한다
-news_article,importance_score,10,"NUMERIC(3,1)",YES,,,,AI 중요도 0.0~10.0. 프론트 목업 기준 소수 한 자리다. 분석 실패는 NULL 이고 0 과 다른 사실이다,ai_analysis,,미적재,,no,0~10. NULL 은 분석 실패이고 0 과 다른 사실이다
+news_article,importance_score,10,"NUMERIC(3,1)",YES,,,,AI 중요도 0.0~10.0. 2026-09-21 에 AI 분석을 채택하지 않기로 해서 항상 NULL 이다,ai_analysis,,미적재,,no,2026-09-21 에 AI 분석을 채택하지 않기로 해서 항상 NULL 이다 — 무관한 기사를 관련 있다고 판정한 비율이 19% 였다
 news_article,collected_at,12,TIMESTAMPTZ,NO,,,,원본을 받은 시각,google_news_rss,requests.json:checked_at → staged.collected_at,raw,2026-09-06T00:10:00+00:00,no,원본을 받은 시각. DB 기본값 now() 에 맡기지 않고 수집 시각을 넣는다
 news_article,guid,13,VARCHAR(500),YES,UK,,,Google 뉴스 RSS 가 기사마다 주는 식별자. 확정 ERD 의 중복 방지 키다,google_news_rss,rss:item/guid → staged.guid,raw,CBMiWmh0dHBzOi8vbi5leGFtcGxlL2FydGljbGUvMQ,no,"V17 이 더한 확정 ERD 의 중복 방지 키. UNIQUE (corp_code, guid) 가 걸려 있고, RSS 가 주지 않으면 NULL 이라 그 행끼리는 서로 충돌하지 않는다"
 rag_evidence,evidence_id,1,VARCHAR(96),NO,PK,,,,,,,,no,
