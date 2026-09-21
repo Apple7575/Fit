@@ -19,6 +19,22 @@ class FakeJdService:
         self.calls.append((context_id, documents))
         return {"context_id": context_id}
 
+    def get_context(self, context_id):
+        return {"company_name": "테스트", "position_name": "백엔드", "requirements": []}
+
+
+class FakeJdChatService:
+    def __init__(self, reply=None, error=None):
+        self.calls = []
+        self._reply = reply or {"message": "대화 답변"}
+        self._error = error
+
+    def respond(self, **kwargs):
+        self.calls.append(kwargs)
+        if self._error is not None:
+            raise self._error
+        return self._reply
+
 
 class FakePositionService:
     def __init__(self):
@@ -67,6 +83,53 @@ class FakeWritingService:
                 "warnings": [],
             },
         })
+
+
+class JdAgentAdapterTest(unittest.TestCase):
+    """채용공고 담당은 대조 결과 위에서 대화한다.
+
+    대조만 반복하면 무엇을 묻든 같은 말이 돌아온다 — 입력(공고·자소서)이 그대로이기 때문이다.
+    """
+
+    DOCUMENTS = [{"document_id": "essay", "document_type": "SELF_INTRO", "text": "내용"}]
+    CONTEXT = {"job_context_id": "jctx"}
+
+    def test_question_is_answered_on_top_of_the_analysis(self):
+        jd, chat = FakeJdService(), FakeJdChatService()
+
+        result = JdAgentAdapter(lambda: jd, lambda: chat).execute(
+            "이 공고에서 뭘 더 준비해야 하나요?",
+            self.DOCUMENTS,
+            [{"role": "USER", "content": "안녕"}],
+            self.CONTEXT,
+        )
+
+        self.assertEqual(result["message"], "대화 답변")
+        self.assertEqual(result["context_id"], "jctx")  # 대조 결과도 함께 남는다
+        self.assertEqual(chat.calls[0]["message"], "이 공고에서 뭘 더 준비해야 하나요?")
+        self.assertEqual(chat.calls[0]["history"], [{"role": "user", "content": "안녕"}])
+
+    def test_auto_review_keeps_the_analysis_as_is(self):
+        """물어본 것이 없으면 대조 결과가 곧 답이다."""
+        jd, chat = FakeJdService(), FakeJdChatService()
+
+        result = JdAgentAdapter(lambda: jd, lambda: chat).execute(
+            "", self.DOCUMENTS, [], self.CONTEXT
+        )
+
+        self.assertEqual(result, {"context_id": "jctx"})
+        self.assertEqual(chat.calls, [])
+
+    def test_chat_failure_falls_back_to_the_analysis(self):
+        """대화는 대조 결과 위에 얹는 것이다. 여기서 실패해도 대조 결과는 보여 준다."""
+        jd = FakeJdService()
+        chat = FakeJdChatService(error=RuntimeError("모델 죽음"))
+
+        result = JdAgentAdapter(lambda: jd, lambda: chat).execute(
+            "질문", self.DOCUMENTS, [], self.CONTEXT
+        )
+
+        self.assertEqual(result, {"context_id": "jctx"})
 
 
 class AgentRegistryTest(unittest.TestCase):
@@ -123,7 +186,9 @@ class AgentRegistryTest(unittest.TestCase):
                 "priority_requirements": ["Spring 기반 API 개발"],
             },
             position_documents,
-            [],
+            # 이번에 물은 것이 대화 끝에 붙는다. 이력만 넘기면 포지션 담당이 "무엇을 묻는지"
+            # 를 몰라 늘 같은 분석을 낸다.
+            [{"role": "USER", "content": "검토"}],
         )])
 
     def test_position_rejects_request_without_supported_documents(self):

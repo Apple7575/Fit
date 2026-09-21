@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol
 
@@ -5,6 +6,8 @@ from ai.news_intelligence.contracts import NewsAnalysisRequest
 from ai.position_coaching.render import render_position_message
 from ai.supervisor.contracts import AgentResult
 from ai.supervisor.feedback import normalize_writing_feedback
+
+LOGGER = logging.getLogger(__name__)
 from ai.writing_coaching.contracts import WritingMessageRequest
 
 
@@ -24,18 +27,57 @@ class SupervisorAgentAdapter(Protocol):
 
 
 class JdAgentAdapter:
+    """채용공고 담당. 공고 요구사항과 자소서를 대조하고, 그 결과 위에서 대화한다.
+
+    자동 검토처럼 물어본 것이 없으면 대조 결과를 그대로 낸다. 사용자가 물으면 그 결과를
+    바탕으로 답한다 — 대조만 반복하면 무엇을 묻든 같은 말이 돌아온다.
+    """
+
     name = "jd"
 
-    def __init__(self, service_provider: Callable[[], Any]) -> None:
+    def __init__(
+        self,
+        service_provider: Callable[[], Any],
+        chat_provider: Callable[[], Any] | None = None,
+    ) -> None:
         self._service_provider = service_provider
+        self._chat_provider = chat_provider
 
     def is_available(self, context: Mapping[str, Any] | None) -> bool:
         return bool(context and context.get("job_context_id"))
 
     def execute(self, instruction, documents, conversation, context, prior_results=()):
-        return self._service_provider().analyze_documents(
-            context["job_context_id"], list(documents)
+        service = self._service_provider()
+        analysis = service.analyze_documents(context["job_context_id"], list(documents))
+        if self._chat_provider is None or not str(instruction or "").strip():
+            return analysis
+        current = next(
+            (dict(document) for document in documents
+             if document.get("document_type") == "SELF_INTRO"),
+            None,
         )
+        if current is None:
+            return analysis
+        try:
+            answer = self._chat_provider().respond(
+                context=service.get_context(context["job_context_id"]),
+                analysis_result=analysis,
+                current_document=current,
+                message=str(instruction),
+                history=[
+                    {"role": str(item.get("role", "USER")).lower(),
+                     "content": str(item.get("content", ""))}
+                    for item in conversation
+                    if str(item.get("content", "")).strip()
+                ],
+            )
+        except Exception:  # noqa: BLE001
+            # 대화는 대조 결과 위에 얹는 것이다. 여기서 실패해도 대조 결과는 보여 준다 —
+            # 담당을 통째로 실패시키면 사용자는 아무것도 못 본다.
+            LOGGER.exception("jd chat failed; falling back to the analysis result")
+            return analysis
+        # 말풍선에 쓸 message 는 대화 쪽 답으로 덮고, 대조 결과는 근거로 함께 남긴다.
+        return {**analysis, **answer}
 
 
 class PositionAgentAdapter:
@@ -62,11 +104,19 @@ class PositionAgentAdapter:
             raise ValueError(
                 "position agent requires SELF_INTRO or EXPERIENCE document"
             )
+        # 이번에 물은 것을 대화 끝에 붙인다. 서비스가 instruction 을 받는 자리가 없어
+        # 이력만 넘기면 "무엇을 묻는지" 가 빠져 늘 같은 분석이 돌아온다.
+        turns = [dict(item) for item in conversation]
+        question = str(instruction or "").strip()
+        if question and not (
+            turns and turns[-1].get("role") == "USER" and turns[-1].get("content") == question
+        ):
+            turns.append({"role": "USER", "content": question})
         analysis = self._service_provider().analyze(
             context["rubric_id"],
             context["position_context"],
             supported_documents,
-            list(conversation),
+            turns,
         )
         # 단독 API(/position/internal/analyses)와 같은 모양으로 맞춘다. 백엔드는 결과의
         # message 만 말풍선에 띄우므로 이 키가 없으면 성공해도 "답을 만들지 못했다"로 보인다.

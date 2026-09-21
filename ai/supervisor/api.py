@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, HTTPException
 
 from ai.company_analysis.api import get_company_chat_service
-from ai.jd_coaching.api import get_analysis_service
+from ai.jd_coaching.api import get_analysis_service, get_stateless_chat_service
 from ai.jd_coaching.baseline import load_qwen_config
 from ai.news_intelligence.api import get_news_service
 from ai.position_coaching.api import get_position_service
@@ -42,13 +42,17 @@ def assemble_supervisor_service(
     writing_provider: Callable[[], Any],
     news_provider: Callable[[], Any] | None = None,
     company_provider: Callable[[], Any] | None = None,
+    jd_chat_provider: Callable[[], Any] | None = None,
 ) -> SupervisorService:
     resolved_news_provider = news_provider or get_news_service
     resolved_company_provider = company_provider or get_company_chat_service
     registry = AgentRegistry(
         [
             # 총괄 아래에서 실행되는 담당의 조회는 모두 도구 프록시를 거친다.
-            JdAgentAdapter(lambda: instrument_jd_service(jd_provider())),
+            JdAgentAdapter(
+                lambda: instrument_jd_service(jd_provider()),
+                jd_chat_provider or get_stateless_chat_service,
+            ),
             PositionAgentAdapter(position_provider),
             WritingAgentAdapter(writing_provider),
             NewsAgentAdapter(lambda: instrument_news_service(resolved_news_provider())),
