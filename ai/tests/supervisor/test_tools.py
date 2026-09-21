@@ -245,3 +245,25 @@ class SupervisorIntegrationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NewsSearchProviderProxySignatureTest(unittest.TestCase):
+    def test_proxy_forwards_new_keyword_arguments(self):
+        """검색기에 industry_name 이 생겼을 때 프록시가 그 인자를 거절해, 총괄이 한 번 돌고
+        나면(공용 뉴스 서비스에 프록시가 끼워진 뒤) 뉴스 담당 호출이 전부 500 으로 죽었다
+        (QA 실측: 뉴스 전담 방 20턴 중 18턴 실패). 인자가 늘어도 그대로 넘겨야 한다."""
+        from datetime import date
+
+        from ai.supervisor.tools import instrument_news_service
+
+        class Service:
+            _repository = None
+            _search_provider = FakeSearchProvider()
+
+        service = instrument_news_service(Service())
+        rows = service._search_provider.search(
+            "현대모비스", "로보틱스 모터 설계", ["COMPANY"], date(2026, 6, 1), date(2026, 9, 1), 5,
+            industry_name="자동차 부품",
+        )
+
+        self.assertEqual(rows, [{"title": "현대모비스 COMPANY"}])
