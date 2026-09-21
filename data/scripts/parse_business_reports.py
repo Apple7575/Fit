@@ -74,6 +74,33 @@ def revenue_map() -> dict[tuple[str, int], float]:
     return out
 
 
+def alt_revenue_map() -> dict[tuple[str, int], dict[str, float]]:
+    """(corp, 연도) → {consolidated: 연결매출, separate: 별도매출}.
+
+    **부문표가 어느 기준인지는 표마다 다르다.** 지표 시드의 revenue 는 연결 우선·
+    별도 폴백으로 하나만 고르는데, 별도 기준 부문표를 그 값과 대조하면 어긋난다 —
+    기아 2022 표 68 은 명세 행 합이 별도 매출과 1원까지 같은데 연결(86.56조)과
+    대조해 46% 차이로 버려졌다. 둘 다 주고 가까운 쪽으로 판정한다.
+    """
+    out: dict[tuple[str, int], dict[str, float]] = {}
+    basis = {"CFS": "consolidated", "OFS": "separate"}
+    with FINANCIALS.open(encoding="utf-8", newline="") as f:
+        for r in csv.DictReader(f):
+            if r["account_nm"] != "매출액" or not r["thstrm_amount"]:
+                continue
+            if (r.get("currency") or "KRW") != "KRW":
+                continue                       # 환산은 추정이다 (시드와 같은 규칙)
+            name = basis.get(r["fs_div"])
+            if not name:
+                continue
+            try:
+                key = (r["corp_code"], int(r["bsns_year"]))
+            except (TypeError, ValueError):
+                continue
+            out.setdefault(key, {})[name] = float(r["thstrm_amount"])
+    return out
+
+
 def receipts(corp_codes: set[str]) -> dict[tuple[str, int], str]:
     out: dict[tuple[str, int], str] = {}
     with FINANCIALS.open(encoding="utf-8", newline="") as f:
@@ -104,6 +131,7 @@ def main() -> int:
     names = {r["corp_code"]: r["corp_name"] for r in universe}
     rcept = receipts(set(names))
     rev = revenue_map()
+    alt = alt_revenue_map()
     cache = cache_dir()
     out = staged_dir("business_report")
 
@@ -141,7 +169,8 @@ def main() -> int:
             # Spark 잡이 같은 함수를 부르므로 이 스크립트에는 파싱 로직이 없다.
             r = ex.parse_one(path, corp_code=corp, fiscal_year=year, rcept_no=no,
                              corp_name=names.get(corp, ""),
-                             external_revenue=rev.get((corp, year)), p=p)
+                             external_revenue=rev.get((corp, year)), p=p,
+                             alt_revenues=alt.get((corp, year)))
             row = r.summary
             for k in ("seg_verdict", "fac_verdict", "rnd_verdict"):
                 if row.get(k):

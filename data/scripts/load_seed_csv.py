@@ -53,13 +53,34 @@ for _s in (sys.stdout, sys.stderr):
 
 SEED_DIR = ROOT / "curated" / "seed"
 
-# 자연키. Flyway 의 PK·UNIQUE 와 같아야 한다 — 아래 _check_keys 가 대조한다.
-NATURAL_KEYS: dict[str, tuple[str, ...]] = {
-    "company_metric": ("corp_code", "fiscal_year", "metric_code"),
-    "company_text": ("corp_code", "fiscal_year", "attr_key", "seq"),
-    "segment_metric": ("corp_code", "fiscal_year", "segment_name", "metric_code"),
-    "news_article": ("corp_code", "guid"),
+# 자연키 후보. Flyway 의 PK·UNIQUE 중 하나와 같아야 한다 — 아래 _check_keys 가 대조한다.
+#
+# **표마다 여러 개를 적을 수 있다.** 스키마가 바뀌는 중에도 적재가 멈추지 않게 하려는
+# 것이다. news_article 이 그 경우다 — 확정 ERD 가 중복 방지 키를 guid 기준에서
+# 제공처 기준으로 옮기는 중이고(MR !209 의 V34), 그 마이그레이션이 들어오는 순간
+# 옛 키는 스키마에서 사라진다. 후보를 둘 다 적어 두면 **어느 쪽 스키마에서도**
+# 그때 있는 키로 붙는다.
+NATURAL_KEY_CANDIDATES: dict[str, tuple[tuple[str, ...], ...]] = {
+    "company_metric": (("corp_code", "fiscal_year", "metric_code"),),
+    "company_text": (("corp_code", "fiscal_year", "attr_key", "seq"),),
+    "segment_metric": (("corp_code", "fiscal_year", "segment_name", "metric_code"),),
+    "news_article": (
+        ("corp_code", "guid"),                              # V17 ~ (현재)
+        ("corp_code", "provider", "provider_article_id"),   # V34 이후 (MR !209)
+    ),
 }
+
+
+def natural_key(table: str, schema=None) -> tuple[str, ...]:
+    """지금 스키마에 실제로 있는 자연키를 고른다. 없으면 첫 후보를 돌려준다
+    (그러면 _check_keys 가 무엇이 어긋났는지 말해 준다)."""
+    resolved = schema or flyway.load()
+    found = resolved.table(table)
+    columns = set(found.columns) if found else set()
+    for candidate in NATURAL_KEY_CANDIDATES[table]:
+        if set(candidate) <= columns:
+            return candidate
+    return NATURAL_KEY_CANDIDATES[table][0]
 
 # 정리 범위를 corp_code 밖으로 한 칸 더 좁히는 표.
 #
@@ -73,7 +94,24 @@ NATURAL_KEYS: dict[str, tuple[str, ...]] = {
 CLEANUP_SCOPE: dict[str, str] = {"company_metric": "metric_code"}
 # 자연키가 없어 범위를 좁혀 갈아끼우는 표
 REPLACE_TABLES = ("company_activity",)
-TABLES = tuple(NATURAL_KEYS) + REPLACE_TABLES
+
+# **시드가 유일한 생산자인 표.** 여기서는 시드에 없는 기업의 행도 지운다.
+#
+# 왜 필요한가: 지금까지는 "시드에 든 기업" 안에서만 지웠다. 그래서 **시드에서 빠진
+# 기업**(파싱이 표를 버렸거나 유니버스가 줄었다)의 옛 행이 DB 에 남는다. 2026-09-21
+# 하루에만 세 번 나왔다 — 아침 dev 24행, 저녁 dev·prod 각 131행. 사람이 매번 찾아
+# 지우고 있었다.
+#
+# company_metric 은 여기 넣지 않는다. `rd_ratio` 를 다른 경로가 넣으므로 시드 밖 행이
+# 정상이다 (CLEANUP_SCOPE 주석 참고). news_article 도 뺀다 — 시드가 기업 100곳으로
+# 좁고, 실험용으로 좁게 만든 시드를 실수로 적재하면 나머지가 통째로 날아간다.
+SEED_OWNS_ALL = ("company_text", "segment_metric", "company_activity")
+
+# 시드 밖 행을 이 비율 넘게 지우게 되면 멈춘다. 좁은 시드를 잘못 적재하는 사고를
+# 막는 자리다 — 시드 생성의 행수 급감 가드(pipeline/seed_guard.py)와 같은 생각이고,
+# 이쪽은 **적재 직전**에 한 번 더 본다.
+PRUNE_LIMIT = 0.05
+TABLES = tuple(NATURAL_KEY_CANDIDATES) + REPLACE_TABLES
 
 
 def _read(table: str) -> list[dict]:
@@ -85,16 +123,24 @@ def _read(table: str) -> list[dict]:
                 for row in csv.DictReader(stream)]
 
 
-def _check_keys(table: str, key: tuple[str, ...]) -> str | None:
-    """자연키가 Flyway 의 PK·UNIQUE 와 같은지 본다. 다르면 적재하지 않는다 —
-    엉뚱한 키로 upsert 하면 조용히 중복이 쌓이거나 멀쩡한 행을 덮는다."""
-    schema = flyway.load().table(table)
-    if schema is None:
+def _check_keys(table: str, key: tuple[str, ...], schema=None) -> str | None:
+    """자연키가 Flyway 의 키 **중 하나**와 같은지 본다. 아니면 적재하지 않는다 —
+    엉뚱한 키로 upsert 하면 조용히 중복이 쌓이거나 멀쩡한 행을 덮는다.
+
+    **묶음으로 본다.** 예전에는 "PK·UK 가 붙은 컬럼 전부" 를 한 뭉치로 모아 비교했다.
+    표에 유일키가 하나뿐일 때는 같은 말이지만, 둘이 되면 두 키의 컬럼이 합쳐져
+    어느 쪽과도 맞지 않는다 — V34 가 news_article 에 제공처 기준과 원문 URL 기준
+    둘을 걸면 그 상태가 된다 (실측: 코드 ('corp_code','guid') vs 합쳐진 넷).
+    """
+    resolved = (schema or flyway.load()).table(table)
+    if resolved is None:
         return f"Flyway 에 {table} 이 없다"
-    declared = tuple(c.name for c in schema.ordered()
-                     if {"PK", "UK"} & set(c.key_type.split(",")) and c.name != "id")
-    if set(declared) != set(key):
-        return f"자연키가 스키마와 다르다 — 코드 {key} vs Flyway {declared}"
+    groups = [g for g in resolved.key_groups() if g != ["id"]]
+    if not groups:
+        return f"{table} 에 자연키로 쓸 PK·UNIQUE 가 없다"
+    if not any(set(g) == set(key) for g in groups):
+        printable = " 또는 ".join(str(tuple(g)) for g in groups)
+        return f"자연키가 스키마와 다르다 — 코드 {key} vs Flyway {printable}"
     return None
 
 
@@ -102,16 +148,33 @@ def _corp_scope(rows: list[dict]) -> list[str]:
     return sorted({r["corp_code"] for r in rows if r.get("corp_code")})
 
 
+def prune_plan(table: str, db_rows_by_corp: dict[str, int], seed_scope: set[str],
+               limit: float = PRUNE_LIMIT) -> tuple[list[str], int, float, bool]:
+    """시드에 없는 기업을 추린다 → (기업 목록, 지울 행수, 비율, 허용선 초과 여부).
+
+    DB 를 타지 않는 순수 함수다. 판단을 SQL 안에 묻어 두면 시험할 길이 없다.
+    """
+    if table not in SEED_OWNS_ALL:
+        return [], 0, 0.0, False
+    victims = sorted(c for c in db_rows_by_corp if c not in seed_scope)
+    doomed = sum(db_rows_by_corp[c] for c in victims)
+    total = sum(db_rows_by_corp.values())
+    ratio = (doomed / total) if total else 0.0
+    return victims, doomed, ratio, ratio > limit
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--only", nargs="+", choices=TABLES, help="이 표만 적재한다")
     ap.add_argument("--dry-run", action="store_true", help="넣지 않고 건수만 본다")
+    ap.add_argument("--allow-prune", action="store_true",
+                    help=f"시드 밖 행을 {PRUNE_LIMIT:.0%} 넘게 지우게 돼도 진행한다")
     args = ap.parse_args()
     tables = args.only or list(TABLES)
 
-    problems = [msg for t in tables if t in NATURAL_KEYS
-                for msg in [_check_keys(t, NATURAL_KEYS[t])] if msg]
+    problems = [msg for t in tables if t in NATURAL_KEY_CANDIDATES
+                for msg in [_check_keys(t, natural_key(t))] if msg]
     if problems:
         for msg in problems:
             print(f"중단: {msg}")
@@ -132,17 +195,37 @@ def main() -> int:
                        .format(sql.Identifier(table)), (scope,))
                 in_scope = cur.fetchone()[0]
 
+            # 시드가 유일한 생산자인 표는 **시드에서 빠진 기업**의 행도 지운다.
+            by_corp: dict[str, int] = {}
+            if table in SEED_OWNS_ALL:
+                with conn.cursor() as cur:
+                    cur.execute(sql.SQL("SELECT corp_code, count(*) FROM {} "
+                                        "GROUP BY 1").format(sql.Identifier(table)))
+                    by_corp = {c: n for c, n in cur.fetchall()}
+            victims, doomed, ratio, over = prune_plan(table, by_corp, set(scope))
+
             if args.dry_run:
+                extra_note = (f" · 시드 밖 {len(victims)}곳 {doomed:,}행 ({ratio:.1%})"
+                              if victims else "")
                 print(f"{table:<18} 시드 {len(rows):>6,}행 · 기업 {len(scope):>4} · "
-                      f"DB 전체 {before:>6,} (범위 안 {in_scope:,})")
+                      f"DB 전체 {before:>6,} (범위 안 {in_scope:,}){extra_note}")
                 continue
 
+            if over and not args.allow_prune:
+                print(f"중단: {table} 의 시드 밖 행이 {doomed:,}행({ratio:.1%})이다. "
+                      f"허용선 {PRUNE_LIMIT:.0%} 를 넘는다.")
+                print("       좁은 시드를 잘못 적재하는 것인지 먼저 보라. "
+                      "맞다면 --allow-prune 을 붙인다.")
+                return 1
+
             if table in REPLACE_TABLES:
-                # 자연키가 없다. 범위를 좁혀 지우고 다시 넣는다 — 한 트랜잭션이다.
+                # 자연키가 없다. 지우고 다시 넣는다 — 한 트랜잭션이다.
+                # 시드가 유일한 생산자라 **시드 밖 기업까지** 지운다 (SEED_OWNS_ALL).
                 with conn.cursor() as cur:
+                    codes = sorted(set(scope) | set(victims))
                     cur.execute(
                         sql.SQL("DELETE FROM {} WHERE corp_code = ANY(%s)")
-                           .format(sql.Identifier(table)), (scope,))
+                           .format(sql.Identifier(table)), (codes,))
                     removed = cur.rowcount
                 cols = [c for c in rows[0] if c != "id"]
                 with conn.cursor() as cur:
@@ -157,7 +240,7 @@ def main() -> int:
                 print(f"{table:<18} 지움 {removed:>6,} · 넣음 {len(rows):>6,} → 총 {after:,}행")
                 continue
 
-            key = NATURAL_KEYS[table]
+            key = natural_key(table)
             cols = [c for c in rows[0] if c != "id"]
             stats = db.upsert(conn, table, rows, pk=key, columns=cols)
 
@@ -189,10 +272,17 @@ def main() -> int:
                                 for i, c in enumerate(key))),
                     tuple(params))
                 removed = cur.rowcount
+                if victims:
+                    cur.execute(
+                        sql.SQL("DELETE FROM {} WHERE corp_code = ANY(%s)")
+                           .format(sql.Identifier(table)), (victims,))
+                    removed += cur.rowcount
             conn.commit()
             after = db.count(conn, table)
+            pruned = (f" · 시드 밖 {len(victims)}곳 {doomed:,}행 포함"
+                      if victims else "")
             print(f"{table:<18} 신규 {stats.inserted:>6,} · 갱신 {stats.updated:>6,} · "
-                  f"지움 {removed:>4,} → 총 {after:,}행")
+                  f"지움 {removed:>4,} → 총 {after:,}행{pruned}")
 
     if args.dry_run:
         print("\n--dry-run: 적재하지 않았다.")

@@ -325,7 +325,18 @@ DB 테이블과 1:1 대응하지 않는 CSV(`company_year_wide.csv` 등)는 시�
 ### 시드 manifest — `manifests/seed/<table_name>.json`
 
 생성 시각 · 헤더 · 제외한 identity 컬럼 · Flyway 파일 목록 · 입력 staged 행수 · 시드 행수 ·
-제외 행수와 사유 · 기업 수 · 결측 건수 · `source` 컬럼 매핑 · 관련 `collection_run_id` 목록.
+제외 행수와 사유 · 기업 수 · 결측 건수 · `source` 컬럼 매핑 · 관련 `collection_run_id` 목록 ·
+**갈래별 행수(`row_breakdown`)**.
+
+`row_breakdown` 은 표를 가르는 칸(`metric_code` · `activity_type` · `attr_key`)으로 쪼갠
+행수이고, **다음 생성 때 직전 시드와 대조하는 기준**이다. `build_curated_seed.py` 와
+`build_news_seed.py` 는 직전 계보보다 행이 5% 넘게 줄면 **CSV 를 쓰지 않고 멈춘다**
+(`pipeline/seed_guard.py`) — 줄어드는 것이 맞는 수정이면 `--allow-shrink` 로 지나가고
+`--max-drop` 으로 허용선을 바꾼다. 표 전체 행수만 보면 한 갈래가 통째로 빠져도 비율이
+묽어지므로 갈래별로도 보고, 기업 수도 함께 본다 (부문매출 −24% 가 표 전체로는 −13%
+였다, [SEGMENT-TABLE-REGRESSION](S15P21A504-SEGMENT-TABLE-REGRESSION.md)).
+
+검증은 시드에 *들어간* 행만 본다. **사라진 값은 직전 시드와의 행수 대조로만 드러난다.**
 
 ### 로그
 

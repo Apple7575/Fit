@@ -42,6 +42,23 @@ class QwenSupervisorModelTest(unittest.TestCase):
             "기업·산업·직무 변화의 기사 근거와 JD 관련성 분석",
         )
 
+    def test_position_capability_does_not_assume_backend_role(self):
+        qwen = FakeQwen()
+        model = QwenSupervisorModel({}, qwen_caller=qwen)
+
+        model.create_plan(
+            instruction="디자인 직무 경험을 검토해줘",
+            documents=[],
+            conversation=[],
+            available_agents=["position"],
+            validation_error=None,
+        )
+
+        payload = json.loads(qwen.calls[0]["messages"][1]["content"])
+        capability = payload["agent_capabilities"]["position"]
+        self.assertIn("지원 직무", capability)
+        self.assertNotIn("백엔드", capability)
+
     def test_malformed_plan_output_uses_dedicated_contract_error(self):
         for response in (
             {}, None, {"output": None},
@@ -61,7 +78,7 @@ class QwenSupervisorModelTest(unittest.TestCase):
         model = QwenSupervisorModel(
             {"base_url": "http://qwen.test", "model": "qwen", "api_key": "test"}
         )
-        with patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+        with patch("ai.llm.vllm.urllib.request.urlopen") as urlopen:
             urlopen.return_value.__enter__.return_value.read.return_value = (
                 b'{"choices": [{"message": {"content": "not JSON"}}]}'
             )

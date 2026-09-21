@@ -1,11 +1,12 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { deleteCoverLetter } from '../../features/cover-letter/api';
 import { useCoverLetters } from '../../features/cover-letter/queries';
 import type { CoverLetterSummary } from '../../features/cover-letter/types';
 import { useAuth } from '../../features/auth/AuthProvider';
+import { formatDateDots } from '../../utils/formatDate';
 import { glideToElement } from '../../utils/glideScroll';
 import { CoverLetterHeader } from './CoverLetterHeader';
 
@@ -47,7 +48,7 @@ function GuestHome() {
     <div className="flex min-h-screen flex-col bg-slate-50">
       <CoverLetterHeader floating scrolled={scrolled} />
       <Hero hasBelow={false} onNew={() => navigate('/cover-letters/new', { state: { fresh: true } })}>
-        <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] break-keep text-white/50">
+        <p className="mt-10 pt-6 text-center text-[13px] break-keep text-white/50">
           로그인 없이도 써 볼 수 있어요. 로그인하면 쓰던 자소서가 여기에 남습니다.
         </p>
       </Hero>
@@ -94,7 +95,7 @@ function Hero({
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/80" />
         <div
           className={`absolute inset-x-0 bottom-0 h-52 bg-gradient-to-b from-transparent ${
-            hasBelow ? 'via-slate-950/80 to-slate-50' : 'to-slate-950'
+            hasBelow ? 'via-slate-950/85 to-slate-950' : 'to-slate-950'
           }`}
         />
       </div>
@@ -102,7 +103,8 @@ function Hero({
       <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-28 pb-16">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <h1 className="display-lg text-balance">회사의 언어로 다시 씁니다</h1>
-          <p className="mt-3 max-w-[46ch] text-[15px] break-keep text-white/70">
+          {/* 한 줄로 읽히길 바라는 자리다. 46ch 는 한글 42자를 못 담아 줄이 갈렸다 */}
+          <p className="mt-3 text-[15px] break-keep text-white/70">
             쓰던 자소서를 올리면 코치 다섯이 각자 맡은 자료로 읽고 고칠 곳을 짚어 줍니다.
           </p>
           <button
@@ -121,6 +123,7 @@ function Hero({
 
 function MemberHome() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state, retry } = useCoverLetters();
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [scrolled] = useScrolled();
@@ -134,11 +137,17 @@ function MemberHome() {
   const all = state.status === 'success' ? state.data : [];
   const onHero = all.slice(0, HERO_MAX);
   const overflow = all.length > HERO_MAX;
-  // 첫 화면에 다 담기면 아래에 아무것도 없다. 그때 밝게 끝내면 뭔가 더 있는 것처럼 보인다
-  const hasBelow = overflow || state.status !== 'success';
+  // 저장한 자소서가 하나라도 있으면 첫 화면의 미리보기와 별개로 아래 전체 목록도 제공한다.
+  const hasBelow = all.length > 0 || state.status !== 'success';
+
+  // 작성 화면의 '목록으로'에서 들어오면 영상 첫 화면이 아니라 저장 목록을 바로 보여 준다.
+  useEffect(() => {
+    if (location.hash !== `#${LIST_ID}` || !hasBelow) return;
+    glideToElement(LIST_ID, 106);
+  }, [hasBelow, location.hash]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-slate-950">
       <CoverLetterHeader floating scrolled={scrolled} />
 
       {/* 화면 한 장이 쓰는 자리. 기업 검색·모의 면접 첫 화면과 같은 짜임이다 */}
@@ -148,20 +157,11 @@ function MemberHome() {
       >
         {/* 내 자소서를 첫 화면에서 바로 연다. 아래로 내려가서 찾게 하지 않는다 */}
         {onHero.length > 0 && (
-          <section aria-labelledby="hero-list-title" className="mt-10 border-t border-white/15 pt-6">
+          <section aria-labelledby="hero-list-title" className="mt-10 pt-6">
             <div className="flex items-baseline justify-center gap-3">
               <p className="text-[12px] font-semibold text-white/50" id="hero-list-title">
                 내 자기소개서
               </p>
-              {overflow && (
-                <button
-                  className="text-[12px] font-semibold text-white/50 transition hover:text-white"
-                  onClick={() => glideToElement(LIST_ID, 106)}
-                  type="button"
-                >
-                  전체 {all.length}개 보기 ↓
-                </button>
-              )}
             </div>
             <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {onHero.map((letter) => (
@@ -170,62 +170,114 @@ function MemberHome() {
                 </li>
               ))}
             </ul>
+            {overflow && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  className="group flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-5 py-2.5 text-[13px] font-bold text-white shadow-lg shadow-black/15 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-white/50 hover:bg-white hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:outline-none"
+                  onClick={() => glideToElement(LIST_ID, 106)}
+                  type="button"
+                >
+                  전체 자소서 보기
+                  <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] text-white/75 transition group-hover:bg-slate-100 group-hover:text-slate-600">
+                    {all.length}
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    className="size-4 transition-transform group-hover:translate-y-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </section>
         )}
 
         {state.status === 'success' && all.length === 0 && (
-          <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] break-keep text-white/50">
+          <p className="mt-10 pt-6 text-center text-[13px] break-keep text-white/50">
             아직 저장된 자소서가 없습니다. 채용공고 주소를 넣으면 지원 회사와 직무를 대신 채워
             드려요.
           </p>
         )}
       </Hero>
 
-      {/* 첫 화면에 다 담기는 동안에는 그리지 않는다 */}
+      {/* 저장된 자소서가 하나라도 있으면 전체 목록을 그린다 */}
       {hasBelow && (
-      <div className="mx-auto w-full max-w-4xl scroll-mt-[106px] px-6 pt-4 pb-12" id={LIST_ID}>
-      <div className="mb-6 flex items-end justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-950">내 자기소개서</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            자소서를 선택해 문항과 답변을 수정할 수 있어요.
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/cover-letters/new', { state: { fresh: true } })}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-          type="button"
+        <section
+          aria-labelledby="saved-cover-letters-title"
+          className="relative scroll-mt-[106px] overflow-hidden bg-slate-950 text-white"
+          id={LIST_ID}
         >
-          + 새 자소서
-        </button>
-      </div>
+          {/* 첫 화면의 이미지를 이어 받아 목록만 다른 페이지처럼 분리되어 보이지 않게 한다. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25"
+            style={{ backgroundImage: `url(${HERO_POSTER})` }}
+          />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-slate-950/85" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-950/75 to-[#07101f]"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 left-1/2 h-px w-[min(68rem,calc(100%-3rem))] -translate-x-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          />
 
-      {state.status === 'loading' && (
-        <div className="rounded-2xl border border-slate-200 bg-white">
-          <LoadingScreen compact message="자소서를 불러오는 중" />
-        </div>
-      )}
+          <div className="relative mx-auto w-full max-w-[1100px] px-6 pt-10 pb-24">
+            <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="mb-2 text-[12px] font-bold tracking-[0.14em] text-blue-300 uppercase">
+                  Saved drafts · {all.length}
+                </p>
+                <h2 className="text-[28px] font-extrabold tracking-[-0.025em] text-white" id="saved-cover-letters-title">
+                  내 자기소개서
+                </h2>
+                <p className="mt-1.5 text-sm break-keep text-white/55">
+                  저장한 자소서를 이어 쓰거나 문항과 답변을 다듬어 보세요.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/cover-letters/new', { state: { fresh: true } })}
+                className="flex items-center gap-1.5 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-50 hover:shadow-lg"
+                type="button"
+              >
+                <span aria-hidden="true" className="text-lg leading-none">+</span>
+                새 자소서 쓰기
+              </button>
+            </div>
 
-      {state.status === 'error' && (
-        <InlineNotice onRetry={retry}>목록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
-      )}
+            {state.status === 'loading' && (
+              <div className="rounded-2xl border border-white/15 bg-white/10 shadow-2xl backdrop-blur-xl">
+                <LoadingScreen compact message="자소서를 불러오는 중" />
+              </div>
+            )}
 
-      {state.status === 'success' && (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          {all.map((letter) => (
-            <ListRow
-              key={letter.id}
-              letter={letter}
-              confirming={confirmingId === letter.id}
-              onOpen={() => navigate(`/cover-letters/${letter.id}`)}
-              onAskDelete={() => setConfirmingId(letter.id)}
-              onCancelDelete={() => setConfirmingId(null)}
-              onConfirmDelete={() => remove(letter.id)}
-            />
-          ))}
-        </ul>
-      )}
-      </div>
+            {state.status === 'error' && (
+              <InlineNotice onRetry={retry}>목록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
+            )}
+
+            {state.status === 'success' && (
+              <ul className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.07] shadow-2xl shadow-black/20 backdrop-blur-xl">
+                {all.map((letter) => (
+                  <CoverLetterRow
+                    key={letter.id}
+                    letter={letter}
+                    confirming={confirmingId === letter.id}
+                    onOpen={() => navigate(`/cover-letters/${letter.id}`)}
+                    onAskDelete={() => setConfirmingId(letter.id)}
+                    onCancelDelete={() => setConfirmingId(null)}
+                    onConfirmDelete={() => remove(letter.id)}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       )}
     </div>
   );
@@ -248,13 +300,17 @@ function HeroCard({ letter, onOpen }: { letter: CoverLetterSummary; onOpen: () =
       <span className="truncate text-[11px] opacity-60">
         {letter.targetCompany || '회사 미정'}
         <span className="mx-1">·</span>
-        {letter.updatedAt}
+        {formatDateDots(letter.updatedAt)}
       </span>
     </button>
   );
 }
 
-function ListRow({
+/**
+ * 전체 목록의 한 줄. 상단 압축 카드와 같은 반투명 재질·정보 순서를 사용하되,
+ * 여러 건을 빠르게 훑을 수 있도록 목록 형태를 유지한다.
+ */
+function CoverLetterRow({
   letter,
   confirming,
   onOpen,
@@ -270,41 +326,60 @@ function ListRow({
   onConfirmDelete: () => void;
 }) {
   return (
-    <li className="flex items-center pr-3">
+    <li className="group relative flex items-center pr-3 transition hover:bg-white/[0.07]">
       <button
         onClick={onOpen}
-        className="flex min-w-0 flex-1 items-center gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+        className="flex min-w-0 flex-1 items-center gap-4 px-5 py-4 text-left focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-300 focus-visible:outline-none"
         type="button"
       >
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="truncate font-semibold text-slate-900">{letter.title}</span>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-slate-500">
-            {letter.targetCompany && (
-              <span className="rounded-md bg-blue-50 px-2 py-0.5 text-blue-600">{letter.targetCompany}</span>
-            )}
-            {letter.targetPosition && (
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">{letter.targetPosition}</span>
-            )}
-            <span>· 문항 {letter.itemCount}개</span>
-            <span>· 수정일 {letter.updatedAt}</span>
-          </div>
-        </div>
+        <span
+          aria-hidden="true"
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-blue-200 ring-1 ring-white/15 transition group-hover:bg-blue-400/15 group-hover:text-blue-100"
+        >
+          <svg className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+            <path d="M7 3.75h7l3 3V20.25H7z" strokeLinejoin="round" />
+            <path d="M14 3.75v3h3M9.5 11h5M9.5 14.5h5" strokeLinecap="round" />
+          </svg>
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-bold text-white">{letter.title}</span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-white/45">
+            <span className="font-semibold text-blue-200/90">{letter.targetCompany || '회사 미정'}</span>
+            <span aria-hidden="true" className="text-white/20">·</span>
+            <span>{letter.targetPosition || '직무 미정'}</span>
+            <span aria-hidden="true" className="text-white/20">·</span>
+            <span>문항 {letter.itemCount}개</span>
+          </span>
+        </span>
+
+        <span className="hidden shrink-0 items-center gap-3 sm:flex">
+          <span className="text-[12px] text-white/35">{formatDateDots(letter.updatedAt)} 수정</span>
+          <svg
+            aria-hidden="true"
+            className="size-4 text-white/25 transition group-hover:translate-x-0.5 group-hover:text-blue-200"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
       </button>
 
       {confirming ? (
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1 rounded-lg bg-slate-900/95 p-1 shadow-sm ring-1 ring-white/15 backdrop-blur">
           <button
             onClick={onConfirmDelete}
-            className="rounded-md bg-rose-500 px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-rose-600"
+            className="rounded-md bg-rose-500 px-2.5 py-1 text-[12px] font-semibold text-white transition hover:bg-rose-600"
             type="button"
           >
             삭제
           </button>
           <button
             onClick={onCancelDelete}
-            className="rounded-md px-2 py-1 text-[12px] font-medium text-slate-500 hover:bg-slate-100"
+            className="rounded-md px-2 py-1 text-[12px] font-medium text-white/60 transition hover:bg-white/10 hover:text-white"
             type="button"
           >
             취소
@@ -314,7 +389,7 @@ function ListRow({
         <button
           onClick={onAskDelete}
           aria-label={`${letter.title} 삭제`}
-          className="shrink-0 rounded-md p-2 text-slate-300 transition hover:bg-rose-50 hover:text-rose-500"
+          className="shrink-0 rounded-lg p-2 text-white/20 transition hover:bg-rose-400/10 hover:text-rose-300"
           type="button"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="size-4">

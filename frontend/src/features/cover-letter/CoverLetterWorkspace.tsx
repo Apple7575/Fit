@@ -6,17 +6,14 @@ import type { CoverLetterInput, PendingJobPosting } from './types';
 
 interface CoverLetterWorkspaceProps {
   initial: CoverLetterInput;
+  initialPosting?: PendingJobPosting | null;
   isLoggedIn: boolean;
   alreadySaved?: boolean;
   /** 방금 저장하고 들어온 화면. 새 자소서를 저장하면 주소가 갈리므로 그때 이어서 알린다. */
   justSaved?: boolean;
-  /**
-   * 자소서만 저장한다. 아직 등록하지 않은 공고가 있으면 두 번째 인자로 함께 넘긴다 —
-   * 등록이 수십 초 걸려 저장을 붙잡아 둘 수 없으니, 화면을 넘긴 뒤에 받는 쪽에서 잇는다.
-   */
-  onSave: (input: CoverLetterInput, pendingPosting: PendingJobPosting | null) => Promise<void>;
+  onSave: (input: CoverLetterInput, pendingPosting?: PendingJobPosting | null) => Promise<void>;
   /** 저장한 뒤 멀티에이전트 검토 화면으로 넘긴다. 방은 저장된 자소서에 붙기 때문이다. */
-  onReview: (input: CoverLetterInput) => Promise<void>;
+  onReview: (input: CoverLetterInput, pendingPosting?: PendingJobPosting | null) => Promise<void>;
   onBack?: () => void;
 }
 
@@ -27,7 +24,83 @@ interface WorkItem {
   charLimit: number;
 }
 
+/*
+ * 첫 화면과 같은 영상을 쓴다. 원고를 넘기는 장면도 만들어 봤지만, 손과 종이가 글 쓰는
+ * 칸 바로 뒤에서 크게 움직여 정신이 없었다. 배경은 눈에 띄면 안 된다.
+ */
+const HERO_VIDEO = '/cover-letter-media/hero.mp4';
+const HERO_POSTER = '/cover-letter-media/hero.jpg';
+
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+
+/** 0 = 어디에 내나요, 1 이상 = 그 번째 문항. 한 화면에 한 가지만 둔다. */
+type Step = number;
+
+const META_STEP = 0;
+
+/**
+ * 지금 어느 단계인지. 눌러서 아무 데나 오갈 수 있다 — 막아 두면 앞을 고치려다 길을 잃는다.
+ *
+ * <p>문항도 한 칸씩 차지한다. 예전에는 문항을 세로로 쌓고 맨 아래에 "문항 추가" 를 뒀는데,
+ * 문항이 늘수록 줄줄이 스크롤해야 했고 지금 몇 번째를 쓰는지도 알기 어려웠다.
+ */
+function StepRail({
+  step,
+  filled,
+  locked,
+  onGo,
+}: {
+  step: Step;
+  /** 문항별로 질문·답변이 채워졌는지. 어디까지 썼는지 한눈에 보인다 */
+  filled: boolean[];
+  /** 앞 단계를 아직 안 채웠다. 문항으로 넘어갈 수 없다 */
+  locked: boolean;
+  onGo: (next: Step) => void;
+}) {
+  const chip = (here: boolean) =>
+    `flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold transition ${
+      here ? 'bg-white text-slate-950' : 'text-white/60 ring-1 ring-white/20 hover:bg-white/10 hover:text-white'
+    }`;
+
+  return (
+    <nav aria-label="작성 단계" className="mt-6 flex flex-wrap items-center gap-2">
+      <button
+        aria-current={step === META_STEP ? 'step' : undefined}
+        className={chip(step === META_STEP)}
+        onClick={() => onGo(META_STEP)}
+        type="button"
+      >
+        어디에 내나요
+      </button>
+
+      <span aria-hidden="true" className="text-white/25">→</span>
+
+      {filled.map((done, index) => {
+        const no = index + 1;
+        const here = step === no;
+        return (
+          <button
+            aria-current={here ? 'step' : undefined}
+            className={`${chip(here)} disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-white/60`}
+            disabled={locked}
+            key={no}
+            onClick={() => onGo(no)}
+            title={locked ? '제목을 먼저 입력해 주세요' : undefined}
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              className={`size-1.5 rounded-full ${
+                done ? 'bg-emerald-400' : here ? 'bg-slate-300' : 'bg-white/25'
+              }`}
+            />
+            문항 {no}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
 
 /** 공고를 어떤 회사·직무로 등록했는지 적어 두는 열쇠. 달라지면 등록한 공고가 더는 맞지 않는다. */
 const postingKey = (company?: string | null, position?: string | null) =>
@@ -42,6 +115,7 @@ const toWorkItem = (item: CoverLetterInput['items'][number]): WorkItem => ({
 
 export function CoverLetterWorkspace({
   initial,
+  initialPosting,
   isLoggedIn,
   alreadySaved,
   justSaved,
@@ -64,7 +138,7 @@ export function CoverLetterWorkspace({
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   // 확인만 해 둔 공고. 이 주소로 등록한다.
-  const [posting, setPosting] = useState<PendingJobPosting | null>(null);
+  const [posting, setPosting] = useState<PendingJobPosting | null>(initialPosting ?? null);
   // 등록해 둔 공고와, 그때의 회사·직무. 그 뒤에 회사나 직무를 바꾸면 다시 등록해야 한다.
   const [registered, setRegistered] = useState<{ id: string; of: string } | null>(() =>
     initial.jobContextId
@@ -72,10 +146,18 @@ export function CoverLetterWorkspace({
       : null,
   );
   const [registering, setRegistering] = useState(false);
+  const [postingError, setPostingError] = useState<string | null>(null);
+  /*
+   * 한 화면에 다 쌓아 두니 줄줄이 스크롤해야 했다. 어디에 내는지 먼저 정하고 문항을 쓰는
+   * 순서가 실제로 쓰는 순서다. 이미 저장한 자소서를 다시 열 때는 고칠 것이 대개 답변이라
+   * 문항부터 편다. 제목 없이 저장된 자소서는 문항부터 열 수 없으니 앞 단계로 연다.
+   */
+  const [step, setStep] = useState<Step>(alreadySaved && initial.title.trim() !== '' ? 1 : META_STEP);
 
   const touch = () => {
     setDirty(true);
     setJustSavedNotice(false);
+    setPostingError(null);
   };
 
   const editItem = (key: string, next: Partial<WorkItem>) => {
@@ -83,14 +165,19 @@ export function CoverLetterWorkspace({
     touch();
   };
 
+  // 문항을 더하면 그 문항으로 바로 넘어간다. 더해 놓고 찾아가게 하면 한 걸음이 더 든다.
   const addItem = () => {
     setItems((prev) => [...prev, { key: uid(), question: '', answer: '', charLimit: 500 }]);
+    setStep(items.length + 1);
     touch();
   };
 
   const removeItem = (key: string) => {
     if (items.length <= 1) return;
+    const gone = items.findIndex((item) => item.key === key);
     setItems((prev) => prev.filter((item) => item.key !== key));
+    // 지운 자리에 머물면 빈 화면이 된다. 마지막을 지웠으면 한 칸 앞으로 당긴다.
+    if (gone >= 0 && step > items.length - 1) setStep(Math.max(1, items.length - 1));
     touch();
   };
 
@@ -122,7 +209,7 @@ export function CoverLetterWorkspace({
     title: title.trim() || '제목 없는 자소서',
     targetCompany: company.trim() || null,
     targetPosition: position.trim() || null,
-    jobContextId: registered?.id ?? null,
+    jobContextId: registered?.of === postingKey(company, position) ? registered.id : null,
     items: items.map((item) => ({
       question: item.question,
       answer: item.answer,
@@ -136,16 +223,11 @@ export function CoverLetterWorkspace({
     return !posting || registered?.of === key ? null : posting;
   };
 
-  /**
-   * 검토 직전에 공고를 등록해 식별자를 붙인다. 검토 방은 자소서에 적힌 이 값을 물려받는다.
-   *
-   * 등록은 모델이 공고를 요구사항 단위로 정리하므로 수십 초 걸린다. 그동안 검토 버튼이
-   * "공고 분석 중…" 으로 남는다. 검토는 이 값이 있어야 제 일을 하므로 기다린다.
-   *
-   * 실패해도 검토는 그대로 연다. 공고는 선택 항목이라 써 둔 글을 못 보게 할 이유가 없다.
-   */
-  const inputForReview = async (): Promise<CoverLetterInput> => {
+  /** 저장과 검토 모두 공고 분석이 끝난 식별자를 사용한다. 실패하면 이동하지 않고 재시도할 수 있다. */
+  const inputWithPosting = async (): Promise<CoverLetterInput | null> => {
     const base = buildInput();
+    // 게스트는 먼저 로그인 화면으로 보낸다. 등록 API 는 로그인 후에만 호출할 수 있다.
+    if (!isLoggedIn) return base;
     const pending = postingToRegister(base);
     if (!pending) {
       return base;
@@ -164,19 +246,20 @@ export function CoverLetterWorkspace({
         of: postingKey(base.targetCompany, base.targetPosition),
       });
       return { ...base, jobContextId: context.jobContextId };
-    } catch {
-      return { ...base, jobContextId: null };
+    } catch (error) {
+      setPostingError(error instanceof ApiError ? error.message : '채용공고 분석에 실패했습니다. 다시 시도해 주세요.');
+      return null;
     } finally {
       setRegistering(false);
     }
   };
 
-  /** 저장은 공고 등록을 기다리지 않는다. 자소서를 먼저 넘기고 등록은 받는 쪽이 뒤에서 잇는다. */
   const save = async () => {
     setSaving(true);
     try {
-      const base = buildInput();
-      await onSave(base, postingToRegister(base));
+      const input = await inputWithPosting();
+      if (!input) return;
+      await onSave(input, isLoggedIn ? null : posting);
       setDirty(false);
       setSavedOnce(true);
       setJustSavedNotice(true);
@@ -188,7 +271,10 @@ export function CoverLetterWorkspace({
   const review = async () => {
     setReviewing(true);
     try {
-      await onReview(await inputForReview());
+      const input = await inputWithPosting();
+      if (input) {
+        await onReview(input, isLoggedIn ? null : posting);
+      }
     } finally {
       setReviewing(false);
     }
@@ -197,58 +283,122 @@ export function CoverLetterWorkspace({
   // 질문과 답변이 다 빈 자소서를 검토에 넘기면 에이전트가 볼 것이 없다.
   const hasWriting = items.some((item) => item.question.trim() !== '' && item.answer.trim() !== '');
 
+  /*
+   * 제목이 있어야 문항으로 넘어간다. 회사·직무는 비워도 검토가 되지만 제목은 이 자소서의
+   * 이름이라, 없으면 목록에서 "제목 없는 자소서" 들이 구분되지 않는다.
+   */
+  const metaReady = title.trim() !== '';
+  const goStep = (next: Step) => setStep(next === META_STEP || metaReady ? next : META_STEP);
+
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      {onBack && (
-        <button onClick={onBack} className="mb-4 text-sm text-slate-500 hover:text-slate-800" type="button">
-          ← 목록으로
-        </button>
-      )}
-
-      {!isLoggedIn && (
-        <div className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-[13px] text-slate-600">
-          <span aria-hidden>✨</span>
-          <span>
-            작성한 자기소개서를 <b className="font-semibold text-slate-800">저장</b>하려면 로그인하세요.
-          </span>
-        </div>
-      )}
-
-      <div className="mb-5">
-        <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor="cl-title">
-          제목
-        </label>
-        {/* 테두리를 늘 보여준다. 눌러야 박스가 나타나면 고칠 수 있는 칸인 줄 모른다. */}
-        <input
-          id="cl-title"
-          value={title}
-          onChange={(event) => {
-            setTitle(event.target.value);
-            touch();
-          }}
-          placeholder="제목을 입력하세요 (예: 2026 상반기 백엔드 신입 지원)"
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-2xl font-bold tracking-tight text-slate-950 placeholder:text-[17px] placeholder:font-normal placeholder:text-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+    /*
+     * 기업 검색·모의 면접 준비와 같은 짜임이다 — 영상 위 어두운 한 장에 흰 카드를 얹는다.
+     * 이 화면만 회색 바탕이라 혼자 따로 놀았다.
+     */
+    <section className="relative isolate overflow-hidden bg-slate-950 text-white">
+      {/*
+        화면(fixed)에 붙인다. 이 장은 문항을 늘릴수록 세로로 길어지는데, 그 길이에
+        맞춰 늘이면 가로로 긴 영상이 두 배로 확대되고 좌우가 잘려 책상 귀퉁이만 남는다.
+        한 화면에 고정하면 원본 비율 그대로 나오고, 스크롤해도 배경이 가만히 있어 조용하다.
+      */}
+      <div aria-hidden="true" className="fixed inset-0">
+        {/*
+          한 번만 돌고 마지막 프레임에서 멈춘다(loop 없음). 글을 쓰는 화면이라 배경이 계속
+          움직이면 눈이 끌려간다. 들어올 때 한 번 살아 있다가 사진처럼 가라앉는다.
+        */}
+        <video
+          autoPlay
+          className="size-full object-cover"
+          muted
+          playsInline
+          poster={HERO_POSTER}
+          preload="metadata"
+          src={HERO_VIDEO}
         />
-        <p className="mt-1.5 text-sm text-slate-500">문항을 추가·삭제하고 답변을 수정한 뒤 저장하세요.</p>
+        {/* 흰 카드가 대부분을 덮으므로 첫 화면보다 옅게 눌러야 영상이 보인다 */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/62 to-slate-950/88" />
       </div>
 
-      <JobPostingBar onParsed={applyPosting} />
+      <div className="relative mx-auto w-full max-w-4xl px-6 pt-24 pb-16">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">무엇을 검토받을까요?</h1>
+          {onBack && (
+            <button
+              className="text-sm font-semibold text-white/60 transition hover:text-white"
+              onClick={onBack}
+              type="button"
+            >
+              목록으로 →
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-sm break-keep text-white/70">
+          {step === META_STEP
+            ? '어디에 내는 자소서인지 먼저 정하고, 다음에서 문항을 씁니다.'
+            : isLoggedIn
+              ? '문항을 추가·삭제하고 답변을 고친 뒤 저장하세요. 코치 다섯이 각자 맡은 자료로 읽습니다.'
+              : '로그인 없이 써 볼 수 있어요. 저장하려면 로그인하세요.'}
+        </p>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-[12px] font-medium text-slate-500">지원 회사 (선택)</label>
-          <CompanyPicker
-            value={company}
-            onChange={(next) => {
-              setCompany(next);
+        <StepRail
+          filled={items.map((item) => item.question.trim() !== '' && item.answer.trim() !== '')}
+          locked={!metaReady}
+          onGo={goStep}
+          step={step}
+        />
+
+        {/* 제목은 이 자소서의 이름이다. 카드 안에 묻지 않고 어두운 바탕에 그대로 둔다 */}
+        <div className={step === META_STEP ? 'mt-6' : 'hidden'}>
+          <label className="mb-1.5 block text-[12px] font-semibold text-white/50" htmlFor="cl-title">
+            제목
+          </label>
+          <input
+            id="cl-title"
+            value={title}
+            onChange={(event) => {
+              setTitle(event.target.value);
               touch();
             }}
+            placeholder="제목을 입력하세요 (예: 2026 상반기 백엔드 신입 지원)"
+            className="w-full rounded-xl bg-white/10 px-4 py-3 text-2xl font-bold tracking-tight text-white ring-1 ring-white/20 backdrop-blur outline-none transition placeholder:text-[17px] placeholder:font-normal placeholder:text-white/35 focus:bg-white/15 focus:ring-2 focus:ring-white/50"
           />
         </div>
-        <div>
-          <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor="cl-position">
-            지원 직무 (선택)
-          </label>
+
+        {/*
+          어디에 내는 자소서인지. 공고 주소를 넣으면 회사·직무가 저절로 채워진다.
+          단계를 옮겨도 입력한 것이 날아가지 않도록 지우지 않고 감추기만 한다.
+        */}
+        <div
+          className={`mt-4 rounded-2xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm ${
+            step === META_STEP ? '' : 'hidden'
+          }`}
+        >
+          <p className="text-sm font-bold text-slate-700">어디에 내나요?</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            채워 두면 그 회사·직무 기준으로 읽습니다. 비워 둬도 검토는 됩니다.
+          </p>
+
+          <div className="mt-4">
+            <JobPostingBar onParsed={applyPosting} />
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                지원 회사 <span className="font-medium text-slate-400">(선택)</span>
+              </label>
+              <CompanyPicker
+                value={company}
+                onChange={(next) => {
+                  setCompany(next);
+                  touch();
+                }}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="cl-position">
+                지원 직무 <span className="font-medium text-slate-400">(선택)</span>
+              </label>
           {positionChoices.length > 1 && !typingPosition ? (
             <PositionSelect
               choices={positionChoices}
@@ -272,7 +422,7 @@ export function CoverLetterWorkspace({
                   setPosition(event.target.value);
                   touch();
                 }}
-                placeholder="예: 백엔드 개발"
+                placeholder="지원 직무를 입력하세요"
                 className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
               {typingPosition && (
@@ -286,33 +436,58 @@ export function CoverLetterWorkspace({
               )}
             </>
           )}
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        {items.map((item, index) => (
-          <section
-            key={item.key}
-            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-          >
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[12px] font-semibold text-white">
-                {index + 1}
-              </span>
-              <span className="text-[14px] font-medium text-slate-700">문항 {index + 1}</span>
-
-              {items.length > 1 && (
-                <button
-                  onClick={() => removeItem(item.key)}
-                  className="ml-auto rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                  type="button"
-                >
-                  삭제
-                </button>
-              )}
             </div>
+          </div>
+        </div>
 
-            <div className="space-y-3 p-5">
+        {/* 문항을 쓰는 동안에도 어디에 내는 자소서인지 한 줄로 보인다. 누르면 앞 단계로 */}
+        {step !== META_STEP && (
+          <button
+            className="mt-4 flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-white/10 px-4 py-3 text-left text-[13px] text-white/70 ring-1 ring-white/15 backdrop-blur transition hover:bg-white/15 hover:text-white"
+            onClick={() => setStep(1)}
+            type="button"
+          >
+            <span className="font-bold text-white">{title.trim() || '제목 없는 자소서'}</span>
+            {(company.trim() || position.trim()) && (
+              <span>
+                · {[company.trim(), position.trim()].filter(Boolean).join(' · ')}
+              </span>
+            )}
+            <span className="ml-auto shrink-0 text-[12px] font-semibold text-white/50">고치기</span>
+          </button>
+        )}
+
+        {/* 한 화면에 한 문항만. 나머지는 지우지 않고 감춘다 — 입력한 것이 날아가면 안 된다 */}
+        <div className={step === META_STEP ? 'hidden' : 'mt-4'}>
+          {items.map((item, index) => (
+            <section
+              key={item.key}
+              className={`rounded-2xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm ${
+                step === index + 1 ? '' : 'hidden'
+              }`}
+            >
+              {/*
+                회색 머리띠를 걷었다. 번호 알약과 삭제만 남기면 정작 읽어야 할 질문·답변이
+                먼저 눈에 들어온다.
+              */}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[12px] font-bold text-white">
+                  {index + 1}
+                </span>
+                <span className="text-sm font-bold text-slate-700">문항 {index + 1}</span>
+
+                {items.length > 1 && (
+                  <button
+                    onClick={() => removeItem(item.key)}
+                    className="ml-auto rounded-lg px-3 py-1.5 text-[13px] font-semibold text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                    type="button"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="flex-1">
                   <label className="mb-1 block text-[12px] font-medium text-slate-500">질문</label>
@@ -359,43 +534,85 @@ export function CoverLetterWorkspace({
         ))}
       </div>
 
-      <button
-        onClick={addItem}
-        className="mt-4 w-full rounded-lg border border-dashed border-slate-300 py-2.5 text-sm text-slate-500 hover:bg-slate-50"
-        type="button"
-      >
-        + 문항 추가
-      </button>
-
-      <div className="mt-6 flex flex-col items-end gap-1.5">
-        <div className="flex items-center gap-2">
-          <SaveArea
-            isLoggedIn={isLoggedIn}
-            dirty={dirty}
-            savedOnce={savedOnce}
-            saving={saving}
-            registering={registering}
-            justSaved={justSavedNotice}
-            onSave={save}
-          />
-          <button
-            onClick={review}
-            disabled={reviewing || registering || !hasWriting}
-            className="rounded-xl bg-slate-900 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-            type="button"
+        {/*
+          공고 분석이 실패하면 이동하지 않고 여기서 알린다. 어느 단계에서 눌렀든 보여야
+          하므로 단계별로 감추는 칸 바깥, 누른 단추 바로 옆에 둔다.
+        */}
+        {postingError && (
+          <p
+            className="mt-4 rounded-xl bg-rose-500/15 px-4 py-3 text-sm font-semibold text-rose-200 ring-1 ring-rose-400/30"
+            role="alert"
           >
-            {registering ? '공고 분석 중…' : reviewing ? '여는 중…' : 'AI 검토'}
-          </button>
+            {postingError}
+          </p>
+        )}
+
+        {/* 모의 면접 준비 화면과 같은 마무리 바. 왼쪽이 지금 상태, 오른쪽이 다음 걸음이다 */}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/10 px-6 py-5 text-white ring-1 ring-white/20 backdrop-blur">
+          <div className="min-w-0">
+            <p className="text-sm font-bold">
+              {step === META_STEP
+                ? metaReady
+                  ? '회사·직무는 비워 둬도 됩니다. 채우면 그 기준으로 읽어요.'
+                  : '제목을 입력하면 문항을 쓸 수 있어요.'
+                : !hasWriting
+                  ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
+                  : isLoggedIn
+                    ? '코치 다섯이 각자 맡은 자료로 읽습니다.'
+                    : '검토를 받으려면 로그인이 필요해요.'}
+            </p>
+            <p className="mt-0.5 text-xs break-keep text-white/60">
+              {step === META_STEP
+                ? '다음에서 질문과 답변을 씁니다.'
+                : isLoggedIn
+                  ? '저장한 뒤 검토 방으로 넘어갑니다. 문항은 위에서 오갈 수 있어요.'
+                  : '로그인하면 쓰던 자소서가 그대로 남습니다.'}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* 문항을 더하는 일은 저장·검토와 무게가 다르다. 제일 가볍게 왼쪽에 둔다 */}
+            {step !== META_STEP && (
+              <button
+                className="rounded-full border border-dashed border-white/30 px-5 py-3 text-sm font-semibold text-white/60 transition hover:border-white/50 hover:bg-white/10 hover:text-white"
+                onClick={addItem}
+                type="button"
+              >
+                + 문항 추가
+              </button>
+            )}
+            <SaveArea
+              isLoggedIn={isLoggedIn}
+              dirty={dirty}
+              savedOnce={savedOnce}
+              saving={saving}
+              registering={registering}
+              justSaved={justSavedNotice}
+              onSave={save}
+            />
+            {/* 첫 단계의 다음 걸음은 검토가 아니라 문항 쓰기다 */}
+            {step === META_STEP ? (
+              <button
+                className="rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+                disabled={!metaReady}
+                onClick={() => setStep(1)}
+                type="button"
+              >
+                문항 쓰기 →
+              </button>
+            ) : (
+              <button
+                onClick={review}
+                disabled={reviewing || registering || saving || !hasWriting}
+                className="rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
+                type="button"
+              >
+                {registering ? '공고 분석 중…' : reviewing ? '여는 중…' : 'AI 검토'}
+              </button>
+            )}
+          </div>
         </div>
-        <p className="text-[12px] text-slate-400">
-          {!hasWriting
-            ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
-            : isLoggedIn
-              ? '저장한 뒤 에이전트 검토 화면으로 넘어가요.'
-              : '검토를 받으려면 로그인이 필요해요.'}
-        </p>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -567,7 +784,7 @@ function SaveArea({
       <button
         onClick={onSave}
         disabled={saving}
-        className="rounded-xl bg-blue-600 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:bg-slate-300"
+        className="rounded-full px-6 py-3 text-sm font-bold text-white/80 ring-1 ring-white/30 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
         type="button"
       >
         {saving ? '이동 중…' : '로그인하고 저장'}
@@ -578,16 +795,16 @@ function SaveArea({
   return (
     <div className="flex items-center gap-2">
       {justSaved ? (
-        <span role="status" className="text-[13px] font-semibold text-emerald-600">
+        <span role="status" className="text-[13px] font-semibold text-emerald-300">
           저장했습니다 ✓
         </span>
       ) : (
-        savedOnce && !dirty && <span className="text-[12.5px] font-medium text-emerald-600">저장됨 ✓</span>
+        savedOnce && !dirty && <span className="text-[12.5px] font-medium text-emerald-300">저장됨 ✓</span>
       )}
       <button
         onClick={onSave}
         disabled={saving || registering || (savedOnce && !dirty)}
-        className="rounded-xl bg-blue-600 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        className="rounded-full px-6 py-3 text-sm font-bold text-white/80 ring-1 ring-white/30 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         type="button"
       >
         {saving ? '저장 중…' : '저장'}

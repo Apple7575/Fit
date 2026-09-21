@@ -65,8 +65,10 @@ JD가 명시하지 않았다면 배포, 최적화, 오류 처리, 협업, 정량
 쉼표, 슬래시, "등", "하나 이상"으로 나열된 기술은 대안으로 묶는다.
 대안 중 하나를 사용했는지는 하나의 evidence_requirement로 표현한다.
 문장에 "그리고"로 연결된 조건은 각각 필요하므로 evidence_logic은 ALL이다.
-문장 전체가 "또는"으로 연결된 대체 조건이면 evidence_logic은 ANY이고,
-두 조건 중 하나에 해당하는지를 확인하는 evidence_requirement 하나만 만든다.
+문장 전체가 "또는"으로 연결된 대체 조건이면 evidence_logic은 ANY이다.
+**evidence_logic이 ANY이면 evidence_requirements는 반드시 정확히 1개다.** 대체 조건을
+여러 개로 쪼개지 말고, "둘 중 하나에 해당하는지"를 묻는 근거 하나로 합쳐라.
+근거를 2개 이상 만들어야 한다면 evidence_logic은 ALL이다.
 요구사항의 동사와 대상이 필요 근거에서 사라지지 않게 한다.
 """.strip()
     payload = {
@@ -86,11 +88,17 @@ def evidence_decomposition_schema() -> dict[str, Any]:
         "additionalProperties": False,
         "required": ["evidence_logic", "evidence_requirements"],
         "properties": {
-            "evidence_logic": {"type": "string", "enum": ["ALL", "ANY"]},
+            "evidence_logic": {
+                "type": "string",
+                "enum": ["ALL", "ANY"],
+                # 제약을 필드 옆에 적는다. 프롬프트 본문보다 여기를 더 잘 지키는 모델이 있다.
+                "description": "근거를 모두 만족해야 하면 ALL. 대체 조건이면 ANY이며, 이때 evidence_requirements는 반드시 1개다.",
+            },
             "evidence_requirements": {
                 "type": "array",
                 "minItems": 1,
                 "maxItems": 3,
+                "description": "1~3개. evidence_logic이 ANY이면 정확히 1개여야 한다.",
                 "items": {
                     "type": "object",
                     "additionalProperties": False,

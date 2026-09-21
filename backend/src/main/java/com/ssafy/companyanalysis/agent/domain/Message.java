@@ -96,6 +96,19 @@ public class Message {
         return new Message(roomId, null, MessageRole.USER, null, null, MessageStatus.DONE);
     }
 
+    /**
+     * 검토를 시작하지도 못했을 때 남기는 안내 턴의 뿌리.
+     *
+     * <p>뿌리가 {@link MessageStatus#FAILED} 인 것이 안내 턴의 표식이다. 다음 자동 검토가 이
+     * 표식을 보고 안내를 지운 뒤 다시 돈다 — 안내를 그냥 두면 그 방은 말이 오간 방이 되어
+     * 영영 검토를 못 받는다.
+     *
+     * <p>화면은 뿌리를 내용으로만 가르므로 보통의 자동 검토와 똑같이 그려진다.
+     */
+    public static Message deferredAutoReview(Long roomId) {
+        return new Message(roomId, null, MessageRole.USER, null, null, MessageStatus.FAILED);
+    }
+
     /** 아직 실행하지 않은 에이전트 답변 자리. 실행하면서 내용을 채운다. */
     public static Message pendingAgent(Long roomId, Long turnId, String agentKey) {
         return new Message(roomId, turnId, MessageRole.AGENT, agentKey, null, MessageStatus.PENDING);

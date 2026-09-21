@@ -1,0 +1,91 @@
+// 뉴스 주간 수집·적재. **별도 Pipeline 잡**이 이 파일을 본다 (멀티브랜치 Jenkinsfile
+// 과 분리했다 — 그쪽은 푸시마다 도는데, 이것은 주 1회만 돌고 3.8시간이 걸린다).
+//
+// 잡 만드는 법은 data/docs/S15P21A504-NEWS-LOAD-PIPELINE.md 7장에 적었다.
+//
+// 셸은 저장소 파일(data/scripts/news_weekly.sh)에 둔다. Groovy 의 '''...''' 가
+// 백슬래시-따옴표를 풀어 버려 여기에 중첩하면 따옴표 짝이 어긋난다 — develop
+// 빌드 22·25·29 가 그것으로 죽었다.
+pipeline {
+    agent any
+
+    triggers {
+        // 일요일 03:00 KST. 3.8시간짜리라 아침 전에 끝난다.
+        cron('H 3 * * 0')
+    }
+
+    parameters {
+        choice(name: 'CA_ENV', choices: ['dev', 'prod'], description: '적재할 DB')
+        booleanParam(name: 'LOAD_NEWS_PROD', defaultValue: false,
+                     description: '운영 DB 에 넣는다. CA_ENV=prod 일 때만 뜻이 있다')
+        string(name: 'START', defaultValue: '',
+               description: 'KST 시작일 (비우면 END-7일)')
+        string(name: 'END', defaultValue: '',
+               description: 'KST 종료일, exclusive (비우면 오늘)')
+        booleanParam(name: 'DRY_RUN', defaultValue: false,
+                     description: '받지 않고 무엇을 할지만 찍는다')
+    }
+
+    options {
+        // 3.8시간 + 여유. 막히면 멈추는 쪽이 낫다.
+        timeout(time: 6, unit: 'HOURS')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '30'))
+    }
+
+    stages {
+        stage('Collect-And-Load') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: 'deploy-ssh',
+                                                   keyFileVariable: 'SSH_KEY',
+                                                   usernameVariable: 'SSH_USER')]) {
+                    sh '''
+                        set -eu
+                        SSH="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+                        HOST=$SSH_USER@host.docker.internal
+
+                        # ── 1. 코드를 보낸다. 데이터는 서버에 남아 있으므로 건드리지 않는다.
+                        tar czf - data/scripts data/pipeline data/config data/news_poc \
+                                  data/manifests/seed backend/src/main/resources/db/migration \
+                        | $SSH "$HOST" '
+                            set -e
+                            B=/home/ubuntu/newsdata
+                            mkdir -p "$B"
+                            rm -rf "$B/pkg.new" && mkdir -p "$B/pkg.new"
+                            tar xzf - -C "$B/pkg.new"
+                            rm -rf "$B/pkg" 2>/dev/null \
+                              || docker run --rm -v /home/ubuntu:/h python:3.12-slim rm -rf /h/newsdata/pkg
+                            mv "$B/pkg.new" "$B/pkg"
+                            echo "받음: $(find "$B/pkg" -type f | wc -l) 파일"
+                        '
+
+                        # ── 2. 돌린다. 창을 비워 두면 스크립트가 지난 7일을 잡는다.
+                        $SSH "$HOST" "CA_ENV=${CA_ENV} \
+                            LOAD_NEWS_PROD=${LOAD_NEWS_PROD} \
+                            DRY_RUN=$([ '${DRY_RUN}' = 'true' ] && echo 1 || echo 0) \
+                            ${START:+START=${START}} ${END:+END=${END}} \
+                            bash /home/ubuntu/newsdata/pkg/data/scripts/news_weekly.sh"
+
+                        # ── 3. 무엇이 들어갔는지 남긴다 (원본·시드는 가져오지 않는다).
+                        mkdir -p artifacts
+                        $SSH "$HOST" 'cat /home/ubuntu/newsdata/manifests/seed/news_article.json' \
+                            > artifacts/news_article.manifest.json || true
+                        $SSH "$HOST" 'cat $(ls -dt /home/ubuntu/newsdata/collect/*/summary.json | head -1)' \
+                            > artifacts/collect.summary.json || true
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'artifacts/*.json', allowEmptyArchive: true
+        }
+        failure {
+            // 종료 코드로 원인이 갈린다 — 2 막힘 · 3 실패율 초과 · 4 적재 락
+            // (셋 다 시드·DB 를 건드리지 않고 멈춘 것이다).
+            echo "뉴스 주간 수집 실패: ${env.BUILD_URL}console"
+        }
+    }
+}

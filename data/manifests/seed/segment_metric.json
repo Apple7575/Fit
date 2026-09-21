@@ -1,6 +1,6 @@
 {
   "table": "segment_metric",
-  "generated_at": "2026-09-18T16:20:55.772592+00:00",
+  "generated_at": "2026-09-21T11:41:01.908902+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -38,10 +38,17 @@
     "V23__agent_message.sql",
     "V24__agent_room_job_context.sql",
     "V25__agent_room_context_id.sql",
-    "V26__cover_letter_context_corp.sql"
+    "V26__cover_letter_context_corp.sql",
+    "V27__rag_evidence.sql",
+    "V28__rag_business_report_evidence.sql",
+    "V29__rag_evidence_embedding.sql",
+    "V30__company_analysis_report.sql",
+    "V31__company_analysis_conversation.sql",
+    "V32__rag_evidence_entity_scope.sql",
+    "V33__company_table_row.sql"
   ],
   "source": ".cache/empSttus_*.json (직원 현황) + staged/business_report/segment_revenue.csv (사업보고서)",
-  "seed_rows": 47816,
+  "seed_rows": 45732,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
@@ -54,13 +61,17 @@
     "segment_revenue 는 사업보고서 원문에서 오고 부문 축이 다르다 — 직원 부문과 사업 부문이 한 기업에 함께 보인다 (S15P21A504-73)",
     "값 없는 행은 만들지 않는다 (MR !81 과 같은 규칙)"
   ],
-  "distinct_corp_codes": 2666,
+  "row_breakdown": {
+    "segment_employee_count": 20804,
+    "segment_revenue": 24928
+  },
+  "distinct_corp_codes": 2673,
   "fiscal_years": [
     2021,
     2025
   ],
   "build_stats": {
-    "사업보고서 부문 매출": 27012,
+    "사업보고서 부문 매출": 24928,
     "인원 미기재": 949,
     "직원현황 부문(기업×연도×부문)": 20804,
     "합계 행 제외": 1431
