@@ -35,6 +35,10 @@ _KEPT_KEYS = frozenset({
     # 배열 길이는 Gemini 도 지킨다. 떨구면 담당들의 "1~3개" 같은 제약이 사라져 모델이 넘게 낸다.
     "minItems", "maxItems",
 })
+# 길이 제약. 중첩된 배열에 붙으면 Gemini 가 감당하지 못해 400 을 준다.
+_BOUND_KEYS = frozenset({"minItems", "maxItems"})
+# 그 400 의 본문에 이 말이 들어 있다. 제약을 빼고 한 번 더 보내는 신호로 쓴다.
+_TOO_MANY_STATES = "too many states"
 _TYPES = {
     "object": "OBJECT",
     "array": "ARRAY",
@@ -52,11 +56,14 @@ class _NoRedirectOpener(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def to_gemini_schema(schema: Any) -> Any:
+def to_gemini_schema(schema: Any, *, with_bounds: bool = True) -> Any:
     """JSON Schema → Gemini responseSchema.
 
     타입을 대문자로 올리고, Gemini 가 모르는 키워드를 떨군다. `["string", "null"]` 처럼 타입을
     배열로 쓴 곳은 첫 타입 + `nullable` 로 옮긴다 — 담당들의 스키마가 선택 필드를 이렇게 쓴다.
+
+    `with_bounds=False` 면 배열 길이 제약을 뺀다. 중첩된 배열에 길이가 붙으면 Gemini 가
+    "too many states" 로 거절하는데, 그때 이 형태로 한 번 더 보낸다.
     """
     if isinstance(schema, list):
         return [to_gemini_schema(item) for item in schema]
@@ -77,10 +84,15 @@ def to_gemini_schema(schema: Any) -> Any:
     for key, value in schema.items():
         if key == "type" or key not in _KEPT_KEYS:
             continue
+        if not with_bounds and key in _BOUND_KEYS:
+            continue
         if key == "properties" and isinstance(value, dict):
-            out["properties"] = {name: to_gemini_schema(item) for name, item in value.items()}
+            out["properties"] = {
+                name: to_gemini_schema(item, with_bounds=with_bounds)
+                for name, item in value.items()
+            }
         elif key == "items":
-            out["items"] = to_gemini_schema(value)
+            out["items"] = to_gemini_schema(value, with_bounds=with_bounds)
         else:
             out[key] = value
 
@@ -89,7 +101,9 @@ def to_gemini_schema(schema: Any) -> Any:
         branches = schema.get(key)
         if isinstance(branches, list) and branches:
             concrete = [b for b in branches if not (isinstance(b, dict) and b.get("type") == "null")]
-            chosen = to_gemini_schema(concrete[0] if concrete else branches[0])
+            chosen = to_gemini_schema(
+                concrete[0] if concrete else branches[0], with_bounds=with_bounds
+            )
             if isinstance(chosen, dict):
                 merged = {**chosen, **out}
                 if len(concrete) != len(branches):
@@ -135,37 +149,47 @@ def complete(
     if not contents:
         raise LlmResponseError(_LABEL, "보낼 메시지가 없습니다")
 
-    body: dict[str, Any] = {
-        "contents": contents,
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseSchema": to_gemini_schema(schema),
-            "temperature": 0,
-            "maxOutputTokens": max_tokens,
-        },
-    }
-    if system is not None:
-        body["systemInstruction"] = system
-
     url = (
         f"{config['base_url']}/generativelanguage.googleapis.com/v1beta/models/"
         f"{config['model']}:generateContent"
     )
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-goog-api-key": config["api_key"]},
-        method="POST",
-    )
-    opener = urllib.request.build_opener(_NoRedirectOpener())
+
+    def send(with_bounds: bool) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "contents": contents,
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": to_gemini_schema(schema, with_bounds=with_bounds),
+                "temperature": 0,
+                "maxOutputTokens": max_tokens,
+            },
+        }
+        if system is not None:
+            body["systemInstruction"] = system
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json", "x-goog-api-key": config["api_key"]},
+            method="POST",
+        )
+        opener = urllib.request.build_opener(_NoRedirectOpener())
+        try:
+            with opener.open(request, timeout=timeout_seconds) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace")
+            raise LlmHttpError(_LABEL, error.code, detail) from error
+        except urllib.error.URLError as error:
+            raise LlmConnectionError(_LABEL, error.reason) from error
+
     try:
-        with opener.open(request, timeout=timeout_seconds) as response:
-            raw = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", errors="replace")
-        raise LlmHttpError(_LABEL, error.code, detail) from error
-    except urllib.error.URLError as error:
-        raise LlmConnectionError(_LABEL, error.reason) from error
+        raw = send(with_bounds=True)
+    except LlmHttpError as error:
+        # 중첩된 배열에 길이 제약이 붙으면 Gemini 가 감당하지 못한다. 제약을 빼고 한 번 더 보낸다 —
+        # 길이는 파서가 어차피 검사하므로, 아예 못 부르는 것보다 낫다.
+        if error.status != 400 or _TOO_MANY_STATES not in error.detail.lower():
+            raise
+        raw = send(with_bounds=False)
 
     try:
         text = raw["candidates"][0]["content"]["parts"][0]["text"]

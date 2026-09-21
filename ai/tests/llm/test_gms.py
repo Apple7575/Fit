@@ -1,12 +1,14 @@
 """GMS 어댑터 — 스키마·메시지 변환과 응답 해석."""
 from __future__ import annotations
 
+import io
 import json
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 from ai.llm import complete_structured
-from ai.llm.contracts import LlmResponseError
+from ai.llm.contracts import LlmHttpError, LlmResponseError
 from ai.llm.gms import to_gemini_contents, to_gemini_schema
 
 
@@ -152,6 +154,40 @@ class GmsCompleteTest(unittest.TestCase):
         self.assertEqual(request.headers["X-goog-api-key"], "key")
         self.assertTrue(request.full_url.endswith(":generateContent"))
 
+    def test_retries_without_array_bounds_when_schema_is_too_complex(self):
+        """중첩 배열에 길이가 붙으면 Gemini 가 400 을 준다. 제약을 빼고 한 번 더 보낸다."""
+        bounded = {
+            "type": "object",
+            "properties": {"items": {"type": "array", "maxItems": 12, "items": {"type": "string"}}},
+        }
+        ok = {"candidates": [{"content": {"parts": [{"text": '{"items": []}'}]}}]}
+        with patch("ai.llm.gms.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = [
+                _HttpError(400, '{"error":{"message":"The specified schema produces a constraint that has too many states for serving."}}'),
+                _Response(ok),
+            ]
+            result = complete_structured(
+                self.CONFIG, [{"role": "user", "content": "x"}],
+                schema=bounded, schema_name="x", max_tokens=100,
+            )
+            second = opener.return_value.open.call_args_list[1][0][0]
+
+        self.assertEqual(result["output"], {"items": []})
+        body = json.loads(second.data.decode("utf-8"))
+        self.assertNotIn("maxItems", json.dumps(body["generationConfig"]["responseSchema"]))
+
+    def test_other_http_errors_are_not_retried(self):
+        """키가 틀렸을 때까지 두 번 부르면 원인이 가려진다."""
+        with patch("ai.llm.gms.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = _HttpError(401, "unauthorized")
+            with self.assertRaises(LlmHttpError):
+                complete_structured(
+                    self.CONFIG, [{"role": "user", "content": "x"}],
+                    schema=self.SCHEMA, schema_name="x", max_tokens=100,
+                )
+
+        self.assertEqual(opener.return_value.open.call_count, 1)
+
     def test_safety_block_reports_finish_reason(self):
         """안전 필터에 걸리면 parts 가 없다. 원인을 남겨야 추적된다."""
         payload = {"candidates": [{"finishReason": "SAFETY"}]}
@@ -164,6 +200,11 @@ class GmsCompleteTest(unittest.TestCase):
                 )
 
         self.assertIn("SAFETY", str(caught.exception))
+
+
+class _HttpError(urllib.error.HTTPError):
+    def __init__(self, code: int, body: str) -> None:
+        super().__init__("https://gms.example", code, "err", {}, io.BytesIO(body.encode("utf-8")))
 
 
 class _Response:
