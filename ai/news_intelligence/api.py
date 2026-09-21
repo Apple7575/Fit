@@ -7,8 +7,15 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
 
+from pydantic import Field
+
 from ai.jd_coaching.baseline import load_qwen_config
-from ai.news_intelligence.contracts import NewsAnalysisRequest, NewsAnalysisResponse
+from ai.news_intelligence.chat import NewsChatService
+from ai.news_intelligence.contracts import (
+    NewsAnalysisRequest,
+    NewsAnalysisResponse,
+    StrictModel,
+)
 from ai.news_intelligence.model import (
     NewsModelUnavailable,
     NewsOutputError,
@@ -22,6 +29,7 @@ from ai.news_intelligence.repository import (
 )
 from ai.news_intelligence.search_provider import GoogleNewsRssProvider
 from ai.news_intelligence.service import NewsIntelligenceService
+from ai.supervisor.contracts import ConversationMessage
 
 
 AI_ROOT = Path(__file__).parents[1]
@@ -69,7 +77,21 @@ def get_news_service() -> NewsIntelligenceService:
         repository=PostgresNewsRepository(database_url),
         search_provider=GoogleNewsRssProvider(),
         model=QwenNewsModel(config),
+        chat=NewsChatService(config),
     )
+
+
+class NewsMessageRequest(StrictModel):
+    """방에서 사용자가 물은 것. 다른 담당의 `/internal/messages` 와 이름을 맞춘다.
+
+    뉴스는 분석과 대화가 한 호출 안에서 이어지므로(신호를 뽑고 그 위에서 답한다) 몸체는
+    분석 요청과 같다. `message` 가 곧 `instruction` 이다.
+    """
+
+    message: str = Field(min_length=1, max_length=10_000)
+    job_context_id: str = Field(min_length=1, max_length=80)
+    corp_code: str = Field(pattern=r"^[0-9]{8}$")
+    conversation: list[ConversationMessage] = Field(default_factory=list, max_length=20)
 
 
 app = FastAPI(title="News Intelligence API")
@@ -85,6 +107,22 @@ def readiness(
     _: Annotated[NewsIntelligenceService, Depends(get_news_service)],
 ) -> dict[str, str]:
     return {"status": "ready"}
+
+
+@app.post("/internal/messages")
+def create_message(
+    request: NewsMessageRequest,
+    service: Annotated[NewsIntelligenceService, Depends(get_news_service)],
+) -> NewsAnalysisResponse:
+    return create_analysis(
+        NewsAnalysisRequest(
+            instruction=request.message,
+            job_context_id=request.job_context_id,
+            corp_code=request.corp_code,
+            conversation=request.conversation,
+        ),
+        service,
+    )
 
 
 @app.post("/internal/analyses")

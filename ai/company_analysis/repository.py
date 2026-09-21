@@ -34,6 +34,15 @@ class CompanyFactsRepository(Protocol):
 
 # --- SQL ---------------------------------------------------------------------
 
+OTHER_COMPANY_SQL = """
+SELECT corp_name
+  FROM company
+ WHERE length(corp_name) >= 3
+   AND corp_code <> %s
+   AND position(corp_name in %s) > 0
+ LIMIT 5
+"""
+
 PROFILE_SQL = """
 SELECT c.corp_code, c.corp_name, c.industry_code, i.industry_name, c.induty_code,
        c.ceo_nm, c.established_date::text AS established_date, c.address, c.homepage_url, c.stock_code
@@ -246,6 +255,23 @@ class PostgresCompanyFactsRepository:
         """connect 는 psycopg 연결(컨텍스트 매니저)을 돌려주는 함수다. dict_row 가 아니어도 된다."""
         self._connect = connect
         self._peer_limit = peer_limit
+
+    def other_company_names(self, corp_code: str, message: str) -> list[str]:
+        """질문에 이름이 나오는 다른 상장사. 없으면 빈 목록.
+
+        확정 지표는 이 기업의 값이라, 다른 기업을 물었는데 그 값을 내놓으면 사용자가 그것을
+        그 기업의 수치로 받아들인다. 동종업계 목록만으로는 업종이 다른 기업(삼성전자 등)을
+        못 걸러 기업 마스터 전체를 본다.
+
+        이름이 두 글자인 회사(DL·SK 등)는 보지 않는다. 평범한 문장에 우연히 들어가 엉뚱하게
+        걸린다.
+        """
+        if not message.strip():
+            return []
+        with self._connect() as connection:
+            rows = _fetchall(connection, OTHER_COMPANY_SQL, (corp_code, message))
+        # 이 저장소의 행은 dict 다(_fetchall 이 dict_row 로 받는다).
+        return [str(row["corp_name"]) for row in rows]
 
     def load(self, corp_code: str) -> CompanyFacts | None:
         with self._connect() as connection:

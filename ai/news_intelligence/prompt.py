@@ -48,7 +48,12 @@ built from words that appear in the cited article titles, and every clause of
 interpretation, forecasts, implications or new nouns. Do not reuse numbers that are not
 in the cited titles. Copy the cited article title verbatim into the summary and copy
 the matching JD requirement text verbatim into jd_relevance. Never shorten, paraphrase,
-or use angle brackets or placeholders. Example for an article titled
+or use angle brackets or placeholders.
+
+"jd_relevance" names the JD side of the link, never the article side: it must contain,
+verbatim, one supplied role element "name" or a phrase from the JD text. Do not put the
+article title into "jd_relevance" — the title already lives in "summary". A
+jd_relevance that repeats the article title is rejected. Example for an article titled
 "A사, 서울 데이터센터 증설 발표" and a JD line "데이터센터 관련 서비스 개발 경험":
 summary = "기사 제목에서 A사, 서울 데이터센터 증설 발표를 확인할 수 있습니다."
 jd_relevance = "JD의 데이터센터 관련 서비스 개발 경험과 관련됩니다."

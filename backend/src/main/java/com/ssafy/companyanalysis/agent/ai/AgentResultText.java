@@ -46,6 +46,13 @@ final class AgentResultText {
      * 것은 개수로만 알린다.
      */
     private static String jd(JsonNode result) {
+        // 사용자가 물었으면 담당이 그 질문에 답한 message 를 함께 준다. 그때는 대조 목록을
+        // 다시 그리지 않는다 — 무엇을 묻든 같은 목록이 돌아오면 대화가 되지 않는다.
+        String answer = result.path("message").asString("");
+        if (!answer.isBlank()) {
+            return answer;
+        }
+
         JsonNode summary = result.path("summary");
         List<String> lines = new ArrayList<>();
         lines.add("공고 요구사항 대조 — 충족 %d · 일부 충족 %d · 미충족 %d".formatted(

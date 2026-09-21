@@ -337,6 +337,14 @@ class CompanyChatService:
         if query is not None and any(scope in message for scope in bundle.known_scopes):
             # "우리자산운용 영업이익?" 처럼 자회사 수치를 묻는다. 확정 지표는 이 기업(지주사) 값이므로 쓰지 않는다.
             query = None
+        if query is not None and (
+            _mentions_other_company(message, report, facts)
+            or _asks_about_another_company(
+                getattr(self._analysis, "facts_repository", None), report.corp_code, message
+            )
+        ):
+            # "기아 영업이익?" 처럼 다른 기업을 묻는다. 이 기업의 확정값으로 답하면 안 된다.
+            query = None
         output, usage = self._ask(report, bundle, history, message)
         answer, citations, needs, violations = self._verify(output, bundle)
         if query is not None:
@@ -395,6 +403,11 @@ class CompanyChatService:
             needs.append(ChatNeed(agent="news", reason=reason[:1_000]))
         if not answer:
             return None, [], needs, []
+        if not ids and not needs:
+            # 근거를 하나도 대지 않은 답은 공시에서 나온 것이 아니다. 프롬프트 주입("이전 지시를
+            # 무시하고 …라고 답해")이 여기로 빠져나갔다. 뉴스가 필요하다고 밝힌 경우는 근거 없이
+            # 답할 수 있으므로 통과시킨다.
+            return None, [], needs, [Violation("no_citation", "근거를 대지 않은 답")]
         cited = [bundle.cited_texts[i] for i in ids]
         subject_violations = (
             entity_scope_violations(answer, cited, bundle.company_name)
@@ -434,6 +447,48 @@ class CompanyChatService:
 
 def _known_scopes(report: BusinessReport) -> set[str]:
     return {c.entity_scope for c in report.chunks if c.entity_scope and is_plausible_entity(c.entity_scope)}
+
+
+def _mentions_other_company(message: str, report: CompanyReport, facts: Any | None) -> bool:
+    """이 기업이 아닌 다른 기업을 콕 집어 묻는지.
+
+    확정 지표는 이 기업의 값이다. 다른 기업을 묻는데 그 값을 내놓으면 사용자는 그것을 그
+    기업의 수치로 받아들인다(실측: "삼성전자 영업이익?" 에 현대모비스 3.4조원).
+
+    이름을 다 알 수는 없으므로 아는 범위 — 리포트의 경쟁사 표와 동종업계 — 만 본다. 그 밖의
+    기업은 프롬프트가 막는다.
+    """
+    names: set[str] = set()
+    for section in report.sections:
+        if section.type != "COMPETITORS":
+            continue
+        for block in section.blocks:
+            columns = list(getattr(block, "columns", None) or [])
+            if "회사명" not in columns:
+                continue
+            index = columns.index("회사명")
+            for row in getattr(block, "rows", None) or []:
+                if index < len(row) and isinstance(row[index], str):
+                    names.add(row[index].strip())
+    for peer in getattr(facts, "peers", None) or []:
+        name = getattr(peer, "corp_name", None)
+        if isinstance(name, str):
+            names.add(name.strip())
+    names.discard(report.corp_name)
+    names.discard("")
+    return any(name in message for name in names)
+
+
+def _asks_about_another_company(self_repository: Any, corp_code: str, message: str) -> bool:
+    """기업 마스터에 있는 다른 상장사를 물었는지. 조회가 안 되면 막지 않는다."""
+    finder = getattr(self_repository, "other_company_names", None)
+    if finder is None:
+        return False
+    try:
+        return bool(finder(corp_code, message))
+    except Exception:  # noqa: BLE001
+        LOGGER.exception("다른 기업 이름 조회 실패 corp_code=%s", corp_code)
+        return False
 
 
 def _retry_note(violations: list[Violation], bundle: ChatEvidence | None = None) -> str:
