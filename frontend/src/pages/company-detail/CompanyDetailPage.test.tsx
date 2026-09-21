@@ -326,9 +326,13 @@ describe('CompanyDetailPage', () => {
 
     renderAt('/companies/99999999');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '기업 정보를 찾을 수 없습니다. 기업코드(99999999)를 확인해 주세요.',
-    );
+    // 사진 한 장을 내주면 스냅이 한 칸 내려가며 안내를 지나쳐 버린다. 안내만 남긴다
+    expect(
+      await screen.findByRole('heading', { name: '이 기업을 찾을 수 없습니다' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/기업코드\(99999999\)/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '기업 검색으로' })).toBeInTheDocument();
+    // 주소를 손으로 바꿔 들어온 것이므로 다시 시도를 권하지 않는다
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '어떤 회사인가' })).not.toBeInTheDocument();
   });

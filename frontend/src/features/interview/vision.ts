@@ -68,6 +68,8 @@ export interface VisionSample {
   sr: [number, number] | null;
   /** 손목 (화면에 잡혔을 때만) */
   hand: [number, number] | null;
+  /** 웃는 정도 0~1. 표정 계수를 못 받았으면 null */
+  smile: number | null;
 }
 
 /** 문항별 비언어 지표(요약값). 값은 0~1 비율 또는 근사 각도. */
@@ -704,6 +706,7 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
                 fresh && fresh.handRawX != null && fresh.handRawY != null
                   ? [r3(fresh.handRawX), r3(fresh.handRawY)]
                   : null,
+              smile: faceFrame.smile == null ? null : r3(faceFrame.smile),
             });
           }
 

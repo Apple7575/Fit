@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { searchCompanies } from '../company-search/api';
+import { MAX_KEYWORD, searchCompanies } from '../company-search/api';
 import { MAX_PEERS, type IndustryCompany } from './types';
 
 interface PeerPickerProps {
@@ -109,7 +109,8 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
               id="peer-search-keyword"
               onChange={(e) => setKeyword(e.target.value)}
               placeholder={full ? '최대 선택' : '기업 추가'}
-              type="search"
+              maxLength={MAX_KEYWORD}
+            type="search"
               value={keyword}
             />
             <button

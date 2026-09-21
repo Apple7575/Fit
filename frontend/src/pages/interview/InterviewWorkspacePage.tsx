@@ -1,6 +1,6 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, isRateLimited, isRetryable } from '../../api/client';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
@@ -103,6 +103,29 @@ function NewInterview() {
   // 분석 실패의 성격(재시도 가능/한도초과/입력오류)을 리포트 화면에서 판정하기 위해 에러 객체를 보관한다.
   const [analyzeError, setAnalyzeError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
+
+  /*
+   * 면접을 보는 중이거나 분석·저장을 기다리는 동안 새로고침하면 그때까지의 답변이 사라진다.
+   * 녹화는 이 브라우저에만 있고 화면 상태는 메모리에만 있기 때문이다. 브라우저 기본
+   * 확인창으로 한 번 잡아 준다 (문구는 브라우저가 정한다 — 바꿀 수 없다).
+   */
+  const inProgress = phase === 'session' || phase === 'analyzing' || phase === 'saving';
+  useEffect(() => {
+    if (!inProgress) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [inProgress]);
+
+  /*
+   * 뒤로가기도 같다. 면접의 모든 단계가 같은 주소(/interviews/new)에서 일어나므로 뒤로
+   * 가면 한 단계 앞이 아니라 면접에 들어오기 전 화면으로 나가 버린다. 예상과 다른 데다
+   * 답변도 사라진다. 나가기 전에 한 번 묻는다.
+   */
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      inProgress && currentLocation.pathname !== nextLocation.pathname,
+  );
 
   if (loading) {
     return (
@@ -207,6 +230,38 @@ function NewInterview() {
     }
   };
 
+  /** 나가려 할 때 뜨는 확인창. 면접 중에만 막는다 */
+  const leaveGuard = blocker.state === 'blocked' && (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-6"
+      role="dialog"
+    >
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
+        <h2 className="text-[17px] font-extrabold text-slate-950">면접을 그만두시겠어요?</h2>
+        <p className="mt-2 text-[13px] break-keep text-slate-500">
+          지금까지 답한 내용은 저장되지 않습니다.
+        </p>
+        <div className="mt-5 flex justify-center gap-2">
+          <button
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50"
+            onClick={() => blocker.reset?.()}
+            type="button"
+          >
+            계속하기
+          </button>
+          <button
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+            onClick={() => blocker.proceed?.()}
+            type="button"
+          >
+            나가기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // 오래 걸리는 두 단계는 지금 무엇을 하는 중인지 차례로 말해 준다. 같은 시간도 짧게 느껴진다
   /*
    * 오래 걸리는 두 단계는 기다림을 한 덩어리로 둔다. 진행 문구 한 줄 아래에 팁 카드 하나.
@@ -215,6 +270,7 @@ function NewInterview() {
   if (phase === 'generating')
     return (
       <Shell>
+        {leaveGuard}
         <TipCarousel
           className="px-6 py-16"
           message={['회사 자료를 읽고 있어요', '직무에 맞는 질문을 고르고 있어요', '곧 시작합니다']}
@@ -224,6 +280,7 @@ function NewInterview() {
   if (phase === 'analyzing')
     return (
       <Shell>
+        {leaveGuard}
         <TipCarousel
           className="px-6 py-16"
           message={[
@@ -240,6 +297,7 @@ function NewInterview() {
   if (phase === 'session' && config) {
     return (
       <Shell>
+        {leaveGuard}
         <InterviewSession
           config={config}
           questions={questions}

@@ -142,8 +142,8 @@ export function TrackedClip({
       )}
       {has && (
         <p className={`mt-1 ${T.caption}`}>
-          재생하면 그 순간의 값이 함께 움직입니다. 정면에서 {FRONTAL_DEG}도 안쪽이면 적정으로
-          봅니다.
+          재생하면 그 순간의 값이 함께 움직입니다. 어긋난 순간에만 화면에 네모가 뜹니다
+          (정면에서 {FRONTAL_DEG}도 안쪽이면 적정).
         </p>
       )}
     </div>
@@ -162,29 +162,25 @@ function Readout({ label, value, ok }: { label: string; value: string; ok: boole
   );
 }
 
-/** 얼굴 상자·어깨선·손목을 그린다. 좌표는 0~1 비율이라 화면 크기에 맞춰 늘린다 */
+/**
+ * 어긋난 순간에만 그린다. 좌표는 0~1 비율이라 화면 크기에 맞춰 늘린다.
+ *
+ * <p>잘하고 있을 때까지 네모를 띄우면 내 얼굴 위에 상자가 내내 얹혀 있어 정작 볼 것을 가린다.
+ * 겹쳐 그리기의 일은 "이때 이랬다"를 짚는 것이므로, 문제가 있는 순간에만 나타난다.
+ */
 function paint(ctx: CanvasRenderingContext2D, s: VisionSample, w: number, h: number) {
-  const bad = !s.frontal || s.gaze > GAZE_OFF;
-  const color = bad ? 'rgba(239,68,68,0.95)' : 'rgba(16,185,129,0.95)';
+  if (!issueOf(s)) return;
 
   ctx.lineWidth = 2;
-  ctx.strokeStyle = color;
+  ctx.strokeStyle = 'rgba(239,68,68,0.95)';
   ctx.strokeRect(s.x * w, s.y * h, s.w * w, s.h * h);
 
   // 어깨선 — 기울었는지 눈으로 보인다
   if (s.sl && s.sr) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
     ctx.beginPath();
     ctx.moveTo(s.sl[0] * w, s.sl[1] * h);
     ctx.lineTo(s.sr[0] * w, s.sr[1] * h);
     ctx.stroke();
-  }
-
-  // 손목 — 손짓이 많았는지 자리로 보인다
-  if (s.hand) {
-    ctx.fillStyle = 'rgba(96,165,250,0.9)';
-    ctx.beginPath();
-    ctx.arc(s.hand[0] * w, s.hand[1] * h, 5, 0, Math.PI * 2);
-    ctx.fill();
   }
 }

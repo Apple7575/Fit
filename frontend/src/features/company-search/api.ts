@@ -23,6 +23,15 @@ const isMockEnabled = () =>
     ? import.meta.env.DEV
     : import.meta.env.VITE_API_MOCK === 'true';
 
+/**
+ * 검색어 최대 길이.
+ *
+ * <p>DART 기업명은 아무리 길어도 이보다 짧다. 긴 글을 통째로 붙여 넣으면 주소가 길어져
+ * 서버에 닿기도 전에 431(주소가 너무 김)로 끊기고, 화면에는 "검색 중 문제가 발생했습니다"
+ * 가 떴다. 찾을 수 없는 이름을 넣은 것뿐인데 고장처럼 보인다.
+ */
+export const MAX_KEYWORD = 60;
+
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 20;
 const MOCK_DELAY_MS = 300;
@@ -48,12 +57,15 @@ export async function searchCompanies(
   keyword: string,
   signal?: AbortSignal,
 ): Promise<CompanySearchResponse> {
+  // 입력칸에서도 막지만, 다른 곳에서 부를 수도 있으니 여기서 한 번 더 자른다
+  const trimmed = keyword.trim().slice(0, MAX_KEYWORD);
+
   if (isMockEnabled()) {
-    return searchMock(keyword);
+    return searchMock(trimmed);
   }
 
   const params = new URLSearchParams({
-    keyword: keyword.trim(),
+    keyword: trimmed,
     page: String(DEFAULT_PAGE),
     size: String(DEFAULT_SIZE),
   });

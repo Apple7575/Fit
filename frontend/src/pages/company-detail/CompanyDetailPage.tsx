@@ -38,7 +38,15 @@ export function CompanyDetailPage() {
   const corpCode = companyId ?? '';
   const { state, retry } = useCompanyDetail(corpCode);
   const detail = state.status === 'success' ? state.data : null;
-  const immersive = isImmersive(pathname);
+  /*
+   * 없는 기업 코드로 들어오면 첫 화면을 사진에 내주지 않는다. 스냅이 한 칸 내려가면서
+   * "찾을 수 없습니다" 안내를 지나쳐 버려, 화면에는 빈 사진과 "기업 분석" 만 남았다.
+   */
+  const missing =
+    state.status === 'error' &&
+    (state.error.status === 404 || state.error.code === 'COMPANY_NOT_FOUND' ||
+      (state.error.status >= 400 && state.error.status < 500));
+  const immersive = isImmersive(pathname) && !missing;
   // 한 번 내려온 헤더는 도로 올라가지 않는다. 탭을 오가도 스크롤 위치는 남으므로 지금 값에서 시작한다
   const [revealed, setRevealed] = useState(scrolledPast);
   // 다른 기업으로 바로 옮겨가면(예: 산업 비교) 그 기업의 첫 화면을 다시 통째로 내준다

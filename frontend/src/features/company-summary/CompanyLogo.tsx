@@ -64,6 +64,14 @@ export function CompanyLogo({
           className="size-full object-contain p-[12%]"
           height={size}
           onError={next}
+          /*
+           * 구글 파비콘은 모르는 도메인에도 16x16 기본 지구본을 200 으로 돌려준다. 오류가
+           * 아니라서 onError 가 걸리지 않고, 회사와 상관없는 지구본이 로고 자리에 남는다.
+           * 128 을 달라고 했는데 그보다 작게 오면 그건 그 회사 로고가 아니다.
+           */
+          onLoad={(e) => {
+            if (e.currentTarget.naturalWidth < 32) next();
+          }}
           src={src}
           width={size}
         />

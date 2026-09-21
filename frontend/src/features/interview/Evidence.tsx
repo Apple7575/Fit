@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { EVENT_META, type ClipEvent, type ClipEventKind, type MetricRow } from './delivery';
 import { EvidenceClip } from './EvidenceClip';
+import { FaceCompare } from './FaceCompare';
 import { Icon } from './icons';
 import { groupMetrics, groupStatus, type MetricGroup } from './metricGroups';
 import { METRIC_ICON } from './metricIcons';
 import { T, TONE } from './reportTokens';
+import type { VisionSample } from './vision';
 
 /** 지표가 무엇을 어떻게 잰 값인지. 사용자가 "이게 뭐지?" 하지 않도록 한 줄로 설명한다. */
 const HOW: Record<string, string> = {
@@ -43,6 +45,8 @@ interface Clip {
   url?: string;
   durationMs: number;
   events: ClipEvent[] | null;
+  /** 프레임별 추적값. 표정 근거처럼 구간이 아닌 값에 쓴다 */
+  samples?: VisionSample[] | null;
   wave: number[] | null;
   waveStepMs: number | null;
 }
@@ -260,6 +264,14 @@ function Evidence({ row, clip, onSeek }: { row: MetricRow; clip: Clip | undefine
               : '이 문항의 녹화가 없어 구간을 보여줄 수 없어요.'}
           </p>
         ))}
+
+      {/*
+        표정은 "언제 나빴다"로 짚을 수 있는 구간이 없다. 대신 답변 중 가장 밝았던 얼굴과 가장
+        굳었던 얼굴을 나란히 세운다. 둘이 똑같아 보이면 그게 곧 근거다.
+      */}
+      {row.key === '표정' && (
+        <FaceCompare flat={row.tone === 'warn'} samples={clip?.samples ?? null} url={clip?.url} />
+      )}
 
       {WAVE_METRICS.has(row.key) &&
         (clip?.wave && clip.wave.length > 0 ? (

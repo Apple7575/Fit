@@ -61,15 +61,18 @@ describe('HomePage', () => {
     );
   });
 
-  it('바로 볼 수 있는 기업은 그 회사 요약으로 간다', () => {
+  it('첫 장은 영상 위에서 시작한다', () => {
     vi.stubGlobal('fetch', vi.fn());
     renderHome();
 
-    const featured = screen.getByRole('list', { name: '바로 볼 수 있는 기업' });
-    expect(within(featured).getByRole('link', { name: '삼성전자' })).toHaveAttribute(
-      'href',
-      '/companies/00126380/overview',
-    );
+    /*
+     * 세 기능 화면이 모두 영상 한 장으로 시작하는데 랜딩만 흰 종이였다. 처음 만나는 화면이
+     * 가장 약하면 순서가 거꾸로다. 기업 목록은 기업 분석 첫 화면이 이미 보여주므로 여기서는
+     * 뺐다 — 랜딩은 이 서비스가 무엇인지만 말한다.
+     */
+    const hero = document.getElementById('hero');
+    expect(hero?.querySelector('video')).toHaveAttribute('src', '/landing/turn.mp4');
+    expect(screen.queryByRole('list', { name: '바로 볼 수 있는 기업' })).not.toBeInTheDocument();
   });
 
   it('검토 방 대본은 사용자 질문부터 보여준다', () => {
