@@ -222,7 +222,9 @@ SELECT e.evidence_id, re.vector_bytes, re.dimension
 """
 
 DEFAULT_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
-DEFAULT_EMBEDDING_VERSION = "adaptive-v1"
+# 적재 쪽 기본값과 같아야 한다(data/pipeline/rag_corpus/embedding_build.py 의 DEFAULT_VERSION).
+# 어긋나면 검색이 한 건도 못 찾는다 — 벡터는 (model, version) 으로 고르기 때문이다.
+DEFAULT_EMBEDDING_VERSION = "document-v1"
 
 
 class PostgresBusinessReportRepository:
@@ -240,7 +242,12 @@ class PostgresBusinessReportRepository:
         self._embedding_version = embedding_version
 
     def load_vectors(self, report: BusinessReport) -> dict[str, Any]:
-        """저장된 문서 임베딩(little-endian float32)을 evidence_id → 벡터로. 원문 해시가 바뀐 청크는 뺀다."""
+        """저장된 문서 임베딩을 evidence_id → 벡터로. 원문 해시가 바뀐 청크는 뺀다.
+
+        정밀도는 바이트 길이로 읽는다. 차원당 4바이트면 float32, 2바이트면 float16 이다.
+        벡터가 코퍼스 용량의 대부분이라 절반으로 줄여 담을 수 있게 열어 두었고, 옮기는 동안
+        두 정밀도가 섞여 있어도 읽히도록 여기서 구분한다. 계산은 float32 로 맞춰 올린다.
+        """
         import numpy as np
 
         params = {
@@ -255,9 +262,11 @@ class PostgresBusinessReportRepository:
             cursor.execute(VECTORS_SQL, params)
             for evidence_id, payload, dimension in cursor.fetchall():
                 raw = bytes(payload)
-                if len(raw) != int(dimension) * 4:
+                width = len(raw) // int(dimension) if int(dimension) else 0
+                code = {4: "<f4", 2: "<f2"}.get(width)
+                if code is None or len(raw) != int(dimension) * width:
                     continue
-                vectors[str(evidence_id)] = np.frombuffer(raw, dtype="<f4").copy()
+                vectors[str(evidence_id)] = np.frombuffer(raw, dtype=code).astype("<f4")
         return vectors
 
     def latest(self, corp_code: str) -> BusinessReport | None:

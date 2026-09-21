@@ -120,7 +120,7 @@ class WritingApiTest(unittest.TestCase):
             BytesIO(sentinel.encode()),
         )
         with patch(
-            "ai.jd_coaching.baseline.urllib.request.urlopen",
+            "ai.llm.vllm.urllib.request.urlopen",
             side_effect=provider_error,
         ) as urlopen:
             response = self.client.post("/internal/messages", json=VALID_REQUEST)
@@ -138,7 +138,7 @@ class WritingApiTest(unittest.TestCase):
             json.dumps({"choices": [{"message": {"content": sentinel}}]}).encode(),
         ):
             with self.subTest(provider_body=provider_body):
-                with patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+                with patch("ai.llm.vllm.urllib.request.urlopen") as urlopen:
                     urlopen.return_value.__enter__.return_value.read.return_value = (
                         provider_body
                     )
@@ -154,7 +154,7 @@ class WritingApiTest(unittest.TestCase):
         sentinel = "TIMEOUT_PROVIDER_SECRET_4v"
         self.service = WritingService(QWEN_CONFIG)
         with patch(
-            "ai.jd_coaching.baseline.urllib.request.urlopen",
+            "ai.llm.vllm.urllib.request.urlopen",
             side_effect=TimeoutError(sentinel),
         ) as urlopen:
             response = TestClient(app, raise_server_exceptions=False).post(
@@ -173,7 +173,7 @@ class WritingApiTest(unittest.TestCase):
         provider_body = json.dumps({
             "choices": [{"message": {"content": json.dumps(invalid_output)}}]
         }).encode()
-        with patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+        with patch("ai.llm.vllm.urllib.request.urlopen") as urlopen:
             urlopen.return_value.__enter__.return_value.read.return_value = provider_body
 
             response = self.client.post("/internal/messages", json=VALID_REQUEST)

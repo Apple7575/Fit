@@ -44,6 +44,25 @@ final class AgentAiCall {
         return response;
     }
 
+    static JsonNode get(RestClient client, String path, String agentName) {
+        JsonNode response;
+        try {
+            response = client.get()
+                    .uri(path)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (RestClientResponseException e) {
+            throw translate(e, agentName);
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.AI_FAILED,
+                    agentName + " AI 서버에 연결하지 못했습니다.");
+        }
+        if (response == null) {
+            throw new BusinessException(ErrorCode.AI_FAILED, agentName + " 응답이 비어 있습니다.");
+        }
+        return response;
+    }
+
     private static BusinessException translate(RestClientResponseException e, String agentName) {
         int status = e.getStatusCode().value();
         return switch (status) {

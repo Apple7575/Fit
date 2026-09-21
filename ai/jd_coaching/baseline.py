@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
-import urllib.error
-import urllib.request
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+
+from ai.llm import complete_structured, load_llm_config
 
 
 CONNECTION_LABELS = {
@@ -17,27 +16,12 @@ CONNECTION_LABELS = {
 
 
 def load_qwen_config(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    if path.exists():
-        for raw_line in path.read_text(encoding="utf-8").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            values[key.strip()] = value.strip()
+    """LLM 설정을 읽는다. 이름은 Qwen 이지만 `LLM_PROVIDER` 에 따라 GMS 설정이 올 수도 있다.
 
-    required = ("QWEN_BASE_URL", "QWEN_MODEL", "QWEN_API_KEY")
-    resolved = {
-        key: os.environ.get(key, values.get(key, "")).strip() for key in required
-    }
-    missing = [key for key, value in resolved.items() if not value]
-    if missing:
-        raise ValueError(f"필수 Qwen 설정 누락: {', '.join(missing)}")
-    return {
-        "base_url": resolved["QWEN_BASE_URL"].rstrip("/"),
-        "model": resolved["QWEN_MODEL"],
-        "api_key": resolved["QWEN_API_KEY"],
-    }
+    이름을 그대로 둔 것은 담당 다섯이 이 함수를 부르고 있어서다. 공급자 전환을 이름 바꾸기와
+    섞으면 무엇 때문에 깨졌는지 가려진다 — 이름 정리는 전환이 끝난 뒤에 한다.
+    """
+    return load_llm_config(path).as_dict()
 
 
 def build_messages(
@@ -329,44 +313,16 @@ def call_qwen(
     schema: Mapping[str, Any] | None = None,
     schema_name: str = "jd_connection_baseline_output",
 ) -> dict[str, Any]:
-    body = {
-        "model": config["model"],
-        "messages": messages,
-        "temperature": 0,
-        "max_tokens": max_tokens,
-        "chat_template_kwargs": {"enable_thinking": False},
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": schema_name,
-                "strict": True,
-                "schema": dict(schema) if schema is not None else output_schema(),
-            },
-        },
-    }
-    request = urllib.request.Request(
-        f"{config['base_url']}/chat/completions",
-        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {config['api_key']}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
+    """담당들이 공유하는 LLM 호출 자리. 어느 서버로 나가는지는 `config["provider"]` 가 정한다.
+
+    담당 다섯이 이 함수를 기본값으로 주입받고 있어 시그니처를 그대로 둔다. 공급자별 차이는
+    `ai.llm` 이 흡수한다.
+    """
+    return complete_structured(
+        config,
+        messages,
+        schema=dict(schema) if schema is not None else output_schema(),
+        schema_name=schema_name,
+        max_tokens=max_tokens,
+        timeout_seconds=timeout_seconds,
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            raw = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Qwen API HTTP {error.code}: {detail}") from error
-    except urllib.error.URLError as error:
-        raise RuntimeError(f"Qwen API connection failed: {error.reason}") from error
-    try:
-        output = json.loads(raw["choices"][0]["message"]["content"])
-    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as error:
-        raise ValueError("Qwen response does not contain valid JSON") from error
-    return {
-        "model": raw.get("model", config["model"]),
-        "usage": raw.get("usage", {}),
-        "output": output,
-    }

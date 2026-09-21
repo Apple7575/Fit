@@ -86,9 +86,10 @@ class FakeQwenCaller:
         return {"output": output}
 
 
-def invoke_graph(model, registry, agent_contexts):
+def invoke_graph(model, registry, agent_contexts, agent_selection="auto"):
     return build_supervisor_graph(model, registry).invoke(
         {
+            "agent_selection": agent_selection,
             "instruction": "검토해 줘",
             "documents": [
                 {
@@ -375,7 +376,7 @@ class SupervisorGraphTest(unittest.TestCase):
             {"base_url": "http://qwen.test", "model": "qwen", "api_key": "test"}
         )
         worker = RecordingAdapter("jd", threading.Barrier(1))
-        with patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+        with patch("ai.llm.vllm.urllib.request.urlopen") as urlopen:
             urlopen.return_value.__enter__.return_value.read.return_value = (
                 b'{"choices": [{"message": {"content": "not JSON"}}]}'
             )
@@ -586,6 +587,59 @@ class SupervisorGraphTest(unittest.TestCase):
 
         self.assertEqual(result["final_message"], clarification)
         self.assertEqual(model.aggregate_calls, [])
+
+    def test_clarification_is_appended_when_other_agents_answered(self):
+        """되물음만 내보내면 다른 담당이 낸 답이 묻힌다. 종합을 먼저 내고 끝에 붙인다."""
+        clarification = "본인이 수행한 행동을 알려주세요."
+        model = FakeModel(
+            [SupervisorPlan(selected_agents=["company", "writing"], reason="둘 다 본다")]
+        )
+        company = RecordingAdapter("company", result={"message": "매출 186.3조원"})
+        writing = RecordingAdapter(
+            "writing",
+            result={
+                "status": "CLARIFICATION_REQUIRED",
+                "message": clarification,
+                "revision": None,
+            },
+        )
+
+        result = invoke_graph(
+            model,
+            AgentRegistry([company, writing]),
+            {
+                "company": {"corp_code": "00164742"},
+                "writing": {"question": "협업 경험", "char_limit": 700},
+            },
+        )
+
+        self.assertIn("종합 결과", result["final_message"])
+        self.assertTrue(result["final_message"].endswith(clarification))
+        self.assertEqual(len(model.aggregate_calls), 1)
+
+    def test_agent_selection_all_runs_every_available_agent_without_planning(self):
+        """첫 자동 검토는 고를 질문이 없다. 계획 모델을 부르면 대부분이 '필요 없다' 로 남는다."""
+        model = FakeModel([])  # 계획을 부르면 pop 에서 터진다
+        jd = RecordingAdapter("jd")
+        position = RecordingAdapter("position")
+
+        result = invoke_graph(
+            model,
+            AgentRegistry([jd, position]),
+            {
+                "jd": {"job_context_id": "jctx"},
+                "position": {
+                    "rubric_id": "experience-depth-v1",
+                    "position_context": {"position_name": "백엔드", "priority_requirements": []},
+                },
+            },
+            agent_selection="all",
+        )
+
+        self.assertEqual(
+            sorted(item.agent for item in result["agent_results"]), ["jd", "position"]
+        )
+        self.assertEqual(model.plan_errors, [])  # 계획 모델을 부르지 않았다
 
     def test_selected_agents_execute_in_parallel_threads(self):
         model = FakeModel(

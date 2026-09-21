@@ -29,9 +29,14 @@ from fastapi import Depends, FastAPI, HTTPException, Response, status
 
 from .chat import CompanyChatService, ConversationMismatchError, ConversationNotFoundError
 from .chat_store import PostgresConversationStore
-from .contracts import ChatRequest, ChatResponse, CompanyReport, ConversationHistory, ReportGenerateRequest, ReportStatus
-from .evidence import PostgresBusinessReportRepository
-from .llm import QwenConfig, QwenStructuredClient
+from .contracts import (
+    ChatRequest, ChatResponse, CompanyMessageRequest, CompanyMessageResponse, CompanyReport,
+    ConversationHistory, ReportGenerateRequest, ReportStatus,
+)
+from .evidence import (
+    DEFAULT_EMBEDDING_MODEL, DEFAULT_EMBEDDING_VERSION, PostgresBusinessReportRepository,
+)
+from .llm import QwenConfig, build_structured_client
 from .narrative import NarrativeEnricher
 from .repository import PostgresCompanyFactsRepository
 from .retrieval import CompanyRetriever, RemoteQueryEncoder
@@ -92,7 +97,13 @@ def _qwen_config() -> QwenConfig:
 
 
 def build_business_reports() -> PostgresBusinessReportRepository:
-    return PostgresBusinessReportRepository(_connect_factory(resolve_rag_database_url()))
+    # 적재 때 쓴 모델·버전과 같아야 검색이 그 벡터를 찾는다. 모델을 바꿔 다시 적재하면
+    # 두 값을 함께 옮긴다 — 코드를 고치지 않고 환경변수로 넘길 수 있게 열어 둔다.
+    return PostgresBusinessReportRepository(
+        _connect_factory(resolve_rag_database_url()),
+        embedding_model=_env("COMPANY_ANALYSIS_EMBEDDING_MODEL_NAME") or DEFAULT_EMBEDDING_MODEL,
+        embedding_version=_env("COMPANY_ANALYSIS_EMBEDDING_VERSION") or DEFAULT_EMBEDDING_VERSION,
+    )
 
 
 def build_query_encoder() -> RemoteQueryEncoder | None:
@@ -119,7 +130,7 @@ def build_enrichers() -> tuple:
     from .table_facts import PostgresTableFactsRepository
 
     table_facts = PostgresTableFactsRepository(_connect_factory(resolve_rag_database_url()))
-    return (NarrativeEnricher(QwenStructuredClient(config), reports, table_facts=table_facts),)
+    return (NarrativeEnricher(build_structured_client(config), reports, table_facts=table_facts),)
 
 
 @lru_cache(maxsize=1)
@@ -137,7 +148,7 @@ def get_company_chat_service() -> CompanyChatService:
         analysis=analysis,
         reports=reports,
         retriever=retriever,
-        client=QwenStructuredClient(config),
+        client=build_structured_client(config),
         store=PostgresConversationStore(connect),
     )
 
@@ -226,6 +237,31 @@ def create_app(service_provider=get_company_analysis_service, chat_provider=get_
             raise HTTPException(status_code=404, detail={"code": "CONVERSATION_NOT_FOUND"})
         except ConversationMismatchError:
             raise HTTPException(status_code=409, detail={"code": "CONVERSATION_CORP_MISMATCH"})
+
+    @app.post("/internal/messages", response_model=CompanyMessageResponse)
+    def create_message(payload: CompanyMessageRequest, chat_service: CompanyChatService = chat_dependency):
+        """무상태 한 번 답. 담당 방이 직접 부른다 — 대화는 백엔드가 들고 있으므로 저장하지 않는다.
+
+        총괄이 어댑터로 부르는 `answer()` 와 같은 경로를 탄다. 두 경로가 다른 답을 내지 않도록
+        여기서 로직을 복제하지 않고 그대로 위임한다.
+        """
+        try:
+            result = chat_service.answer(
+                corp_code=payload.corp_code,
+                message=payload.message,
+                history=[
+                    {"role": item.role, "content": item.content}
+                    for item in payload.conversation
+                ],
+            )
+        except CompanyNotFoundError:
+            raise HTTPException(status_code=404, detail={"code": "COMPANY_NOT_FOUND"})
+        except RuntimeError as error:
+            # 리포트를 만들 수 없는 기업(확정 데이터 없음). 담당 방에 쓸 답이 없다.
+            raise HTTPException(
+                status_code=422, detail={"code": "REPORT_UNAVAILABLE"}
+            ) from error
+        return CompanyMessageResponse.model_validate(result)
 
     @app.get("/internal/conversations/{conversation_id}", response_model=ConversationHistory)
     def conversation(conversation_id: str, chat_service: CompanyChatService = chat_dependency):

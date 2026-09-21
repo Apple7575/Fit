@@ -255,6 +255,54 @@ class ChatMessage(StrictModel):
     needs: list[ChatNeed] = Field(default_factory=list, max_length=4)
 
 
+class CompanyConversationMessage(StrictModel):
+    """담당 방의 지난 대화 한 줄. 저장하지 않고 이번 답에만 쓴다."""
+
+    message_id: str = Field(min_length=1, max_length=80)
+    role: Literal["USER", "ASSISTANT"]
+    content: str = Field(min_length=1, max_length=4_000)
+
+
+class CompanyMessageRequest(StrictModel):
+    """무상태 대화 요청. 대화는 호출자가 들고 있고 여기서는 저장하지 않는다.
+
+    `ChatRequest` 와 달리 `conversation_id` 가 없다 — 담당 방은 백엔드가 대화를 보관하므로
+    AI 쪽에 같은 대화를 두 벌 쌓을 이유가 없다. 다른 담당(글쓰기·포지션)의 무상태 API 와 같은 모양이다.
+    """
+
+    corp_code: CorpCode
+    message: str = Field(min_length=1, max_length=4_000)
+    conversation: list[CompanyConversationMessage] = Field(default_factory=list, max_length=20)
+    # 지원 직무 맥락이 있으면 직무 관점 답변에 쓴다.
+    job_context_id: str | None = Field(default=None, min_length=1, max_length=80)
+
+    @field_validator("message")
+    @classmethod
+    def reject_blank_message(cls, value: str) -> str:
+        return _reject_blank(value)
+
+    @model_validator(mode="after")
+    def validate_unique_ids(self) -> "CompanyMessageRequest":
+        ids = [item.message_id for item in self.conversation]
+        if len(ids) != len(set(ids)):
+            raise ValueError("message_id values must be unique")
+        return self
+
+
+class CompanyMessageResponse(StrictModel):
+    """무상태 대화 응답. 총괄 어댑터가 받는 dict 와 같은 필드를 쓴다."""
+
+    corp_code: CorpCode
+    corp_name: str = Field(min_length=1, max_length=200)
+    message: str = Field(min_length=1, max_length=4_000)
+    citations: list[Citation] = Field(default_factory=list, max_length=20)
+    needs: list[ChatNeed] = Field(default_factory=list, max_length=4)
+    follow_up_questions: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(default_factory=list, max_length=3)
+    # 리포트 stage 가 DETERMINISTIC 이면 서술 섹션이 아직 없다는 뜻이다.
+    report_stage: Literal["DETERMINISTIC", "FULL"]
+    usage: dict[str, int] | None = None
+
+
 class ChatResponse(StrictModel):
     conversation_id: str
     corp_code: CorpCode

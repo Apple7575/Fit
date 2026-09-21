@@ -414,7 +414,7 @@ class QwenNewsModelTest(unittest.TestCase):
         for raw in (b"not JSON", b'{"choices": []}', b'{"choices": [{"message": {"content": "bad"}}]}'):
             for operation in ("classify_coverage", "extract_signals"):
                 args = (CONTEXT, CANDIDATES, "분석") + (([],) if operation == "extract_signals" else ())
-                with self.subTest(raw=raw, operation=operation), patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+                with self.subTest(raw=raw, operation=operation), patch("ai.llm.vllm.urllib.request.urlopen") as urlopen:
                     urlopen.return_value.__enter__.return_value.read.return_value = raw
                     with self.assertRaises(NewsOutputError):
                         getattr(QwenNewsModel(CONFIG), operation)(*args)

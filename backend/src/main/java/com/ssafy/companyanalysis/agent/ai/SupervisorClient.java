@@ -47,12 +47,14 @@ public class SupervisorClient {
     /**
      * @param agentContexts 담당별 컨텍스트. 여기 없는 담당은 총괄이 고르지 않는다
      * @param lead          담당 직접 호출. 총괄에게 맡기려면 null
+     * @param runEveryAgent 실행 가능한 담당을 전부 돌린다. 첫 자동 검토에 쓴다
      */
     public Run run(String instruction,
                    List<Document> documents,
                    List<Turn> conversation,
                    Map<String, Object> agentContexts,
-                   String lead) {
+                   String lead,
+                   boolean runEveryAgent) {
         if (!properties.hasBaseUrl()) {
             throw new BusinessException(ErrorCode.AI_UNAVAILABLE,
                     AGENT_NAME + " AI 서버 주소가 설정되지 않았습니다.");
@@ -81,6 +83,11 @@ public class SupervisorClient {
         // 명세가 모르는 필드를 422 로 거른다. 총괄에게 맡길 때는 키 자체를 넣지 않는다.
         if (lead != null) {
             body.put("lead", lead);
+        }
+        // 자소서를 받아 방을 한 바퀴 도는 첫 검토는 고를 질문이 없다. 총괄이 골라내면 담당
+        // 대부분이 "이 관점은 필요 없다" 로 남아 미리 봐 두는 의미가 사라진다.
+        if (runEveryAgent) {
+            body.put("agent_selection", "all");
         }
 
         JsonNode response = AgentAiCall.post(supervisorAiRestClient, RUN_PATH, body, AGENT_NAME);
