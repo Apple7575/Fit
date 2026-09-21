@@ -35,7 +35,8 @@ from .doc import Document
 
 # staged/business_report/*.csv 의 헤더. 부르는 쪽이 이 순서로 쓴다.
 SEGMENT_FIELDS = ["corp_code", "fiscal_year", "segment_name", "metric_value",
-                  "rcept_no", "verdict", "unit", "table_idx", "gap_ratio", "sum_krw"]
+                  "rcept_no", "verdict", "unit", "table_idx", "gap_ratio", "sum_krw",
+                  "revenue_basis"]
 FACILITY_FIELDS = ["corp_code", "fiscal_year", "field_name", "purpose", "amount",
                    "rcept_no", "verdict", "unit", "table_idx"]
 PRODUCT_FIELDS = ["corp_code", "fiscal_year", "seq", "value_text", "rcept_no",
@@ -74,7 +75,8 @@ class DocumentResult:
 def parse_one(source, *, corp_code: str, fiscal_year: int, rcept_no: str,
               corp_name: str = "", external_revenue: float | None = None,
               size_bytes: int | None = None,
-              p: Patterns | None = None) -> DocumentResult:
+              p: Patterns | None = None,
+              alt_revenues: dict[str, float] | None = None) -> DocumentResult:
     """원문(경로 또는 바이트) → 네 산출물 + 판정.
 
     **예외를 밖으로 던지지 않는다.** 11,395건을 도는 중에 한 건이 터져서 잡 전체가
@@ -98,7 +100,7 @@ def parse_one(source, *, corp_code: str, fiscal_year: int, rcept_no: str,
             row["bytes"] = doc.path.stat().st_size
 
         # ── 부문별 매출
-        sr = seg_mod.extract(doc, external_revenue, p)
+        sr = seg_mod.extract(doc, external_revenue, p, alt_revenues=alt_revenues)
         row["seg_verdict"], row["seg_count"] = sr.verdict, len(sr.segments)
         if sr.verdict == seg_mod.VERIFIED:
             res.segments = [{
@@ -106,7 +108,8 @@ def parse_one(source, *, corp_code: str, fiscal_year: int, rcept_no: str,
                 "segment_name": s.name, "metric_value": f"{s.krw:.4f}",
                 "rcept_no": rcept_no, "verdict": sr.verdict, "unit": sr.unit,
                 "table_idx": sr.table_idx, "gap_ratio": sr.gap_ratio,
-                "sum_krw": f"{sr.sum_krw:.0f}"} for s in sr.segments]
+                "sum_krw": f"{sr.sum_krw:.0f}",
+                "revenue_basis": sr.revenue_basis or ""} for s in sr.segments]
 
         # ── 시설투자
         fr = fac_mod.extract(doc, p)
