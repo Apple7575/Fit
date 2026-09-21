@@ -173,6 +173,10 @@ def parse_args(argv=None) -> argparse.Namespace:
                         help="진행 기록 JSONL. 재개 지점이 된다")
     parser.add_argument("--python", default=sys.executable, help="하위 스크립트를 돌릴 python")
     parser.add_argument("--limit", type=int, help="앞에서 N 개사만 (시험용)")
+    parser.add_argument("--corp-code", action="append", default=[],
+                        help="이 기업만 (여러 번 지정 가능). 일부만 다시 채울 때 쓴다")
+    parser.add_argument("--corp-codes-file", type=Path,
+                        help="한 줄에 기업 코드 하나. --corp-code 와 합쳐진다")
     parser.add_argument("--retry-failed", action="store_true",
                         help="성공분은 건너뛰고 실패로 남은 기업만 다시 돌린다")
     parser.add_argument("--chunk-timeout", type=int, default=1800)
@@ -191,6 +195,20 @@ def main(argv=None) -> int:
     progress = Progress(opts.progress)
 
     todo = companies_from_manifest(opts.dart_archive)
+    wanted = list(opts.corp_code)
+    if opts.corp_codes_file:
+        wanted += [
+            line.strip()
+            for line in opts.corp_codes_file.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    if wanted:
+        # 지정한 기업만 돈다. 아카이브에 없는 코드는 돌 수 없으므로 알리고 뺀다.
+        selected = set(wanted)
+        unknown = sorted(selected - set(todo))
+        if unknown:
+            print(f"아카이브에 없는 기업 {len(unknown)}개는 건너뛴다: {', '.join(unknown[:5])}", flush=True)
+        todo = [code for code in todo if code in selected]
     if opts.retry_failed:
         todo = [code for code in todo if code in progress.failed]
     else:
