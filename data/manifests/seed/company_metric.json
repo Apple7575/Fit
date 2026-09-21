@@ -1,6 +1,6 @@
 {
   "table": "company_metric",
-  "generated_at": "2026-09-18T16:20:46.963128+00:00",
+  "generated_at": "2026-09-21T11:40:55.277592+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -38,16 +38,23 @@
     "V23__agent_message.sql",
     "V24__agent_room_job_context.sql",
     "V25__agent_room_context_id.sql",
-    "V26__cover_letter_context_corp.sql"
+    "V26__cover_letter_context_corp.sql",
+    "V27__rag_evidence.sql",
+    "V28__rag_business_report_evidence.sql",
+    "V29__rag_evidence_embedding.sql",
+    "V30__company_analysis_report.sql",
+    "V31__company_analysis_conversation.sql",
+    "V32__rag_evidence_entity_scope.sql",
+    "V33__company_table_row.sql"
   ],
   "source": "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
-  "seed_rows": 106276,
+  "seed_rows": 106180,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "metric_code": 0,
     "metric_value": 0,
-    "fs_div": 47949
+    "fs_div": 47853
   },
   "notes": [
     "연결 우선·별도 폴백. 고른 쪽을 fs_div 에 남긴다",
@@ -60,8 +67,8 @@
     "employee_count": 12393,
     "net_income": 11657,
     "operating_profit": 11752,
-    "rd_expense": 5501,
-    "rd_ratio": 5483,
+    "rd_expense": 5453,
+    "rd_ratio": 5435,
     "revenue": 11407,
     "total_equity": 11746,
     "total_liabilities": 11765
@@ -98,15 +105,15 @@
     },
     "pairs": 11880,
     "rd": {
-      "판정 high": 5226,
-      "판정 mismatch": 1168,
+      "판정 high": 5197,
+      "판정 mismatch": 1128,
       "rd_ratio 기재 없음": 18,
-      "판정 medium": 292,
+      "판정 medium": 285,
       "금액이 비율과 5~100배 어긋남(넣되 기록)": 39,
-      "매출이 없어 금액-비율 대조 못 함(넣음)": 67,
-      "금액이 비율과 100배 이상 어긋남(제외)": 17,
-      "판정 low": 36,
-      "채택": 10984
+      "매출이 없어 금액-비율 대조 못 함(넣음)": 65,
+      "금액이 비율과 100배 이상 어긋남(제외)": 29,
+      "판정 low": 42,
+      "채택": 10888
     },
     "skipped_currency": {
       "USD": 268,
