@@ -54,6 +54,18 @@
     "결측은 행을 넣지 않는다 — metric_value 가 NOT NULL 이다",
     "KRW 가 아닌 통화는 넣지 않는다 (환산은 추정이다)"
   ],
+  "row_breakdown": {
+    "average_salary": 12235,
+    "average_tenure": 12337,
+    "employee_count": 12393,
+    "net_income": 11657,
+    "operating_profit": 11752,
+    "rd_expense": 5501,
+    "rd_ratio": 5483,
+    "revenue": 11407,
+    "total_equity": 11746,
+    "total_liabilities": 11765
+  },
   "distinct_corp_codes": 2688,
   "fiscal_years": [
     2021,

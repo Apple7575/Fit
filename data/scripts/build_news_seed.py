@@ -18,6 +18,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# 콘솔이 cp949 면 docstring 의 '—' 에서 죽는다 (--help 가 그랬다). 형제 스크립트들과
+# 같은 처리다.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):
+        pass
+
+from pipeline import seed_guard  # noqa: E402
 from pipeline.news import curate, flyway  # noqa: E402
 from pipeline.news.schema import SEED_SOURCE_CHOICES, SEED_SOURCE_DEFAULT, SEED_TABLE  # noqa: E402
 
@@ -33,6 +42,7 @@ def main() -> int:
                         help="staged 가 비어도 헤더만 있는 시드를 쓴다")
     parser.add_argument("--per-company", type=int, default=0, metavar="N",
                         help="기업마다 최신 N 건만 남긴다. 0 이면 전부 (기본)")
+    seed_guard.add_arguments(parser)
     args = parser.parse_args()
     if args.per_company < 0:
         parser.error("--per-company 는 0 이상이어야 한다")
@@ -51,6 +61,11 @@ def main() -> int:
 
     result = curate.build(rows, schema, args.source_column, args.collected_at_fallback,
                           per_company=args.per_company)
+    # 직전 시드보다 급감하면 여기서 멈춘다. 뉴스는 증분 수집이라 staged 가 일부만
+    # 있는 채로 돌면 시드가 조용히 작아진다 — CSV 는 커밋하지 않지만 적재는 이
+    # 파일로 간다 (docs/news-poc).
+    seed_guard.check(SEED_TABLE, result.rows, manifest_dir=curate.SEED_MANIFEST_DIR,
+                     max_drop=args.max_drop, allow_shrink=args.allow_shrink)
     paths = curate.write(result)
     summary = result.summary
     if args.per_company:

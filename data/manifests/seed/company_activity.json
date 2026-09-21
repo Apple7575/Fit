@@ -63,6 +63,10 @@
     "facility 의 counterparty 는 비운다 — 상대방이 있는 거래가 아니다",
     "investment_period 는 표에 있어도 뽑지 않는다 (팀장 기준 2항)"
   ],
+  "row_breakdown": {
+    "corporate_invest": 3409,
+    "facility": 4502
+  },
   "distinct_corp_codes": 436,
   "fiscal_years": [
     2021,
