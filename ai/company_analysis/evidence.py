@@ -222,7 +222,9 @@ SELECT e.evidence_id, re.vector_bytes, re.dimension
 """
 
 DEFAULT_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
-DEFAULT_EMBEDDING_VERSION = "adaptive-v1"
+# 적재 쪽 기본값과 같아야 한다(data/pipeline/rag_corpus/embedding_build.py 의 DEFAULT_VERSION).
+# 어긋나면 검색이 한 건도 못 찾는다 — 벡터는 (model, version) 으로 고르기 때문이다.
+DEFAULT_EMBEDDING_VERSION = "document-v1"
 
 
 class PostgresBusinessReportRepository:

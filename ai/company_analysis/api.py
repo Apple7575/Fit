@@ -33,7 +33,9 @@ from .contracts import (
     ChatRequest, ChatResponse, CompanyMessageRequest, CompanyMessageResponse, CompanyReport,
     ConversationHistory, ReportGenerateRequest, ReportStatus,
 )
-from .evidence import PostgresBusinessReportRepository
+from .evidence import (
+    DEFAULT_EMBEDDING_MODEL, DEFAULT_EMBEDDING_VERSION, PostgresBusinessReportRepository,
+)
 from .llm import QwenConfig, build_structured_client
 from .narrative import NarrativeEnricher
 from .repository import PostgresCompanyFactsRepository
@@ -95,7 +97,13 @@ def _qwen_config() -> QwenConfig:
 
 
 def build_business_reports() -> PostgresBusinessReportRepository:
-    return PostgresBusinessReportRepository(_connect_factory(resolve_rag_database_url()))
+    # 적재 때 쓴 모델·버전과 같아야 검색이 그 벡터를 찾는다. 모델을 바꿔 다시 적재하면
+    # 두 값을 함께 옮긴다 — 코드를 고치지 않고 환경변수로 넘길 수 있게 열어 둔다.
+    return PostgresBusinessReportRepository(
+        _connect_factory(resolve_rag_database_url()),
+        embedding_model=_env("COMPANY_ANALYSIS_EMBEDDING_MODEL_NAME") or DEFAULT_EMBEDDING_MODEL,
+        embedding_version=_env("COMPANY_ANALYSIS_EMBEDDING_VERSION") or DEFAULT_EMBEDDING_VERSION,
+    )
 
 
 def build_query_encoder() -> RemoteQueryEncoder | None:

@@ -113,6 +113,10 @@ services:
       # 질의 임베딩 서버(OpenAI 호환). 적재 때 쓴 것과 같은 모델이어야 검색이 맞는다.
       - COMPANY_ANALYSIS_EMBEDDING_BASE_URL=${COMPANY_ANALYSIS_EMBEDDING_BASE_URL:-}
       - COMPANY_ANALYSIS_EMBEDDING_API_KEY=${COMPANY_ANALYSIS_EMBEDDING_API_KEY:-${LLM_KEY:-}}
+      # 검색이 고를 벡터. 적재 때 쓴 모델·버전과 같아야 한 건이라도 찾는다.
+      # 비우면 코드 기본값(Qwen3-Embedding-0.6B / document-v1)을 쓴다.
+      - COMPANY_ANALYSIS_EMBEDDING_MODEL_NAME=${COMPANY_ANALYSIS_EMBEDDING_MODEL_NAME:-}
+      - COMPANY_ANALYSIS_EMBEDDING_VERSION=${COMPANY_ANALYSIS_EMBEDDING_VERSION:-}
       # backend 와 같은 vLLM. 주소는 VLLM_BASE_URL 에 /v1 을 붙이고, 키는 LLM_KEY 를 재사용한다.
       - QWEN_BASE_URL=${VLLM_BASE_URL:-http://70.12.130.105:8000}/v1
       # 서빙 중인 모델 ID 는 main 하나다 (GET /v1/models 로 확인).
