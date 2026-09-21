@@ -47,6 +47,9 @@ _METRIC_PATTERNS: tuple[tuple[re.Pattern[str], str, str, str], ...] = (
 
 # 여러 값을 한꺼번에 묻거나 흐름을 묻는 질문은 모델 서술에 맡긴다.
 _NOT_SINGLE_FACT = re.compile(r"추이|변화|흐름|성장률|증감|비교|대비|왜|이유|원인|어떻게\s*(?:변|달라)|년\s*(?:부터|간|동안)|최근\s*\d\s*년")
+
+# 아직 공시되지 않은 값을 묻는다. 확정 지표로 답하면 과거 실적을 미래인 것처럼 내놓게 된다.
+_FUTURE = re.compile(r"내년|작년보다\s*나아|올해\s*말|향후|앞으로|전망|예상|예측|추정|될까|할까|얼마나\s*오를")
 _YEAR = re.compile(r"(20\d{2})\s*(?:년|연도|년도|사업연도|회계연도|기)?")
 
 MONEY_TOLERANCE = 0.005
@@ -71,8 +74,13 @@ class MetricAnswer:
 
 
 def detect_metric_query(question: str, facts: CompanyFacts) -> MetricQuery | None:
-    """질문이 표준 지표 하나를 묻는지 판단한다. 아니면 None."""
-    if _NOT_SINGLE_FACT.search(question):
+    """질문이 표준 지표 하나를 묻는지 판단한다. 아니면 None.
+
+    확정 지표로 답하면 모델 답을 그 값으로 덮어쓴다. 그래서 "확정값 하나로 답하는 것이
+    맞는 질문" 일 때만 참이어야 한다 — 전망이나 다른 기업을 묻는데 이 기업의 과거 실적을
+    내놓으면 사용자가 그것을 답으로 받아들인다.
+    """
+    if _NOT_SINGLE_FACT.search(question) or _FUTURE.search(question):
         return None
     found: list[tuple[str, str, str]] = []
     remaining = question
