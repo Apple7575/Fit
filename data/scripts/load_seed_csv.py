@@ -53,13 +53,34 @@ for _s in (sys.stdout, sys.stderr):
 
 SEED_DIR = ROOT / "curated" / "seed"
 
-# 자연키. Flyway 의 PK·UNIQUE 와 같아야 한다 — 아래 _check_keys 가 대조한다.
-NATURAL_KEYS: dict[str, tuple[str, ...]] = {
-    "company_metric": ("corp_code", "fiscal_year", "metric_code"),
-    "company_text": ("corp_code", "fiscal_year", "attr_key", "seq"),
-    "segment_metric": ("corp_code", "fiscal_year", "segment_name", "metric_code"),
-    "news_article": ("corp_code", "guid"),
+# 자연키 후보. Flyway 의 PK·UNIQUE 중 하나와 같아야 한다 — 아래 _check_keys 가 대조한다.
+#
+# **표마다 여러 개를 적을 수 있다.** 스키마가 바뀌는 중에도 적재가 멈추지 않게 하려는
+# 것이다. news_article 이 그 경우다 — 확정 ERD 가 중복 방지 키를 guid 기준에서
+# 제공처 기준으로 옮기는 중이고(MR !209 의 V34), 그 마이그레이션이 들어오는 순간
+# 옛 키는 스키마에서 사라진다. 후보를 둘 다 적어 두면 **어느 쪽 스키마에서도**
+# 그때 있는 키로 붙는다.
+NATURAL_KEY_CANDIDATES: dict[str, tuple[tuple[str, ...], ...]] = {
+    "company_metric": (("corp_code", "fiscal_year", "metric_code"),),
+    "company_text": (("corp_code", "fiscal_year", "attr_key", "seq"),),
+    "segment_metric": (("corp_code", "fiscal_year", "segment_name", "metric_code"),),
+    "news_article": (
+        ("corp_code", "guid"),                              # V17 ~ (현재)
+        ("corp_code", "provider", "provider_article_id"),   # V34 이후 (MR !209)
+    ),
 }
+
+
+def natural_key(table: str, schema=None) -> tuple[str, ...]:
+    """지금 스키마에 실제로 있는 자연키를 고른다. 없으면 첫 후보를 돌려준다
+    (그러면 _check_keys 가 무엇이 어긋났는지 말해 준다)."""
+    resolved = schema or flyway.load()
+    found = resolved.table(table)
+    columns = set(found.columns) if found else set()
+    for candidate in NATURAL_KEY_CANDIDATES[table]:
+        if set(candidate) <= columns:
+            return candidate
+    return NATURAL_KEY_CANDIDATES[table][0]
 
 # 정리 범위를 corp_code 밖으로 한 칸 더 좁히는 표.
 #
@@ -73,7 +94,7 @@ NATURAL_KEYS: dict[str, tuple[str, ...]] = {
 CLEANUP_SCOPE: dict[str, str] = {"company_metric": "metric_code"}
 # 자연키가 없어 범위를 좁혀 갈아끼우는 표
 REPLACE_TABLES = ("company_activity",)
-TABLES = tuple(NATURAL_KEYS) + REPLACE_TABLES
+TABLES = tuple(NATURAL_KEY_CANDIDATES) + REPLACE_TABLES
 
 
 def _read(table: str) -> list[dict]:
@@ -85,16 +106,24 @@ def _read(table: str) -> list[dict]:
                 for row in csv.DictReader(stream)]
 
 
-def _check_keys(table: str, key: tuple[str, ...]) -> str | None:
-    """자연키가 Flyway 의 PK·UNIQUE 와 같은지 본다. 다르면 적재하지 않는다 —
-    엉뚱한 키로 upsert 하면 조용히 중복이 쌓이거나 멀쩡한 행을 덮는다."""
-    schema = flyway.load().table(table)
-    if schema is None:
+def _check_keys(table: str, key: tuple[str, ...], schema=None) -> str | None:
+    """자연키가 Flyway 의 키 **중 하나**와 같은지 본다. 아니면 적재하지 않는다 —
+    엉뚱한 키로 upsert 하면 조용히 중복이 쌓이거나 멀쩡한 행을 덮는다.
+
+    **묶음으로 본다.** 예전에는 "PK·UK 가 붙은 컬럼 전부" 를 한 뭉치로 모아 비교했다.
+    표에 유일키가 하나뿐일 때는 같은 말이지만, 둘이 되면 두 키의 컬럼이 합쳐져
+    어느 쪽과도 맞지 않는다 — V34 가 news_article 에 제공처 기준과 원문 URL 기준
+    둘을 걸면 그 상태가 된다 (실측: 코드 ('corp_code','guid') vs 합쳐진 넷).
+    """
+    resolved = (schema or flyway.load()).table(table)
+    if resolved is None:
         return f"Flyway 에 {table} 이 없다"
-    declared = tuple(c.name for c in schema.ordered()
-                     if {"PK", "UK"} & set(c.key_type.split(",")) and c.name != "id")
-    if set(declared) != set(key):
-        return f"자연키가 스키마와 다르다 — 코드 {key} vs Flyway {declared}"
+    groups = [g for g in resolved.key_groups() if g != ["id"]]
+    if not groups:
+        return f"{table} 에 자연키로 쓸 PK·UNIQUE 가 없다"
+    if not any(set(g) == set(key) for g in groups):
+        printable = " 또는 ".join(str(tuple(g)) for g in groups)
+        return f"자연키가 스키마와 다르다 — 코드 {key} vs Flyway {printable}"
     return None
 
 
@@ -110,8 +139,8 @@ def main() -> int:
     args = ap.parse_args()
     tables = args.only or list(TABLES)
 
-    problems = [msg for t in tables if t in NATURAL_KEYS
-                for msg in [_check_keys(t, NATURAL_KEYS[t])] if msg]
+    problems = [msg for t in tables if t in NATURAL_KEY_CANDIDATES
+                for msg in [_check_keys(t, natural_key(t))] if msg]
     if problems:
         for msg in problems:
             print(f"중단: {msg}")
@@ -157,7 +186,7 @@ def main() -> int:
                 print(f"{table:<18} 지움 {removed:>6,} · 넣음 {len(rows):>6,} → 총 {after:,}행")
                 continue
 
-            key = NATURAL_KEYS[table]
+            key = natural_key(table)
             cols = [c for c in rows[0] if c != "id"]
             stats = db.upsert(conn, table, rows, pk=key, columns=cols)
 

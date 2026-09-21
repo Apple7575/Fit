@@ -61,6 +61,23 @@ class Table:
     schema: str = "public"
     comment: str = ""
     columns: dict[str, Column] = field(default_factory=dict)
+    # 유일성 제약을 **묶음 단위로** 남긴다. 컬럼의 key_type 은 "UK" 라는 사실만
+    # 남기고 어느 키에 속하는지를 잃는다 — 한 테이블에 유일키가 둘이면
+    # (news_article 이 그렇게 될 예정이다) 둘을 합친 컬럼 집합이 되어, 적재기의
+    # 자연키 대조가 어느 쪽과도 맞지 않는다.
+    unique_keys: list[list[str]] = field(default_factory=list)
+    # 기본키도 묶음으로 남긴다. company_metric 처럼 복합 PK 가 곧 자연키인 표가 있다.
+    primary_key: list[str] = field(default_factory=list)
+
+    def key_groups(self) -> list[list[str]]:
+        """이 표에서 한 행을 유일하게 가리키는 키들. 자연키 대조의 기준이다."""
+        return ([self.primary_key] if self.primary_key else []) + self.unique_keys
+
+    def add_unique(self, names: list[str]) -> None:
+        """유일키 묶음을 더한다. 있는 컬럼만 담고 같은 묶음은 한 번만 남긴다."""
+        group = [n for n in (x.strip() for x in names) if n in self.columns]
+        if group and group not in self.unique_keys:
+            self.unique_keys.append(group)
 
     @property
     def qualified(self) -> str:
@@ -322,12 +339,14 @@ def _apply_create_table(schema: Schema, match: re.Match) -> None:
             column.referenced_table, column.referenced_column = ref.group(1), ref.group(2)
         table.columns[name] = column
 
+    table.primary_key = [n for n in pk_columns if n in table.columns]
     for name in pk_columns:
         _add_key(table.columns[name], "PK")
         table.columns[name].nullable = False
     for names in uniques:
         for name in names:
             _add_key(table.columns[name], "UK")
+        table.add_unique(names)
     for names, target, target_columns in fks:
         for name, target_column in zip(names, target_columns):
             _add_key(table.columns[name], "FK")
@@ -404,10 +423,11 @@ def load(migration_dir: Path | None = None) -> Schema:
             if unique:
                 table = schema.tables.get(unique.group(2))
                 if table:
-                    for raw in unique.group(3).split(","):
-                        name = raw.strip()
+                    names = [raw.strip() for raw in unique.group(3).split(",")]
+                    for name in names:
                         if name in table.columns:
                             _add_key(table.columns[name], "UK")
+                    table.add_unique(names)
                 continue
             add = _ADD_COLUMN_STMT.match(statement)
             if add and not re.match(r"^ALTER\s+TABLE\s+[\w.]+\s+ADD\s+CONSTRAINT", statement, re.IGNORECASE):
@@ -423,10 +443,11 @@ def load(migration_dir: Path | None = None) -> Schema:
             if index:
                 table = schema.tables.get(index.group(2))
                 if table:
-                    for raw in index.group(3).split(","):
-                        name = raw.strip().split()[0]
+                    names = [raw.strip().split()[0] for raw in index.group(3).split(",")]
+                    for name in names:
                         if name in table.columns:
                             _add_key(table.columns[name], "UK")
+                    table.add_unique(names)
                 continue
             insert = _INSERT_INTO.match(statement)
             if insert:
@@ -458,6 +479,8 @@ def load(migration_dir: Path | None = None) -> Schema:
                 if table:
                     for name in _DROP_COLUMN_CLAUSE.findall(dropped.group(3)):
                         table.columns.pop(name, None)
+                        # 컬럼이 사라지면 그 컬럼이 낀 유일키도 남아 있을 수 없다.
+                        table.unique_keys = [g for g in table.unique_keys if name not in g]
                 continue
             if any(head.startswith(k) for k in (
                 "CREATE INDEX", "CREATE SCHEMA", "CREATE EXTENSION", "ALTER TABLE",
