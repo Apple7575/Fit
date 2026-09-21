@@ -85,6 +85,17 @@ def _numbers(row: list[str], p: Patterns) -> list[float]:
     return out
 
 
+def _labels(row: list[str], p: Patterns) -> list[str]:
+    """숫자가 처음 나오기 전까지의 라벨 칸. 표마다 라벨 열 수가 달라 위치로 못 센다."""
+    out = []
+    for cell in row:
+        text = squash(cell)
+        if text and p.rnd.numeric_cell.match(text):
+            break
+        out.append(text)
+    return out
+
+
 def _name(row: list[str], sp) -> str:
     """부문 이름 = 0열. 비어 있으면 다음 비숫자 셀."""
     for cell in row[:3]:
@@ -143,6 +154,11 @@ def _from_table(doc: Document, t: Table, p: Patterns) -> tuple[list[Segment], di
         # 라벨 셋 어디에든 걸리면 매출 행이 아니다. 0열만 보면 현대차처럼
         # 매출액 행과 영업이익 행이 같은 이름으로 합쳐진다.
         if any(sp.exclude_cell.search(squash(c)) for c in row[:3]):
+            continue
+        # **소계 행은 안쪽 라벨에 숨는다.** 이름만 보면 `제품 | 승용 | 합계` 의
+        # '합계' 를 놓쳐 명세 행과 소계 행을 함께 더한다 — 기아 2022 의 제품 매출이
+        # 정확히 두 배가 된 원인이다. 숫자가 시작되기 전의 라벨 칸을 전부 본다.
+        if any(sp.subtotal_cell.match(squash(c)) for c in _labels(row, p)):
             continue
         nums = _numbers(row, p)
         if len(nums) <= sp.value_position:
