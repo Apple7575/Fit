@@ -326,6 +326,22 @@ class RoomServiceTest {
     }
 
     @Test
+    @DisplayName("공고가 나중에 연결돼도 이미 생성된 검토 방에 반영한다")
+    void existingRoomReceivesNewJobContext() {
+        givenCoverLetter("네이버", "서버 개발", "ctx-1");
+        JobContext context = jobContext("ctx-1");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+        Room existing = Room.create(USER, LETTER, "채용공고 담당",
+                List.of(new RoomAgent("jd", Map.of())));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of(existing));
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(existing.getJobContextId()).isEqualTo("ctx-1");
+        assertThat(existing.getAgents()).extracting(RoomAgent::agentKey).containsExactly("jd");
+    }
+
+    @Test
     @DisplayName("자소서가 가리키는 공고가 사라졌으면 방은 공고 없이 깐다 — 화면을 막지 않는다")
     void aVanishedJobContextLeavesTheRoomsWithoutOne() {
         givenCoverLetter("네이버", "서버 개발", "ctx-gone");

@@ -6,17 +6,14 @@ import type { CoverLetterInput, PendingJobPosting } from './types';
 
 interface CoverLetterWorkspaceProps {
   initial: CoverLetterInput;
+  initialPosting?: PendingJobPosting | null;
   isLoggedIn: boolean;
   alreadySaved?: boolean;
   /** 방금 저장하고 들어온 화면. 새 자소서를 저장하면 주소가 갈리므로 그때 이어서 알린다. */
   justSaved?: boolean;
-  /**
-   * 자소서만 저장한다. 아직 등록하지 않은 공고가 있으면 두 번째 인자로 함께 넘긴다 —
-   * 등록이 수십 초 걸려 저장을 붙잡아 둘 수 없으니, 화면을 넘긴 뒤에 받는 쪽에서 잇는다.
-   */
-  onSave: (input: CoverLetterInput, pendingPosting: PendingJobPosting | null) => Promise<void>;
+  onSave: (input: CoverLetterInput, pendingPosting?: PendingJobPosting | null) => Promise<void>;
   /** 저장한 뒤 멀티에이전트 검토 화면으로 넘긴다. 방은 저장된 자소서에 붙기 때문이다. */
-  onReview: (input: CoverLetterInput) => Promise<void>;
+  onReview: (input: CoverLetterInput, pendingPosting?: PendingJobPosting | null) => Promise<void>;
   onBack?: () => void;
 }
 
@@ -42,6 +39,7 @@ const toWorkItem = (item: CoverLetterInput['items'][number]): WorkItem => ({
 
 export function CoverLetterWorkspace({
   initial,
+  initialPosting,
   isLoggedIn,
   alreadySaved,
   justSaved,
@@ -64,7 +62,7 @@ export function CoverLetterWorkspace({
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   // 확인만 해 둔 공고. 이 주소로 등록한다.
-  const [posting, setPosting] = useState<PendingJobPosting | null>(null);
+  const [posting, setPosting] = useState<PendingJobPosting | null>(initialPosting ?? null);
   // 등록해 둔 공고와, 그때의 회사·직무. 그 뒤에 회사나 직무를 바꾸면 다시 등록해야 한다.
   const [registered, setRegistered] = useState<{ id: string; of: string } | null>(() =>
     initial.jobContextId
@@ -72,10 +70,12 @@ export function CoverLetterWorkspace({
       : null,
   );
   const [registering, setRegistering] = useState(false);
+  const [postingError, setPostingError] = useState<string | null>(null);
 
   const touch = () => {
     setDirty(true);
     setJustSavedNotice(false);
+    setPostingError(null);
   };
 
   const editItem = (key: string, next: Partial<WorkItem>) => {
@@ -122,7 +122,7 @@ export function CoverLetterWorkspace({
     title: title.trim() || '제목 없는 자소서',
     targetCompany: company.trim() || null,
     targetPosition: position.trim() || null,
-    jobContextId: registered?.id ?? null,
+    jobContextId: registered?.of === postingKey(company, position) ? registered.id : null,
     items: items.map((item) => ({
       question: item.question,
       answer: item.answer,
@@ -136,16 +136,11 @@ export function CoverLetterWorkspace({
     return !posting || registered?.of === key ? null : posting;
   };
 
-  /**
-   * 검토 직전에 공고를 등록해 식별자를 붙인다. 검토 방은 자소서에 적힌 이 값을 물려받는다.
-   *
-   * 등록은 모델이 공고를 요구사항 단위로 정리하므로 수십 초 걸린다. 그동안 검토 버튼이
-   * "공고 분석 중…" 으로 남는다. 검토는 이 값이 있어야 제 일을 하므로 기다린다.
-   *
-   * 실패해도 검토는 그대로 연다. 공고는 선택 항목이라 써 둔 글을 못 보게 할 이유가 없다.
-   */
-  const inputForReview = async (): Promise<CoverLetterInput> => {
+  /** 저장과 검토 모두 공고 분석이 끝난 식별자를 사용한다. 실패하면 이동하지 않고 재시도할 수 있다. */
+  const inputWithPosting = async (): Promise<CoverLetterInput | null> => {
     const base = buildInput();
+    // 게스트는 먼저 로그인 화면으로 보낸다. 등록 API 는 로그인 후에만 호출할 수 있다.
+    if (!isLoggedIn) return base;
     const pending = postingToRegister(base);
     if (!pending) {
       return base;
@@ -164,19 +159,20 @@ export function CoverLetterWorkspace({
         of: postingKey(base.targetCompany, base.targetPosition),
       });
       return { ...base, jobContextId: context.jobContextId };
-    } catch {
-      return { ...base, jobContextId: null };
+    } catch (error) {
+      setPostingError(error instanceof ApiError ? error.message : '채용공고 분석에 실패했습니다. 다시 시도해 주세요.');
+      return null;
     } finally {
       setRegistering(false);
     }
   };
 
-  /** 저장은 공고 등록을 기다리지 않는다. 자소서를 먼저 넘기고 등록은 받는 쪽이 뒤에서 잇는다. */
   const save = async () => {
     setSaving(true);
     try {
-      const base = buildInput();
-      await onSave(base, postingToRegister(base));
+      const input = await inputWithPosting();
+      if (!input) return;
+      await onSave(input, isLoggedIn ? null : posting);
       setDirty(false);
       setSavedOnce(true);
       setJustSavedNotice(true);
@@ -188,7 +184,10 @@ export function CoverLetterWorkspace({
   const review = async () => {
     setReviewing(true);
     try {
-      await onReview(await inputForReview());
+      const input = await inputWithPosting();
+      if (input) {
+        await onReview(input, isLoggedIn ? null : posting);
+      }
     } finally {
       setReviewing(false);
     }
@@ -226,13 +225,15 @@ export function CoverLetterWorkspace({
             setTitle(event.target.value);
             touch();
           }}
-          placeholder="제목을 입력하세요 (예: 2026 상반기 백엔드 신입 지원)"
+          placeholder="자소서 제목을 입력하세요"
           className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-2xl font-bold tracking-tight text-slate-950 placeholder:text-[17px] placeholder:font-normal placeholder:text-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         <p className="mt-1.5 text-sm text-slate-500">문항을 추가·삭제하고 답변을 수정한 뒤 저장하세요.</p>
       </div>
 
       <JobPostingBar onParsed={applyPosting} />
+
+      {postingError && <p role="alert" className="mb-5 text-sm text-red-700">{postingError}</p>}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <div>
@@ -272,7 +273,7 @@ export function CoverLetterWorkspace({
                   setPosition(event.target.value);
                   touch();
                 }}
-                placeholder="예: 백엔드 개발"
+                placeholder="지원 직무를 입력하세요"
                 className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
               {typingPosition && (
@@ -380,7 +381,7 @@ export function CoverLetterWorkspace({
           />
           <button
             onClick={review}
-            disabled={reviewing || registering || !hasWriting}
+            disabled={reviewing || registering || saving || !hasWriting}
             className="rounded-xl bg-slate-900 px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
             type="button"
           >
