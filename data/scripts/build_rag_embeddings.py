@@ -35,6 +35,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--version", default=DEFAULT_VERSION)
     parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--dtype", choices=("float32", "float16"), default="float32",
+                        help="벡터 저장 정밀도. float16 은 용량이 절반이고 검색 결과는 같다")
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--remote-url")
     parser.add_argument("--dry-run", action="store_true")
@@ -93,7 +95,8 @@ def main(argv: Iterable[str] | None = None) -> int:
                 encoder = FastEmbedEncoder(args.model, device=args.device)
             summary = build_embeddings(connect, encoder, model=args.model, version=args.version,
                                        corp_codes=corp_codes, source_types=args.source_type,
-                                       batch_size=args.batch_size, dry_run=args.dry_run)
+                                       batch_size=args.batch_size, dry_run=args.dry_run,
+                                       dtype=args.dtype)
         payload = {"status": "success", **asdict(summary)}
     except Exception as error:
         # DB and model exception messages can contain credentials or signed URLs.
