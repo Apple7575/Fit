@@ -605,8 +605,9 @@ def build_segment_metric(corp_codes: set[str]) -> tuple[list[dict], Counter]:
 def build_company_activity(corp_codes: set[str]) -> tuple[list[dict], Counter]:
     """타법인 출자현황 → corporate_invest, 사업보고서 → facility.
 
-    activity_type 4종 중 둘의 원천이 확보됐다. ma·transfer 는 주요사항보고서에서
-    오고 아직 수집 경로가 없다.
+    activity_type 은 corporate_invest·facility 둘이다. 나머지 둘(ma·transfer)은
+    주요사항보고서가 원천인데 **2026-09-21 에 수집하지 않기로 했다** — 수집기를 새로
+    뚫는 며칠치 작업이고 화면은 지금 둘로 돌아간다.
 
     amount 는 **기말 장부가액**(trmend_blce_acntbk_amount)이다. 원천이 사건이
     아니라 사업연도 말 잔액 스냅샷이라서 fiscal_year 축을 쓴다 (V13 4장).
@@ -873,7 +874,7 @@ def main() -> int:
                       ".cache/otrCprInvstmntSttus_*.json (타법인 출자현황) + "
                       "staged/business_report/facility.csv (사업보고서 시설투자)",
                       ["activity_type 은 corporate_invest·facility 둘 — ma·transfer 는"
-                       " 원천 미확보",
+                       " 수집하지 않기로 했다 (2026-09-21 팀장 확정)",
                        "amount 는 기말 장부가액이다 (사건이 아니라 연말 잔액 스냅샷)",
                        "corporate_invest 의 field_name 은 원천에 대응하는 값이 없어 비운다",
                        "facility 의 counterparty 는 비운다 — 상대방이 있는 거래가 아니다",
@@ -881,7 +882,8 @@ def main() -> int:
         print(f"company_activity  {len(rows):>7,}행  → {dest.name}")
         print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
               + " · ".join(f"{k} {v:,}" for k, v in sorted(st.items())))
-        print("  activity_type 은 corporate_invest·facility 둘이다 — ma·transfer 는 원천 미확보")
+        print("  activity_type 은 corporate_invest·facility 둘이다 —"
+              " ma·transfer 는 수집하지 않기로 했다 (2026-09-21)")
 
     if "company_text" in want:
         rows, st = build_company_text(corp_codes)

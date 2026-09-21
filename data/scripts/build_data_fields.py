@@ -241,7 +241,8 @@ note("company_text", "generated_at", AI, "", "derived:모델 실행 시각", "",
 
 note("company_activity", "id", DB, "", "identity", "1")
 note("company_activity", "activity_type", OPENDART, "", "constant", "facility",
-     remarks="facility/corporate_invest/ma/transfer. API 의 type 파라미터 값과 같다")
+     remarks="우리가 쓰는 값은 facility·corporate_invest 둘이다. API 의 type 파라미터에는 "
+             "ma·transfer 도 있지만 2026-09-21 에 수집하지 않기로 했다 (원천이 주요사항보고서다)")
 note("company_activity", "field_name", OPENDART, "주요사항보고서", "derived:추출 결과", "파운드리")
 note("company_activity", "purpose", OPENDART, "주요사항보고서", "derived:추출 결과", "미국 테일러 공장 생산능력 확대")
 note("company_activity", "amount", OPENDART, "주요사항보고서", "derived:원 단위", "44000000000000")
@@ -270,7 +271,8 @@ note("news_article", "source", NEWS, "rss:item/source → staged.publisher",
      remarks=f"{AGREEMENT} — 컬럼이 하나뿐이라 provider(google_news_rss)와 publisher(언론사)를 "
              "함께 담을 수 없다. provider 컬럼 추가를 제안한다")
 note("news_article", "importance_score", AI, "", "미적재", "",
-     remarks="0~10. NULL 은 분석 실패이고 0 과 다른 사실이다")
+     remarks="2026-09-21 에 AI 분석을 채택하지 않기로 해서 항상 NULL 이다 — "
+             "무관한 기사를 관련 있다고 판정한 비율이 19% 였다")
 note("news_article", "collected_at", NEWS, "requests.json:checked_at → staged.collected_at",
      "raw", "2026-09-06T00:10:00+00:00",
      remarks="원본을 받은 시각. DB 기본값 now() 에 맡기지 않고 수집 시각을 넣는다")
@@ -411,9 +413,11 @@ for _column, _text in (
     ("title", "기사 제목. 응답의 title"),
     ("published_at", "기사 발행 시각. 응답에는 서울 기준 날짜(YYYY-MM-DD)로 나간다. "
                      "NULL 이면 기간 조회에 걸리지 않아 세 API 어디에도 나가지 않는다"),
-    ("original_url", "언론사 직접 원문 URL. 확보하지 못하면 NULL"),
-    ("importance_score", "AI 중요도 0.0~10.0. 프론트 목업 기준 소수 한 자리다. "
-                         "분석 실패는 NULL 이고 0 과 다른 사실이다"),
+    ("original_url", "기사 링크. 실제로는 구글 뉴스 링크가 들어간다 — 원문 주소로 푸는 세 방법"
+                     "(오프라인 해독·리다이렉트 추적·구글 내부 API)이 2026-09-21 실측에서 모두 "
+                     "실패했다. 매체명은 source 에 있다"),
+    ("importance_score", "AI 중요도 0.0~10.0. 2026-09-21 에 AI 분석을 채택하지 않기로 해서 "
+                         "항상 NULL 이다"),
     ("collected_at", "원본을 받은 시각"),
 ):
     DESC[("news_article", _column)] = _text
