@@ -91,6 +91,41 @@ load_seed_csv.py → "news_article 시드가 없거나 비어 있다 — 건너�
 | 2 | 수집기를 저장소로 들일까요? | **들인다** — 코드는 커밋 금지 대상이 아니고, 지금은 한 사람 노트북에만 있다 |
 | 3 | 원본 보관 4주면 될까요? | 4주(480MB). 늘리면 용량만 는다 |
 
+## 5-1. ⚠️ MR !209(V34)가 먼저 들어오면 이 경로가 멈춘다 — 실측
+
+`fix/S15P21A504-news-article-erd-columns` 의 V34 가 `source`·`guid` 를 지우고
+`publisher`·`provider`·`provider_article_id`·`provider_url`·`normalized_url`·
+`body_text` 를 더한다. **그 파일을 우리 마이그레이션 폴더에 넣고 파서를 돌려 봤다.**
+
+```
+V34 적용 뒤 키로 읽히는 칸: corp_code(UK) · provider(UK) · normalized_url(UK)
+                            · provider_article_id(UK)
+load_seed_csv._check_keys → "자연키가 스키마와 다르다 —
+    코드 ('corp_code','guid') vs Flyway ('corp_code','provider',
+    'normalized_url','provider_article_id')"
+```
+
+**적재가 통째로 멈춘다.** 세 가지를 같이 고쳐야 한다.
+
+| 무엇 | 왜 |
+|---|---|
+| `load_seed_csv.NATURAL_KEYS` | `guid` 가 없어진다 |
+| `_check_keys` | 부분 UNIQUE 인덱스 **둘**을 한 자연키로 합쳐 읽는다. 지금 구조로는 "서로 다른 유일키 두 개"를 표현할 수 없다 |
+| `pipeline/news/schema.SEED_FIELDS` | 헤더 상수에 `source`·`guid` 가 박혀 있다 |
+
+덧붙여 두 가지를 봐 주셨으면 한다.
+
+- **`normalized_url` 은 채울 수가 없다.** 우리가 가진 링크는 전부 구글 뉴스 링크이고,
+  원문 주소로 푸는 세 방법이 2026-09-21 실측에서 모두 실패했다(오프라인 해독 500/500
+  실패 · 리다이렉트 추적은 본문 0바이트 · 구글 내부 API 는 서명이 필요). 그래서
+  `normalized_url` 기준 부분 UNIQUE 인덱스는 **당분간 한 행에도 걸리지 않는다**
+- **`body_text` 는 기사 본문이다.** 저장·재배포 근거를 확보하지 못해 시드조차 커밋하지
+  않기로 한 결정(`news-poc/90-source-review.md`)과 정면으로 부딪힌다. 컬럼을 만드는
+  것과 채우는 것은 다른 문제지만, **채울 계획이라면 그 결정을 먼저 다시 여는 것이 맞다**
+
+순서만 맞추면 된다. **V34 를 먼저 넣고 우리 쪽 셋을 같은 날 고치거나, 우리 쪽을 먼저
+고쳐 두고 V34 를 넣는다.** 지금처럼 따로 가면 그 사이에 뉴스 적재가 조용히 멈춘다.
+
 ## 6. 비용
 
 | 일 | 드는 시간 |
