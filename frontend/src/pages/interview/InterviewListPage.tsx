@@ -130,9 +130,11 @@ function ListBody() {
         <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-24 pb-16">
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <h1 className="display-lg text-balance">면접관 앞에 앉아 보세요</h1>
+            {/* 문장 사이에서 줄을 나눈다. 그냥 두면 '녹화한' 이 첫 줄 끝에 매달린다 */}
             <p className="mt-3 max-w-[46ch] text-[15px] break-keep text-white/70">
-              회사 자료로 만든 질문에 답하고, 말투와 자세까지 돌아봅니다. 녹화한 영상은 이 브라우저
-              밖으로 나가지 않습니다.
+              회사 자료로 만든 질문에 답하고, 말투와 자세까지 돌아봅니다.
+              <br />
+              녹화한 영상은 이 브라우저 밖으로 나가지 않습니다.
             </p>
             {/* 도중에 끊긴 면접이 있으면, 새 면접보다 먼저 이어서 진행할 길을 내준다 */}
             {draft && (
@@ -171,7 +173,7 @@ function ListBody() {
 
           {/* 내 기록을 첫 화면에서 바로 연다. 아래로 내려가서 찾게 하지 않는다 */}
           {onHero.length > 0 && (
-            <section aria-labelledby="hero-list-title" className="mt-10 border-t border-white/15 pt-6">
+            <section aria-labelledby="hero-list-title" className="mt-10 pt-6">
               <div className="flex items-baseline justify-center gap-3">
                 <p className="text-[12px] font-semibold text-white/50" id="hero-list-title">
                   내 모의 면접
@@ -201,7 +203,7 @@ function ListBody() {
           )}
 
           {state.status === 'success' && all.length === 0 && (
-            <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] text-white/50">
+            <p className="mt-10 pt-6 text-center text-[13px] text-white/50">
               아직 진행한 면접이 없습니다. 첫 면접을 시작하면 여기에 쌓입니다.
             </p>
           )}

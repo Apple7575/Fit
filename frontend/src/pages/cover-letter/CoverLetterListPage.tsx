@@ -48,7 +48,7 @@ function GuestHome() {
     <div className="flex min-h-screen flex-col bg-slate-50">
       <CoverLetterHeader floating scrolled={scrolled} />
       <Hero hasBelow={false} onNew={() => navigate('/cover-letters/new', { state: { fresh: true } })}>
-        <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] break-keep text-white/50">
+        <p className="mt-10 pt-6 text-center text-[13px] break-keep text-white/50">
           로그인 없이도 써 볼 수 있어요. 로그인하면 쓰던 자소서가 여기에 남습니다.
         </p>
       </Hero>
@@ -103,7 +103,8 @@ function Hero({
       <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-28 pb-16">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <h1 className="display-lg text-balance">회사의 언어로 다시 씁니다</h1>
-          <p className="mt-3 max-w-[46ch] text-[15px] break-keep text-white/70">
+          {/* 한 줄로 읽히길 바라는 자리다. 46ch 는 한글 42자를 못 담아 줄이 갈렸다 */}
+          <p className="mt-3 text-[15px] break-keep text-white/70">
             쓰던 자소서를 올리면 코치 다섯이 각자 맡은 자료로 읽고 고칠 곳을 짚어 줍니다.
           </p>
           <button
@@ -149,7 +150,7 @@ function MemberHome() {
       >
         {/* 내 자소서를 첫 화면에서 바로 연다. 아래로 내려가서 찾게 하지 않는다 */}
         {onHero.length > 0 && (
-          <section aria-labelledby="hero-list-title" className="mt-10 border-t border-white/15 pt-6">
+          <section aria-labelledby="hero-list-title" className="mt-10 pt-6">
             <div className="flex items-baseline justify-center gap-3">
               <p className="text-[12px] font-semibold text-white/50" id="hero-list-title">
                 내 자기소개서
@@ -190,7 +191,7 @@ function MemberHome() {
         )}
 
         {state.status === 'success' && all.length === 0 && (
-          <p className="mt-10 border-t border-white/15 pt-6 text-center text-[13px] break-keep text-white/50">
+          <p className="mt-10 pt-6 text-center text-[13px] break-keep text-white/50">
             아직 저장된 자소서가 없습니다. 채용공고 주소를 넣으면 지원 회사와 직무를 대신 채워
             드려요.
           </p>

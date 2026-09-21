@@ -110,13 +110,9 @@ export function CompanySearchPage() {
               <CompanySearchForm onSearch={runSearch} />
             </div>
 
-          </div>
-
-          {/* 최근 본 기업과 바로 볼 수 있는 기업을 한 덩어리로 묶는다. 칸을 고르게 해 줄이 흐트러지지 않게 한다 */}
-          <div className="mt-10 border-t border-white/15 pt-6">
-            {/* 처음 온 사람에게는 빈 줄을 보여 주지 않는다 */}
+            {/* 다시 찾을 회사는 검색창 바로 아래에서 집게 한다. 처음 온 사람에게는 빈 줄을 보여 주지 않는다 */}
             {recent.length > 0 && (
-              <section aria-labelledby="recent-title" className="mb-5">
+              <section aria-labelledby="recent-title" className="mt-4">
                 <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
                   <p className="flex items-center gap-2 text-[12px] font-semibold text-white/50">
                     <span id="recent-title">최근 본 기업</span>
@@ -147,7 +143,9 @@ export function CompanySearchPage() {
                 </div>
               </section>
             )}
+          </div>
 
+          <div className="mt-10 pt-6">
             <section aria-labelledby="featured-title">
               <p className="text-center text-[12px] font-semibold text-white/50" id="featured-title">
                 바로 볼 수 있는 기업
