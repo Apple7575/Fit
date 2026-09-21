@@ -4,7 +4,7 @@
  * 사이트 데이터 삭제·시크릿 모드 종료 시 함께 사라지며, 다른 기기/브라우저에서는 보이지 않는다.
  */
 import type { ClipEvent, DeliveryMetrics } from './delivery';
-import type { NonverbalMetrics } from './vision';
+import type { NonverbalMetrics, VisionSample } from './vision';
 
 const DB_NAME = 'interview-recordings';
 const DB_VERSION = 1;
@@ -36,6 +36,8 @@ export interface ClipRecord {
   /** 음량 파형(0~1)과 한 칸 길이(ms). 리포트의 음성 근거에 쓴다. 옛 기록엔 없다. */
   wave: number[] | null;
   waveStepMs: number | null;
+  /** 프레임별 추적값. 리포트에서 영상 위에 겹쳐 그린다. 옛 기록엔 없다. */
+  samples: VisionSample[] | null;
 }
 
 export function clipStorageSupported(): boolean {
@@ -102,6 +104,7 @@ export interface SaveItemInput {
   events?: ClipEvent[] | null;
   wave?: number[] | null;
   waveStepMs?: number | null;
+  samples?: VisionSample[] | null;
 }
 
 /** 문항의 녹화·지표를 저장한다(같은 문항 재녹화면 덮어씀). 저장 후 오래된 세션을 정리한다. */
@@ -127,6 +130,7 @@ export async function saveItem(input: SaveItemInput): Promise<void> {
       events: input.events ?? null,
       wave: input.wave ?? null,
       waveStepMs: input.waveStepMs ?? null,
+      samples: input.samples ?? null,
     };
     const store = db.transaction(STORE, 'readwrite').objectStore(STORE);
     await reqToPromise(store.put(record));

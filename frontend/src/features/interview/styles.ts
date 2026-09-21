@@ -14,7 +14,11 @@ export const SOURCE_BADGE: Record<QuestionSource, { label: string; className: st
   company: { label: '회사 데이터', className: 'bg-sky-50 text-sky-700 ring-sky-200' },
   cover_letter: { label: '자소서 기반', className: 'bg-violet-50 text-violet-700 ring-violet-200' },
   common: { label: '공통 질문', className: 'bg-slate-100 text-slate-600 ring-slate-200' },
-  followup: { label: '추가 질문', className: 'bg-rose-50 text-rose-700 ring-rose-200' },
+  /*
+   * 꼬리질문은 잘못된 것이 아니라 "더 물어볼 만해서" 나온 질문이다. 빨간 배지는 경고로 읽혀
+   * 다른 세 종류와 뜻이 달라 보였다. 검은 알약이면 눈에는 띄되 나무라는 느낌이 없다.
+   */
+  followup: { label: '추가 질문', className: 'bg-slate-900 text-white ring-slate-900' },
 };
 
 export const KIND_STYLE: Record<PointKind, { label: string; dot: string; chip: string }> = {

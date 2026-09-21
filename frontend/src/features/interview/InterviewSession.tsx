@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestFollowup } from './api';
-import { computeDelivery, countSyllables, PACE_MAX, PACE_MIN, type ClipEvent } from './delivery';
+import { computeDelivery, type ClipEvent } from './delivery';
+import { GuideStrip } from './GuideImage';
+import { POSTURE_FIGURES } from './guideFigures';
 import { useAudioMeter, useRecorder, useSpeech, useWebcam } from './hooks';
 import { Icon } from './icons';
 import { saveItem } from './localVideo';
@@ -13,6 +15,12 @@ interface InterviewSessionProps {
   questions: GeneratedQuestion[];
   /** 로컬 녹화를 묶는 세션 id. 저장 후 서버 면접 id 와 매칭한다. */
   localSessionId: string;
+  /** 이어서 진행할 때 되살린 문항들(답변 포함). 없으면 questions 로 새로 시작한다. */
+  initialItems?: SessionItem[];
+  /** 이어서 진행할 때 되돌아갈 문항 위치. */
+  initialIdx?: number;
+  /** 문항이 끝나거나 넘어갈 때마다 진행 상황을 밖에 알린다(초안 저장용). */
+  onProgress?: (items: SessionItem[], idx: number) => void;
   onFinish: (items: SessionItem[]) => void;
   onExit: () => void;
 }
@@ -23,7 +31,16 @@ type FupStatus = 'idle' | 'loading' | 'result' | 'empty' | 'error';
 const PREP_SECONDS = 3;
 
 /** 영상 면접 진행. 문항별 웹캠 녹화 + 실시간 STT. 답변 후 옵션으로 꼬리질문을 받는다. 영상은 이 브라우저에만 저장된다. */
-export function InterviewSession({ config, questions, localSessionId, onFinish, onExit }: InterviewSessionProps) {
+export function InterviewSession({
+  config,
+  questions,
+  localSessionId,
+  initialItems,
+  initialIdx,
+  onProgress,
+  onFinish,
+  onExit,
+}: InterviewSessionProps) {
   const { videoRef, status, stream } = useWebcam();
   const speech = useSpeech();
   const recorder = useRecorder(stream);
@@ -31,9 +48,12 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
   const vision = useVision(videoRef);
 
   const [queue, setQueue] = useState<SessionItem[]>(() =>
-    questions.map((q) => ({ question: q.question, sourceType: q.sourceType, transcript: '', isFollowup: false })),
+    initialItems && initialItems.length > 0
+      ? initialItems
+      : questions.map((q) => ({ question: q.question, sourceType: q.sourceType, transcript: '', isFollowup: false })),
   );
-  const [idx, setIdx] = useState(0);
+  // 되살린 위치. 큐 밖을 가리키면(데이터 어긋남) 마지막 문항으로 눌러 담는다.
+  const [idx, setIdx] = useState(() => Math.min(Math.max(initialIdx ?? 0, 0), Math.max(queue.length - 1, 0)));
   // 카메라·마이크를 먼저 확인한 뒤 첫 질문으로 넘어간다
   const [checked, setChecked] = useState(false);
   const [phase, setPhase] = useState<Phase>('ready');
@@ -80,16 +100,22 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
     void el.play().catch(() => {});
   }, [stream, checked, videoRef]);
 
-  // 점검 화면에서만 음량 막대를 미리 돌린다 (녹화는 아직 시작하지 않는다)
+  /*
+   * 녹화 전에도 음량만 듣는다 (점검 화면, 그리고 문항을 받아 든 대기 상태).
+   *
+   * <p>버튼을 안 누른 채 그냥 말하기 시작하는 사람이 많다. 마이크는 이미 듣고 있으므로,
+   * 그 순간 "아직 녹화 전"이라고 바로 알려 줄 수 있다. 녹화는 시작하지 않는다.
+   */
   useEffect(() => {
-    if (checked || !stream) return;
+    if (!stream) return;
+    if (checked && phase !== 'ready') return;
     meter.start();
     return () => {
       meter.stop();
     };
     // meter 는 훅이 만든 안정적인 객체라 의존성에 넣지 않는다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checked, stream]);
+  }, [checked, phase, stream]);
 
   const stopTimer = () => {
     if (timerRef.current !== null) {
@@ -144,10 +170,13 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
         events,
         wave: audio?.wave ?? null,
         waveStepMs: audio?.waveStepMs ?? null,
+        samples: visionResult?.samples ?? null,
       });
     } catch {
       /* 저장 실패(용량 초과 등)는 무시 — 분석에는 영향 없음 */
     }
+    // 답한 내용을 초안에 남긴다. 여기서 끊겨도 이 문항까지는 되살아난다(녹화는 위에서 IndexedDB 에 저장됨).
+    onProgress?.(queue, idx);
     // 꼬리질문은 자동 생성하지 않는다. 사용자가 음성 인식 오류를 직접 고친 뒤 버튼으로 요청한다(requestFollowupNow).
   };
 
@@ -202,15 +231,16 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
     if (!fup) return;
     followed.current.add(idx);
     const item: SessionItem = { question: fup.question, sourceType: 'followup', transcript: '', isFollowup: true };
-    setQueue((prev) => {
-      const next = prev.slice();
-      next.splice(idx + 1, 0, item);
-      return next;
-    });
+    // 다음 초안 저장에 그대로 넘길 수 있도록 새 큐를 미리 만든다.
+    const nextQueue = queue.slice();
+    nextQueue.splice(idx + 1, 0, item);
+    setQueue(nextQueue);
     cancelFollowup();
     setConfirmed(false);
-    setIdx(idx + 1);
+    const nextIdx = idx + 1;
+    setIdx(nextIdx);
     setPhase('ready');
+    onProgress?.(nextQueue, nextIdx);
   };
 
   const next = () => {
@@ -219,22 +249,22 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
     if (isLast) {
       onFinish(queue);
     } else {
-      setIdx(idx + 1);
+      const nextIdx = idx + 1;
+      setIdx(nextIdx);
       setPhase('ready');
+      onProgress?.(queue, nextIdx);
     }
   };
 
   const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   // 실시간 말속도 힌트(대략치). 3초 이상 말했을 때만 노출한다.
-  const liveWpm = elapsed > 0 ? Math.round((countSyllables(current.transcript) / elapsed) * 60) : 0;
-  const paceOff = liveWpm > 0 && (liveWpm < PACE_MIN || liveWpm > PACE_MAX);
-  const paceLabel = liveWpm === 0 ? '' : liveWpm < PACE_MIN ? '조금 빠르게' : liveWpm > PACE_MAX ? '천천히' : '좋은 속도';
 
   if (!checked) {
     return (
       <div className="mx-auto max-w-[1320px] px-5 py-6 lg:px-8">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,1fr)] lg:items-start">
+          <div className="space-y-5">
           <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">
             <video className="h-full w-full object-cover" muted playsInline ref={videoRef} style={{ transform: 'scaleX(-1)' }} />
             <PersonGuide />
@@ -246,6 +276,10 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
             <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 to-transparent px-4 py-3 text-[11px] text-white/70">
               점선 안에 얼굴과 어깨가 들어오게 앉아 주세요
             </p>
+          </div>
+
+          {/* 끝나고 "등이 굽었습니다"를 듣는 것보다, 시작 전에 보는 편이 낫다 */}
+          <GuideStrip figures={POSTURE_FIGURES} title="이렇게 앉으면 됩니다" />
           </div>
 
           <aside>
@@ -297,6 +331,22 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
               />
             </ul>
 
+            {/*
+              "내 얼굴을 찍는데 왜" 라는 망설임을 없애는 문장이다. 11px 회색 각주로 두면 아무도
+              읽지 않으므로, 시작 버튼 위에 제대로 적는다.
+            */}
+            <div className="mt-5 rounded-2xl border border-emerald-200/70 bg-emerald-50/50 p-4">
+              <p className="flex items-center gap-2 text-[14px] font-bold text-emerald-900">
+                {/* className 은 기본 크기를 덮어쓴다. 크기를 함께 적지 않으면 아이콘이 칸을 다 먹는다 */}
+                <Icon className="size-4 shrink-0 text-emerald-600" name="check" />
+                영상은 이 브라우저 밖으로 나가지 않습니다
+              </p>
+              <p className="mt-1.5 text-[12px] leading-5 break-keep text-emerald-800/80">
+                녹화도 표정·자세 분석도 이 기기 안에서만 돌아갑니다. 서버로 보내는 것은 받아쓴 답변
+                글자뿐입니다.
+              </p>
+            </div>
+
             <button
               className="mt-4 w-full rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-slate-950 disabled:opacity-40"
               disabled={status !== 'live'}
@@ -305,9 +355,6 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
             >
               {queue.length}문항 면접 시작
             </button>
-            <p className="mt-2 text-[11px] leading-5 text-slate-400">
-              녹화 영상은 이 브라우저에만 저장되고 서버로 보내지 않습니다. 답변 텍스트만 분석에 사용됩니다.
-            </p>
           </aside>
         </div>
       </div>
@@ -321,13 +368,12 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
           ← 나가기
         </button>
         <ol aria-label="문항 진행" className="flex items-center gap-1.5">
-          {queue.map((item, i) => (
+          {queue.map((_item, i) => (
             <li
               className={`h-1.5 rounded-full transition-all ${
                 i === idx
-                  ? item.isFollowup
-                    ? 'w-8 bg-rose-500'
-                    : 'w-8 bg-slate-900'
+                  ? // 꼬리질문도 같은 문항의 일부다. 색을 달리하면 "문제가 생겼나" 싶어진다
+                    'w-8 bg-slate-900'
                   : i < idx
                     ? 'w-4 bg-slate-400'
                     : 'w-4 bg-slate-200'
@@ -336,9 +382,8 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
             />
           ))}
         </ol>
-        <span className="text-sm font-semibold tabular-nums text-slate-500">
-          {idx + 1} / {queue.length}
-        </span>
+        {/* 몇 번째인지는 질문 카드 안에 있다. 카드 밖에 또 두면 어디를 봐야 할지 흩어진다 */}
+        <span aria-hidden="true" className="w-14" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] lg:items-start">
@@ -349,6 +394,37 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
             <p className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm text-slate-300">
               카메라 권한이 필요합니다. 주소창의 카메라 아이콘에서 허용해 주세요.
             </p>
+          )}
+          {/*
+            아직 녹화 전이라는 걸 카메라 화면에서 말해 준다. 사람들은 오른쪽 카드가 아니라
+            자기 얼굴을 보고 있어서, 버튼을 안 누른 채 그냥 말하기 시작하는 경우가 많다.
+            시작 버튼도 보고 있는 그 자리에 둔다.
+          */}
+          {phase === 'ready' && status === 'live' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/55 px-6 text-center">
+              <p className="flex items-center gap-2 text-sm font-bold text-white">
+                <span aria-hidden="true" className="size-2 rounded-full bg-white/50" />
+                아직 녹화 중이 아니에요
+              </p>
+              <button
+                className="flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5"
+                onClick={startPrep}
+                type="button"
+              >
+                <Icon className="size-4" name="mic" />
+                답변 시작
+              </button>
+              {/* 마이크는 이미 듣고 있다. 지금 말하고 있으면 그 자리에서 알려 준다 */}
+              {meter.level > 0.05 ? (
+                <p className="rounded-full bg-amber-400/90 px-3 py-1.5 text-[12px] font-bold break-keep text-slate-950">
+                  지금 말씀하고 계신가요? 아직 녹화 전이라 담기지 않아요
+                </p>
+              ) : (
+                <p className="text-[12px] break-keep text-white/70">
+                  누르면 3초 뒤에 녹화가 시작됩니다. 그때부터 말씀해 주세요.
+                </p>
+              )}
+            </div>
           )}
           {phase === 'prep' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/70">
@@ -361,7 +437,11 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
               <span className="size-2 animate-pulse rounded-full bg-white" /> REC {mmss(elapsed)}
             </span>
           )}
-          {phase === 'recording' && (
+          {/*
+            녹화 중에는 지적하지 않는다. "말이 빠릅니다" 같은 말이 답변 도중에 뜨면 하던 말을
+            잃는다. 소리가 잡히고 있는지만 막대로 보여주고, 나머지는 끝난 뒤 리포트에서 말한다.
+          */}
+          {phase === 'recording' && meter.supported && (
             <div className="absolute inset-x-3 bottom-3 flex items-center gap-2">
               {meter.supported && (
                 <span aria-hidden="true" className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
@@ -371,30 +451,24 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
                   />
                 </span>
               )}
-              {vision.warn && (
-                <span className="rounded-full bg-amber-500/90 px-2.5 py-1 text-[11px] font-semibold text-white">
-                  {vision.warn}
-                </span>
-              )}
-              {elapsed >= 3 && paceOff && paceLabel && (
-                <span className="rounded-full bg-amber-500/90 px-2.5 py-1 text-[11px] font-semibold text-white">
-                  {paceLabel}
-                </span>
-              )}
             </div>
           )}
         </div>
 
         {/* 오른쪽: 질문과 답변 (흰 카드) */}
         <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+          {/* 몇 번째 질문인지가 가장 먼저 읽혀야 한다. 출처·회사는 그다음이다 */}
+          <p className="flex flex-wrap items-baseline gap-2 text-[11px] font-bold">
+            <span className="text-[15px] font-extrabold text-slate-950">Q{idx + 1}</span>
+            <span className="tabular-nums text-slate-400">
+              {idx + 1} / {queue.length}
+            </span>
             <span className={`rounded-full px-2 py-0.5 ring-1 ${badge.className}`}>{badge.label}</span>
             {config.targetCompany && <span className="text-slate-400">{config.targetCompany}</span>}
-            <span className="ml-auto text-slate-300">Q{idx + 1}</span>
           </p>
           <p className="mt-3 text-[19px] font-extrabold leading-8 text-slate-950 break-keep">{current.question}</p>
           {current.isFollowup && (
-            <p className="mt-1.5 text-xs text-rose-500">직전 답변을 듣고 면접관이 드리는 추가 질문입니다.</p>
+            <p className="mt-1.5 text-xs text-slate-500">직전 답변을 듣고 면접관이 드리는 추가 질문입니다.</p>
           )}
 
           {/* 답변은 한 자리에서만 보여준다 (녹화 중에는 받아쓰기, 끝나면 수정) */}
@@ -436,20 +510,24 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
             </p>
           )}
           {phase === 'reviewing' && fup && (
-            <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50/70 p-3">
-              <p className="text-[11px] font-bold text-rose-600">면접관의 추가 질문</p>
+            /*
+              빨간 카드에 빨간 버튼이면 "누르면 안 되는 것"처럼 보인다. 꼬리질문은 사고가
+              아니라 기회이므로 중립 카드에 담고, 주 행동은 다른 버튼과 같은 검정으로 둔다.
+            */
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[11px] font-bold text-slate-500">면접관의 추가 질문</p>
               <p className="mt-1 text-[14px] font-semibold leading-6 text-slate-800 break-keep">{fup.question}</p>
-              {fup.basis && <p className="mt-1 text-[11px] text-rose-400">{fup.basis}</p>}
+              {fup.basis && <p className="mt-1 text-[11px] text-slate-400">{fup.basis}</p>}
               <div className="mt-2 flex justify-end gap-2">
                 <button
-                  className="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-white"
+                  className="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-800"
                   onClick={() => setFup(null)}
                   type="button"
                 >
                   건너뛰기
                 </button>
                 <button
-                  className="rounded-lg bg-rose-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-rose-700"
+                  className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-700"
                   onClick={askFollowup}
                   type="button"
                 >
@@ -508,7 +586,7 @@ export function InterviewSession({ config, questions, localSessionId, onFinish, 
                   </button>
                 ) : (
                   <button
-                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
                     onClick={next}
                     type="button"
                   >

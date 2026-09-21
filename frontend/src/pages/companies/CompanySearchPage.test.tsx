@@ -42,7 +42,8 @@ describe('CompanySearchPage', () => {
       screen.getByRole('heading', { level: 1, name: /어느 회사를 볼까요/ }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('기업명')).toBeInTheDocument();
-    expect(screen.getByText(/아직 없어요/)).toBeInTheDocument();
+    // 본 기업이 없으면 최근 목록 자체를 띄우지 않는다 (첫 화면은 검색만 남긴다)
+    expect(screen.queryByRole('region', { name: '최근 본 기업' })).not.toBeInTheDocument();
 
     const featured = screen.getByRole('region', { name: '바로 볼 수 있는 기업' });
     expect(within(featured).getByRole('link', { name: 'NAVER' })).toHaveAttribute(
@@ -79,7 +80,7 @@ describe('CompanySearchPage', () => {
 
     fireEvent.click(within(recent).getByRole('button', { name: '지우기' }));
 
-    expect(screen.getByText(/아직 없어요/)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '최근 본 기업' })).not.toBeInTheDocument();
     expect(window.localStorage.getItem('recent-companies')).toBeNull();
   });
 });

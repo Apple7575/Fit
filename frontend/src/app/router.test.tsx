@@ -92,8 +92,11 @@ describe('application routes', () => {
   it('keeps unknown company metadata route-neutral', async () => {
     renderRoute('/companies/000000');
 
-    expect(await screen.findByRole('heading', { level: 1, name: '기업 분석' })).toBeInTheDocument();
-    expect(await screen.findByRole('alert')).toHaveTextContent(/기업 (기본정보를 불러오지 못했습니다|정보를 찾을 수 없습니다)/);
+    // 없는 기업이면 첫 화면을 사진에 내주지 않고 돌아갈 길을 준다
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '이 기업을 찾을 수 없습니다' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '기업 검색으로' })).toBeInTheDocument();
   });
 
   it('renders a not-found page for unknown paths', () => {

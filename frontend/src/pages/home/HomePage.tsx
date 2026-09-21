@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SiteHeader } from '../../components/layout/SiteHeader';
 import { prefersReducedMotion } from '../../hooks/useInView';
 import { AgentDemo } from './AgentDemo';
 import { FinalCta } from './FinalCta';
-import { Hero } from './Hero';
+import { Opening } from './Opening';
 import { InterviewDemo } from './InterviewDemo';
 import { SectionDots } from './SectionDots';
 
@@ -24,6 +24,17 @@ export function HomePage() {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLElement>(null);
+  // 첫 장은 영상이다. 그 위에서는 헤더를 투명하게 띄우고, 넘어가면 흰 유리로 되돌린다
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const onScroll = () => setScrolled(scroller.scrollTop > 80);
+    onScroll();
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => scroller.removeEventListener('scroll', onScroll);
+  }, []);
 
   // 랜딩은 한 화면에 딱 맞아 문서가 스크롤되지 않는다. 스크롤바 자리까지 비워 두면 오른쪽에 띠가 생긴다
   useEffect(() => {
@@ -43,11 +54,11 @@ export function HomePage() {
   return (
     <div className="relative h-screen overflow-hidden bg-slate-50">
       {/* 첫 장 위에 흰 유리 헤더로 떠 있는다. 아래 섹션들이 헤더 높이만큼 위 여백을 갖는다 */}
-      <SiteHeader overlay scrolled />
+      <SiteHeader overlay scrolled={scrolled} />
 
       {/* 화면 높이 그대로 한 장씩 스냅. 각 섹션이 헤더 높이(3.5rem) 만큼 위 여백을 가진다 */}
       <main className="h-screen snap-y snap-mandatory overflow-y-auto scroll-smooth" ref={scrollerRef}>
-        <Hero onNext={goNext} ref={heroRef} />
+        <Opening onNext={goNext} ref={heroRef} />
         <AgentDemo />
         <InterviewDemo />
         <FinalCta onStart={() => navigate('/companies')} />

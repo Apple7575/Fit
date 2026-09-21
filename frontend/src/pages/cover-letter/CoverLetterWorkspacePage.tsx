@@ -3,13 +3,17 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
-import { createCoverLetter, updateCoverLetter } from '../../features/cover-letter/api';
+import {
+  createCoverLetter,
+  updateCoverLetter,
+} from '../../features/cover-letter/api';
 import { CoverLetterWorkspace } from '../../features/cover-letter/CoverLetterWorkspace';
 import { useCoverLetter } from '../../features/cover-letter/queries';
-import type { CoverLetterInput } from '../../features/cover-letter/types';
+import type { CoverLetterInput, PendingJobPosting } from '../../features/cover-letter/types';
 import { CoverLetterHeader } from './CoverLetterHeader';
 
 const STASH_KEY = 'cover-letter:draft';
+const POSTING_STASH_KEY = 'cover-letter:posting';
 
 const blankInput = (): CoverLetterInput => ({
   title: '',
@@ -33,9 +37,26 @@ function writeStash(input: CoverLetterInput) {
     /* sessionStorage 불가 환경은 무시 */
   }
 }
+function readPostingStash(): PendingJobPosting | null {
+  try {
+    const raw = sessionStorage.getItem(POSTING_STASH_KEY);
+    return raw ? (JSON.parse(raw) as PendingJobPosting) : null;
+  } catch {
+    return null;
+  }
+}
+function writePostingStash(posting: PendingJobPosting | null | undefined) {
+  try {
+    if (posting) sessionStorage.setItem(POSTING_STASH_KEY, JSON.stringify(posting));
+    else sessionStorage.removeItem(POSTING_STASH_KEY);
+  } catch {
+    /* sessionStorage 불가 환경은 무시 */
+  }
+}
 function clearStash() {
   try {
     sessionStorage.removeItem(STASH_KEY);
+    sessionStorage.removeItem(POSTING_STASH_KEY);
   } catch {
     /* noop */
   }
@@ -53,22 +74,27 @@ function NewWorkspace() {
   const fresh = (location.state as { fresh?: boolean } | null)?.fresh === true;
   // 로그인 후 돌아온 경우(퍼널)에만 초안을 복원한다. '새 자소서'(fresh)는 항상 빈 화면.
   const [initial] = useState<CoverLetterInput>(() => (fresh ? blankInput() : readStash() ?? blankInput()));
+  const [initialPosting] = useState<PendingJobPosting | null>(() => fresh ? null : readPostingStash());
 
-  const onSave = async (input: CoverLetterInput) => {
+  const onSave = async (input: CoverLetterInput, pendingPosting?: PendingJobPosting | null) => {
     if (!user) {
       writeStash(input);
+      writePostingStash(pendingPosting);
       navigate('/login?redirect=/cover-letters/new');
       return;
     }
     const saved = await createCoverLetter(input);
     clearStash();
-    navigate(`/cover-letters/${saved.id}`);
+    // 목록으로 보내지 않고 방금 저장한 자소서에 그대로 머문다. 주소만 /new 에서 그 자소서로
+    // 바꾼다 — 그러지 않으면 한 번 더 저장할 때 같은 자소서가 또 만들어진다.
+    navigate(`/cover-letters/${saved.id}`, { replace: true, state: { justSaved: true } });
   };
 
   // 검토 방은 저장된 자소서에 붙으므로 먼저 저장하고 넘어간다.
-  const onReview = async (input: CoverLetterInput) => {
+  const onReview = async (input: CoverLetterInput, pendingPosting?: PendingJobPosting | null) => {
     if (!user) {
       writeStash(input);
+      writePostingStash(pendingPosting);
       navigate('/login?redirect=/cover-letters/new');
       return;
     }
@@ -82,6 +108,7 @@ function NewWorkspace() {
       <CoverLetterHeader />
       <CoverLetterWorkspace
         initial={initial}
+        initialPosting={initialPosting}
         isLoggedIn={!!user}
         onSave={onSave}
         onReview={onReview}
@@ -109,8 +136,12 @@ function ExistingWorkspace({ id }: { id: number }) {
 
 function ExistingLoaded({ id }: { id: number }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state, retry } = useCoverLetter(id);
+  // 새 자소서를 저장한 직후 이 주소로 바뀐 경우. 화면이 갈려도 저장했다는 말은 이어서 보여준다.
+  const justSaved = (location.state as { justSaved?: boolean } | null)?.justSaved === true;
 
+  // 저장하고 화면을 떠나지 않는다. 고치던 자리에 그대로 두고 저장했다는 것만 알린다.
   const onSave = async (input: CoverLetterInput) => {
     await updateCoverLetter(id, input);
   };
@@ -154,6 +185,7 @@ function ExistingLoaded({ id }: { id: number }) {
           initial={state.data}
           isLoggedIn
           alreadySaved
+          justSaved={justSaved}
           onSave={onSave}
           onReview={onReview}
           onBack={() => navigate('/cover-letters')}

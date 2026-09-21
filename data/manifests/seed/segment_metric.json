@@ -54,6 +54,10 @@
     "segment_revenue 는 사업보고서 원문에서 오고 부문 축이 다르다 — 직원 부문과 사업 부문이 한 기업에 함께 보인다 (S15P21A504-73)",
     "값 없는 행은 만들지 않는다 (MR !81 과 같은 규칙)"
   ],
+  "row_breakdown": {
+    "segment_employee_count": 20804,
+    "segment_revenue": 27012
+  },
   "distinct_corp_codes": 2666,
   "fiscal_years": [
     2021,

@@ -43,6 +43,15 @@ export interface JobPostingParseResult {
 }
 
 /**
+ * 확인만 해 두고 아직 등록하지 않은 공고. 저장은 이것을 기다리지 않고,
+ * 목록으로 넘어간 뒤에 등록해서 자소서에 붙인다.
+ */
+export interface PendingJobPosting {
+  url: string;
+  sourceKey: string | null;
+}
+
+/**
  * 등록된 채용공고 분석. 이 식별자를 자소서에 저장해 두면 검토 방이 물려받는다.
  * 확인(parse)과 달리 요구사항까지 정리하므로 수십 초 걸린다.
  */

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   averageDelivery,
   describeDelivery,
@@ -8,16 +9,18 @@ import {
   type DeliveryMetrics,
 } from './delivery';
 import { EvidenceCards } from './Evidence';
+import { Icon } from './icons';
 import { getClipsByLocalSession, getClipsByServerId } from './localVideo';
 import { NonverbalDetail } from './NonverbalOverview';
 import { nonverbalGauges } from './nonverbalGauges';
 import { DeliveryDetail } from './ReportBody';
+import { TrackedClip } from './TrackedClip';
 import { ReportOverview, type OverviewRow } from './ReportOverview';
 import { buildAxes, buildHighlights } from './reportSummary';
 import { CARD, T } from './reportTokens';
 import { KIND_STYLE, SOURCE_BADGE, TYPE_LABEL } from './styles';
 import type { FeedbackPoint, InterviewType, QuestionSource } from './types';
-import { averageNonverbal, describeNonverbal, type NonverbalMetrics } from './vision';
+import { averageNonverbal, describeNonverbal, type NonverbalMetrics, type VisionSample } from './vision';
 
 export interface ReportItem {
   seq: number;
@@ -53,6 +56,8 @@ interface LocalItem {
   /** 음성 근거(이퀄라이저)용 파형. 옛 기록엔 없다 */
   wave: number[] | null;
   waveStepMs: number | null;
+  /** 영상 위에 겹쳐 그릴 프레임별 추적값. 옛 기록엔 없다 */
+  samples: VisionSample[] | null;
 }
 
 /** 문항 seq → 로컬 녹화 URL + 전달·비언어 지표. 언마운트 시 objectURL 을 해제한다. */
@@ -86,6 +91,7 @@ function useLocalItems(localSessionId?: string, serverInterviewId?: number): Map
             events: r.events ?? null,
             wave: r.wave ?? null,
             waveStepMs: r.waveStepMs ?? null,
+            samples: r.samples ?? null,
           });
         }
         setMap(next);
@@ -168,10 +174,22 @@ export function InterviewReport({
     nonverbalRollup ? describeNonverbal(nonverbalRollup) : [],
   );
   const mannerGauges = nonverbalRollup ? nonverbalGauges(nonverbalRollup) : [];
+  /*
+   * 녹화가 한 건도 없다는 건 두 가지 뜻이다. 방금 장비를 끄고 봤거나, 다른 기기·브라우저에서
+   * 저장한 것을 지금 열었거나. 뒤쪽인데 "카메라를 켜면 봐 드려요"라고 하면 켰던 사람에게는
+   * 고장으로 읽힌다. 저장본(serverInterviewId)인데 이 브라우저에 녹화가 없으면 그렇게 말해 준다.
+   */
+  const elsewhere = serverInterviewId != null && local.size === 0;
   const axes = buildAxes(
     numbered,
     deliveryRows,
     mannerGauges.length > 0 ? { ok: mannerGauges.filter((g) => g.ok).length, total: mannerGauges.length } : null,
+    elsewhere
+      ? {
+          delivery: '녹화한 브라우저에서만 볼 수 있어요',
+          manner: '녹화한 브라우저에서만 볼 수 있어요',
+        }
+      : { delivery: '마이크가 꺼져 있었어요', manner: '카메라를 켜면 봐 드려요' },
   );
 
   const focus = highlights.find((h) => h.tone === 'fix') ?? null;
@@ -263,7 +281,16 @@ export function InterviewReport({
           rows={rows}
         />
       ) : (
-        current && <QuestionPanel item={current} local={local.get(current.seq)} />
+        current && (
+          <QuestionPanel
+            company={company}
+            interviewType={interviewType}
+            item={current}
+            local={local.get(current.seq)}
+            position={position}
+            serverInterviewId={serverInterviewId ?? null}
+          />
+        )
       )}
       </div>
     </div>
@@ -300,10 +327,20 @@ function TabButton({
 function QuestionPanel({
   item,
   local,
+  company,
+  position,
+  interviewType,
+  serverInterviewId,
 }: {
   item: ReportItem & { no: string };
   local: LocalItem | undefined;
+  company: string | null;
+  position: string | null;
+  interviewType: InterviewType;
+  /** 저장된 면접일 때만 다시 연습할 수 있다 (돌아올 자리가 있어야 한다) */
+  serverInterviewId: number | null;
 }) {
+  const navigate = useNavigate();
   const badge = SOURCE_BADGE[item.sourceType];
   const improvements = item.points.filter((p) => p.kind === 'IMPROVEMENT');
   const strengths = item.points.filter((p) => p.kind === 'STRENGTH');
@@ -340,12 +377,12 @@ function QuestionPanel({
           <div>
             {local?.url ? (
               <>
-                <video
-                  className="w-full rounded-xl bg-black"
-                  controls
+                {/* 말로 "시선이 흔들렸습니다"라고 하는 것보다 그때의 내 얼굴 위에 얹어 보여준다 */}
+                <TrackedClip
                   onLoadedMetadata={fixWebmDuration}
-                  ref={videoRef}
+                  samples={local.samples}
                   src={local.url}
+                  videoRef={videoRef}
                 />
                 {marks.length > 0 && (
                   <div className="mt-2">
@@ -417,6 +454,35 @@ function QuestionPanel({
             <p className={`mt-1.5 ${T.body}`}>
               {item.transcript || <span className="text-slate-400">답변 없음</span>}
             </p>
+
+            {/*
+              읽고 나면 할 일이 있어야 한다. 다섯 문항을 처음부터 다시 보는 건 부담이 크므로
+              걸린 문항 하나만 다시 답해 보게 한다. 질문을 그대로 들고 가므로 질문 생성도
+              하지 않는다 (2분이면 끝난다).
+            */}
+            {serverInterviewId !== null && (
+              <button
+                className="mt-4 flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-slate-700"
+                onClick={() =>
+                  navigate('/interviews/new', {
+                    state: {
+                      practice: {
+                        question: item.question,
+                        sourceType: item.sourceType,
+                        fromInterviewId: serverInterviewId,
+                        fromNo: item.no,
+                        targetCompany: company,
+                        targetPosition: position,
+                        interviewType,
+                      },
+                    },
+                  })
+                }
+                type="button"
+              >
+                <Icon className="size-4" name="redo" />이 문항만 다시 연습하기
+              </button>
+            )}
           </div>
         </div>
       </section>

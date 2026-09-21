@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
+import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { verifyEmail } from '../../features/auth/api';
 
@@ -39,16 +40,15 @@ export function VerifyPage() {
       lines={
         status === 'success'
           ? ['인증 끝! 이제 로그인하면 돼요', '자소서부터 써 볼까요?']
-          : ['인증 링크를 확인하는 중이에요', '잠깐이면 돼요']
+          : status === 'error'
+            ? // 실패한 화면에서 "확인하는 중"이라고 말하면 아직 뭔가 도는 줄 안다
+              ['메일에 온 링크를 다시 눌러 볼까요?', '다시 가입해도 괜찮아요']
+            : ['인증 링크를 확인하는 중이에요', '잠깐이면 돼요']
       }
     >
       <div className="text-center">
-        {status === 'verifying' && (
-          <>
-            <span className="mx-auto mb-4 block size-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
-            <p className="text-sm text-slate-600">인증 중…</p>
-          </>
-        )}
+        {/* 여기만 혼자 도는 파란 원을 쓰면 다른 화면의 기다림과 달라 보인다 */}
+        {status === 'verifying' && <LoadingScreen compact message="인증 링크를 확인하는 중" />}
 
         {status === 'success' && (
           <>

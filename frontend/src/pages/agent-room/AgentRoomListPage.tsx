@@ -93,7 +93,7 @@ function Workspace() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-5 px-5 py-6">
+    <div className="mx-auto flex max-w-[1520px] gap-5 px-5 py-6 lg:px-8">
       <aside className="w-64 shrink-0">
         <div className="mb-3">
           <label htmlFor="workspace-cover-letter" className="sr-only">

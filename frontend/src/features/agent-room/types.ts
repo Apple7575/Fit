@@ -69,13 +69,20 @@ export interface RoomCreateInput {
   agents: AgentSpec[];
 }
 
-/** 에이전트가 근거로 쓴 자료 한 건. */
+/**
+ * 에이전트가 근거로 쓴 자료 한 건.
+ *
+ * <p>docType 은 백엔드 Evidence 가 정해 둔 네 가지다:
+ * NEWS_ARTICLE · JOB_POSTING · USER_DOCUMENT · COMPANY_REPORT.
+ */
 export interface Evidence {
   docType: string | null;
   title: string | null;
   year: number | null;
   page: number | null;
   snippet: string | null;
+  /** 기사 원문 주소. 기사가 아닌 근거는 null */
+  url: string | null;
 }
 
 export type MessageStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';

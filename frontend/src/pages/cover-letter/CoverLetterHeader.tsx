@@ -9,15 +9,36 @@ const SECTIONS = [
 /**
  * 자기소개서·검토 방 화면 상단. 전역 헤더 아래에 두 화면을 오가는 서브바를 둔다.
  * 검토 방은 자소서에 딸린 화면이라 전역 메뉴에서는 "자기소개서" 하나로 묶인다.
+ *
+ * <p>첫 화면을 사진에 통째로 내주는 화면에서는 기업 화면과 똑같이 둘 다 치워 둔다. 영상 위에
+ * 흰 띠가 가로질러 있으면 인상이 반으로 잘린다. 조금이라도 내리면 반투명 유리로 내려온다.
  */
-export function CoverLetterHeader() {
+export function CoverLetterHeader({
+  floating = false,
+  scrolled = false,
+}: {
+  floating?: boolean;
+  scrolled?: boolean;
+}) {
   const { pathname } = useLocation();
   const current = SECTIONS.find((section) => pathname.startsWith(section.to)) ?? SECTIONS[0];
+  const away = floating && !scrolled;
 
   return (
     <>
-      <SiteHeader />
-      <div className="border-b border-slate-200 bg-white">
+      <SiteHeader floating={floating} scrolled={scrolled} />
+      <div
+        className={
+          floating
+            ? `fixed inset-x-0 top-14 z-20 border-b transition-[transform,background-color,border-color,opacity] duration-300 ${
+                away
+                  ? '-translate-y-[200%] border-transparent bg-transparent opacity-0'
+                  : 'translate-y-0 border-slate-200/70 bg-white/70 opacity-100 backdrop-blur-xl'
+              }`
+            : 'border-b border-slate-200 bg-white'
+        }
+        inert={away}
+      >
         <nav
           aria-label="자기소개서 메뉴"
           className="mx-auto flex min-h-[50px] max-w-[1720px] flex-wrap items-center gap-1.5 px-5 py-2 lg:px-8"

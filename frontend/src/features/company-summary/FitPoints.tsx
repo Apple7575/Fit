@@ -1,6 +1,5 @@
-import { Link } from 'react-router-dom';
-import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { useInView } from '../../hooks/useInView';
+import { jumpToSection } from '../../pages/company-detail/sectionJump';
 import { CompanyMedia } from './CompanyMedia';
 import { industryGroupOf } from './industryGroups';
 import type { FitPoint } from './buildFitPoints';
@@ -52,20 +51,23 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                 key={p.key}
                 style={{ '--reveal-delay': `${i * 120}ms` } as never}
               >
-                <Link
+                {/*
+                  근거는 같은 페이지 아래에 이미 이어 붙어 있다. 다른 주소로 보내면 거기서는
+                  그 구획밖에 안 보여, 스크롤로 다음 질문까지 읽는 흐름이 끊긴다.
+                */}
+                <a
                   className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70 transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  to={`../${p.tab}`}
+                  href={`#${p.tab}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    jumpToSection(p.tab);
+                  }}
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-50">
                     <CompanyMedia
                       alt={`${corpName ?? '기업'} 포인트 ${i + 1}`}
                       className="size-full transition duration-700 group-hover:scale-[1.04]"
                       group={group}
-                      fallback={
-                        <div className="flex size-full items-center justify-center">
-                          <CharacterSlot character={p.coach} size={120} />
-                        </div>
-                      }
                       slot={`point-${p.key}`}
                     />
                     <span className="absolute left-3 top-3 flex size-8 items-center justify-center rounded-full bg-white/45 text-sm font-extrabold text-slate-900 ring-1 ring-white/50 backdrop-blur-md">
@@ -76,13 +78,12 @@ export function FitPoints({ industryCode, corpName, points, loading }: FitPoints
                     <p className="text-lg font-extrabold leading-snug text-slate-950 break-keep">{p.fact}</p>
                     <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 break-keep">{p.action}</p>
                     <div className="mt-4 flex items-center gap-2 text-xs font-bold text-slate-400">
-                      <CharacterSlot character={p.coach} interactive={false} size={22} />
                       <span className="ml-auto text-blue-600 transition group-hover:text-blue-700">
                         근거 보기 <span aria-hidden="true">→</span>
                       </span>
                     </div>
                   </div>
-                </Link>
+                </a>
               </li>
             );
           })}

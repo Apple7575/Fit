@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { searchCompanies } from '../company-search/api';
+import { MAX_KEYWORD, searchCompanies } from '../company-search/api';
 import type { Company } from '../../types/company';
 
 interface InterviewCompanyFieldProps {
@@ -81,6 +81,7 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
           <input
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            maxLength={MAX_KEYWORD}
             type="search"
             autoComplete="off"
             placeholder="기업명 검색 또는 직접 입력"

@@ -54,6 +54,10 @@ public class TurnService {
     private static final String AUTO_REVIEW_INSTRUCTION =
             "이 자소서를 담당별 관점에서 처음부터 검토해 주세요.";
 
+    /** 한도에 걸려 검토를 시작하지 못했을 때 자리에 남기는 말. */
+    private static final String AUTO_REVIEW_DEFERRED =
+            "요청이 많아 자동 검토를 시작하지 못했습니다. 잠시 후 이 방을 다시 열어 주세요.";
+
     private final RoomRepository roomRepository;
     private final MessageRepository messageRepository;
     private final JobContextRepository jobContextRepository;
@@ -116,6 +120,11 @@ public class TurnService {
                         .toList());
     }
 
+    /** 자동 검토 한 바퀴가 쓸 한도. 방마다가 아니라 바퀴마다 한 장이다. */
+    public AutoReviewQuota newAutoReviewQuota(Long userId) {
+        return new AutoReviewQuota(rateLimiter, userId);
+    }
+
     /**
      * 자동 검토. 자소서를 받은 방이 사용자가 묻기를 기다리지 않고 한 바퀴 돈다.
      *
@@ -126,15 +135,17 @@ public class TurnService {
      * <p>끝날 때까지 기다린다. 부르는 쪽({@link AutoReviewStarter})이 방을 하나씩 차례로
      * 돌리기 위한 것이다.
      *
-     * <p>사용자가 요청한 일이 아니므로 안 될 만한 자리에서는 조용히 물러난다. 이미 말이 오간
-     * 방이나 아직 답변을 쓰지 않은 자소서가 그렇다 — 방이 깔리는 것까지 막을 일이 아니다.
+     * <p>돌 자리가 아니면 조용히 물러난다 — 이미 말이 오간 방이나 아직 답변을 쓰지 않은
+     * 자소서가 그렇다. 다만 <b>한도에 걸린 것은 다르다.</b> 그때는 자리를 만들어 안내를 남긴다.
+     * 조용히 물러나면 화면에 아무것도 남지 않아 사용자는 기능이 죽은 것으로 읽는다.
+     *
+     * @param quota 이 바퀴의 한도. 같은 바퀴의 방들이 한 장을 나눠 쓴다
      */
-    public void autoReview(Long userId, Long roomId) {
+    public void autoReview(Long userId, Long roomId, AutoReviewQuota quota) {
         Room room = ownedRoom(userId, roomId);
-        if (messageRepository.existsByRoomId(roomId)) {
+        if (!reviewable(roomId)) {
             return;
         }
-        rateLimiter.check(userId);
 
         List<CoverLetterItem> items =
                 coverLetterItemRepository.findByCoverLetterIdOrderBySeqAsc(room.getCoverLetterId());
@@ -147,9 +158,60 @@ public class TurnService {
             return;
         }
 
+        // 한도는 여기서 처음 센다. 돌릴 방을 실제로 만났을 때라야 한 바퀴를 쓴 것이다.
+        if (!quota.allowed()) {
+            leaveDeferredNotice(roomId, agentKeys);
+            return;
+        }
+
         OpenedTurn turn = openTurn(roomId, agentKeys, null);
 
         turnExecutor.runTurnNow(turn.rootId(), context);
+    }
+
+    /**
+     * 자동 검토를 돌려도 되는 방인지 본다. 안내만 남은 방이면 안내를 지우고 자리를 비워 준다.
+     *
+     * <p>안내를 그냥 두면 그 방은 "말이 오간 방" 이 되어 영영 자동 검토를 못 받는다. 한도가
+     * 풀린 뒤에 다시 열었을 때 검토가 도는 것이 사용자가 기대하는 바다.
+     */
+    private boolean reviewable(Long roomId) {
+        long total = messageRepository.countByRoomId(roomId);
+        if (total == 0) {
+            return true;
+        }
+        Message notice = messageRepository.findFirstByRoomIdAndRoleAndStatus(
+                roomId, MessageRole.USER, MessageStatus.FAILED).orElse(null);
+        if (notice == null) {
+            return false;
+        }
+        List<Message> slots = messageRepository.findByParentMessageIdOrderByIdAsc(notice.getId());
+        // 안내 말고 다른 말이 오간 방이면 건드리지 않는다. 사용자가 쓰고 있는 방이다.
+        if (total != slots.size() + 1L) {
+            return false;
+        }
+        transactionTemplate.executeWithoutResult(status -> {
+            messageRepository.deleteAll(slots);
+            messageRepository.delete(notice);
+        });
+        return true;
+    }
+
+    /**
+     * 검토를 시작하지 못했다고 자리마다 적어 둔다.
+     *
+     * <p>실패한 자리로 남기는 이유는 화면이 이미 그 모양을 그릴 줄 알기 때문이다. 자리를
+     * 안 만들면 빈 방이 되고, 빈 방은 30초쯤 기다리다 화면이 갱신을 포기한다.
+     */
+    private void leaveDeferredNotice(Long roomId, List<String> agentKeys) {
+        transactionTemplate.executeWithoutResult(status -> {
+            Message root = messageRepository.save(Message.deferredAutoReview(roomId));
+            List<Message> slots = agentKeys.stream()
+                    .map(key -> Message.pendingAgent(roomId, root.getId(), key))
+                    .toList();
+            slots.forEach(slot -> slot.fail(AUTO_REVIEW_DEFERRED));
+            messageRepository.saveAll(slots);
+        });
     }
 
     /** 턴 하나를 여는 데 쓴 행들. 뿌리 발화 하나와 담당마다의 빈 답변 자리. */

@@ -307,7 +307,7 @@ pipeline {
                         # 직전 develop 이라 병합된 브랜치의 변경이 그대로 잡힌다.
                         if [ "${FORCE_SEED_LOAD:-false}" != "true" ]; then
                             if ! git diff --name-only HEAD~1 HEAD 2>/dev/null \
-                                 | grep -qE '^data/(curated/seed|config)/'; then
+                                 | grep -qE '^data/(curated/seed|config)/|^data/scripts/(ci_load_seed[.]sh|load_)'; then
                                 echo "시드·설정 변경이 없습니다. 건너뜁니다. (FORCE_SEED_LOAD 로 강제 가능)"
                                 exit 0
                             fi
@@ -322,39 +322,17 @@ pipeline {
                             D=/home/ubuntu/dataload
                             rm -rf "$D.new" && mkdir -p "$D.new"
                             tar xzf - -C "$D.new"
-                            rm -rf "$D" && mv "$D.new" "$D"
+                            rm -rf "$D" 2>/dev/null \
+                              || docker run --rm -v /home/ubuntu:/h python:3.12-slim rm -rf /h/dataload
+                            mv "$D.new" "$D"
                             echo "받음: $(find "$D" -type f | wc -l) 파일"
                         '
 
-                        # ── 2. 돌린다 (stdin 이 비어 heredoc 을 쓸 수 있다)
-                        $SSH "$HOST" "CA_ENV=$DEPLOY_ENV bash -s" <<'REMOTE'
-flock -w 900 /tmp/ca-seedload.lock -c '
-  set -e
-  D=/home/ubuntu/dataload
-  cfg=/home/ubuntu/app/infra/.env.$CA_ENV
-  # 값에 특수문자가 있어 source 하면 깨진다 — 줄에서 뽑는다 (실측: line 44 오류).
-  PW=$(grep -E "^POSTGRES_PASSWORD=" "$cfg" | cut -d= -f2- | tr -d "\r")
-  DB=$(grep -E "^POSTGRES_DB=" "$cfg" | cut -d= -f2- | tr -d "\r")
-  US=$(grep -E "^POSTGRES_USER=" "$cfg" | cut -d= -f2- | tr -d "\r")
-
-  run() {
-    docker run --rm --network "ca-${CA_ENV}_appnet" \
-      -v "$D":/repo -w /repo/data \
-      -e DATABASE_URL="postgresql://${US}:${PW}@postgres:5432/${DB}" \
-      -e PYTHONIOENCODING=utf-8 -e PIP_DISABLE_PIP_VERSION_CHECK=1 \
-      python:3.12-slim sh -c "pip install -q \"psycopg[binary]>=3.1\" \"python-dotenv>=1.0\" \"PyYAML>=6.0\" && $1"
-  }
-
-  echo "── company 먼저 (나머지가 FK 를 건다)"
-  run "python scripts/load_company.py"
-  echo "── 무엇이 들어가는지 먼저 본다"
-  run "python scripts/load_seed_csv.py --dry-run"
-  echo "── 적재"
-  run "python scripts/load_seed_csv.py"
-
-  rm -rf "$D"
-'
-REMOTE
+                        # ── 2. 돌린다. 셸은 꾸러미 안의 스크립트에 둔다 — 여기에 중첩하면
+                        #    Groovy 가 이스케이프한 따옴표를 풀어 짝이 어긋난다 (빌드 22 실패).
+                        $SSH "$HOST" "CA_ENV=$DEPLOY_ENV \
+                            flock -w 900 /tmp/ca-seedload.lock \
+                            bash /home/ubuntu/dataload/data/scripts/ci_load_seed.sh"
                     '''
                 }
             }
