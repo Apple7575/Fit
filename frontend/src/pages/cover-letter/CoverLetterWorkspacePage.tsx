@@ -7,6 +7,7 @@ import {
   createCoverLetter,
   updateCoverLetter,
 } from '../../features/cover-letter/api';
+import { UNTITLED_COVER_LETTER } from '../../features/cover-letter/api';
 import { CoverLetterWorkspace } from '../../features/cover-letter/CoverLetterWorkspace';
 import { useCoverLetter } from '../../features/cover-letter/queries';
 import type { CoverLetterInput, PendingJobPosting } from '../../features/cover-letter/types';
@@ -33,7 +34,14 @@ function readStash(): CoverLetterInput | null {
 }
 function writeStash(input: CoverLetterInput) {
   try {
-    sessionStorage.setItem(STASH_KEY, JSON.stringify(input));
+    /*
+     * 저장 본문에는 제목이 비면 기본 이름이 붙는다. 그것을 초안에까지 남기면 로그인하고
+     * 돌아왔을 때 제목 칸에 '제목 없는 자소서' 가 적힌 채로 열린다 — 쓴 적 없는 제목이
+     * 쓴 것처럼 보이고, 지우지 않으면 그 이름으로 저장된다. 안 쓴 것은 안 쓴 채로 되돌린다.
+     */
+    const draft =
+      input.title === UNTITLED_COVER_LETTER ? { ...input, title: '' } : input;
+    sessionStorage.setItem(STASH_KEY, JSON.stringify(draft));
   } catch {
     /* sessionStorage 불가 환경은 무시 */
   }

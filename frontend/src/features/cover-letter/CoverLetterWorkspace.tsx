@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { ApiError, isRateLimited } from '../../api/client';
 import { CompanyPicker } from './CompanyPicker';
-import { parseJobPosting, parseJobPostingImages, registerJobPosting } from './api';
+import {
+  UNTITLED_COVER_LETTER,
+  parseJobPosting,
+  parseJobPostingImages,
+  registerJobPosting,
+} from './api';
 import {
   MAX_POSTING_IMAGES_BYTES,
   MAX_POSTING_IMAGE_BYTES,
@@ -211,7 +216,7 @@ export function CoverLetterWorkspace({
   };
 
   const buildInput = (): CoverLetterInput => ({
-    title: title.trim() || '제목 없는 자소서',
+    title: title.trim() || UNTITLED_COVER_LETTER,
     targetCompany: company.trim() || null,
     targetPosition: position.trim() || null,
     jobContextId: registered?.of === postingKey(company, position) ? registered.id : null,
@@ -335,7 +340,7 @@ export function CoverLetterWorkspace({
             ← 목록으로
           </button>
         )}
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">무엇을 검토받을까요?</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-white">회사부터 함께 정해볼까요?</h1>
         {/*
           첫 단계에서는 설명을 걷었다 — 아래 카드가 "어디에 내나요?" 로 같은 말을 한 번 더 한다.
           문항 단계는 그 안내가 화면에 따로 없어 남긴다.
@@ -381,7 +386,7 @@ export function CoverLetterWorkspace({
         >
           <p className="text-sm font-bold text-slate-700">어디에 내나요?</p>
           <p className="mt-0.5 text-xs text-slate-500">
-            채워 두면 그 회사·직무 기준으로 읽습니다. 비워 둬도 검토는 됩니다.
+            회사·직무는 비워 둬도 됩니다. 채우면 그 기준으로 읽어요.
           </p>
 
           <div className="mt-4">
@@ -429,7 +434,7 @@ export function CoverLetterWorkspace({
                   touch();
                 }}
                 placeholder="지원 직무를 입력하세요"
-                className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
               {typingPosition && (
                 <button
@@ -453,7 +458,7 @@ export function CoverLetterWorkspace({
             onClick={() => setStep(1)}
             type="button"
           >
-            <span className="font-bold text-white">{title.trim() || '제목 없는 자소서'}</span>
+            <span className="font-bold text-white">{title.trim() || UNTITLED_COVER_LETTER}</span>
             {(company.trim() || position.trim()) && (
               <span>
                 · {[company.trim(), position.trim()].filter(Boolean).join(' · ')}
@@ -553,27 +558,31 @@ export function CoverLetterWorkspace({
           </p>
         )}
 
-        {/* 모의 면접 준비 화면과 같은 마무리 바. 왼쪽이 지금 상태, 오른쪽이 다음 걸음이다 */}
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/10 px-6 py-5 text-white ring-1 ring-white/20 backdrop-blur">
+        {/* 상자를 걷었다. 왼쪽이 지금 상태, 오른쪽이 다음 걸음인 짜임은 그대로다 */}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-white">
           <div className="min-w-0">
-            <p className="text-sm font-bold">
-              {step === META_STEP
-                ? metaReady
-                  ? '회사·직무는 비워 둬도 됩니다. 채우면 그 기준으로 읽어요.'
-                  : '제목을 입력하면 문항을 쓸 수 있어요.'
-                : !hasWriting
-                  ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
-                  : isLoggedIn
-                    ? '코치 다섯이 각자 맡은 자료로 읽습니다.'
-                    : '검토를 받으려면 로그인이 필요해요.'}
-            </p>
-            <p className="mt-0.5 text-xs break-keep text-white/60">
-              {step === META_STEP
-                ? '다음에서 질문과 답변을 씁니다.'
-                : isLoggedIn
+            {/*
+              첫 단계에서 할 말은 카드로 옮겼다. 남은 것은 제목이 없어 아직 못 넘어간다는
+              안내뿐이라, 제목을 쓰면 왼쪽은 비고 단추만 남는다.
+            */}
+            {!(step === META_STEP && metaReady) && (
+              <p className="text-sm font-bold">
+                {step === META_STEP
+                  ? '제목을 입력하면 문항을 쓸 수 있어요.'
+                  : !hasWriting
+                    ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
+                    : isLoggedIn
+                      ? '코치 다섯이 각자 맡은 자료로 읽습니다.'
+                      : '검토를 받으려면 로그인이 필요해요.'}
+              </p>
+            )}
+            {step !== META_STEP && (
+              <p className="mt-0.5 text-xs break-keep text-white/60">
+                {isLoggedIn
                   ? '저장한 뒤 검토 방으로 넘어갑니다. 문항은 위에서 오갈 수 있어요.'
                   : '로그인하면 쓰던 자소서가 그대로 남습니다.'}
-            </p>
+              </p>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {/* 문항을 더하는 일은 저장·검토와 무게가 다르다. 제일 가볍게 왼쪽에 둔다 */}
@@ -739,7 +748,7 @@ function JobPostingBar({
   return (
     <div>
       <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="cl-posting-url">
-        채용공고 URL (선택)
+        채용공고 URL <span className="font-medium text-slate-400">(선택)</span>
       </label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
@@ -761,7 +770,7 @@ function JobPostingBar({
           type="url"
           inputMode="url"
           placeholder="공고 주소를 넣고 확인하면 지원 회사와 직무를 대신 채워 드려요."
-          className="h-[42px] min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          className="h-[42px] min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         <button
           onClick={confirm}
