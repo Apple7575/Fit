@@ -215,9 +215,7 @@ class AuthControllerTest {
         User user = User.create("user@example.com", "hash", "민재");
         user.activate();
 
-        mockMvc.perform(delete("/api/auth/me").with(user(principal(user))).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"password\":\"password123\"}"))
+        mockMvc.perform(delete("/api/auth/me").with(user(principal(user))).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
@@ -225,9 +223,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("비로그인 상태의 회원탈퇴는 401 UNAUTHENTICATED")
     void withdrawWithoutLoginIsUnauthorized() throws Exception {
-        mockMvc.perform(delete("/api/auth/me").with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"password\":\"password123\"}"))
+        mockMvc.perform(delete("/api/auth/me").with(csrf()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
     }

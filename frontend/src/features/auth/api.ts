@@ -18,5 +18,4 @@ export const verifyEmail = (token: string) =>
 
 export const logout = () => apiPost<null>('/api/auth/logout');
 
-export const withdraw = (password: string) =>
-  apiSend<null>('DELETE', '/api/auth/me', { password });
+export const withdraw = () => apiSend<null>('DELETE', '/api/auth/me');
