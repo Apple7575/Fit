@@ -20,7 +20,7 @@ class AgentContextsTest {
                 Map.of("news", Map.of("corpCodes", List.of("00126380"))),
                 part(1, "지원동기를 쓰세요", "저는 Spring 기반 API 를 만들었습니다.", 1000)));
 
-        assertThat(request.agentKeys()).containsExactly("jd", "position", "news", "writing");
+        assertThat(request.agentKeys()).containsExactly("jd", "position", "news", "company", "writing");
         assertThat(request.lead()).isNull();
     }
 
@@ -36,13 +36,14 @@ class AgentContextsTest {
     }
 
     @Test
-    @DisplayName("기업 RAG 담당 전담 방은 총괄에게 넘길 것이 없다 — 그 담당은 백엔드가 돌린다")
-    void aCompanyOnlyRoomHasNothingForTheSupervisor() {
+    @DisplayName("기업 RAG 담당 전담 방은 그 담당만 넘긴다 — 자소서도 공고도 없이 돈다")
+    void aCompanyOnlyRoomSendsOnlyItsOwnAgent() {
         AgentContexts.Request request = AgentContexts.of(soloRoom(
                 "company", Map.of("corpCodes", List.of("00126380")), "ctx-1",
                 part(1, "문항 1", "답변 1", 500)));
 
-        assertThat(request.isEmpty()).isTrue();
+        assertThat(request.agentKeys()).containsExactly("company");
+        assertThat(request.lead()).isEqualTo("company");
     }
 
     @Test
@@ -80,7 +81,7 @@ class AgentContextsTest {
                         "position", Map.of("jobRole", "서버 개발")),
                 part(1, "문항 1", "답변 1", 500)));
 
-        assertThat(request.agentKeys()).containsExactly("position", "writing");
+        assertThat(request.agentKeys()).containsExactly("position", "company", "writing");
     }
 
     @Test
@@ -129,16 +130,29 @@ class AgentContextsTest {
     }
 
     @Test
-    @DisplayName("돌릴 담당이 뉴스뿐이면 총괄을 거치지 않는다 — 계획·종합 호출이 공짜로 붙는다")
+    @DisplayName("뉴스 전담 방은 총괄을 거치지 않는다 — 계획·종합 호출이 공짜로 붙는다")
     void newsOnlyTurnsSkipTheSupervisor() {
+        AgentContexts.Request request = AgentContexts.of(soloRoom(
+                "news", Map.of("corpCodes", List.of("00126380")), "ctx-1",
+                part(1, "문항 1", "  ", 500)));
+
+        assertThat(request.documents()).isEmpty();
+        assertThat(request.agentKeys()).containsExactly("news");
+        assertThat(request.isNewsOnly()).isTrue();
+    }
+
+    @Test
+    @DisplayName("자소서를 아직 안 쓴 턴에도 뉴스·기업 담당은 돈다 — 둘 다 문서 없이 답한다")
+    void documentFreeAgentsStillRunWithoutAnAnsweredItem() {
         AgentContexts.Request request = AgentContexts.of(context(
                 "ctx-1", null,
                 Map.of("news", Map.of("corpCodes", List.of("00126380"))),
                 part(1, "문항 1", "  ", 500)));
 
         assertThat(request.documents()).isEmpty();
-        assertThat(request.agentKeys()).containsExactly("news");
-        assertThat(request.isNewsOnly()).isTrue();
+        assertThat(request.agentKeys()).containsExactly("news", "company");
+        // 둘이 같이 돌 수 있으면 총괄이 조정한다. 우회는 뉴스 하나뿐일 때만이다.
+        assertThat(request.isNewsOnly()).isFalse();
     }
 
     @Test
@@ -160,7 +174,7 @@ class AgentContextsTest {
             everyAgent.put(key, configs.getOrDefault(key, Map.of()));
         }
         return new TurnContext(List.of(parts), "봐줘", jobContextId, jobPositionName,
-                List.of(), everyAgent);
+                List.of(), everyAgent, false);
     }
 
     /** 담당 하나만 있는 전담 방. */
@@ -169,7 +183,7 @@ class AgentContextsTest {
                                         String jobContextId,
                                         TurnContext.CoverLetterPart... parts) {
         return new TurnContext(List.of(parts), "봐줘", jobContextId, "백엔드",
-                List.of(), Map.of(agentKey, config));
+                List.of(), Map.of(agentKey, config), false);
     }
 
     private static TurnContext.CoverLetterPart part(int seq, String question, String answer,

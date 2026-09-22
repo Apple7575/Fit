@@ -1,4 +1,5 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
+import { SiteHeader } from '../../components/layout/SiteHeader';
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
@@ -8,16 +9,15 @@ import { ThreadSidebar } from '../../features/agent-room/ThreadSidebar';
 import type { RoomSummary } from '../../features/agent-room/types';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { useCoverLetters } from '../../features/cover-letter/queries';
-import { CoverLetterHeader } from '../cover-letter/CoverLetterHeader';
 
-/** 자소서를 고르면 에이전트별 대화 자리가 깔리고, 왼쪽에서 골라 오른쪽에서 이야기한다. */
+/** 자소서를 고르면 에이전트별 대화 자리가 깔리고, 원문 옆에서 피드백을 확인한다. */
 export function AgentRoomListPage() {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <CoverLetterHeader />
+        <SiteHeader />
         <LoadingScreen />
       </div>
     );
@@ -28,7 +28,7 @@ export function AgentRoomListPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <CoverLetterHeader />
+      <SiteHeader />
       <Workspace />
     </div>
   );
@@ -51,7 +51,7 @@ function Workspace() {
   const known = picked !== null && letters.some((letter) => letter.id === picked);
   const coverLetterId = known ? picked : letters.length > 0 ? letters[0].id : null;
 
-  /** 사이드바만 다시 읽는다. 보고 있던 방은 그대로 둔다. */
+  /** 에이전트 목록만 다시 읽는다. 보고 있던 방은 그대로 둔다. */
   const refreshRooms = useCallback(() => {
     if (coverLetterId === null) return;
     ensureDefaultRooms(coverLetterId)
@@ -92,10 +92,9 @@ function Workspace() {
     );
   }
 
-  return (
-    <div className="mx-auto flex max-w-6xl gap-5 px-5 py-6">
-      <aside className="w-64 shrink-0">
-        <div className="mb-3">
+  const coverLetterSelector = (
+    <section aria-label="자기소개서 에이전트 목록" className="rounded-2xl border border-slate-200 bg-white p-3 pt-10">
+        <div>
           <label htmlFor="workspace-cover-letter" className="sr-only">
             검토할 자소서
           </label>
@@ -103,7 +102,7 @@ function Workspace() {
             id="workspace-cover-letter"
             value={coverLetterId ?? ''}
             onChange={(event) => setPicked(Number(event.target.value))}
-            className="h-[36px] w-full rounded-lg border border-slate-200 bg-white px-2 text-[13px] text-slate-800"
+            className="h-[36px] w-full rounded-lg border border-slate-200 bg-white py-0 pl-2 pr-10 text-[13px] text-slate-800"
           >
             {letters.map((letter) => (
               <option key={letter.id} value={letter.id}>
@@ -113,7 +112,7 @@ function Workspace() {
           </select>
         </div>
 
-        {error ? (
+        {error && (
           <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3">
             <p className="text-[13px] font-medium text-red-700">{error}</p>
             <button
@@ -124,28 +123,44 @@ function Workspace() {
               다시 시도
             </button>
           </div>
-        ) : (
-          <ThreadSidebar
-            rooms={rooms}
-            selectedRoomId={selectedRoomId}
-            onSelect={setSelectedRoomId}
-          />
         )}
-      </aside>
+    </section>
+  );
 
-      <main className="min-w-0 flex-1">
-        {selectedRoomId === null ? (
-          <p role="status" className="text-[14px] text-slate-400">
-            대화를 고르세요.
-          </p>
-        ) : (
-          <RoomWorkspace
-            key={selectedRoomId}
-            roomId={selectedRoomId}
-            onConversationChanged={refreshRooms}
-          />
-        )}
-      </main>
-    </div>
+  const agentNavigation = error ? null : (
+    <ThreadSidebar
+      bookmarks
+      rooms={rooms}
+      selectedRoomId={selectedRoomId}
+      onSelect={setSelectedRoomId}
+    />
+  );
+
+  return (
+    <main className="mx-auto max-w-[1520px] px-5 py-6 lg:px-8">
+      {selectedRoomId === null ? (
+        <div className="ml-auto max-w-md">
+          {coverLetterSelector}
+          {!error && (
+            <div className="mt-3">
+              <ThreadSidebar
+                rooms={rooms}
+                selectedRoomId={selectedRoomId}
+                onSelect={setSelectedRoomId}
+              />
+            </div>
+          )}
+          <p role="status" className="mt-4 text-[14px] text-slate-400">대화를 고르세요.</p>
+        </div>
+      ) : (
+        <RoomWorkspace
+          key={selectedRoomId}
+          roomId={selectedRoomId}
+          coverLetterSelector={coverLetterSelector}
+          agentNavigation={agentNavigation}
+          onConversationChanged={refreshRooms}
+        />
+      )}
+    </main>
   );
 }

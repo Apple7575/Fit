@@ -1,0 +1,553 @@
+{
+ "summary": {
+  "generated_at": "20260918-123741",
+  "corp_codes": [
+   "00139214",
+   "00439965",
+   "00136165"
+  ],
+  "elapsed_s": 147,
+  "facts": {
+   "correct": 15,
+   "abstain": 0,
+   "wrong": 1,
+   "error": 0,
+   "total": 16,
+   "accuracy": 0.938,
+   "wrong_rate": 0.062,
+   "avg_latency_s": 7.1
+  },
+  "retrieval": {
+   "questions": 24,
+   "bm25": {
+    "recall@1": 0.292,
+    "recall@3": 0.542,
+    "recall@5": 0.625,
+    "recall@8": 0.667,
+    "mrr": 0.432
+   },
+   "vector": {
+    "recall@1": 0.208,
+    "recall@3": 0.417,
+    "recall@5": 0.5,
+    "recall@8": 0.708,
+    "mrr": 0.364
+   },
+   "hybrid": {
+    "recall@1": 0.375,
+    "recall@3": 0.583,
+    "recall@5": 0.667,
+    "recall@8": 0.75,
+    "mrr": 0.497
+   }
+  }
+ },
+ "facts": [
+  {
+   "corp_code": "00139214",
+   "corp_name": "삼성화재해상보험",
+   "metric": "operating_profit",
+   "question": "삼성화재해상보험의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 2659143002144.0,
+   "expected_tokens": [
+    "2.7조원"
+   ],
+   "answer": "삼성화재해상보험의 2025년 영업이익은 2.7조원입니다. 이는 전년 대비 0.4% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 9.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "00139214",
+   "corp_name": "삼성화재해상보험",
+   "metric": "net_income",
+   "question": "삼성화재해상보험의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 2020287132255.0,
+   "expected_tokens": [
+    "2.0조원"
+   ],
+   "answer": "삼성화재해상보험의 2025년 당기순이익은 2조 478억원입니다. 이는 FY'24 기준으로 기록된 수치입니다.",
+   "verdict": "wrong",
+   "latency_s": 6.7,
+   "citations": 1
+  },
+  {
+   "corp_code": "00139214",
+   "corp_name": "삼성화재해상보험",
+   "metric": "employee_count",
+   "question": "삼성화재해상보험 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 5535.0,
+   "expected_tokens": [
+    "5,535명"
+   ],
+   "answer": "삼성화재해상보험의 2025년 직원 수는 5,535명입니다. 이는 전년 대비 0.3% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 6.2,
+   "citations": 1
+  },
+  {
+   "corp_code": "00139214",
+   "corp_name": "삼성화재해상보험",
+   "metric": "debt_ratio",
+   "question": "삼성화재해상보험의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 353.0,
+   "expected_tokens": [
+    "353.0%"
+   ],
+   "answer": "삼성화재해상보험의 2025년 부채비율은 353.0%입니다. 이는 2024년 459.3%에서 개선된 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 7.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "revenue",
+   "question": "나노신소재의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 111745369751.0,
+   "expected_tokens": [
+    "1117.5억원"
+   ],
+   "answer": "나노신소재의 2025년 매출액은 1,117.5억원입니다.",
+   "verdict": "correct",
+   "latency_s": 7.1,
+   "citations": 2
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "operating_profit",
+   "question": "나노신소재의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 4681087390.0,
+   "expected_tokens": [
+    "46.8억원"
+   ],
+   "answer": "나노신소재의 2025년 영업이익은 46.8억원입니다.",
+   "verdict": "correct",
+   "latency_s": 6.0,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "net_income",
+   "question": "나노신소재의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 1634979902.0,
+   "expected_tokens": [
+    "16.3억원"
+   ],
+   "answer": "나노신소재의 2025년 당기순이익은 16.3억원입니다.",
+   "verdict": "correct",
+   "latency_s": 6.1,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "employee_count",
+   "question": "나노신소재 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 350.0,
+   "expected_tokens": [
+    "350명"
+   ],
+   "answer": "나노신소재의 2025년 직원 수는 350명입니다. 이는 전년 대비 21.5% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 5.7,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "operating_margin",
+   "question": "나노신소재의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 4.2,
+   "expected_tokens": [
+    "4.2%"
+   ],
+   "answer": "나노신소재의 2025년 영업이익률은 4.2%입니다. 이는 2024년 3.4%에서 소폭 상승한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 6.8,
+   "citations": 2
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "debt_ratio",
+   "question": "나노신소재의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 84.1,
+   "expected_tokens": [
+    "84.1%"
+   ],
+   "answer": "나노신소재의 2025년 부채비율은 84.1%입니다. 이는 부채총계를 자본총계로 나눈 비율로, 2023년 79.6%와 2024년 81.1%에 비해 상승한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 7.6,
+   "citations": 1
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "revenue",
+   "question": "스페코의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 37964956719.0,
+   "expected_tokens": [
+    "379.6억원"
+   ],
+   "answer": "스페코의 2025년 매출액은 379.6억원입니다. 이는 전년 대비 39.6% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 7.3,
+   "citations": 2
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "operating_profit",
+   "question": "스페코의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": -460595979.0,
+   "expected_tokens": [
+    "-4.6억원"
+   ],
+   "answer": "스페코의 2025년 영업이익은 -4.6억원입니다. 이는 전년 대비 91.9% 증가한 수준이며, 영업이익률은 -1.2%입니다.",
+   "verdict": "correct",
+   "latency_s": 8.7,
+   "citations": 3
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "net_income",
+   "question": "스페코의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": -308438591.0,
+   "expected_tokens": [
+    "-3.1억원"
+   ],
+   "answer": "스페코의 2025년 당기순이익은 -3.1억원입니다. 이는 전년 대비 82% 증가한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 6.7,
+   "citations": 5
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "employee_count",
+   "question": "스페코 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 52.0,
+   "expected_tokens": [
+    "52명"
+   ],
+   "answer": "2025년 기준 스페코의 직원 수는 52명입니다. 이는 전년 대비 8.8% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 5.9,
+   "citations": 1
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "operating_margin",
+   "question": "스페코의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": -1.2,
+   "expected_tokens": [
+    "-1.2%"
+   ],
+   "answer": "스페코의 2025년 영업이익률은 -1.2%입니다. 이는 2023년 -18.0%에서 개선된 수준이며, 2024년 -20.9%보다도 상승한 것입니다.",
+   "verdict": "correct",
+   "latency_s": 8.7,
+   "citations": 4
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "debt_ratio",
+   "question": "스페코의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 58.4,
+   "expected_tokens": [
+    "58.4%"
+   ],
+   "answer": "스페코의 2025년 부채비율은 58.4%입니다. 이는 2024년 87.5% 대비 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 8.1,
+   "citations": 3
+  }
+ ],
+ "retrieval": [
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-0905d877ba271e5af8fb6e17ac8d9c6a",
+   "section_title": "2. 영업의 현황",
+   "question": "이 회사의 해외 법인 운용 실적은 어때요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-6cddc72be99993e6e088a104fc172a34",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 해외 시장에서 경쟁력을 강화하기 위해 어떤 전략을 택하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-12ef852492d2084a6d40c510d0c5e88a",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 손해사정서비스를 어떻게 운영하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 2,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-04e43422b7b08fef979965a98eaa988c",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 경쟁력 있는 보험료를 산출하는 데 어떤 역량을 중시하나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 2,
+    "hybrid": 2
+   }
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-d80f2b28e64d1cb4fd508be43b9c6ce9",
+   "section_title": "2. 영업의 현황",
+   "question": "이 회사의 주요 보험 종목별 수익과 비용은 어떻게 달라졌나요?",
+   "ranks": {
+    "bm25": 5,
+    "vector": 6,
+    "hybrid": 3
+   }
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-121be0f2e43665c53f0a088bb93c32dd",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 손해보험 시장에서 어떤 위치를 차지하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 2,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-3c3b63c0402cf46abcaa4dd0bfc8d616",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 경쟁력 있는 서비스를 제공하는 방법은 뭐예요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 2,
+    "hybrid": 2
+   }
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-ffa13e01db81a81d37161c447cb92894",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 주로 어떤 서비스를 제공하나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": 7
+   }
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-8804dbee438085b84b214ddc03b0d5e3",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사의 유형자산은 어떤 방식으로 담보로 제공되고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 1,
+    "hybrid": 3
+   }
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-2ceb8e8c9b03c6daefe60c4fa5e1e881",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사의 금융상품 공정가치는 어떻게 측정되나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-5f4041335dd69842f9a3ef4d49a36502",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사의 최근 3년간 자본구성은 어떻게 되나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-c0c621f7b7a46d12bf258edb09a13de4",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사의 리스비용은 어떻게 구성되어 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-056119cec3fcba658e7f9336c9d68534",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사는 어떤 자산을 리스로 사용하고 있나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 2,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-196a3e7ce60ce1c73baab0e140a454f1",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사가 외환위험을 어떻게 관리하나요?",
+   "ranks": {
+    "bm25": 5,
+    "vector": 8,
+    "hybrid": 5
+   }
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-5c3011fcb38d82bc64c7cbf6ea404382",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사의 금융자산은 어떻게 평가되나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-5a6ec4869192fdbe630d09542971e655",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사 재고자산 관리와 평가 어떻게 확인하나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 5,
+    "hybrid": 4
+   }
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-4d6ce6552f1af9f975b3ebe8dba8972b",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 수출하는 시장은 어디인가요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-966c1621ba3e2e8829d0c887fe18c61a",
+   "section_title": "6. 주요계약 및 연구개발활동",
+   "question": "이 회사의 연구소는 어떤 분야를 주로 연구하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-0d8f85515a95ee9c2afd97aec4f984f4",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사의 주요 사업 분야와 해외 진출 현황은 어때요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 6,
+    "hybrid": null
+   }
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-d68f7c77e33844a5b27aa9ac2d24f8da",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 해외 수출 확대를 위해 어떤 방식으로 경쟁력을 높였나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-b38b059236f6c9423c62f46d8b3da0f3",
+   "section_title": "1. 사업의 개요",
+   "question": "이 회사는 어떤 분야에서 사업을 하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 6,
+    "hybrid": 2
+   }
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-0a22d07bc02ee001bd0413ca0150f65f",
+   "section_title": "3. 재무상태 및 영업실적",
+   "question": "이 회사의 주요 사업 부분은 무엇인가요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": null,
+    "hybrid": 6
+   }
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-790c50a90fb67fb66e04f6254720f613",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 어떤 전략으로 해외 시장을 공략하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 6,
+    "hybrid": 1
+   }
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-31b9c5e4627a67fff31e00ba54ef0d7f",
+   "section_title": "4. 매출 및 수주상황",
+   "question": "이 회사의 주요 해외 시장은 어디인가요?",
+   "ranks": {
+    "bm25": 8,
+    "vector": 4,
+    "hybrid": 1
+   }
+  }
+ ]
+}

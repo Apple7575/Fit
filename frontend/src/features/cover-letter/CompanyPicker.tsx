@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { searchCompanies } from '../company-search/api';
+import { MAX_KEYWORD, searchCompanies } from '../company-search/api';
 import type { Company } from '../../types/company';
 
 interface CompanyPickerProps {
@@ -78,10 +78,11 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
           <input
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            maxLength={MAX_KEYWORD}
             type="search"
             autoComplete="off"
             placeholder="기업명 검색 또는 직접 입력"
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400"
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-[13.5px] placeholder:text-slate-400"
           />
           <button
             type="submit"

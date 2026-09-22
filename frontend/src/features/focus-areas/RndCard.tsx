@@ -1,3 +1,4 @@
+import { EmptyCard } from '../../components/common/EmptyCard';
 import { SourceBadge } from '../../components/common/SourceBadge';
 import { formatMetricCompact } from '../../utils/formatMetric';
 import type { FocusState } from './hooks';
@@ -14,14 +15,20 @@ export function RndCard({ state }: RndCardProps) {
     return (
       <div
         aria-busy="true"
-        className="h-64 animate-pulse rounded-3xl border border-slate-200 bg-white"
+        className="h-64 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
         role="status"
       >
         <span className="sr-only">R&amp;D 정보를 불러오는 중입니다</span>
       </div>
     );
   }
-  if (state.status === 'error' || !state.data.rnd) return null;
+  if (state.status === 'error' || !state.data.rnd) {
+    return (
+      <EmptyCard title="연구개발">
+        연구개발 항목을 따로 공시하지 않는 기업이거나, 아직 정리되지 않았어요.
+      </EmptyCard>
+    );
+  }
   const { rnd } = state.data;
 
   const rows: Array<{ label: string; value: string | null; tone?: string }> = [
@@ -37,7 +44,7 @@ export function RndCard({ state }: RndCardProps) {
   return (
     <section
       aria-labelledby="rnd-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-extrabold text-slate-950" id="rnd-title">

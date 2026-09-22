@@ -37,8 +37,18 @@ export interface CoverLetterSummary {
 export interface JobPostingParseResult {
   companyName: string | null;
   positions: string[];
-  sourceUrl: string;
+  /** 붙여넣은 이미지로 확인한 공고에는 주소가 없다. 그때는 sourceKey 로만 등록한다. */
+  sourceUrl: string | null;
   /** 서버가 방금 긁은 본문을 들고 있다는 표시. 등록할 때 돌려주면 다시 긁지 않는다(30분). */
+  sourceKey: string | null;
+}
+
+/**
+ * 확인만 해 두고 아직 등록하지 않은 공고. 저장은 이것을 기다리지 않고,
+ * 목록으로 넘어간 뒤에 등록해서 자소서에 붙인다.
+ */
+export interface PendingJobPosting {
+  url: string;
   sourceKey: string | null;
 }
 

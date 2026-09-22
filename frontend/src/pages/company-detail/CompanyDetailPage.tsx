@@ -7,6 +7,7 @@ import {
   type CompanyDetailState,
 } from '../../features/company-detail/useCompanyDetail';
 import { CompanyTabNav } from './CompanyTabNav';
+import { glideToTop } from './sectionJump';
 
 /** 탭 페이지들이 useOutletContext 로 받는 값 */
 export interface CompanyDetailOutletContext {
@@ -37,7 +38,15 @@ export function CompanyDetailPage() {
   const corpCode = companyId ?? '';
   const { state, retry } = useCompanyDetail(corpCode);
   const detail = state.status === 'success' ? state.data : null;
-  const immersive = isImmersive(pathname);
+  /*
+   * 없는 기업 코드로 들어오면 첫 화면을 사진에 내주지 않는다. 스냅이 한 칸 내려가면서
+   * "찾을 수 없습니다" 안내를 지나쳐 버려, 화면에는 빈 사진과 "기업 분석" 만 남았다.
+   */
+  const missing =
+    state.status === 'error' &&
+    (state.error.status === 404 || state.error.code === 'COMPANY_NOT_FOUND' ||
+      (state.error.status >= 400 && state.error.status < 500));
+  const immersive = isImmersive(pathname) && !missing;
   // 한 번 내려온 헤더는 도로 올라가지 않는다. 탭을 오가도 스크롤 위치는 남으므로 지금 값에서 시작한다
   const [revealed, setRevealed] = useState(scrolledPast);
   // 다른 기업으로 바로 옮겨가면(예: 산업 비교) 그 기업의 첫 화면을 다시 통째로 내준다
@@ -82,7 +91,8 @@ export function CompanyDetailPage() {
       <SiteHeader breadcrumb={detail?.corpName} floating={immersive} scrolled={revealed} />
 
       <div className={subBar} inert={chromeAway}>
-        <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2 lg:px-8">
+        {/* 서브바 높이는 자소서 서브바와 같아야 한다 — 탭을 오갈 때 헤더가 들썩인다 (SUBBAR_ROW) */}
+        <div className="mx-auto flex min-h-[50px] max-w-[1320px] flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2 lg:px-8">
           {detail?.corpName && (
             // 로고·기업명이 곧 요약 화면으로 가는 링크다 (별도 "요약" 탭을 두지 않는다)
             <NavLink
@@ -94,6 +104,12 @@ export function CompanyDetailPage() {
                     : 'text-slate-950 hover:bg-slate-100'
                 }`
               }
+              onClick={(event) => {
+                // 이미 요약에 있으면 라우터를 거치지 않고 첫 화면으로 굴러 올라간다
+                if (!immersive) return;
+                event.preventDefault();
+                glideToTop();
+              }}
               to="overview"
             >
               <CompanyLogo
@@ -109,7 +125,7 @@ export function CompanyDetailPage() {
           <CompanyTabNav />
           {detail?.dataYear != null && (
             <p className="ml-auto rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-              데이터 기준: {detail.dataYear}
+              최근 공시 기준
             </p>
           )}
         </div>

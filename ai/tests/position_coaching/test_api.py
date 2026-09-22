@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from ai.position_coaching.api import app, get_position_service
+from ai.position_coaching.api import app, get_position_chat_service, get_position_service
 
 
 VALID_ANALYSIS = {
@@ -196,6 +196,101 @@ class PositionConfigurationApiTest(unittest.TestCase):
 
         self.assertEqual(analysis.status_code, 503)
         self.assertEqual(readiness.status_code, 503)
+
+
+MESSAGE_REQUEST = {
+    "message": "이 직무는 무슨 일을 해?",
+    "position_context": VALID_REQUEST["position_context"],
+    "documents": VALID_REQUEST["documents"],
+    "analysis_result": VALID_ANALYSIS,
+    "conversation": [],
+}
+
+
+class FakeChatService:
+    def __init__(self, reply=None, error=None):
+        self.calls = []
+        self.reply = reply or {
+            "answer": "성과 지표를 분석하는 일입니다.",
+            "referenced_finding_ids": [],
+            "follow_up_questions": [],
+        }
+        self.error = error
+
+    def respond(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.error is not None:
+            raise self.error
+        return self.reply
+
+
+class PositionMessageApiTest(unittest.TestCase):
+    """`/internal/messages`. 이 경로가 없어 방에서 무엇을 묻든 같은 평가문이 나갔다."""
+
+    def setUp(self):
+        self.service = FakeService()
+        self.chat = FakeChatService()
+        app.dependency_overrides[get_position_service] = lambda: self.service
+        app.dependency_overrides[get_position_chat_service] = lambda: self.chat
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        app.dependency_overrides.clear()
+
+    def test_answers_the_question(self):
+        response = self.client.post("/internal/messages", json=MESSAGE_REQUEST)
+
+        self.assertEqual(response.status_code, 200)
+        # 백엔드 말풍선은 message 를 읽는다. answer 만 주면 빈 말풍선이 된다.
+        self.assertEqual(response.json()["message"], "성과 지표를 분석하는 일입니다.")
+        self.assertEqual(self.chat.calls[0]["message"], "이 직무는 무슨 일을 해?")
+
+    def test_reuses_the_given_analysis_without_re_evaluating(self):
+        """평가를 다시 돌리면 45초가 더 든다. 준 결과가 있으면 그걸 쓴다."""
+        self.client.post("/internal/messages", json=MESSAGE_REQUEST)
+
+        self.assertEqual(self.service.calls, [])
+        self.assertEqual(self.chat.calls[0]["analysis_result"], VALID_ANALYSIS)
+
+    def test_evaluates_first_when_no_analysis_is_given(self):
+        request = {key: value for key, value in MESSAGE_REQUEST.items()
+                   if key != "analysis_result"}
+
+        response = self.client.post("/internal/messages", json=request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(self.service.calls), 1)
+        self.assertEqual(self.chat.calls[0]["analysis_result"], VALID_ANALYSIS)
+
+    def test_conversation_is_passed_as_history(self):
+        request = {**MESSAGE_REQUEST, "conversation": [
+            {"message_id": "m1", "role": "USER", "content": "안녕"},
+        ]}
+
+        self.client.post("/internal/messages", json=request)
+
+        self.assertEqual(self.chat.calls[0]["history"][0]["content"], "안녕")
+
+    def test_blank_message_is_rejected(self):
+        response = self.client.post(
+            "/internal/messages", json={**MESSAGE_REQUEST, "message": "   "}
+        )
+
+        self.assertEqual(response.status_code, 422)
+
+    def test_unknown_field_is_rejected(self):
+        response = self.client.post(
+            "/internal/messages", json={**MESSAGE_REQUEST, "rubric_id": "experience-depth-v1"}
+        )
+
+        self.assertEqual(response.status_code, 422)
+
+    def test_model_failure_returns_502(self):
+        self.chat.error = RuntimeError("모델 죽음")
+
+        response = self.client.post("/internal/messages", json=MESSAGE_REQUEST)
+
+        self.assertEqual(response.status_code, 502)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,871 @@
+{
+ "summary": {
+  "generated_at": "20260918-182950",
+  "corp_codes": [
+   "00139214",
+   "00439965",
+   "00136165",
+   "00164742",
+   "00266961",
+   "00155319",
+   "00164779",
+   "00126380",
+   "01350869",
+   "01021666"
+  ],
+  "elapsed_s": 661,
+  "facts": {
+   "correct": 56,
+   "abstain": 0,
+   "wrong": 0,
+   "error": 0,
+   "total": 56,
+   "accuracy": 1.0,
+   "wrong_rate": 0.0,
+   "avg_latency_s": 11.8
+  }
+ },
+ "facts": [
+  {
+   "corp_code": "00139214",
+   "corp_name": "삼성화재해상보험",
+   "metric": "operating_profit",
+   "question": "삼성화재해상보험의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 2659143002144.0,
+   "expected_tokens": [
+    "2.7조원"
+   ],
+   "answer": "삼성화재해상보험의 2025년 영업이익은 2.7조원입니다. 이는 전년 대비 0.4% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 13.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "00139214",
+   "corp_name": "삼성화재해상보험",
+   "metric": "net_income",
+   "question": "삼성화재해상보험의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 2020287132255.0,
+   "expected_tokens": [
+    "2.0조원"
+   ],
+   "answer": "삼성화재해상보험의 2025년 당기순이익은 2.0조원입니다.",
+   "verdict": "correct",
+   "latency_s": 11.6,
+   "citations": 1
+  },
+  {
+   "corp_code": "00139214",
+   "corp_name": "삼성화재해상보험",
+   "metric": "employee_count",
+   "question": "삼성화재해상보험 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 5535.0,
+   "expected_tokens": [
+    "5,535명"
+   ],
+   "answer": "삼성화재해상보험의 2025년 직원 수는 5,535명입니다.",
+   "verdict": "correct",
+   "latency_s": 10.7,
+   "citations": 1
+  },
+  {
+   "corp_code": "00139214",
+   "corp_name": "삼성화재해상보험",
+   "metric": "debt_ratio",
+   "question": "삼성화재해상보험의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 353.0,
+   "expected_tokens": [
+    "353.0%"
+   ],
+   "answer": "삼성화재해상보험의 2025년 부채비율은 353.0%입니다. 이는 2024년 459.3%에서 개선된 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.0,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "revenue",
+   "question": "나노신소재의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 111745369751.0,
+   "expected_tokens": [
+    "1117.5억원"
+   ],
+   "answer": "나노신소재의 2025년 매출액은 1,117.5억원입니다. 공시 확정 지표(연결 우선) 기준입니다.",
+   "verdict": "correct",
+   "latency_s": 12.8,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "operating_profit",
+   "question": "나노신소재의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 4681087390.0,
+   "expected_tokens": [
+    "46.8억원"
+   ],
+   "answer": "나노신소재의 2025년 영업이익은 46.8억원입니다.",
+   "verdict": "correct",
+   "latency_s": 9.7,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "net_income",
+   "question": "나노신소재의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 1634979902.0,
+   "expected_tokens": [
+    "16.3억원"
+   ],
+   "answer": "나노신소재의 2025년 당기순이익은 16.3억원입니다.",
+   "verdict": "correct",
+   "latency_s": 10.6,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "employee_count",
+   "question": "나노신소재 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 350.0,
+   "expected_tokens": [
+    "350명"
+   ],
+   "answer": "나노신소재의 2025년 직원 수는 350명입니다. 이는 전년 대비 21.5% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.2,
+   "citations": 1
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "operating_margin",
+   "question": "나노신소재의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 4.2,
+   "expected_tokens": [
+    "4.2%"
+   ],
+   "answer": "나노신소재의 2025년 영업이익률은 4.2%입니다. 이는 2024년 3.4%에서 소폭 상승한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 10.9,
+   "citations": 2
+  },
+  {
+   "corp_code": "00439965",
+   "corp_name": "나노신소재",
+   "metric": "debt_ratio",
+   "question": "나노신소재의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 84.1,
+   "expected_tokens": [
+    "84.1%"
+   ],
+   "answer": "나노신소재의 2025년 부채비율은 84.1%입니다. 이는 부채총계를 자본총계로 나눈 비율로, 2023년 79.6%에서 2024년 81.1%로 증가한 뒤 2025년 84.1%로 상승한 추세입니다.",
+   "verdict": "correct",
+   "latency_s": 12.4,
+   "citations": 1
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "revenue",
+   "question": "스페코의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 37964956719.0,
+   "expected_tokens": [
+    "379.6억원"
+   ],
+   "answer": "스페코의 2025년 매출액은 379.6억원입니다.",
+   "verdict": "correct",
+   "latency_s": 11.9,
+   "citations": 2
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "operating_profit",
+   "question": "스페코의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": -460595979.0,
+   "expected_tokens": [
+    "-4.6억원"
+   ],
+   "answer": "스페코의 2025년 영업이익은 -4.6억원입니다. 이는 전년 대비 91.9% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 13.5,
+   "citations": 5
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "net_income",
+   "question": "스페코의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": -308438591.0,
+   "expected_tokens": [
+    "-3.1억원"
+   ],
+   "answer": "스페코의 2025년 당기순이익은 -3.1억원입니다.",
+   "verdict": "correct",
+   "latency_s": 19.2,
+   "citations": 9
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "employee_count",
+   "question": "스페코 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 52.0,
+   "expected_tokens": [
+    "52명"
+   ],
+   "answer": "2025년 기준 스페코의 직원 수는 52명입니다. 이는 전년 대비 8.8% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 10.8,
+   "citations": 2
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "operating_margin",
+   "question": "스페코의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": -1.2,
+   "expected_tokens": [
+    "-1.2%"
+   ],
+   "answer": "스페코의 2025년 영업이익률은 -1.2%입니다. 이는 2023년 -18.0%에서 개선된 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.4,
+   "citations": 2
+  },
+  {
+   "corp_code": "00136165",
+   "corp_name": "스페코",
+   "metric": "debt_ratio",
+   "question": "스페코의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 58.4,
+   "expected_tokens": [
+    "58.4%"
+   ],
+   "answer": "스페코의 2025년 부채비율은 58.4%입니다. 이는 전년도 87.5% 대비 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.6,
+   "citations": 2
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "revenue",
+   "question": "현대자동차의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 186254472000000.0,
+   "expected_tokens": [
+    "186.3조원"
+   ],
+   "answer": "현대자동차의 2025년 매출액은 186.3조원입니다. 이는 전년 대비 6.3% 증가한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 13.3,
+   "citations": 3
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "operating_profit",
+   "question": "현대자동차의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 11467851000000.0,
+   "expected_tokens": [
+    "11.5조원"
+   ],
+   "answer": "현대자동차의 2025년 영업이익은 11.5조원입니다. 이는 전년 대비 19.5% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 12.1,
+   "citations": 3
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "net_income",
+   "question": "현대자동차의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 10364775000000.0,
+   "expected_tokens": [
+    "10.4조원"
+   ],
+   "answer": "현대자동차의 2025년 당기순이익은 10.4조원입니다.",
+   "verdict": "correct",
+   "latency_s": 11.5,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "employee_count",
+   "question": "현대자동차 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 72598.0,
+   "expected_tokens": [
+    "72,598명"
+   ],
+   "answer": "현대자동차의 2025년 직원 수는 72,598명입니다. 이는 전년 대비 3.4% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.5,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "operating_margin",
+   "question": "현대자동차의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 6.2,
+   "expected_tokens": [
+    "6.2%"
+   ],
+   "answer": "현대자동차의 2025년 영업이익률은 6.2%입니다. 이는 전년 대비 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 10.8,
+   "citations": 2
+  },
+  {
+   "corp_code": "00164742",
+   "corp_name": "현대자동차",
+   "metric": "debt_ratio",
+   "question": "현대자동차의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 189.0,
+   "expected_tokens": [
+    "189.0%"
+   ],
+   "answer": "현대자동차의 2025년 부채비율은 189.0%입니다. 이는 전년 대비 상승한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.6,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "revenue",
+   "question": "NAVER의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 12035007218975.0,
+   "expected_tokens": [
+    "12.0조원"
+   ],
+   "answer": "NAVER의 2025년 매출액은 12.0조원입니다. 이는 전년 대비 12.1% 성장한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 12.1,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "operating_profit",
+   "question": "NAVER의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 2208138388720.0,
+   "expected_tokens": [
+    "2.2조원"
+   ],
+   "answer": "NAVER의 2025년 영업이익은 2.2조원입니다. 이는 전년 대비 11.6% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.6,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "net_income",
+   "question": "NAVER의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 1818746310015.0,
+   "expected_tokens": [
+    "1.8조원"
+   ],
+   "answer": "NAVER의 2025년 당기순이익은 1.8조원입니다.",
+   "verdict": "correct",
+   "latency_s": 10.9,
+   "citations": 3
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "employee_count",
+   "question": "NAVER 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 5047.0,
+   "expected_tokens": [
+    "5,047명"
+   ],
+   "answer": "NAVER의 2025년 직원 수는 5,047명입니다. 이는 전년 대비 10.1% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 10.5,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "operating_margin",
+   "question": "NAVER의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 18.3,
+   "expected_tokens": [
+    "18.3%"
+   ],
+   "answer": "NAVER의 2025년 영업이익률은 18.3%입니다. 이는 전년 대비 0.1%p 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 11.3,
+   "citations": 2
+  },
+  {
+   "corp_code": "00266961",
+   "corp_name": "NAVER",
+   "metric": "debt_ratio",
+   "question": "NAVER의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 41.9,
+   "expected_tokens": [
+    "41.9%"
+   ],
+   "answer": "NAVER의 2025년 연결 부채비율은 41.9%입니다. 이는 총부채를 총자본으로 나눈 비율로, 건전한 자본구조를 유지하기 위한 지표입니다.",
+   "verdict": "correct",
+   "latency_s": 11.2,
+   "citations": 2
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "revenue",
+   "question": "POSCO홀딩스의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 69094886192787.0,
+   "expected_tokens": [
+    "69.1조원"
+   ],
+   "answer": "POSCO홀딩스의 2025년 매출액은 69.1조원입니다. 이는 전년 대비 4.9% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 13.8,
+   "citations": 2
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "operating_profit",
+   "question": "POSCO홀딩스의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 1827063210829.0,
+   "expected_tokens": [
+    "1.8조원"
+   ],
+   "answer": "POSCO홀딩스의 2025년 영업이익은 1.8조원입니다. 이는 전년 대비 15.9% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 12.3,
+   "citations": 3
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "net_income",
+   "question": "POSCO홀딩스의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 504403472266.0,
+   "expected_tokens": [
+    "0.5조원"
+   ],
+   "answer": "POSCO홀딩스의 2025년 당기순이익은 0.5조원입니다.",
+   "verdict": "correct",
+   "latency_s": 11.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "employee_count",
+   "question": "POSCO홀딩스 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 524.0,
+   "expected_tokens": [
+    "524명"
+   ],
+   "answer": "POSCO홀딩스의 2025년 직원 수는 524명입니다. 이는 전년 대비 0.6% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.0,
+   "citations": 1
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "operating_margin",
+   "question": "POSCO홀딩스의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 2.6,
+   "expected_tokens": [
+    "2.6%"
+   ],
+   "answer": "POSCO홀딩스의 2025년 영업이익률은 2.6%입니다. 이는 2023년 4.6%에서 지속적으로 하락한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 11.9,
+   "citations": 2
+  },
+  {
+   "corp_code": "00155319",
+   "corp_name": "POSCO홀딩스",
+   "metric": "debt_ratio",
+   "question": "POSCO홀딩스의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 68.6,
+   "expected_tokens": [
+    "68.6%"
+   ],
+   "answer": "POSCO홀딩스의 2025년 부채비율은 68.6%입니다. 이는 전년도 68.3%에 비해 소폭 상승한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 12.0,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "revenue",
+   "question": "SK하이닉스의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 97146675000000.0,
+   "expected_tokens": [
+    "97.1조원"
+   ],
+   "answer": "SK하이닉스의 2025년 매출액은 97.1조원입니다. 이는 전년 대비 46.8% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.6,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "operating_profit",
+   "question": "SK하이닉스의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 47206319000000.0,
+   "expected_tokens": [
+    "47.2조원"
+   ],
+   "answer": "SK하이닉스의 2025년 영업이익은 47.2조원입니다. 이는 전년 대비 101.2% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.4,
+   "citations": 2
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "net_income",
+   "question": "SK하이닉스의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 42947902000000.0,
+   "expected_tokens": [
+    "42.9조원"
+   ],
+   "answer": "SK하이닉스의 2025년 당기순이익은 42.9조원입니다. 공시 확정 지표(연결 우선) 기준입니다.",
+   "verdict": "correct",
+   "latency_s": 10.9,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "employee_count",
+   "question": "SK하이닉스 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 34549.0,
+   "expected_tokens": [
+    "34,549명"
+   ],
+   "answer": "2025년 기준 SK하이닉스의 직원 수는 34,549명입니다. 이는 전년 대비 6.7% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "operating_margin",
+   "question": "SK하이닉스의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 48.6,
+   "expected_tokens": [
+    "48.6%"
+   ],
+   "answer": "SK하이닉스의 2025년 영업이익률은 48.6%입니다. 이는 전년 대비 13.1%포인트 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.9,
+   "citations": 4
+  },
+  {
+   "corp_code": "00164779",
+   "corp_name": "SK하이닉스",
+   "metric": "debt_ratio",
+   "question": "SK하이닉스의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 45.9,
+   "expected_tokens": [
+    "45.9%"
+   ],
+   "answer": "SK하이닉스의 2025년 부채비율은 45.9%입니다. 이는 재무 추이 표에서 확인할 수 있습니다.",
+   "verdict": "correct",
+   "latency_s": 11.1,
+   "citations": 1
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "revenue",
+   "question": "삼성전자의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 333605938000000.0,
+   "expected_tokens": [
+    "333.6조원"
+   ],
+   "answer": "삼성전자의 2025년 매출액은 333.6조원입니다.",
+   "verdict": "correct",
+   "latency_s": 12.6,
+   "citations": 2
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "operating_profit",
+   "question": "삼성전자의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 43601051000000.0,
+   "expected_tokens": [
+    "43.6조원"
+   ],
+   "answer": "삼성전자의 2025년 영업이익은 43.6조원입니다. 이는 전년 대비 33.2% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 12.9,
+   "citations": 3
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "net_income",
+   "question": "삼성전자의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 45206805000000.0,
+   "expected_tokens": [
+    "45.2조원"
+   ],
+   "answer": "삼성전자의 2025년 당기순이익은 45.2조원입니다. 이는 전년 대비 31.2% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 12.5,
+   "citations": 2
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "employee_count",
+   "question": "삼성전자 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 128881.0,
+   "expected_tokens": [
+    "128,881명"
+   ],
+   "answer": "삼성전자의 2025년 기준 직원 수는 128,881명입니다. 이는 전년 대비 0.5% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.0,
+   "citations": 1
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "operating_margin",
+   "question": "삼성전자의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": 13.1,
+   "expected_tokens": [
+    "13.1%"
+   ],
+   "answer": "삼성전자의 2025년 영업이익률은 13.1%입니다. 이는 2023년 2.5%에서 크게 상승한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 10.8,
+   "citations": 1
+  },
+  {
+   "corp_code": "00126380",
+   "corp_name": "삼성전자",
+   "metric": "debt_ratio",
+   "question": "삼성전자의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 29.9,
+   "expected_tokens": [
+    "29.9%"
+   ],
+   "answer": "삼성전자의 2025년 부채비율은 29.9%입니다. 이는 2024년 27.9% 대비 소폭 상승한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 11.8,
+   "citations": 2
+  },
+  {
+   "corp_code": "01350869",
+   "corp_name": "우리금융지주",
+   "metric": "operating_profit",
+   "question": "우리금융지주의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 3674808000000.0,
+   "expected_tokens": [
+    "3.7조원"
+   ],
+   "answer": "우리금융지주의 2025년 영업이익은 3.7조원입니다. 이는 전년 대비 13.6% 감소한 수준입니다.",
+   "verdict": "correct",
+   "latency_s": 12.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "01350869",
+   "corp_name": "우리금융지주",
+   "metric": "net_income",
+   "question": "우리금융지주의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": 3227508000000.0,
+   "expected_tokens": [
+    "3.2조원"
+   ],
+   "answer": "우리금융지주의 2025년 당기순이익은 3.2조원입니다. 이는 전년 대비 0% 성장한 수치입니다. 2024년 당기순이익은 3.2조원이었습니다.",
+   "verdict": "correct",
+   "latency_s": 18.2,
+   "citations": 2
+  },
+  {
+   "corp_code": "01350869",
+   "corp_name": "우리금융지주",
+   "metric": "employee_count",
+   "question": "우리금융지주 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 114.0,
+   "expected_tokens": [
+    "114명"
+   ],
+   "answer": "우리금융지주 직원 수는 2025년 기준 114명입니다. 이는 전년 대비 6.5% 증가한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.2,
+   "citations": 1
+  },
+  {
+   "corp_code": "01350869",
+   "corp_name": "우리금융지주",
+   "metric": "debt_ratio",
+   "question": "우리금융지주의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 1488.7,
+   "expected_tokens": [
+    "1488.7%"
+   ],
+   "answer": "우리금융지주의 2025년 부채비율은 1488.7%입니다. 이는 재무 추이 및 산출 지표 표에서 확인할 수 있습니다.",
+   "verdict": "correct",
+   "latency_s": 12.4,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "revenue",
+   "question": "덕산테코피아의 2025년 매출액은 얼마야?",
+   "kind": "money",
+   "expected_value": 112078954483.0,
+   "expected_tokens": [
+    "1120.8억원"
+   ],
+   "answer": "덕산테코피아의 2025년 연결기준 매출액은 1,121억원입니다. 별도기준으로는 1,064억원입니다.",
+   "verdict": "correct",
+   "latency_s": 12.4,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "operating_profit",
+   "question": "덕산테코피아의 2025년 영업이익은 얼마야?",
+   "kind": "money",
+   "expected_value": -43026410473.0,
+   "expected_tokens": [
+    "-430.3억원"
+   ],
+   "answer": "덕산테코피아의 2025년 영업이익은 -430.3억원입니다. 공시 확정 지표(연결 우선) 기준입니다.",
+   "verdict": "correct",
+   "latency_s": 10.5,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "net_income",
+   "question": "덕산테코피아의 2025년 당기순이익은 얼마야?",
+   "kind": "money",
+   "expected_value": -105550462258.0,
+   "expected_tokens": [
+    "-1055.5억원"
+   ],
+   "answer": "덕산테코피아의 2025년 당기순이익은 -1,055.5억원입니다.",
+   "verdict": "correct",
+   "latency_s": 9.7,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "employee_count",
+   "question": "덕산테코피아 직원 수는 2025년 기준 몇 명이야?",
+   "kind": "count",
+   "expected_value": 328.0,
+   "expected_tokens": [
+    "328명"
+   ],
+   "answer": "2025년 기준 덕산테코피아의 직원 수는 328명입니다. 이는 전년 대비 1.5% 감소한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 11.3,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "operating_margin",
+   "question": "덕산테코피아의 2025년 영업이익률은?",
+   "kind": "pct",
+   "expected_value": -38.4,
+   "expected_tokens": [
+    "-38.4%"
+   ],
+   "answer": "덕산테코피아의 2025년 영업이익률은 -38.4%입니다. 이는 매출액 대비 영업손실이 38.4%에 달함을 의미합니다.",
+   "verdict": "correct",
+   "latency_s": 9.6,
+   "citations": 1
+  },
+  {
+   "corp_code": "01021666",
+   "corp_name": "덕산테코피아",
+   "metric": "debt_ratio",
+   "question": "덕산테코피아의 2025년 부채비율은 어느 정도야?",
+   "kind": "pct",
+   "expected_value": 507.4,
+   "expected_tokens": [
+    "507.4%"
+   ],
+   "answer": "덕산테코피아의 2025년 부채비율은 507.4%입니다. 이는 2023년 179.1%에서 급격히 상승한 수치입니다.",
+   "verdict": "correct",
+   "latency_s": 10.2,
+   "citations": 1
+  }
+ ],
+ "retrieval": []
+}

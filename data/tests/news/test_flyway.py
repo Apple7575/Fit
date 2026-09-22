@@ -120,6 +120,31 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual(schema.table("t").schema, "staging")
         self.assertEqual(schema.table("t").qualified, "staging.t")
 
+    def test_INT_별칭을_INTEGER로_읽는다(self):
+        """PostgreSQL INT는 INTEGER의 별칭이므로 데이터 사전에 INTEGER로 남겨야 한다."""
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            (directory / "V1__init.sql").write_text(
+                "CREATE TABLE t (id INT PRIMARY KEY);", encoding="utf-8")
+            schema = flyway.load(directory)
+
+        self.assertEqual(schema.table("t").columns["id"].data_type, "INTEGER")
+
+    def test_INTERVAL을_INT로_오인하지_않는다(self):
+        with self.assertRaisesRegex(ValueError, "모르는 컬럼 타입"):
+            flyway._parse_type("INTERVAL NOT NULL")
+
+    def test_BIGINT_배열을_명시적으로_읽는다(self):
+        data_type, _ = flyway._parse_type("BIGINT[] NOT NULL DEFAULT '{}'")
+
+        self.assertEqual(data_type, "BIGINT[]")
+
+    def test_BYTEA를_명시적으로_읽는다(self):
+        data_type, rest = flyway._parse_type("BYTEA NOT NULL")
+
+        self.assertEqual(data_type, "BYTEA")
+        self.assertEqual(rest, "NOT NULL")
+
     def test_sql_로_시드되는_테이블을_기록한다(self):
         self.assertEqual(self.schema.seeded_tables, {"industry", "metric"})
 

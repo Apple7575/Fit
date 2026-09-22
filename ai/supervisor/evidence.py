@@ -141,6 +141,38 @@ def _position(result: Mapping[str, Any]) -> list[Evidence]:
     return evidence
 
 
+_DART_URL = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept_no}"
+
+
+def _company(result: Mapping[str, Any]) -> list[Evidence]:
+    """기업 담당의 citations(ai/company_analysis Citation) → 공통 Evidence.
+
+    사업보고서 청크는 COMPANY_REPORT 로, 확정 지표·프로필·산업 비교는 source_id 앞에 종류를 붙여 COMPANY_REPORT 로 싣는다.
+    공통 규격의 source_type 이 넷뿐이라 기업 담당의 출처 종류는 evidence_id 에 남긴다.
+    """
+    evidence: list[Evidence] = []
+    for citation in result.get("citations") or []:
+        if not isinstance(citation, Mapping):
+            continue
+        source_id = _text(citation.get("source_id"))
+        if not source_id:
+            continue
+        kind = str(citation.get("source_type") or "COMPANY_REPORT").lower()
+        rcept_no = _text(citation.get("rcept_no"))
+        evidence.append(
+            Evidence(
+                evidence_id=f"company:{kind}:{source_id}"[:200],
+                source_type="COMPANY_REPORT",
+                source_id=source_id[:200],
+                agent="company",
+                title=_text(result.get("corp_name")),
+                url=_DART_URL.format(rcept_no=rcept_no) if rcept_no else None,
+                excerpt=_text(citation.get("excerpt")),
+            )
+        )
+    return evidence
+
+
 def _text(value: Any) -> str | None:
     if value is None:
         return None
@@ -151,4 +183,4 @@ def _text(value: Any) -> str | None:
 
 
 # writing 담당은 사실 근거를 생산하지 않는다(다른 담당의 feedback을 소비만 한다).
-_EXTRACTORS = {"news": _news, "jd": _jd, "position": _position}
+_EXTRACTORS = {"news": _news, "jd": _jd, "position": _position, "company": _company}

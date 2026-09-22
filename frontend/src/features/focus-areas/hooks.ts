@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useApiQuery, type QueryState } from '../../hooks/useApiQuery';
+import { REUSE_WHILE_READING, useApiQuery, type QueryState } from '../../hooks/useApiQuery';
 import {
   fetchAllActivities,
   fetchEmployeeTrend,
@@ -13,6 +13,9 @@ import type {
   WorkforceChange,
 } from './types';
 
+/** 기업 분석 한 장은 같은 값을 여러 구획이 쓴다. 보는 동안은 한 번만 부른다 */
+const REUSE = { reuseMs: REUSE_WHILE_READING };
+
 export type ActivitiesState = QueryState<InvestmentActivity[]>;
 export type WorkforceState = QueryState<WorkforceChange>;
 export type FocusState = QueryState<CompanyFocus>;
@@ -24,7 +27,7 @@ export function useAllActivities(corpCode: string) {
     (signal: AbortSignal) => fetchAllActivities(corpCode, signal),
     [corpCode],
   );
-  return useApiQuery(`activities-all|${corpCode}`, fetcher);
+  return useApiQuery(`activities-all|${corpCode}`, fetcher, REUSE);
 }
 
 export function useWorkforce(corpCode: string) {
@@ -32,7 +35,7 @@ export function useWorkforce(corpCode: string) {
     (signal: AbortSignal) => fetchWorkforce(corpCode, signal),
     [corpCode],
   );
-  return useApiQuery(`workforce|${corpCode}`, fetcher);
+  return useApiQuery(`workforce|${corpCode}`, fetcher, REUSE);
 }
 
 export function useFocus(corpCode: string) {
@@ -40,7 +43,7 @@ export function useFocus(corpCode: string) {
     (signal: AbortSignal) => fetchFocus(corpCode, signal),
     [corpCode],
   );
-  return useApiQuery(`focus|${corpCode}`, fetcher);
+  return useApiQuery(`focus|${corpCode}`, fetcher, REUSE);
 }
 
 export function useEmployeeTrend(corpCode: string) {
@@ -48,5 +51,5 @@ export function useEmployeeTrend(corpCode: string) {
     (signal: AbortSignal) => fetchEmployeeTrend(corpCode, signal),
     [corpCode],
   );
-  return useApiQuery(`employee-trend|${corpCode}`, fetcher);
+  return useApiQuery(`employee-trend|${corpCode}`, fetcher, REUSE);
 }

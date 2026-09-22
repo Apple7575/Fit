@@ -111,7 +111,7 @@ const okInsights: ComparisonInsightsState = {
 };
 
 describe('ComparisonResult', () => {
-  it('draws one coloured line per company over five years and breaks at missing years', () => {
+  it('draws one coloured line per company over five years and bridges missing years', () => {
     render(
       <ComparisonResult comparison={comparison} insights={okInsights} metricKey="revenue" trends={trendsOk} />,
     );
@@ -120,10 +120,18 @@ describe('ComparisonResult', () => {
     const lines = within(chart).getAllByTestId('line-series');
     expect(lines).toHaveLength(2);
     expect(lines[0]).toHaveAttribute('data-series', '삼성전자');
-    // 삼성전자 5점, SK하이닉스 2023 결측 → 4점 (선은 두 조각)
+    // 삼성전자 5점, SK하이닉스 2023 결측 → 4점
     expect(within(lines[0]).getAllByTestId('line-point')).toHaveLength(5);
     expect(within(lines[1]).getAllByTestId('line-point')).toHaveLength(4);
-    expect(lines[1].querySelectorAll('polyline')).toHaveLength(2);
+    /*
+     * 값이 빠진 해에서 선을 끊지 않는다. 끊기면 그래프가 고장 난 것처럼 보였다.
+     * 대신 건너뛴 구간만 점선으로 구분한다 — 실선 두 조각 + 점선 한 조각.
+     */
+    expect(within(lines[1]).getAllByTestId('line-bridge')).toHaveLength(1);
+    expect(lines[1].querySelectorAll('polyline')).toHaveLength(3);
+    // 값이 다 있는 쪽에는 점선이 없다
+    expect(within(lines[0]).queryByTestId('line-bridge')).not.toBeInTheDocument();
+    expect(screen.getByText('값이 없는 해를 건너뛴 구간')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /매출 5개년 비교/ })).toHaveTextContent('단위: 원');
     const legend = within(screen.getByRole('list', { name: '범례' }));
     expect(legend.getByText('삼성전자')).toBeInTheDocument();
@@ -194,7 +202,7 @@ describe('ComparisonResult', () => {
     expect(screen.getByText(/기준 2025년/)).toBeInTheDocument();
   });
 
-  it('hides insights when empty and explains when there are no companies', () => {
+  it('explains insights when empty and when there are no companies', () => {
     const { unmount } = render(
       <ComparisonResult
         comparison={comparison}
@@ -203,7 +211,9 @@ describe('ComparisonResult', () => {
         trends={trendsOk}
       />,
     );
-    expect(screen.queryByRole('heading', { name: '핵심 인사이트' })).not.toBeInTheDocument();
+    // 비어도 카드는 자리를 지키고 왜 없는지 알려 준다
+    expect(screen.getByRole('heading', { name: '핵심 인사이트' })).toBeInTheDocument();
+    expect(screen.getByText(/비교 인사이트는 아직 준비 중/)).toBeInTheDocument();
     unmount();
 
     render(

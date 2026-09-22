@@ -39,6 +39,7 @@ DEFAULT_TOOL_POLICY: dict[str, frozenset[str]] = {
     "news": frozenset({"get_job_context", "list_news", "search_news_external"}),
     "position": frozenset(),  # 제출 문서만 사용
     "writing": frozenset(),  # 다른 담당의 피드백만 사용
+    "company": frozenset(),  # 자기 리포트 저장소와 공시 청크만 사용(총괄 도구 없음)
     "supervisor": frozenset({"get_conversation"}),
 }
 
@@ -242,20 +243,29 @@ class NewsRepositoryProxy(_Proxy):
 
 
 class NewsSearchProviderProxy(_Proxy):
-    def search(self, corp_name, position_name, missing_scopes, from_date, to_date, limit):
+    # 검색기 시그니처와 같아야 한다. 검색기에 industry_name 을 더했을 때 여기를 빼먹어
+    # 총괄이 한 번 돌고 나면(이 프록시가 공용 뉴스 서비스에 끼워진 뒤) 뉴스 담당 호출이
+    # 전부 500 으로 죽었다 — 뉴스 전담 방까지 함께. 앞으로 인자가 늘어도 그대로 넘긴다.
+    def search(
+        self, corp_name, position_name, missing_scopes, from_date, to_date, limit,
+        *, industry_name=None, **kwargs,
+    ):
         return self._toolbox.call(
             self._agent,
             "search_news_external",
             {
                 "corp_name": corp_name,
                 "position_name": position_name,
+                "industry_name": industry_name,
                 "missing_scopes": [str(scope) for scope in missing_scopes],
                 "from_date": from_date.isoformat(),
                 "to_date": to_date.isoformat(),
                 "limit": limit,
+                **{key: value for key, value in kwargs.items() if isinstance(value, (str, int, type(None)))},
             },
             lambda: self._target.search(
-                corp_name, position_name, missing_scopes, from_date, to_date, limit
+                corp_name, position_name, missing_scopes, from_date, to_date, limit,
+                industry_name=industry_name, **kwargs,
             ),
             count=_len_or_none,
         )

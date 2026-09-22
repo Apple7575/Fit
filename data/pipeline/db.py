@@ -97,6 +97,7 @@ class LoadStats:
 
 def upsert(conn, table: str, rows: Sequence[dict], *, pk: Sequence[str],
            columns: Sequence[str] | None = None,
+           conflict_where: str | None = None,
            batch: int = 1000) -> LoadStats:
     """INSERT ... ON CONFLICT (pk) DO UPDATE.
 
@@ -107,6 +108,15 @@ def upsert(conn, table: str, rows: Sequence[dict], *, pk: Sequence[str],
     직접 넣지 않은 경우에만** now() 로 갱신한다. develop 스키마는 테이블마다
     다르다 — `company` 는 updated_at, 착지 테이블은 collected_at, `industry` 는
     둘 다 없다. 무조건 붙이면 적재가 통째로 실패한다.
+
+    `conflict_where` 는 **키가 부분 UNIQUE 인덱스일 때** 그 인덱스의 WHERE 절이다.
+    PostgreSQL 은 부분 인덱스를 중재자로 삼으려면 같은 조건을 conflict_target 에
+    요구한다. 빼면 컬럼이 정확히 같아도 다음처럼 죽는다 (2026-09-22 실측).
+
+        there is no unique or exclusion constraint matching the ON CONFLICT specification
+
+    조건문은 **스키마에서 읽어 온 것만** 넘긴다 (`flyway.Table.predicate_for`).
+    사용자 입력을 여기에 넣지 않는다 — 식이라 식별자로 감쌀 수 없다.
     """
     st = LoadStats(table=table)
     if not rows:
@@ -121,15 +131,20 @@ def upsert(conn, table: str, rows: Sequence[dict], *, pk: Sequence[str],
         if touch not in cols and _has_column(conn, table, touch):
             sets.append(sql.SQL("{c} = now()").format(c=sql.Identifier(touch)))
 
+    target = sql.SQL("({pk})").format(pk=sql.SQL(", ").join(map(sql.Identifier, pk)))
+    if conflict_where:
+        target = sql.SQL("{target} WHERE {pred}").format(
+            target=target, pred=sql.SQL(conflict_where))
+
     stmt = sql.SQL("""
         INSERT INTO {table} ({cols}) VALUES ({vals})
-        ON CONFLICT ({pk}) DO UPDATE SET {sets}
+        ON CONFLICT {target} DO UPDATE SET {sets}
         RETURNING (xmax = 0) AS inserted
     """).format(
         table=sql.Identifier(table),
         cols=sql.SQL(", ").join(map(sql.Identifier, cols)),
         vals=sql.SQL(", ").join(sql.Placeholder() * len(cols)),
-        pk=sql.SQL(", ").join(map(sql.Identifier, pk)),
+        target=target,
         sets=sql.SQL(", ").join(sets),
     )
 

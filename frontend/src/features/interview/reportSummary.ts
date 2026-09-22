@@ -38,6 +38,17 @@ export function buildAxes(
   items: ItemLike[],
   deliveryRows: MetricRow[],
   manner: { ok: number; total: number } | null,
+  /**
+   * 측정값이 없을 때 그 까닭. 기본값은 "이번에 장비가 꺼져 있었다"는 뜻이다.
+   *
+   * <p>영상과 자세 분석은 서버에 올라가지 않고 녹화한 브라우저에만 남는다. 그래서 다른 기기나
+   * 다른 브라우저에서 저장본을 열면 값이 통째로 비는데, 그때 "카메라를 켜면 봐 드려요"라고 하면
+   * 사용자는 카메라를 켰었으므로 고장으로 읽는다. 부르는 쪽이 까닭을 넘겨 준다.
+   */
+  unmeasured: { delivery: string; manner: string } = {
+    delivery: '마이크가 꺼져 있었어요',
+    manner: '카메라를 켜면 봐 드려요',
+  },
 ): Axis[] {
   const points = items.flatMap((item) => item.points);
   const strengths = points.filter((p) => p.kind === 'STRENGTH').length;
@@ -66,20 +77,22 @@ export function buildAxes(
             total: points.length,
           };
 
-  const warnRows = deliveryRows.filter((r) => r.tone === 'warn');
-  const okRows = deliveryRows.length - warnRows.length;
+  // 재지 못한 항목은 고리에서 빼 둔다. 적정으로 세면 없는 측정이 점수가 된다
+  const measuredRows = deliveryRows.filter((r) => r.tone !== 'none');
+  const warnRows = measuredRows.filter((r) => r.tone === 'warn');
+  const okRows = measuredRows.length - warnRows.length;
   const delivery: Axis =
-    deliveryRows.length === 0
-      ? { key: 'delivery', title: '말하기', status: '측정 없음', detail: '마이크가 꺼져 있었어요', tone: 'none', ok: 0, total: 0 }
+    measuredRows.length === 0
+      ? { key: 'delivery', title: '말하기', status: '측정 없음', detail: unmeasured.delivery, tone: 'none', ok: 0, total: 0 }
       : warnRows.length === 0
         ? {
             key: 'delivery',
             title: '말하기',
             status: '좋아요',
-            detail: `${deliveryRows.length}개 항목 모두 적정`,
+            detail: `${measuredRows.length}개 항목 모두 적정`,
             tone: 'good',
             ok: okRows,
-            total: deliveryRows.length,
+            total: measuredRows.length,
           }
         : {
             key: 'delivery',
@@ -88,12 +101,12 @@ export function buildAxes(
             detail: warnRows.map((r) => r.key).join(' · '),
             tone: 'warn',
             ok: okRows,
-            total: deliveryRows.length,
+            total: measuredRows.length,
           };
 
   const mannerAxis: Axis =
     manner == null || manner.total === 0
-      ? { key: 'manner', title: '태도 · 시선', status: '측정 없음', detail: '카메라를 켜면 봐 드려요', tone: 'none', ok: 0, total: 0 }
+      ? { key: 'manner', title: '태도 · 시선', status: '측정 없음', detail: unmeasured.manner, tone: 'none', ok: 0, total: 0 }
       : manner.ok === manner.total
         ? {
             key: 'manner',

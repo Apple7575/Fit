@@ -79,6 +79,11 @@ public class Room {
         this.agents = List.copyOf(agents);
     }
 
+    /** 자소서의 공고가 바뀌면 이미 만들어진 검토 방도 같은 공고를 보게 한다. */
+    public void setJobContextId(String jobContextId) {
+        this.jobContextId = jobContextId;
+    }
+
     public boolean ownedBy(Long candidateUserId) {
         return userId.equals(candidateUserId);
     }

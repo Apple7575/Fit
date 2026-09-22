@@ -67,6 +67,7 @@ class SegmentPatterns:
     table_hint: re.Pattern
     exclude_row: re.Pattern
     exclude_cell: re.Pattern
+    subtotal_cell: re.Pattern                        # 안쪽 라벨에 숨은 소계 행
     balance_sheet_row: re.Pattern                    # 부문이 아니라 재무상태표 항목
     name_strip: re.Pattern
     name_max_len: int
@@ -214,6 +215,7 @@ def load_patterns(path: Path | None = None) -> Patterns:
                 table_hint=_re(br["segment"]["table_hint_re"]),
                 exclude_row=_re(br["segment"]["exclude_row_re"]),
                 exclude_cell=_re(br["segment"]["exclude_cell_re"]),
+                subtotal_cell=_re(br["segment"]["subtotal_cell_re"]),
                 balance_sheet_row=_re(br["segment"]["balance_sheet_row_re"]),
                 name_strip=_re(br["segment"]["name_strip_re"]),
                 name_max_len=int(br["segment"]["name_max_len"]),

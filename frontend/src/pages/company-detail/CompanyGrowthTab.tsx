@@ -24,7 +24,7 @@ export function CompanyGrowthTab() {
     return (
       <section
         aria-busy="true"
-        className="h-72 animate-pulse rounded-3xl border border-slate-200 bg-white shadow-sm"
+        className="h-72 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70 shadow-sm"
         role="status"
       >
         <span className="sr-only">기준연도를 확인하는 중입니다</span>

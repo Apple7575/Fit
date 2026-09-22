@@ -115,7 +115,11 @@ export function averageDelivery(list: DeliveryMetrics[]): DeliveryMetrics | null
   };
 }
 
-// 임계값(초안)
+/*
+ * 아래 숫자는 일반적인 권장 범위지 정답이 아니다. 회사·직무·질문에 따라 알맞은 속도와 길이가
+ * 다르므로, 벗어났다고 해서 "틀렸다"고 말하지 않는다. 화면 문구도 단정 대신 "조금 ~한 편"으로
+ * 적고, 어떻게 쟀는지는 리포트의 "어떻게 쟀나요"에서 함께 밝힌다.
+ */
 export const PACE_MIN = 260;
 export const PACE_MAX = 340;
 export const FILLER_WARN = 3; // %
@@ -125,7 +129,13 @@ export const START_DELAY_WARN = 3; // 초
 export const SILENCE_WARN = 4; // 초 (최장 공백)
 export const VOLUME_CV_WARN = 0.6;
 
-export type Tone = 'good' | 'warn';
+/**
+ * good 적정 · warn 한 번 볼 것 · none 재지 못함.
+ *
+ * <p>none 은 사용자의 잘못이 아니다. 마이크가 꺼져 있었거나 얼굴이 안 잡힌 경우인데, 이걸
+ * warn 으로 세면 가만히 있어도 "고칠 것 1개"가 생긴다.
+ */
+export type Tone = 'good' | 'warn' | 'none';
 export interface MetricRow {
   key: string;
   value: string;
@@ -134,9 +144,11 @@ export interface MetricRow {
 }
 
 function ratePace(wpm: number): MetricRow {
-  if (wpm === 0) return { key: '말 속도', value: '측정 안 됨', tone: 'warn' };
-  if (wpm < PACE_MIN) return { key: '말 속도', value: `1분에 ${wpm}자`, tone: 'warn', hint: '조금 더 또렷하고 빠르게 말해 보세요' };
-  if (wpm > PACE_MAX) return { key: '말 속도', value: `1분에 ${wpm}자`, tone: 'warn', hint: '조금 천천히 말해 보세요' };
+  if (wpm === 0) return { key: '말 속도', value: '재지 못함', tone: 'none', hint: '소리가 잡히지 않았어요' };
+  if (wpm < PACE_MIN)
+    return { key: '말 속도', value: `1분에 ${wpm}자`, tone: 'warn', hint: '보통보다 조금 느린 편이에요. 더 또렷하게 말해 보세요' };
+  if (wpm > PACE_MAX)
+    return { key: '말 속도', value: `1분에 ${wpm}자`, tone: 'warn', hint: '보통보다 조금 빠른 편이에요. 한 박자 천천히 가도 괜찮아요' };
   return { key: '말 속도', value: `1분에 ${wpm}자`, tone: 'good' };
 }
 
@@ -149,7 +161,7 @@ export function describeDelivery(m: DeliveryMetrics): MetricRow[] {
     key: '습관어(음·어)',
     value: `${m.fillerCount}번`,
     tone: fillerWarn ? 'warn' : 'good',
-    hint: fillerWarn ? '“음·어” 같은 말버릇을 줄여 보세요' : undefined,
+    hint: fillerWarn ? '“음·어” 같은 말버릇이 조금 잦은 편이에요' : undefined,
   });
 
   const lenWarn = m.durationSec < LEN_MIN || m.durationSec > LEN_MAX;
@@ -157,7 +169,12 @@ export function describeDelivery(m: DeliveryMetrics): MetricRow[] {
     key: '답변 길이',
     value: `${m.durationSec}초`,
     tone: lenWarn ? 'warn' : 'good',
-    hint: m.durationSec < LEN_MIN ? '조금 더 구체적으로' : m.durationSec > LEN_MAX ? '핵심 위주로 간결하게' : undefined,
+    hint:
+      m.durationSec < LEN_MIN
+        ? '조금 짧은 편이에요. 예시를 하나 더 붙여 보세요'
+        : m.durationSec > LEN_MAX
+          ? '조금 긴 편이에요. 핵심부터 말하면 잘 들려요'
+          : undefined,
   });
 
   if (m.hasAudio) {
@@ -166,14 +183,14 @@ export function describeDelivery(m: DeliveryMetrics): MetricRow[] {
       key: '말이 멈춘 시간',
       value: `말 시작까지 ${m.startDelaySec}초 · 가장 긴 침묵 ${m.longestSilenceSec}초`,
       tone: pauseWarn ? 'warn' : 'good',
-      hint: pauseWarn ? '질문이 끝나면 바로 첫 문장을 시작해 보세요' : undefined,
+      hint: pauseWarn ? '첫 문장을 조금 더 빨리 시작하면 편해져요' : undefined,
     });
     const volWarn = m.volumeCV > VOLUME_CV_WARN;
     rows.push({
       key: '목소리 크기',
-      value: volWarn ? '들쭉날쭉해요' : '고르게 유지',
+      value: volWarn ? '조금 들쭉날쭉' : '고르게 유지',
       tone: volWarn ? 'warn' : 'good',
-      hint: volWarn ? '문장 끝까지 같은 크기로 말해 보세요' : undefined,
+      hint: volWarn ? '문장 끝이 작아지는 편이에요. 끝까지 같은 크기로 말해 보세요' : undefined,
     });
   }
 

@@ -6,7 +6,7 @@
 제한:
 - 위임 라운드는 요청당 1회(MAX_ROUNDS). 위임으로 실행된 담당의 needs는 무시한다.
 - 라운드당 최대 MAX_DELEGATIONS개 담당만 추가 실행한다.
-- 위임 대상은 분석 담당(jd/position/news)이어야 하고, 컨텍스트가 있어야 하며,
+- 위임 대상은 분석 담당(jd/position/news/company)이어야 하고, 컨텍스트가 있어야 하며,
   이미 실행된 담당은 다시 부르지 않는다.
 """
 
@@ -21,8 +21,8 @@ from ai.supervisor.contracts import AgentNeed, AgentResult
 
 _COMPANY_INFO_HINT = re.compile(r"기업|회사|사업|뉴스|기사|변화|동향|전략|투자|산업|시장")
 
-ANALYSIS_AGENT_NAMES = frozenset({"jd", "position", "news"})
-DOCUMENT_FREE_AGENTS = frozenset({"news"})  # 제출 문서 없이도 실행 가능한 담당
+ANALYSIS_AGENT_NAMES = frozenset({"jd", "position", "news", "company"})
+DOCUMENT_FREE_AGENTS = frozenset({"news", "company"})  # 제출 문서 없이도 실행 가능한 담당
 MAX_ROUNDS = 1
 MAX_DELEGATIONS = 2
 

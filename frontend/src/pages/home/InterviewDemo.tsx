@@ -4,6 +4,10 @@ import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { MediaSlot } from '../../components/brand/MediaSlot';
 import { prefersReducedMotion, useInView } from '../../hooks/useInView';
 
+/** 모의 면접 화면과 같은 영상 */
+const HERO_VIDEO = '/interview-media/hero.mp4';
+const HERO_POSTER = '/interview-media/hero.jpg';
+
 const QUESTIONS = [
   {
     tag: '회사 데이터',
@@ -95,11 +99,26 @@ export function InterviewDemo() {
   return (
     <section
       aria-labelledby="interview-title"
-      className="snap-start flex min-h-screen items-center bg-slate-950 pt-14 text-white"
+      className="relative isolate snap-start flex min-h-screen items-center overflow-hidden bg-slate-950 pt-14 text-white"
       id="interview"
       ref={ref}
     >
-      <div className="mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_1fr]">
+      {/* 모의 면접 화면이 쓰는 영상 그대로. 빈 의자가 이 구획의 뜻을 그대로 말한다 */}
+      <div aria-hidden="true" className="absolute inset-0">
+        <video
+          autoPlay
+          className="size-full object-cover"
+          loop
+          muted
+          playsInline
+          poster={HERO_POSTER}
+          preload="metadata"
+          src={HERO_VIDEO}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950/88 via-slate-950/78 to-slate-950/92" />
+      </div>
+
+      <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_1fr]">
         {/* 면접 화면 목업 */}
         <div
           aria-label="모의 면접 화면 예시"
@@ -107,7 +126,7 @@ export function InterviewDemo() {
           role="img"
         >
           <div className="relative aspect-video overflow-hidden rounded-[var(--radius-card)] ring-1 ring-white/15">
-            <MediaSlot label="면접 화면 클립" spec="1280×720 · 6~8초 루프 · 2MB 이하" />
+            <MediaSlot label="면접 화면 클립" placeholder="person" />
             {phase === 'answer' && (
               <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-bold text-white">
                 <span className="size-2 animate-pulse rounded-full bg-white" /> REC {mm}:{ss}
@@ -188,13 +207,13 @@ export function InterviewDemo() {
             AI interview
           </p>
           <h2 className="display-lg text-balance" id="interview-title">
-            그 회사 면접관처럼
+            실제 면접관처럼
             <br />
             묻고, 들어줍니다.
           </h2>
-          <p className="body-lg mt-5 max-w-[40ch] text-slate-300">
-            회사 데이터와 내 자소서에서 질문을 뽑고, 말로 답하면 받아씁니다. 답변을 듣고 꼬리질문을
-            한 번 더 던진 뒤, 강점과 개선점을 정리해 줍니다.
+          {/* 첫 장과 같이, 한글이 단어 한가운데서 끊기지 않게 띄어쓰기에서만 줄을 바꾼다 */}
+          <p className="body-lg mt-5 max-w-[40ch] break-keep text-slate-300">
+            질문을 던지면 말로 답하고, 강점과 개선점을 정리해 줍니다.
           </p>
           <div className="mt-8 flex items-end gap-3">
             <CharacterSlot character="owl" size={72} />

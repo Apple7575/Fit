@@ -15,7 +15,8 @@
 사업보고서 원천은 `scripts/parse_business_reports.py` 와
 `scripts/extract_business_text_llm.py` 가 `staged/business_report/` 에 만든다
 (S15P21A504-73). **없으면 그 부분만 비고 나머지는 그대로 나온다** — 이 스크립트는
-DART 정형 API 만으로도 돌아야 한다.
+DART 정형 API 만으로도 돌아야 한다. 다만 그때는 행이 크게 줄어 아래 안전장치가
+멈춘다. 일부러 그러는 것이면 `--allow-shrink` 다.
 
 `company` 는 정규 시장 상장사 2,703개사다 (corp_cls Y·K·N). 수집 모집단
 (`pipeline/universe.py`)과 같은 경계이고, corp_cls=E 1,227개사를 참조하는 행이
@@ -54,6 +55,12 @@ segment_revenue 95행은 넣지 않기로 했다 (MR !81). 부문 목록의 원�
     python scripts/build_curated_seed.py               # 7종 전부
     python scripts/build_curated_seed.py --only company segment_metric
     python scripts/build_curated_seed.py --verify-db   # DB 와 대조
+    python scripts/build_curated_seed.py --allow-shrink  # 행이 줄어도 쓴다
+
+**직전 시드보다 행이 5% 넘게 줄면 그 표를 쓰지 않고 멈춘다** (`_check_shrink`).
+기준은 `manifests/seed/<table>.json` 이고 표 전체·기업 수·갈래별 행수를 함께 본다.
+검증 7축은 시드에 들어간 행만 보아 사라진 값을 못 잡는다 — 값이 조용히 없어지는
+사고가 세 번 있었다.
 """
 from __future__ import annotations
 
@@ -69,6 +76,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# 콘솔이 cp949 면 '→'·'⚠' 에서 죽는다. 형제 스크립트들과 같은 처리다.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):
+        pass
+
 from build_metric_seed import FIELDS as CM_FIELDS  # noqa: E402
 from build_metric_seed import employee_files  # noqa: E402
 from build_metric_seed import build_rows as build_company_metric_rows  # noqa: E402
@@ -76,6 +90,7 @@ from build_metric_seed import write_seed as write_company_metric  # noqa: E402
 from pipeline.news import flyway  # noqa: E402
 from pipeline.news.csvio import write_csv  # noqa: E402
 from pipeline.patterns import patterns as default_patterns  # noqa: E402
+from pipeline import seed_guard  # noqa: E402
 from pipeline.normalize.text import squash, to_num  # noqa: E402
 from pipeline.paths import (CONFIG, cache_dir, curated_seed_dir,  # noqa: E402
                             raw_api_dir, staged_dir)
@@ -191,6 +206,7 @@ def _write(table: str, rows: list[dict], source: str, notes: list[str],
         stats = dict(stats or {})
         stats.update({f"길이 초과로 제외: {k}": v for k, v in dropped.items()})
         print(f"  ⚠ {table}: 길이 초과로 제외 {dict(dropped)}")
+    _check_shrink(table, rows, fields)
     dest = curated_seed_dir() / f"{table}.csv"
     write_csv(dest, fields, rows)
     _manifest(table, rows, fields, source, notes, stats)
@@ -240,6 +256,10 @@ def _manifest(table: str, rows: list[dict], fields: list[str], source: str,
                         for k in fields},
         "notes": notes,
     }
+    breakdown = seed_guard.breakdown(table, rows)
+    if breakdown:
+        # 다음 생성 때 이 표를 갈래별로 대조하는 기준이 된다 (_check_shrink).
+        body["row_breakdown"] = breakdown
     if rows and "corp_code" in fields:
         body["distinct_corp_codes"] = len({r["corp_code"] for r in rows})
     if rows and "fiscal_year" in fields:
@@ -252,6 +272,19 @@ def _manifest(table: str, rows: list[dict], fields: list[str], source: str,
     dest.mkdir(parents=True, exist_ok=True)
     (dest / f"{table}.json").write_text(
         json.dumps(body, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+# --------------------------------------------------- 직전 시드와 행수 대조
+
+# 판단은 pipeline/seed_guard.py 에 있다 — 뉴스 시드도 같은 것을 쓴다.
+# main() 이 옵션을 여기에 담는다. _write() 가 표마다 부르는 자리라 인자로
+# 들고 다니지 않는다.
+_GUARD = {"max_drop": seed_guard.MAX_DROP, "allow_shrink": False}
+
+
+def _check_shrink(table: str, rows: list[dict], fields: list[str]) -> None:
+    seed_guard.check(table, rows, manifest_dir=SEED_MANIFEST_DIR, fields=fields,
+                     max_drop=_GUARD["max_drop"], allow_shrink=_GUARD["allow_shrink"])
 
 
 def _profile_files() -> dict[str, Path]:
@@ -572,8 +605,9 @@ def build_segment_metric(corp_codes: set[str]) -> tuple[list[dict], Counter]:
 def build_company_activity(corp_codes: set[str]) -> tuple[list[dict], Counter]:
     """타법인 출자현황 → corporate_invest, 사업보고서 → facility.
 
-    activity_type 4종 중 둘의 원천이 확보됐다. ma·transfer 는 주요사항보고서에서
-    오고 아직 수집 경로가 없다.
+    activity_type 은 corporate_invest·facility 둘이다. 나머지 둘(ma·transfer)은
+    주요사항보고서가 원천인데 **2026-09-21 에 수집하지 않기로 했다** — 수집기를 새로
+    뚫는 며칠치 작업이고 화면은 지금 둘로 돌아간다.
 
     amount 는 **기말 장부가액**(trmend_blce_acntbk_amount)이다. 원천이 사건이
     아니라 사업연도 말 잔액 스냅샷이라서 fiscal_year 축을 쓴다 (V13 4장).
@@ -739,7 +773,9 @@ def main() -> int:
                     help="metric 카탈로그를 DB 와 대조한다")
     ap.add_argument("--include-unlisted", action="store_true",
                     help="company 에 corp_cls=E(기타) 1,227개사까지 넣는다")
+    seed_guard.add_arguments(ap)
     args = ap.parse_args()
+    _GUARD.update(max_drop=args.max_drop, allow_shrink=args.allow_shrink)
     want = set(args.only or TABLES)
     built: dict[str, list[dict]] = {}
 
@@ -799,6 +835,7 @@ def main() -> int:
                              f"{CM_FIELDS} != {header('company_metric')}")
         rows, st = build_company_metric_rows()
         built["company_metric"] = rows
+        _check_shrink("company_metric", rows, CM_FIELDS)
         dest = write_company_metric(rows)
         _manifest("company_metric", rows, CM_FIELDS,
                   "staged/opendart/financials.csv (fnlttMultiAcnt 2021~2025)",
@@ -837,7 +874,7 @@ def main() -> int:
                       ".cache/otrCprInvstmntSttus_*.json (타법인 출자현황) + "
                       "staged/business_report/facility.csv (사업보고서 시설투자)",
                       ["activity_type 은 corporate_invest·facility 둘 — ma·transfer 는"
-                       " 원천 미확보",
+                       " 수집하지 않기로 했다 (2026-09-21 팀장 확정)",
                        "amount 는 기말 장부가액이다 (사건이 아니라 연말 잔액 스냅샷)",
                        "corporate_invest 의 field_name 은 원천에 대응하는 값이 없어 비운다",
                        "facility 의 counterparty 는 비운다 — 상대방이 있는 거래가 아니다",
@@ -845,7 +882,8 @@ def main() -> int:
         print(f"company_activity  {len(rows):>7,}행  → {dest.name}")
         print(f"  회사 {len({r['corp_code'] for r in rows}):,} · "
               + " · ".join(f"{k} {v:,}" for k, v in sorted(st.items())))
-        print("  activity_type 은 corporate_invest·facility 둘이다 — ma·transfer 는 원천 미확보")
+        print("  activity_type 은 corporate_invest·facility 둘이다 —"
+              " ma·transfer 는 수집하지 않기로 했다 (2026-09-21)")
 
     if "company_text" in want:
         rows, st = build_company_text(corp_codes)

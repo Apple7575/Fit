@@ -1,0 +1,854 @@
+{
+ "summary": {
+  "generated_at": "20260919-040510",
+  "corp_codes": [
+   "00139214",
+   "00439965",
+   "00136165",
+   "00164742",
+   "00266961",
+   "00155319",
+   "00164779",
+   "00126380",
+   "01350869",
+   "01021666"
+  ],
+  "elapsed_s": 131,
+  "retrieval": {
+   "questions": 53,
+   "bm25": {
+    "recall@1": 0.34,
+    "recall@3": 0.604,
+    "recall@5": 0.698,
+    "recall@8": 0.774,
+    "mrr": 0.488
+   },
+   "vector": {
+    "recall@1": 0.509,
+    "recall@3": 0.755,
+    "recall@5": 0.792,
+    "recall@8": 0.83,
+    "mrr": 0.627
+   },
+   "hybrid": {
+    "recall@1": 0.472,
+    "recall@3": 0.717,
+    "recall@5": 0.774,
+    "recall@8": 0.868,
+    "mrr": 0.61
+   }
+  }
+ },
+ "facts": [],
+ "retrieval": [
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-0905d877ba271e5af8fb6e17ac8d9c6a",
+   "section_title": "2. 영업의 현황",
+   "question": "이 회사의 해외 법인 운용 실적은 어때요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-0905d877ba271e5af8fb6e17ac8d9c6a"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-6cddc72be99993e6e088a104fc172a34",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사는 해외 손해보험 시장의 경쟁력 요인을 무엇으로 보나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-6cddc72be99993e6e088a104fc172a34",
+    "dart-business-report-f1d289654ad2fbc470edcadf99a9f4f8"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-12ef852492d2084a6d40c510d0c5e88a",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 손해사정서비스를 어떻게 운영하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 2,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-12ef852492d2084a6d40c510d0c5e88a",
+    "dart-business-report-3c3b63c0402cf46abcaa4dd0bfc8d616"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-04e43422b7b08fef979965a98eaa988c",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 경쟁력 있는 보험료를 산출하는 데 어떤 역량을 중시하나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 2,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-04e43422b7b08fef979965a98eaa988c"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-d80f2b28e64d1cb4fd508be43b9c6ce9",
+   "section_title": "2. 영업의 현황",
+   "question": "이 회사의 주요 보험 종목별 수익과 비용은 어떻게 달라졌나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 2,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-d80f2b28e64d1cb4fd508be43b9c6ce9",
+    "dart-business-report-59d94440eceaae93bce396c080690eb1"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-121be0f2e43665c53f0a088bb93c32dd",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사가 손해보험 시장에서 어떤 위치를 차지하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-121be0f2e43665c53f0a088bb93c32dd",
+    "dart-business-report-4540c43c7b92940f87f0e0f86646af82"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00139214",
+   "evidence_id": "dart-business-report-3c3b63c0402cf46abcaa4dd0bfc8d616",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사는 손해사정·보상 서비스에서 어떻게 경쟁 우위를 확보하나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 2,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-3c3b63c0402cf46abcaa4dd0bfc8d616"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-8804dbee438085b84b214ddc03b0d5e3",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사의 유형자산은 어떤 방식으로 담보로 제공되고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 1,
+    "hybrid": 3
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-8804dbee438085b84b214ddc03b0d5e3"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-2ceb8e8c9b03c6daefe60c4fa5e1e881",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사의 금융상품 공정가치는 어떻게 측정되나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-2ceb8e8c9b03c6daefe60c4fa5e1e881",
+    "dart-business-report-5c3011fcb38d82bc64c7cbf6ea404382"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-196a3e7ce60ce1c73baab0e140a454f1",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사가 외환위험을 어떻게 관리하나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 1,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-196a3e7ce60ce1c73baab0e140a454f1",
+    "dart-business-report-df6872195bf6702f1f4c360be9e5daf6"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00439965",
+   "evidence_id": "dart-business-report-5a6ec4869192fdbe630d09542971e655",
+   "section_title": "3. 연결재무제표 주석",
+   "question": "이 회사의 재고자산 실재성은 감사에서 어떻게 확인되었나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 2,
+    "hybrid": 6
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-5a6ec4869192fdbe630d09542971e655"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-4d6ce6552f1af9f975b3ebe8dba8972b",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 수출하는 시장은 어디인가요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-4d6ce6552f1af9f975b3ebe8dba8972b"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-966c1621ba3e2e8829d0c887fe18c61a",
+   "section_title": "6. 주요계약 및 연구개발활동",
+   "question": "이 회사의 연구소는 어떤 분야를 주로 연구하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-966c1621ba3e2e8829d0c887fe18c61a"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-0d8f85515a95ee9c2afd97aec4f984f4",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사의 아스팔트·콘크리트 플랜트 사업 전망은 어떤가요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 3,
+    "hybrid": 8
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-0d8f85515a95ee9c2afd97aec4f984f4"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-d68f7c77e33844a5b27aa9ac2d24f8da",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 해외 수출 확대를 위해 어떤 방식으로 경쟁력을 높였나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-d68f7c77e33844a5b27aa9ac2d24f8da"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00136165",
+   "evidence_id": "dart-business-report-b38b059236f6c9423c62f46d8b3da0f3",
+   "section_title": "1. 사업의 개요",
+   "question": "이 회사는 어떤 분야에서 사업을 하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-b38b059236f6c9423c62f46d8b3da0f3",
+    "dart-business-report-890aff4338dfb6558ee5af86fc467d6a",
+    "dart-business-report-84be6b658fb5fe07d636c73818c2d8b9"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-752b411ef726e5e40c4f8d56e2833994",
+   "section_title": "5. 정관에 관한 사항",
+   "question": "이 회사 정관 개정 주요 내용이 뭐예요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-752b411ef726e5e40c4f8d56e2833994"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-62734402d9fba4f5063f6f8bc0302e4b",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사가 자기주식을 어떻게 활용하고 있나요?",
+   "ranks": {
+    "bm25": 5,
+    "vector": 1,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-62734402d9fba4f5063f6f8bc0302e4b"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-1d756d118894239ce80e499e248343c9",
+   "section_title": "1. 회사의 개요",
+   "question": "이 회사가 운영하는 주요 사업은 무엇인가요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": null,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-1d756d118894239ce80e499e248343c9",
+    "dart-business-report-f905e44cbbc96cf6e51ff2d446685f83",
+    "dart-business-report-228e5692665ecabee31d892bbb050022",
+    "dart-business-report-6797ba217d7185aedf6a0ddc5a9f637f"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-9a85a304bc11f1ab8c2e0e3f5d7a18f1",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사는 직원 성과급을 자기주식으로 지급한 적이 있나요?",
+   "ranks": {
+    "bm25": 5,
+    "vector": 5,
+    "hybrid": 5
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-9a85a304bc11f1ab8c2e0e3f5d7a18f1"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-e69dbb2ed84fa88a5038829885881d7f",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사 경영진은 최근 5년간 많이 바뀌었나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-e69dbb2ed84fa88a5038829885881d7f"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164742",
+   "evidence_id": "dart-business-report-88578e24bb7a28f993d116dd5f467c61",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사의 자기주식 매입 계획은 어떻게 되나요?",
+   "ranks": {
+    "bm25": 7,
+    "vector": 3,
+    "hybrid": 5
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-88578e24bb7a28f993d116dd5f467c61"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-7d583b646742d8fe5ceaae0dd7bb29d6",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 최근 몇 번이나 합병을 진행했나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-7d583b646742d8fe5ceaae0dd7bb29d6"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-e7fb8e3574ad5c05d9be9af0e0c38496",
+   "section_title": "5. 위험관리 및 파생거래",
+   "question": "이 회사의 손실충당금은 어떻게 설정되나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": null,
+    "hybrid": 6
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-e7fb8e3574ad5c05d9be9af0e0c38496"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-6349546f74189e57b6c7096756beeba6",
+   "section_title": "3. 원재료 및 생산설비",
+   "question": "이 회사는 어떤 시설에 투자하고 있나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 3,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-6349546f74189e57b6c7096756beeba6"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-75ce814ff8585111eeb3b0884230db0a",
+   "section_title": "2. 주요 제품 및 서비스",
+   "question": "이 회사의 핀테크 사업은 어떤 서비스로 구성되어 있나요?",
+   "ranks": {
+    "bm25": 6,
+    "vector": 1,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-75ce814ff8585111eeb3b0884230db0a"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-01bcc62a7c248d52b399833d5d3c2a11",
+   "section_title": "4. 매출 및 수주상황",
+   "question": "이 회사의 주요 판매 경로와 전략은 뭐예요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-01bcc62a7c248d52b399833d5d3c2a11"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00266961",
+   "evidence_id": "dart-business-report-6fe5677f41d3d237d609cf19af4193ca",
+   "section_title": "4. 주식의 총수 등",
+   "question": "이 회사가 자기주식을 어떻게 관리하고 있나요?",
+   "ranks": {
+    "bm25": 8,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-6fe5677f41d3d237d609cf19af4193ca"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-62312c267601abdf0c75efaadb9c0aba",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사의 2025년 주요 연혁이나 성과는 무엇인가요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-62312c267601abdf0c75efaadb9c0aba"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-7ef5b84758a4faa270e0c14090095bbe",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사의 2025년 영업활동 현금흐름은 왜 줄었나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-7ef5b84758a4faa270e0c14090095bbe"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-e7ad518c2798681389007f5afa187280",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사의 자동화 사업부문은 어떤 분야에서 주로 활동하나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-e7ad518c2798681389007f5afa187280",
+    "dart-business-report-966269aa1ddb58791632aefc3d79d165"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-db0e8e05aa6cb159d8b69b6b9d57b4ad",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 분할될 때 채무는 어떻게 나뉘나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": null,
+    "hybrid": 7
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-db0e8e05aa6cb159d8b69b6b9d57b4ad"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00155319",
+   "evidence_id": "dart-business-report-2ef1bb138fc35be2504e1fc9073c6718",
+   "section_title": "2. 회사의 연혁",
+   "question": "이 회사가 자산 취득을 위해 약정한 금액은 얼마인가요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-2ef1bb138fc35be2504e1fc9073c6718"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-468a898b409c1fb9d888af1a297f667a",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사 낸드플래시 제품은 주로 어디에 사용되나요?",
+   "ranks": {
+    "bm25": 4,
+    "vector": 1,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-468a898b409c1fb9d888af1a297f667a"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-8162bc9b2e6467c4ac890fd4eb7a106e",
+   "section_title": "4. 유동성 및 자금조달과 지출",
+   "question": "이 회사는 인텔 NAND 사업부 인수를 언제 완료했나요?",
+   "ranks": {
+    "bm25": 8,
+    "vector": null,
+    "hybrid": 7
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-8162bc9b2e6467c4ac890fd4eb7a106e"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-508d3ffc1ab16ca396403033647817d4",
+   "section_title": "4. 유동성 및 자금조달과 지출",
+   "question": "이 회사의 현금자산은 얼마나 늘었고, 유동성은 건전한가요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-508d3ffc1ab16ca396403033647817d4"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-27769e7bf17270a90aad2813252d0f64",
+   "section_title": "4. 매출 및 수주상황",
+   "question": "이 회사의 주요 판매 경로와 전략은 뭐예요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-27769e7bf17270a90aad2813252d0f64"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-7cded97306781d4e3fd8022700f3f488",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 생산하는 DRAM은 어디에 쓰이는 제품인가요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 2,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-7cded97306781d4e3fd8022700f3f488"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00164779",
+   "evidence_id": "dart-business-report-ff7ccc87bbf16dcc39509b3225e8751f",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 2050년 넷제로 달성을 위해 어떤 노력을 하고 있나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-ff7ccc87bbf16dcc39509b3225e8751f"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-a6b7a6062a6c1f00b99acadce128d3d6",
+   "section_title": "2. 주요 제품 및 서비스",
+   "question": "이 회사가 주로 어떤 제품을 생산하고 판매하나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 4,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-a6b7a6062a6c1f00b99acadce128d3d6",
+    "dart-business-report-1546956cde0551eefa11ee80f26242f0"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-c7d9876376da90e95efd31c8533d7324",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 온실가스 배출량을 어떻게 관리하고 있나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 3,
+    "hybrid": 3
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-c7d9876376da90e95efd31c8533d7324",
+    "dart-business-report-b5315fa47557daa169363c2943a40c33"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-5e55306a71d4ccf446f6c8c5b6763d57",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 2025년 출시한 Galaxy Z 폴드7의 특징은 무엇인가요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-5e55306a71d4ccf446f6c8c5b6763d57"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-73083f36ea66325d8a74c50cbcd04dff",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사는 공통 비용과 자산을 어떻게 각 부문에 배분하나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-73083f36ea66325d8a74c50cbcd04dff"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "00126380",
+   "evidence_id": "dart-business-report-094aef91fc744a1bf8081af7e2aa73c6",
+   "section_title": "4. 유동성 및 자금조달과 지출",
+   "question": "이 회사의 유동성 관리 전략은 어떤 방식으로 이루어지나요?",
+   "ranks": {
+    "bm25": 2,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-094aef91fc744a1bf8081af7e2aa73c6"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-c624c91b5706c094bcacb221c4dd3f75",
+   "section_title": "4. 유동성 및 자금조달과 지출",
+   "question": "이 회사가 유동성 위기에 어떻게 대비하고 있나요?",
+   "ranks": {
+    "bm25": 3,
+    "vector": 3,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-c624c91b5706c094bcacb221c4dd3f75"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-bd27addafdf6373a7129fc096a971027",
+   "section_title": "2. 영업의 현황",
+   "question": "이 회사가 인수한 에이비엘생명은 어떤 사업을 하나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-bd27addafdf6373a7129fc096a971027"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-43bedd0fb0e09a5d2743aa0111034bfc",
+   "section_title": "5. 재무건전성 등 기타 참고사항",
+   "question": "이 회사의 사모펀드 운용 자회사는 어떤 투자에 집중하나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": null,
+    "hybrid": null
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-43bedd0fb0e09a5d2743aa0111034bfc"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-fa565ac3f425bcb7743ea53597121eb1",
+   "section_title": "3. 재무상태 및 영업실적",
+   "question": "이 회사는 자본비율을 어떻게 개선했나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 2,
+    "hybrid": 5
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-fa565ac3f425bcb7743ea53597121eb1"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01350869",
+   "evidence_id": "dart-business-report-264af8f5535b797c2a2178ea3ada18a2",
+   "section_title": "3. 재무상태 및 영업실적",
+   "question": "이 회사가 당기에 인식한 자산손상은 재무에 큰 영향을 주나요?",
+   "ranks": {
+    "bm25": 1,
+    "vector": 1,
+    "hybrid": 1
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-264af8f5535b797c2a2178ea3ada18a2"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-6c863fab5406b902822cefb4524d7a11",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 만드는 2차전지 첨가제는 어떤 역할을 하나요?",
+   "ranks": {
+    "bm25": 4,
+    "vector": 1,
+    "hybrid": 2
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-6c863fab5406b902822cefb4524d7a11"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-486117104a7b5e3887abcf8818d1d347",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 어떤 분야에서 경쟁력을 가지고 있나요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 8,
+    "hybrid": null
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-486117104a7b5e3887abcf8818d1d347"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-70e22f2e6ed2f2decf407edec3c7fe22",
+   "section_title": "3. 재무상태 및 영업실적",
+   "question": "이 회사의 영업적자 원인과 흑자전환 계획은 뭐예요?",
+   "ranks": {
+    "bm25": 4,
+    "vector": 3,
+    "hybrid": 3
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-70e22f2e6ed2f2decf407edec3c7fe22"
+   ],
+   "source": "gold"
+  },
+  {
+   "corp_code": "01021666",
+   "evidence_id": "dart-business-report-752974f31355dfc9d680327988dccdce",
+   "section_title": "7. 기타 참고사항",
+   "question": "이 회사가 주로 활동하는 산업 분야는 뭔가요?",
+   "ranks": {
+    "bm25": null,
+    "vector": 6,
+    "hybrid": null
+   },
+   "accepted_evidence_ids": [
+    "dart-business-report-752974f31355dfc9d680327988dccdce"
+   ],
+   "source": "gold"
+  }
+ ]
+}

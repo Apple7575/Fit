@@ -73,10 +73,10 @@ export function CompanyHero({ corpCode, detail, tagline, description, metrics }:
           slot="hero"
           video
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-slate-950/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/35" />
       </div>
 
-      <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1320px] flex-col justify-end px-5 pb-16 pt-24 lg:px-8">
+      <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1320px] flex-col justify-center px-5 pt-24 pb-24 lg:px-8">
         <div className="flex flex-wrap items-center gap-3">
           {detail && (
             <span className="anim-rise-in" style={at(0)}>

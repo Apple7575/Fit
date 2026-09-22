@@ -1,3 +1,4 @@
+import { EmptyCard } from '../../components/common/EmptyCard';
 import { SourceBadge } from '../../components/common/SourceBadge';
 import type { FocusState } from './hooks';
 import { pickSummaryChips } from './summaryChips';
@@ -15,23 +16,35 @@ export function FocusSummaryCard({ state }: FocusSummaryCardProps) {
     return (
       <div
         aria-busy="true"
-        className="h-32 animate-pulse rounded-3xl border border-slate-200 bg-white"
+        className="h-32 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
         role="status"
       >
         <span className="sr-only">집중 분야 요약을 불러오는 중입니다</span>
       </div>
     );
   }
-  if (state.status === 'error' || !state.data.direction) return null;
+  if (state.status === 'error' || !state.data.direction) {
+    return (
+      <EmptyCard title="한눈에 보는 집중 분야">
+        이 기업의 키워드는 아직 정리되지 않았어요. 아래 연구개발·투자 자료를 참고하세요.
+      </EmptyCard>
+    );
+  }
 
   const { direction } = state.data;
   const chips = pickSummaryChips(direction.keywords, direction.newBusiness);
-  if (chips.length === 0 && !direction.strategyChange) return null;
+  if (chips.length === 0 && !direction.strategyChange) {
+    return (
+      <EmptyCard title="한눈에 보는 집중 분야">
+        뽑아낼 만한 키워드가 아직 없어요. 아래 연구개발·투자 자료를 참고하세요.
+      </EmptyCard>
+    );
+  }
 
   return (
     <section
       aria-labelledby="focus-summary-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
         <div className="shrink-0 lg:w-36">

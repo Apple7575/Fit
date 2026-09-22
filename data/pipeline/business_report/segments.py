@@ -65,6 +65,7 @@ class SegmentResult:
     sum_krw: float | None = None
     external_revenue: float | None = None
     gap_ratio: float | None = None    # |합 − 매출| / 매출
+    revenue_basis: str | None = None  # 어느 매출과 맞췄나 (consolidated·separate)
     candidates: int = 0               # 후보 표 개수 (진단용)
     evidence: dict = field(default_factory=dict)
 
@@ -82,6 +83,17 @@ def _numbers(row: list[str], p: Patterns) -> list[float]:
             v = to_num(s)
             if v is not None:
                 out.append(v)
+    return out
+
+
+def _labels(row: list[str], p: Patterns) -> list[str]:
+    """숫자가 처음 나오기 전까지의 라벨 칸. 표마다 라벨 열 수가 달라 위치로 못 센다."""
+    out = []
+    for cell in row:
+        text = squash(cell)
+        if text and p.rnd.numeric_cell.match(text):
+            break
+        out.append(text)
     return out
 
 
@@ -144,6 +156,11 @@ def _from_table(doc: Document, t: Table, p: Patterns) -> tuple[list[Segment], di
         # 매출액 행과 영업이익 행이 같은 이름으로 합쳐진다.
         if any(sp.exclude_cell.search(squash(c)) for c in row[:3]):
             continue
+        # **소계 행은 안쪽 라벨에 숨는다.** 이름만 보면 `제품 | 승용 | 합계` 의
+        # '합계' 를 놓쳐 명세 행과 소계 행을 함께 더한다 — 기아 2022 의 제품 매출이
+        # 정확히 두 배가 된 원인이다. 숫자가 시작되기 전의 라벨 칸을 전부 본다.
+        if any(sp.subtotal_cell.match(squash(c)) for c in _labels(row, p)):
+            continue
         nums = _numbers(row, p)
         if len(nums) <= sp.value_position:
             continue                                  # 헤더 행은 여기서 걸러진다
@@ -158,13 +175,23 @@ def _from_table(doc: Document, t: Table, p: Patterns) -> tuple[list[Segment], di
     return [got[n] for n in order], {"rows": ev_rows[:20]}
 
 
+DEFAULT_BASIS = "primary"          # 지표 시드가 고른 값 (연결 우선·별도 폴백)
+
+
 def extract(doc: Document, external_revenue: float | None = None,
-            p: Patterns | None = None) -> SegmentResult:
+            p: Patterns | None = None,
+            alt_revenues: dict[str, float] | None = None) -> SegmentResult:
     """부문별 매출을 뽑고 DART 매출과 대조한다.
 
     후보 표를 앞에서부터 보되 **검증을 통과한 첫 표**를 채택한다. 통과하는 표가
     없으면 부문이 가장 많은 결과를 실패 사유와 함께 돌려준다 — 왜 안 됐는지
     보이지 않으면 패턴을 못 늘린다.
+
+    **대조 상대는 하나가 아니다.** 부문표가 연결 기준인지 별도 기준인지는 표마다
+    다르다. 기아 2022 표 68 은 별도 기준이라 명세 행 합이 별도 매출과 1원까지
+    같은데, 연결 매출(86.56조)과 대조하면 46% 어긋나 버려졌다. `alt_revenues` 로
+    다른 기준의 매출을 함께 주면 **가장 가까운 것**으로 판정한다. 어느 쪽에
+    맞췄는지는 `revenue_basis` 에 남는다 — 말없이 바꿔치기하지 않는다.
     """
     p = p or default_patterns()
     cands = candidates(doc, p)
@@ -191,11 +218,18 @@ def extract(doc: Document, external_revenue: float | None = None,
             for s in segs:
                 s.krw = s.amount_raw * mult
             res.sum_krw = sum(s.krw for s in segs)
-            if not external_revenue:
+            bases = [(DEFAULT_BASIS, external_revenue)]
+            bases += [(k, v) for k, v in (alt_revenues or {}).items() if v]
+            bases = [(k, v) for k, v in bases if v]
+            if not bases:
                 res.verdict = NO_EXTERNAL
             else:
-                res.gap_ratio = round(
-                    abs(res.sum_krw - external_revenue) / external_revenue, 4)
+                gap, basis, value = min(
+                    ((abs(res.sum_krw - v) / v, k, v) for k, v in bases),
+                    key=lambda x: x[0])
+                res.gap_ratio = round(gap, 4)
+                res.revenue_basis = basis
+                res.external_revenue = value
                 res.verdict = (VERIFIED
                                if res.gap_ratio <= p.thresholds.segment_sum_tolerance
                                else MISMATCH)
