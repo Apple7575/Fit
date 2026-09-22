@@ -241,6 +241,12 @@ public class RoomService {
         return agents.size() == 1 && agents.get(0).agentKey().equals(type.key());
     }
 
+    /**
+     * 사이드바에 걸 방 목록.
+     *
+     * <p>감춘 담당({@code app.agent.hidden-agents})만 들어 있는 방은 빼고 준다 — 그 방은
+     * 들어가 봐야 아무도 답하지 않는다. 방을 지우지는 않는다. 담당을 다시 켜면 그대로 돌아온다.
+     */
     public RoomListResponse list(Long userId, Long coverLetterId) {
         List<Room> rooms = coverLetterId == null
                 ? roomRepository.findAllForSidebar(userId)
@@ -248,14 +254,23 @@ public class RoomService {
 
         // lastMessagePreview·running 은 대화 테이블(S15P21A504-130)이 오면 채운다.
         return new RoomListResponse(rooms.stream()
-                .map(room -> new RoomListResponse.Room(
-                        room.getId(),
-                        room.getTitle(),
-                        agentCountWithSupervisor(room.getAgents()),
+                .map(room -> Map.entry(room, visibleAgents(room.getAgents())))
+                .filter(entry -> !entry.getValue().isEmpty())
+                .map(entry -> new RoomListResponse.Room(
+                        entry.getKey().getId(),
+                        entry.getKey().getTitle(),
+                        agentCountWithSupervisor(entry.getValue()),
                         null,
-                        room.getLastMessageAt(),
+                        entry.getKey().getLastMessageAt(),
                         false))
                 .toList());
+    }
+
+    /** 방에 저장된 담당 중 지금 화면에 내보이는 것만. 저장된 목록 자체는 건드리지 않는다. */
+    private List<RoomAgent> visibleAgents(List<RoomAgent> agents) {
+        return agents.stream()
+                .filter(agent -> properties.isAgentVisible(agent.agentKey()))
+                .toList();
     }
 
     public RoomResponse detail(Long userId, Long roomId) {
@@ -273,9 +288,27 @@ public class RoomService {
             if (request.agents().isEmpty()) {
                 throw new BusinessException(ErrorCode.INVALID_PARAMETER, "에이전트를 최소 1명은 남겨야 합니다.");
             }
-            room.replaceAgents(validator.validateAll(request.agents()));
+            room.replaceAgents(keepingHidden(room.getAgents(), validator.validateAll(request.agents())));
         }
         return toDetail(room, coverLetterOrNull(room.getCoverLetterId()));
+    }
+
+    /**
+     * 방을 고칠 때 감춘 담당은 저장된 자리에 그대로 둔다.
+     *
+     * <p>화면은 감춘 담당을 못 보므로 고친 목록에 그것을 실어 보낼 수가 없다. 받은 대로만
+     * 저장하면 방을 한 번 고친 것만으로 그 담당이 영영 빠진다 — 다시 켜도 돌아오지 않는다.
+     */
+    private List<RoomAgent> keepingHidden(List<RoomAgent> stored, List<RoomAgent> requested) {
+        List<RoomAgent> hidden = stored.stream()
+                .filter(agent -> !properties.isAgentVisible(agent.agentKey()))
+                .toList();
+        if (hidden.isEmpty()) {
+            return requested;
+        }
+        List<RoomAgent> merged = new ArrayList<>(requested);
+        merged.addAll(hidden);
+        return merged;
     }
 
     @Transactional
@@ -308,7 +341,8 @@ public class RoomService {
     }
 
     private RoomResponse toDetail(Room room, CoverLetter coverLetter) {
-        List<RoomAgent> stored = room.getAgents();
+        // 감춘 담당은 빼고 보여 준다. 저장된 목록은 그대로라 다시 켜면 이 방에 원래대로 나온다.
+        List<RoomAgent> stored = visibleAgents(room.getAgents());
         Map<String, String> names = corpNames(stored);
         RoomResponse.JobContextRef jobContext = jobContextRef(room.getJobContextId());
 
