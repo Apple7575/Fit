@@ -43,7 +43,7 @@ const HERO_POSTER = '/cover-letter-media/hero.jpg';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
-/** 0 = 어디에 내나요, 1 이상 = 그 번째 문항. 한 화면에 한 가지만 둔다. */
+/** 0 = 제목·기업·직무, 1 이상 = 그 번째 문항. 한 화면에 한 가지만 둔다. */
 type Step = number;
 
 const META_STEP = 0;
@@ -83,7 +83,7 @@ function StepRail({
         onClick={() => onGo(META_STEP)}
         type="button"
       >
-        어디에 내나요
+        제목·기업·직무
       </button>
 
       <span aria-hidden="true" className="text-white/25">→</span>
@@ -354,7 +354,7 @@ export function CoverLetterWorkspace({
           {step === META_STEP ? '회사부터 함께 정해볼까요?' : '이제 문항을 채워볼까요?'}
         </h1>
         {/*
-          첫 단계에서는 설명을 걷었다 — 아래 카드가 "어디에 내나요?" 로 같은 말을 한 번 더 한다.
+          첫 단계에서는 설명을 걷었다 — 칸마다 라벨이 붙어 있어 한 번 더 말할 것이 없다.
           문항 단계는 그 안내가 화면에 따로 없어 남긴다.
         */}
         {step !== META_STEP && (
