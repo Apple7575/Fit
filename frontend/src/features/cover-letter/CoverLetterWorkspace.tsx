@@ -733,14 +733,12 @@ function JobPostingBar({
   };
 
   const urlReady = url.trim() !== '' && url.trim() !== blockedUrl;
-  // 이미지를 넣었으면 그쪽을 먼저 쓴다. 주소로 안 읽혀서 직접 넣은 경우가 대부분이다.
-  const canConfirm = images.length > 0 || urlReady;
 
-  const confirm = async () => {
-    if (images.length > 0) {
-      await confirmImages();
-      return;
-    }
+  /*
+   * 주소와 이미지는 각자 단추를 갖는다. 예전에는 단추 하나가 둘을 겸해서, 이미지를 넣어 놓고
+   * 엉뚱하게 주소 칸 옆 단추를 눌러야 했다 — 무엇을 읽는 단추인지 화면만 봐서는 알 수 없었다.
+   */
+  const confirmUrl = async () => {
     const target = url.trim();
     if (!urlReady) return;
     setStatus('loading');
@@ -838,7 +836,7 @@ function JobPostingBar({
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
-                confirm();
+                confirmUrl();
               }
             }}
             type="url"
@@ -848,8 +846,8 @@ function JobPostingBar({
           />
         </div>
         <button
-          onClick={confirm}
-          disabled={status === 'loading' || !canConfirm}
+          onClick={confirmUrl}
+          disabled={status === 'loading' || !urlReady}
           className="h-[42px] w-full shrink-0 rounded-lg bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-[92px]"
           type="button"
         >
@@ -932,6 +930,26 @@ function JobPostingBar({
             className="sr-only"
           />
         </label>
+      </div>
+
+      {/*
+        몇 장까지 되는지는 넣기 전에 알아야 한다. 용량은 숫자로 못 박지 않는다 — 보낼 때
+        띠로 잘라 다시 줄이므로, 원본 크기로는 되는지 안 되는지 말할 수 없다.
+      */}
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] text-slate-400">
+          최대 {MAX_POSTING_IMAGES}장 · 긴 캡처는 알아서 잘라 보내요
+        </p>
+        {images.length > 0 && (
+          <button
+            className="h-[34px] shrink-0 rounded-lg bg-blue-600 px-4 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={status === 'loading'}
+            onClick={confirmImages}
+            type="button"
+          >
+            {status === 'loading' ? '읽는 중…' : `이미지 ${images.length}장으로 확인`}
+          </button>
+        )}
       </div>
 
       <p
