@@ -1,4 +1,4 @@
-# 뉴스 ERD 마이그레이션(MR !209) 리뷰 회신 — 1판 (2026-09-22)
+# 뉴스 ERD 마이그레이션(MR !209) 리뷰 회신 — 2판 (2026-09-22)
 
 백엔드 리뷰(2026-09-22, Changes requested)에 대한 데이터 파트 회신이다.
 **지적 넷은 저장소 코드로 확인했고 그대로 맞다.** 하나는 우리 적재 경로에는
@@ -6,6 +6,19 @@
 
 - 작성: 데이터 담당 (박세은)
 - 관련: [NEWS-LOAD-PIPELINE](S15P21A504-NEWS-LOAD-PIPELINE.md) 5-1·5-2 장 (MR !233)
+
+## 2판에서 바뀐 것
+
+1판 회신에 대한 재회신(부분 UNIQUE 인덱스와 `ON CONFLICT` 추론)을 받아 **지적대로
+고쳤다.** 6장을 새로 썼다.
+
+- **부분 인덱스 지적이 맞다** — 조건 없이 `ON CONFLICT` 를 쓰면 적재가 죽는 것을
+  실제 PostgreSQL 에서 확인했다
+- **적재기가 조건을 붙이도록 고쳤다.** 조건은 사람이 적지 않고 **스키마에서 읽는다**
+- **실제 PostgreSQL 재적재 시험을 넣었다** (`tests/news/test_reload_postgres.py`)
+- 검사기에 **provider 백필 · provider_url 값 일치 · id 집합 보존** 셋을 더했다
+- 그래서 **일반 UNIQUE 제약으로 바꾸실 필요가 없다.** ERD 대로 부분 인덱스를
+  유지하셔도 된다 (6장)
 
 ---
 
@@ -20,6 +33,7 @@
 | 5 | `normalized_url` 에 빈 문자열을 넣으면 안 된다 | **맞다. 다만 우리 적재는 이미 NULL 로 넣는다** | — |
 | 6 | (리뷰에 없음) **마이그레이션 번호가 이미 겹쳤다** | 새로 확인 | 백엔드 |
 | 7 | (리뷰에 없음) **1차에 키 교체를 넣으면 적재가 멈춘다** | 실측 | 백엔드 |
+| 8 | (재회신) 부분 인덱스면 `ON CONFLICT` 가 추론하지 못한다 | **맞다 — 고쳤다** (6장) | — |
 
 **저희가 할 일은 배포 전후 확인뿐이고, 그 검사기를 만들어 두었습니다** (4장).
 다만 **3장의 두 가지(번호 재부여 · 1차에서 키 교체 빼기)는 꼭 반영해 주셔야 합니다.**
@@ -164,9 +178,15 @@ python scripts/verify_news_erd_migration.py --code-only                        #
 | 2 | `source` 가 있던 행은 모두 `publisher` 로 (행 단위) | source → publisher 이동 |
 | 3 | `guid` 가 있던 행은 모두 `provider_article_id` 로 (행 단위) | guid → provider_article_id 이동 |
 | 4 | 새 자연키 중복 없음 (제공처 기준 · 원문 URL 기준) | 신규 자연키 중복 없음 |
-| 5 | 기존 Google 행의 `provider_url` 이 채워졌다 | provider_url 백필 여부 |
+| 5 | 기존 Google 행의 `provider_url` 이 `original_url` 과 **값까지** 같다 | provider_url 백필 여부 · **값 일치**(2판) |
 | 6 | `normalized_url` 에 빈 문자열이 없다 | (2장의 지적) |
 | 7 | AI 코드가 `source`·`guid` 를 조회하지 않는다 | AI 조회 여부 |
+| 8 | `provider` 가 모든 행에 채워졌다 | **provider 백필**(2판) |
+| 9 | **id 집합이 보존됐다** | **ID 집합 보존**(2판) |
+
+9번을 따로 둔 이유가 있다. **행 수만 보면 지워지고 새로 들어간 것을 놓친다.**
+일부러 한 행을 지우고 다른 행을 넣어 보면 1번은 초록인데 9번만 빨개진다 —
+"없어진 id 1개 · 새로 생긴 id 1개" 로 잡힌다.
 
 7번만 DB 없이 돈다. 지금 돌리면 이렇게 나온다 — **아직 빨간 것이 맞다.**
 
@@ -180,9 +200,10 @@ python scripts/verify_news_erd_migration.py --code-only                        #
 ### 검사기 자체를 어떻게 검증했나
 
 임시 postgres 에 V1~V34 를 전부 얹고 표본 4행을 넣은 뒤, **실제 !209 SQL 과 주신
-백필 UPDATE 를 그대로 적용**해 6항목이 통과하는 것을 봤다. 그다음 일부러 망가뜨려
+백필 UPDATE 를 그대로 적용**해 전 항목이 통과하는 것을 봤다. 그다음 일부러 망가뜨려
 **전부 다시 빨개지는 것**까지 확인했다 — 행 삭제 · publisher 훼손 · provider_url
-되돌리기 · 빈 문자열 · 자연키 중복. 통과만 보고 믿지 않기 위한 절차다.
+되돌리기와 **엉뚱한 값 넣기** · 빈 문자열 · 자연키 중복 · provider 비우기 ·
+**행을 지우고 새로 넣어 id 만 바꾸기**. 통과만 보고 믿지 않기 위한 절차다.
 
 ---
 
@@ -192,9 +213,72 @@ python scripts/verify_news_erd_migration.py --code-only                        #
 2. **1차 마이그레이션**: 컬럼 추가 + 백필(`provider_url` 포함). **키 교체는 넣지 않는다** — 백엔드
 3. 배포 **전** 스냅샷 — 데이터
 4. **AI 를 신규 컬럼으로 전환** — AI
-5. 배포 **후** 대조(검사기 7항목 전부 초록) — 데이터
+5. 배포 **후** 대조(검사기 9항목 전부 초록) — 데이터
 6. **후속 마이그레이션**: 키 교체 + `source`·`guid` 삭제 — 백엔드
 7. 후속 배포 뒤 한 번 더 대조 — 데이터
 
-적재기는 이미 양쪽 스키마에서 돈다(MR !222). 3·5번이 저희 몫이고, 잡혀 있는
-날짜를 알려 주시면 맞추겠습니다.
+3번은 **V35 배포 직전**에 찍겠습니다. 날짜·시각을 알려 주시면 맞추겠습니다.
+
+---
+
+## 6. 부분 UNIQUE 인덱스와 `ON CONFLICT` — 지적대로 고쳤습니다 (2판)
+
+### 지적이 맞다
+
+실제 PostgreSQL 에서 확인했다. 부분 인덱스는 **같은 조건을 conflict_target 에
+적어야** 중재자로 쓰인다.
+
+```sql
+CREATE UNIQUE INDEX t_uk ON t (corp_code, provider, provider_article_id)
+    WHERE provider_article_id IS NOT NULL;
+
+-- 조건 없이
+INSERT ... ON CONFLICT (corp_code, provider, provider_article_id) DO UPDATE ...
+ERROR:  there is no unique or exclusion constraint matching the ON CONFLICT specification
+
+-- 조건을 붙여서
+INSERT ... ON CONFLICT (corp_code, provider, provider_article_id)
+             WHERE provider_article_id IS NOT NULL DO UPDATE ...
+INSERT 0 1
+```
+
+### 고친 것 — 조건은 사람이 적지 않고 스키마에서 읽는다
+
+| 어디 | 무엇 |
+|---|---|
+| `pipeline/news/flyway.py` | `CREATE UNIQUE INDEX` 의 `WHERE` 절을 읽어 키 묶음과 함께 남긴다. 예전에는 **버리고 있었다** |
+| `scripts/load_seed_csv.py` | `conflict_predicate()` 가 그 조건을 꺼내 적재기에 넘긴다 |
+| `pipeline/db.py` | `upsert(..., conflict_where=...)` 가 `ON CONFLICT (키) WHERE 조건` 을 만든다 |
+
+조건문을 코드에 박지 않은 것이 요점이다. **마이그레이션의 `WHERE` 가 바뀌면 적재기가
+따라간다.** 사람이 양쪽을 맞추는 일이 없다. 조건은 스키마에서 읽은 것만 넘기고
+사용자 입력은 넣지 않는다.
+
+### 그래서 일반 UNIQUE 제약으로 바꾸실 필요가 없습니다
+
+적재기가 부분 인덱스를 다루므로 **ERD 대로 부분 인덱스를 유지하셔도 된다.**
+어느 쪽을 고르셔도 적재기는 돈다 — 일반 제약이면 조건이 비어 예전과 같은 문장이
+나간다.
+
+### 실제 PostgreSQL 재적재 시험
+
+`tests/news/test_reload_postgres.py` 다. 넷이고, `CA_TEST_DATABASE_URL` 이 없으면
+건너뛴다.
+
+| 시험 | 무엇을 고정하나 |
+|---|---|
+| 조건 없이 넣으면 죽는다 | 회귀의 모양을 박아 둔다 |
+| 조건을 붙이면 두 번 넣어도 같다 | 두 번째는 전부 갱신이고 행 수가 늘지 않는다 |
+| 마이그레이션 전 스키마에서는 조건 없이 돈다 | 전환 전 경로가 그대로인지 |
+| 적재기가 스키마에서 같은 조건을 읽어 온다 | 조건이 코드가 아니라 스키마에서 온다 |
+
+돌리는 법 — 임시 컨테이너면 충분하다.
+
+```bash
+docker run -d --name ca-check-pg -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=company_analysis postgres:18
+CA_TEST_DATABASE_URL="postgresql://postgres:pw@localhost:5432/company_analysis" \
+  python -m unittest discover -s tests/news -t .
+```
+
+실측: 넷 다 통과했고, `CA_TEST_DATABASE_URL` 없이 돌리면 넷 다 건너뛴다.
+뉴스 시험 전체는 105건 통과다.

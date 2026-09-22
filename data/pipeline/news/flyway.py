@@ -75,6 +75,8 @@ class Table:
     # 제약·인덱스 **이름** → 키 묶음. `DROP CONSTRAINT` 와 `DROP INDEX` 가 이것으로
     # 무엇을 지우는지 찾는다. 이름을 안 들고 있으면 키가 사라진 것을 읽을 수 없다.
     unique_names: dict[str, list[str]] = field(default_factory=dict)
+    # 부분 UNIQUE 인덱스의 WHERE 절. 키 묶음 → 조건문.
+    unique_predicates: dict[tuple[str, ...], str] = field(default_factory=dict)
     # 기본키도 묶음으로 남긴다. company_metric 처럼 복합 PK 가 곧 자연키인 표가 있다.
     primary_key: list[str] = field(default_factory=list)
     primary_key_name: str = ""
@@ -83,11 +85,26 @@ class Table:
         """이 표에서 한 행을 유일하게 가리키는 키들. 자연키 대조의 기준이다."""
         return ([self.primary_key] if self.primary_key else []) + self.unique_keys
 
-    def add_unique(self, names: list[str]) -> None:
-        """유일키 묶음을 더한다. 있는 컬럼만 담고 같은 묶음은 한 번만 남긴다."""
+    def add_unique(self, names: list[str], predicate: str | None = None) -> None:
+        """유일키 묶음을 더한다. 있는 컬럼만 담고 같은 묶음은 한 번만 남긴다.
+
+        `predicate` 는 **부분 UNIQUE 인덱스의 WHERE 절**이다. 이것을 잃으면
+        `ON CONFLICT` 가 그 인덱스를 추론하지 못해 적재가 죽는다 — PostgreSQL 은
+        부분 인덱스를 중재자로 쓰려면 같은 조건을 conflict_target 에 적어야 한다
+        (2026-09-22 실측: 조건 없이 쓰면 `there is no unique or exclusion
+        constraint matching the ON CONFLICT specification`).
+        """
         group = [n for n in (x.strip() for x in names) if n in self.columns]
-        if group and group not in self.unique_keys:
+        if not group:
+            return
+        if group not in self.unique_keys:
             self.unique_keys.append(group)
+        if predicate:
+            self.unique_predicates[tuple(group)] = " ".join(predicate.split())
+
+    def predicate_for(self, group) -> str | None:
+        """그 키 묶음이 부분 인덱스면 WHERE 절을, 아니면 None 을 돌려준다."""
+        return self.unique_predicates.get(tuple(group))
 
     def name_unique(self, constraint: str | None, names: list[str]) -> None:
         """방금 더한 유일키에 제약·인덱스 이름을 이어 둔다."""
@@ -105,6 +122,9 @@ class Table:
         group = self.unique_names.pop(key, None)
         if group is not None:
             self.unique_keys = [g for g in self.unique_keys if g != group]
+            # 부분 인덱스였다면 조건문도 같이 버린다. 남겨 두면 없어진 인덱스의
+            # WHERE 가 `ON CONFLICT` 에 붙는다.
+            self.unique_predicates.pop(tuple(group), None)
             return True
         if self.primary_key_name.lower() == key:
             self.primary_key = []
@@ -269,7 +289,8 @@ _COMMENT_ON = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _UNIQUE_INDEX = re.compile(
-    r"^CREATE\s+UNIQUE\s+INDEX\s+\w+\s+ON\s+(?:(\w+)\.)?(\w+)\s*\(([^)]*)\)",
+    r"^CREATE\s+UNIQUE\s+INDEX\s+\w+\s+ON\s+(?:(\w+)\.)?(\w+)\s*\(([^)]*)\)"
+    r"(?:\s*WHERE\s+(.+))?$",
     re.IGNORECASE | re.DOTALL,
 )
 _INSERT_INTO = re.compile(r"^INSERT\s+INTO\s+(?:(\w+)\.)?(\w+)", re.IGNORECASE)
@@ -517,7 +538,7 @@ def load(migration_dir: Path | None = None) -> Schema:
                     for name in names:
                         if name in table.columns:
                             _add_key(table.columns[name], "UK")
-                    table.add_unique(names)
+                    table.add_unique(names, index.group(4))
                     named = _UNIQUE_INDEX_NAME.match(statement)
                     table.name_unique(named.group(1) if named else None, names)
                 continue
