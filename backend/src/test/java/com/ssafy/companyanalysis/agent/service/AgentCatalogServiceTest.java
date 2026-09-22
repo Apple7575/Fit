@@ -1,5 +1,6 @@
 package com.ssafy.companyanalysis.agent.service;
 
+import com.ssafy.companyanalysis.agent.config.AgentCatalogProperties;
 import com.ssafy.companyanalysis.agent.dto.AgentCatalogResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AgentCatalogServiceTest {
 
     private AgentCatalogService service() {
-        return new AgentCatalogService();
+        return new AgentCatalogService(new AgentCatalogProperties(java.util.Set.of()));
     }
 
     @Test
