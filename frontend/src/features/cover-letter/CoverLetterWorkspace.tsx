@@ -791,7 +791,7 @@ function JobPostingBar({
             }}
             type="url"
             inputMode="url"
-            placeholder="공고 주소를 넣고 확인하면 지원 회사와 직무를 대신 채워 드려요."
+            placeholder="주소를 넣고 확인하면 회사·직무를 대신 채워 드려요."
             className="h-[42px] w-full rounded-lg border border-slate-200 pr-3 pl-9 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </div>
@@ -840,7 +840,7 @@ function JobPostingBar({
                 <path d="m21 15-4.5-4.5L5.5 21" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="min-w-0">
-                공고가 이미지면 여기를 누르고 <kbd className="rounded bg-slate-100 px-1">Ctrl</kbd>+
+                여기를 누르고 공고 이미지를 <kbd className="rounded bg-slate-100 px-1">Ctrl</kbd>+
                 <kbd className="rounded bg-slate-100 px-1">V</kbd> 로 붙여넣으세요
               </span>
             </span>
