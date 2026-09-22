@@ -1,20 +1,28 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { SiteHeader } from '../../components/layout/SiteHeader';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { ensureDefaultRooms } from '../../features/agent-room/api';
-import { CoverLetterSwitcher } from '../../features/agent-room/CoverLetterSwitcher';
 import { RoomBackdrop, RoomEntry } from '../../features/agent-room/RoomEntry';
+import { CoverLetterHeader } from '../cover-letter/CoverLetterHeader';
 import { RoomWorkspace } from '../../features/agent-room/RoomWorkspace';
 import { ThreadSidebar } from '../../features/agent-room/ThreadSidebar';
 import type { RoomSummary } from '../../features/agent-room/types';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { useCoverLetters } from '../../features/cover-letter/queries';
 
-/** 자소서를 고르면 에이전트별 대화 자리가 깔리고, 원문 옆에서 피드백을 확인한다. */
+/**
+ * 자소서 한 건의 검토 면. 코치를 고르면 원문 옆에서 피드백을 확인한다.
+ *
+ * <p>어느 자소서를 볼지는 주소가 정한다(`/cover-letters/:id/review`). 예전에는 이 화면이
+ * `/agent-rooms` 라는 독립 주소였고 자소서는 화면 안에서 골랐는데, 자소서를 고르지 않고
+ * 들어오면 말없이 첫 자소서로 떨어졌다 — 무엇을 보고 있는지 알 수 없었다.
+ */
 export function AgentRoomListPage() {
   const { user, loading } = useAuth();
+  const { id } = useParams();
+  const coverLetterId = Number(id) || null;
 
   if (loading) {
     return (
@@ -26,35 +34,32 @@ export function AgentRoomListPage() {
   }
 
   // 방은 저장되는 것이라 로그인해야 한다.
-  if (!user) return <Navigate replace to="/login" />;
+  if (!user) return <Navigate replace to={`/login?redirect=/cover-letters/${id}/review`} />;
+  if (coverLetterId === null) return <Navigate replace to="/cover-letters" />;
 
   /*
-   * 헤더는 화면마다 다르게 선다 — 입장 화면(RoomEntry)은 사진 위에 투명하게 띄우고,
-   * 읽는 화면은 흰 띠로 세운다. 그래서 여기서 한 번에 그리지 않고 각 화면이 그린다.
+   * 헤더는 화면마다 다르게 선다 — 입장 화면(RoomEntry)은 사진 위에 띄우고, 읽는 화면은
+   * 흰 띠로 세운다. 그래서 여기서 한 번에 그리지 않고 각 화면이 그린다.
    */
-  return <Workspace />;
+  return <Workspace coverLetterId={coverLetterId} />;
 }
 
-function Workspace() {
-  const [searchParams] = useSearchParams();
+function Workspace({ coverLetterId }: { coverLetterId: number }) {
   const { state: coverLetters } = useCoverLetters();
-  // 작성 화면에서 'AI 검토' 로 넘어오면 방금 저장한 자소서를 연다.
-  const requested = Number(searchParams.get('coverLetterId')) || null;
-  const [picked, setPicked] = useState<number | null>(requested);
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
 
   const letters = coverLetters.status === 'success' ? coverLetters.data : [];
-  // 고르지 않았으면 첫 자소서로 본다. 효과로 상태를 채우지 않고 렌더에서 정한다.
-  // 넘어온 id 가 이 회원 것이 아니면 무시한다 — 남의 id 로 방을 깔면 404 만 난다.
-  const known = picked !== null && letters.some((letter) => letter.id === picked);
-  const coverLetterId = known ? picked : letters.length > 0 ? letters[0].id : null;
+  // 주소의 자소서. 이 회원 것이 아니면 방을 깔지 않는다 — 남의 id 로 깔면 404 만 난다.
+  const letter = letters.find((item) => item.id === coverLetterId) ?? null;
+  const mine = coverLetters.status !== 'success' || letter !== null;
+  // 자소서 이름표를 단 띠. 검토에서 작성으로 돌아가는 길이 여기에만 있다.
+  const header = letter ? <CoverLetterHeader letter={letter} /> : undefined;
 
   /** 에이전트 목록만 다시 읽는다. 보고 있던 방은 그대로 둔다. */
   const refreshRooms = useCallback(() => {
-    if (coverLetterId === null) return;
     ensureDefaultRooms(coverLetterId)
       .then((next) => setRooms(next))
       .catch(() => {
@@ -63,16 +68,14 @@ function Workspace() {
   }, [coverLetterId]);
 
   /*
-   * 자소서를 고르면 대화 자리를 깔아 둔다.
+   * 대화 자리를 깔고 바로 연다.
    *
-   * <p>바로 방까지 열어 버리는 것은 작성 화면에서 'AI 검토' 로 넘어온 경우뿐이다 — 그때는
-   * 무엇을 볼지 이미 고르고 온 것이라 한 번 더 묻는 것이 군더더기다. 주소로 그냥 들어온
-   * 경우에는 입장 화면에 세워 어느 자소서를 누구의 눈으로 볼지 먼저 고르게 한다.
+   * <p>예전에는 "누구의 눈으로 볼까요?" 한 장을 거쳤다. 그런데 거기서 하는 일(코치 고르기)은
+   * 대화 화면 안에도 그대로 있다 — 채팅 패널 위의 칩 줄이 같은 목록이다. 같은 것을 고르려고
+   * 화면을 한 번 더 넘기게 할 이유가 없다. 총괄 논의부터 연다(없으면 첫 방).
    */
-  const autoEnter = requested !== null;
-
   useEffect(() => {
-    if (coverLetterId === null) return;
+    if (!mine) return;
     let cancelled = false;
 
     ensureDefaultRooms(coverLetterId)
@@ -80,7 +83,6 @@ function Workspace() {
         if (cancelled) return;
         setRooms(next);
         setError(null);
-        if (!autoEnter) return;
         const preferred = next.find((room) => room.agentCount > 1) ?? next[0];
         setSelectedRoomId(preferred ? preferred.roomId : null);
       })
@@ -92,7 +94,7 @@ function Workspace() {
     return () => {
       cancelled = true;
     };
-  }, [autoEnter, coverLetterId, retryToken]);
+  }, [coverLetterId, mine, retryToken]);
 
   if (coverLetters.status === 'success' && letters.length === 0) {
     return (
@@ -112,23 +114,21 @@ function Workspace() {
     );
   }
 
-  const coverLetterSelector = (
-    <section aria-label="자기소개서 에이전트 목록" className="min-w-0">
-        <CoverLetterSwitcher letters={letters} onSelect={setPicked} selectedId={coverLetterId} />
-
-        {error && (
-          <div role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 p-3">
-            <p className="text-[13px] font-medium text-red-700">{error}</p>
-            <button
-              type="button"
-              onClick={() => setRetryToken((n) => n + 1)}
-              className="mt-1 text-[12px] font-semibold text-red-700 underline"
-            >
-              다시 시도
-            </button>
-          </div>
-        )}
-    </section>
+  /*
+   * 어느 자소서를 볼지 고르는 드롭다운이 여기 있었다. 주소가 자소서를 정하게 되면서 없앴다 —
+   * 기업 상세에서 기업을 바꾸지 않고 검색으로 돌아가는 것과 같다. 다른 자소서는 목록에서 연다.
+   */
+  const roomsError = error && (
+    <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3">
+      <p className="text-[13px] font-medium text-red-700">{error}</p>
+      <button
+        className="mt-1 text-[12px] font-semibold text-red-700 underline"
+        onClick={() => setRetryToken((n) => n + 1)}
+        type="button"
+      >
+        다시 시도
+      </button>
+    </div>
   );
 
   const agentNavigation = error ? null : (
@@ -139,29 +139,16 @@ function Workspace() {
     />
   );
 
-  /*
-   * 아직 방을 고르지 않았다. 예전에는 "대화를 고르세요" 회색 글자 한 줄이 전부라, 기능의
-   * 첫인상이 빈 화면이었다. 고르고 넘어가는 자리이므로 다른 첫 화면들과 같은 짜임으로 세운다.
-   */
+  // 방을 까는 동안. 고를 것이 없으므로 기다린다는 말만 한다
   if (selectedRoomId === null) {
     return (
-      <RoomEntry
-        description="코치 다섯이 각자 맡은 자료로 한 자소서를 읽습니다. 어느 자소서를 볼지 고르세요."
-        title="누구의 눈으로 볼까요?"
-      >
-        <section
-          aria-label="검토할 자소서"
-          className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur"
-        >
-          <p className="mb-2 text-[12px] font-semibold text-white/60">검토할 자소서</p>
-          {coverLetterSelector}
-        </section>
-        {!error && (
-          <div className="mt-4">
-            <ThreadSidebar onSelect={setSelectedRoomId} rooms={rooms} selectedRoomId={selectedRoomId} wrap />
-          </div>
-        )}
-      </RoomEntry>
+      <div className="relative isolate min-h-screen bg-slate-950">
+        <RoomBackdrop tone="read" />
+        {header ?? <SiteHeader />}
+        <main className="relative mx-auto max-w-[1520px] px-5 py-6 lg:px-8">
+          {error ? roomsError : <LoadingScreen message="검토 방을 여는 중" onDark />}
+        </main>
+      </div>
     );
   }
 
@@ -170,14 +157,18 @@ function Workspace() {
    * 글 뒤로 오지 않는다 — 카드가 뜨는 자리만 사진이다.
    */
   return (
-    <div className="relative isolate min-h-screen bg-slate-100">
-      <RoomBackdrop tone="light" />
-      <SiteHeader />
+    // 사진이 오기 전에 깔리는 바탕. 밝게 두면 사진이 붙는 순간 화면이 한 번 어두워진다
+    <div className="relative isolate min-h-screen bg-slate-950">
+      <RoomBackdrop tone="read" />
+      {header ?? <SiteHeader />}
       <main className="relative mx-auto max-w-[1520px] px-5 py-6 lg:px-8">
+        {/*
+          key 를 걸어 방마다 새로 마운트했었다. 그러면 코치를 바꿀 때마다 자소서 원문까지
+          함께 헐렸다가 다시 붙어 화면이 깜빡였다. 바뀌는 것은 대화뿐이다.
+        */}
         <RoomWorkspace
-          key={selectedRoomId}
           roomId={selectedRoomId}
-          coverLetterSelector={coverLetterSelector}
+          coverLetterSelector={roomsError || null}
           agentNavigation={agentNavigation}
           onConversationChanged={refreshRooms}
         />

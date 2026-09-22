@@ -2,6 +2,7 @@ import {
   createBrowserRouter,
   createMemoryRouter,
   Navigate,
+  useSearchParams,
   type RouteObject,
 } from 'react-router-dom';
 import { COMPANY_SECTIONS } from '../features/company-detail/questions';
@@ -21,6 +22,19 @@ import { VerifyPage } from '../pages/auth/VerifyPage';
 import { VerifySentPage } from '../pages/auth/VerifySentPage';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage';
 import { MyPage } from '../pages/mypage/MyPage';
+
+/**
+ * 예전 검토 주소(`/agent-rooms?coverLetterId=…`)를 자소서에 매인 새 주소로 넘긴다.
+ *
+ * <p>검토 방이 독립 주소였을 때 나간 링크가 있다. 자소서를 들고 온 링크는 그 자소서의
+ * 검토로, 맨몸으로 온 링크는 목록으로 보낸다 — 맨몸으로 열어 봐야 어느 자소서를 보는지
+ * 알 수 없는 화면이 뜰 뿐이다.
+ */
+function LegacyReviewRedirect() {
+  const [params] = useSearchParams();
+  const id = Number(params.get('coverLetterId')) || null;
+  return <Navigate replace to={id ? `/cover-letters/${id}/review` : '/cover-letters'} />;
+}
 
 const routes: RouteObject[] = [
   {
@@ -76,8 +90,14 @@ const routes: RouteObject[] = [
     element: <InterviewWorkspacePage />,
   },
   {
-    path: '/agent-rooms',
+    // 검토는 자소서에 딸린 면이다 — 방은 자소서 id 로만 만들어진다
+    path: '/cover-letters/:id/review',
     element: <AgentRoomListPage />,
+  },
+  {
+    // 예전 주소. 들고 온 자소서가 있으면 그 자소서의 검토로, 없으면 목록으로 보낸다
+    path: '/agent-rooms',
+    element: <LegacyReviewRedirect />,
   },
   {
     path: '/agent-rooms/:roomId',

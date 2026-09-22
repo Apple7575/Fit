@@ -115,7 +115,8 @@ function NewWorkspace() {
     }
     const saved = await createCoverLetter(input);
     clearStash();
-    navigate(`/agent-rooms?coverLetterId=${saved.id}`);
+    // 봐 달라고 하고 넘어온 길이므로 코치 고르는 화면을 한 번 더 묻지 않는다
+    navigate(`/cover-letters/${saved.id}/review`);
   };
 
   return (
@@ -136,7 +137,7 @@ function NewWorkspace() {
  * 쓰는 화면의 껍데기. 첫 화면을 영상에 내주므로 헤더와 서브바를 위로 치워 두고,
  * 조금이라도 내리면 반투명 유리로 내려온다 — 기업 검색·자소서 첫 화면과 같다.
  */
-function WorkspaceShell({ children }: { children: ReactNode }) {
+function WorkspaceShell({ letter, children }: { letter?: { id: number; title: string } | null; children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -148,7 +149,7 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <CoverLetterHeader floating scrolled={scrolled} />
+      <CoverLetterHeader floating letter={letter} scrolled={scrolled} />
       {children}
     </div>
   );
@@ -192,7 +193,7 @@ function ExistingLoaded({ id }: { id: number }) {
   // 고친 내용을 에이전트가 보도록 저장부터 하고 넘어간다.
   const onReview = async (input: CoverLetterInput) => {
     await updateCoverLetter(id, input);
-    navigate(`/agent-rooms?coverLetterId=${id}`);
+    navigate(`/cover-letters/${id}/review`);
   };
 
   const notFound =
@@ -200,7 +201,8 @@ function ExistingLoaded({ id }: { id: number }) {
     (state.error.status === 404 || state.error.code === 'COVER_LETTER_NOT_FOUND');
 
   return (
-    <WorkspaceShell>
+    // 저장된 자소서라야 검토로 갈 수 있다. 아직 못 불러왔으면 이름표도 탭도 세우지 않는다
+    <WorkspaceShell letter={data ? { id, title: data.title } : null}>
       {state.status === 'loading' && !data && <LoadingScreen />}
 
       {/* 못 불러온 경우에는 영상을 깔지 않는다. 읽을 것이 안내 한 줄뿐이다 */}

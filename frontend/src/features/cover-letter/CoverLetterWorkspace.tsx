@@ -149,6 +149,87 @@ function StepRail({
   );
 }
 
+/**
+ * 본문 좌우 여백에서 앞뒤 문항으로 넘기는 단추.
+ *
+ * <p>예전에는 여백 전체가 단추였다. 화면 높이의 2/3 × 여백 전체가 한 덩어리라, 그 안
+ * 어디에 마우스를 올려도 반투명 사각형이 통째로 켜졌다 — 한쪽 모서리만 둥글어서 잘린
+ * 판처럼 보였고, 빈 여백을 눌렀을 뿐인데 문항이 넘어가기도 했다.
+ *
+ * <p>그래서 정렬만 여백에 맡기고(pointer-events-none) 손이 닿는 곳은 가운데 원 하나로
+ * 좁힌다. 화살표도 글자(←)가 아니라 선으로 그린다 — 글꼴이 그리는 화살표는 획이 얇고
+ * 크기를 키울수록 들쭉날쭉해진다.
+ *
+ * <p>어디로 가는지는 원 아래 이름표로 말한다. 다음 문항인지 새 문항을 더하는 것인지
+ * 모양만 봐서는 알 수 없었다.
+ */
+function StepArrow({
+  side,
+  label,
+  disabled = false,
+  onClick,
+}: {
+  side: 'left' | 'right';
+  /** 눌렀을 때 닿는 곳. 호버·포커스 때만 보인다 */
+  label: string;
+  /** 아직 갈 수 없다. 감추지 않고 눌러지지 않는 채로 둔다 — 길이 있다는 것은 보여야 한다 */
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const left = side === 'left';
+  return (
+    <div
+      className={`pointer-events-none fixed top-1/2 z-10 hidden w-[calc((100vw-56rem)/2)] -translate-y-1/2 justify-center lg:flex ${
+        left ? 'left-0' : 'right-0'
+      }`}
+    >
+      <button
+        /*
+         * 방향까지 넣어 부른다. 이름이 "문항 1" 뿐이면 단계 줄의 같은 이름 칩과 구별되지
+         * 않는다 — 읽는 도구에도, 그 이름으로 찾는 테스트에도 둘이 똑같이 보인다.
+         */
+        aria-label={disabled ? label : `${left ? '이전' : '다음'} — ${label}`}
+        className="group pointer-events-auto relative flex items-center justify-center rounded-full p-2 focus-visible:outline-none disabled:cursor-not-allowed"
+        disabled={disabled}
+        onClick={onClick}
+        type="button"
+      >
+        <span
+          className={`flex size-12 items-center justify-center rounded-full backdrop-blur transition duration-200 ${
+            disabled
+              ? 'bg-white/5 text-white/25 ring-1 ring-white/10'
+              : `bg-white/10 text-white/70 ring-1 ring-white/20 group-hover:bg-white/20 group-hover:text-white group-hover:ring-white/35 group-focus-visible:ring-2 group-focus-visible:ring-white/70 group-active:scale-95 ${
+                  left ? 'group-hover:-translate-x-0.5' : 'group-hover:translate-x-0.5'
+                }`
+          }`}
+        >
+          <svg
+            aria-hidden="true"
+            className="size-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              d={left ? 'm14.5 5-7 7 7 7' : 'm9.5 5 7 7-7 7'}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+        {/*
+          이름표는 띄워 둔다. 글 흐름에 두면 "희망 기업·직무" 와 "문항 2" 의 길이가 달라
+          단추 폭이 그때그때 바뀌고, 그만큼 원이 좌우로 흔들린다.
+        */}
+        <span className="pointer-events-none absolute top-full left-1/2 mt-1.5 -translate-x-1/2 text-[12px] font-semibold whitespace-nowrap text-white/0 transition duration-200 group-hover:text-white/75 group-focus-visible:text-white/75">
+          {label}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 /** 공고를 어떤 회사·직무로 등록했는지 적어 두는 열쇠. 달라지면 등록한 공고가 더는 맞지 않는다. */
 const postingKey = (company?: string | null, position?: string | null) =>
   `${(company ?? '').trim()}|${(position ?? '').trim()}`;
@@ -399,6 +480,7 @@ export function CoverLetterWorkspace({
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/62 to-slate-950/88" />
       </div>
 
+      {/* 헤더(56)가 화면에 고정돼 있으므로 그 아래에서 시작한다 */}
       <div className="relative mx-auto w-full max-w-4xl px-6 pt-24 pb-16">
         {/* 나가는 길은 맨 위 왼쪽에 둔다. 제목과 같은 줄에 두면 제목과 무게를 다툰다 */}
         {onBack && (
@@ -572,41 +654,35 @@ export function CoverLetterWorkspace({
           오른쪽은 다음 문항으로 넘어가고, 마지막 문항에서는 새 문항을 더해 그리로 옮긴다 —
           '+ 문항 추가' 를 찾지 않아도 손이 머문 자리에서 이어서 쓴다.
         */}
+        {/* 앞에 아무것도 없는 첫 단계에만 왼쪽이 없다 */}
         {step !== META_STEP && (
-          <>
-            <button
-              aria-label="이전 단계"
-              className="group fixed top-1/2 left-0 z-10 hidden h-2/3 w-[calc((100vw-56rem)/2)] -translate-y-1/2 items-center justify-center rounded-r-2xl transition hover:bg-white/5 lg:flex"
-              onClick={() => goStep(step - 1)}
-              type="button"
-            >
-              <span
-                aria-hidden="true"
-                className="text-6xl leading-none font-light text-white/40 transition group-hover:text-white/90"
-              >
-                ←
-              </span>
-            </button>
-            {/*
-              마지막 문항에서 상한에 닿으면 이 화살표는 할 일이 없다. 그래도 남겨 두었더니
-              눌러도 아무 일이 없는 단추가 되어, 더 넣을 수 없다는 사실이 "고장" 으로 읽혔다.
-            */}
-            {(step < items.length || items.length < MAX_ITEMS) && (
-            <button
-              aria-label={step < items.length ? '다음 문항' : '문항 추가'}
-              className="group fixed top-1/2 right-0 z-10 hidden h-2/3 w-[calc((100vw-56rem)/2)] -translate-y-1/2 items-center justify-center rounded-l-2xl transition hover:bg-white/5 lg:flex"
-              onClick={() => (step < items.length ? goStep(step + 1) : addItem())}
-              type="button"
-            >
-              <span
-                aria-hidden="true"
-                className="text-6xl leading-none font-light text-white/40 transition group-hover:text-white/90"
-              >
-                →
-              </span>
-            </button>
-            )}
-          </>
+          <StepArrow
+            label={step === 1 ? '희망 기업·직무' : `문항 ${step - 1}`}
+            onClick={() => goStep(step - 1)}
+            side="left"
+          />
+        )}
+
+        {/*
+          마지막 문항에서 상한에 닿으면 이 화살표는 할 일이 없다. 그래도 남겨 두었더니
+          눌러도 아무 일이 없는 단추가 되어, 더 넣을 수 없다는 사실이 "고장" 으로 읽혔다.
+        */}
+        {(step === META_STEP || step < items.length || items.length < MAX_ITEMS) && (
+          <StepArrow
+            // 제목이 없으면 문항으로 넘어갈 수 없다. 눌러도 안 되는 대신 왜 안 되는지 적는다
+            disabled={step === META_STEP && !metaReady}
+            label={
+              step === META_STEP
+                ? metaReady
+                  ? '문항 1'
+                  : '제목을 먼저 입력해 주세요'
+                : step < items.length
+                  ? `문항 ${step + 1}`
+                  : '문항 추가'
+            }
+            onClick={() => (step < items.length ? goStep(step + 1) : addItem())}
+            side="right"
+          />
         )}
 
         {/* 한 화면에 한 문항만. 나머지는 지우지 않고 감춘다 — 입력한 것이 날아가면 안 된다 */}

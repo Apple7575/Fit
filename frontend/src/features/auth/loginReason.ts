@@ -25,13 +25,25 @@ const DEFAULT: LoginReason = {
  * 그냥 나간다. 특히 모의 면접은 "내 얼굴을 찍는데 왜 로그인까지"라는 생각이 들기 쉬우므로,
  * 계정이 필요한 까닭과 영상이 어디에 남는지를 같은 자리에서 밝힌다.
  */
-const BY_PATH: Array<{ prefix: string } & LoginReason> = [
+const BY_PATH: Array<{ prefix: string; suffix?: string } & LoginReason> = [
   {
     prefix: '/interviews',
     headline: '면접, 로그인하고 시작해요',
     note: '질문을 만들고 답변을 분석하려면 계정이 필요해요. 녹화한 영상은 이 브라우저에만 남습니다.',
     lines: ['면접 질문은 회사 자료로 만들어요', '녹화는 이 브라우저 밖으로 안 나가요'],
     character: 'owl',
+  },
+  /*
+   * 검토는 자소서 주소 아래에 있으므로(/cover-letters/:id/review) 자소서보다 먼저 맞춰야
+   * 한다. 뒤에 두면 위의 자소서 안내가 먼저 걸려 검토 안내가 영영 나오지 않는다.
+   */
+  {
+    prefix: '/cover-letters/',
+    suffix: '/review',
+    headline: '검토 방, 로그인하고 열어요',
+    note: '코치들이 자소서를 읽으려면 내 계정에 연결돼 있어야 해요.',
+    lines: ['다들 의견 모아서 정리할게요'],
+    character: 'lead',
   },
   {
     prefix: '/cover-letters',
@@ -52,8 +64,11 @@ const BY_PATH: Array<{ prefix: string } & LoginReason> = [
 /** 로그인 화면이 어떤 말을 할지. redirect 경로에서 무엇을 하려다 막혔는지 읽는다. */
 export function loginReason(redirect: string | null | undefined): LoginReason {
   if (!redirect || !redirect.startsWith('/')) return DEFAULT;
-  const found = BY_PATH.find(
-    ({ prefix }) => redirect === prefix || redirect.startsWith(`${prefix}/`) || redirect.startsWith(`${prefix}?`),
-  );
+  // 물음표 뒤 질의는 경로 판정에서 뺀다 — 끝을 보는 규칙(suffix)이 질의에 걸리면 안 된다
+  const path = redirect.split('?')[0];
+  const found = BY_PATH.find(({ prefix, suffix }) => {
+    const head = path === prefix || path.startsWith(prefix.endsWith('/') ? prefix : `${prefix}/`);
+    return head && (suffix === undefined || path.endsWith(suffix));
+  });
   return found ?? DEFAULT;
 }
