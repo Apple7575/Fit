@@ -4,11 +4,15 @@ import com.ssafy.companyanalysis.global.error.BusinessException;
 import com.ssafy.companyanalysis.global.error.ErrorCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.JsonNode;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -65,7 +69,56 @@ public class JobSourceClient {
                 nullable(response, "source_url"),
                 nullable(response, "job_posting_id"),
                 nullable(response, "published_at"),
-                nullable(response, "valid_until"));
+                nullable(response, "valid_until"),
+                response.path("metadata_only").asBoolean(false));
+    }
+
+    /**
+     * 사용자가 붙여넣은 공고 이미지를 AI 서버에 보내 글자를 읽어 온다.
+     *
+     * <p>공고 본문이 이미지인데 그 주소가 서버가 받는 HTML 에는 없는 사이트가 있다. 그런
+     * 공고도 사용자 화면에는 보이므로, 복사해 온 이미지를 그대로 받는 편이 확실하다.
+     * 받은 순서를 그대로 넘긴다 — 공고는 위에서 아래로 읽힌다.
+     */
+    public JobSource fromImages(List<MultipartFile> images) {
+        if (images == null || images.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "이미지가 없습니다.");
+        }
+        if (!properties.hasBaseUrl()) {
+            throw new BusinessException(ErrorCode.AGENT_SOURCE_UNAVAILABLE,
+                    "채용공고를 읽을 AI 서버 주소가 설정되지 않았습니다.");
+        }
+
+        MultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
+        for (MultipartFile image : images) {
+            form.add("files", image.getResource());
+        }
+
+        JsonNode response;
+        try {
+            response = agentAiRestClient.post()
+                    .uri("/jd/internal/job-sources/from-images")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(form)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (RestClientResponseException e) {
+            throw translate(e);
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.AI_UNAVAILABLE);
+        }
+        if (response == null || response.path("jd_text").asString("").isBlank()) {
+            throw new BusinessException(ErrorCode.JOB_POSTING_PARSE_FAILED);
+        }
+        return new JobSource(
+                response.path("jd_text").asString(""),
+                nullable(response, "company_name"),
+                nullable(response, "position_name"),
+                null,
+                nullable(response, "job_posting_id"),
+                nullable(response, "published_at"),
+                nullable(response, "valid_until"),
+                false);
     }
 
     /**
@@ -95,8 +148,11 @@ public class JobSourceClient {
      * @param positionName 같은 자리에서 찾은 직무명. 못 찾으면 null
      * @param sourceUrl    리다이렉트를 따라간 뒤의 최종 주소
      * @param publishedAt  공고 게시일({@code YYYY-MM-DD}). 등록할 때 함께 넘긴다
+     * @param metadataOnly 본문 없이 제목·메타만으로 채운 응답. 화면의 회사·직무를 채우는
+     *                     데는 쓰지만 검토에 넘길 원문으로는 부족하다
      */
     public record JobSource(String jdText, String companyName, String positionName, String sourceUrl,
-                            String jobPostingId, String publishedAt, String validUntil) {
+                            String jobPostingId, String publishedAt, String validUntil,
+                            boolean metadataOnly) {
     }
 }

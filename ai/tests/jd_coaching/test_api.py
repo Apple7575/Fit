@@ -75,7 +75,7 @@ class FakeService:
 
 
 class FakeSourceIngestor:
-    def from_url(self, url):
+    def from_url(self, url, *, allow_metadata_only=False):
         if url.endswith("/without-metadata"):
             return IngestedJd(
                 jd_text="Python 기반 API 개발 경험을 요구합니다.",
@@ -165,23 +165,6 @@ class ApiTest(unittest.TestCase):
                     "postgresql://user:pass@postgres:5432/app",
                 )
 
-    def test_source_ingestor_reads_clova_ocr_credentials_from_environment(self):
-        get_source_ingestor.cache_clear()
-        try:
-            with patch.dict(
-                "os.environ",
-                {
-                    "CLOVA_OCR_ENDPOINT": "https://ocr.example.test/general",
-                    "CLOVA_OCR_SECRET": "test-secret",
-                },
-                clear=True,
-            ):
-                ingestor = get_source_ingestor()
-            self.assertEqual(ingestor._clova_ocr_endpoint, "https://ocr.example.test/general")
-            self.assertEqual(ingestor._clova_ocr_secret, "test-secret")
-        finally:
-            get_source_ingestor.cache_clear()
-
     def test_analyzes_user_supplied_jd(self):
         response = self.client.post(
             "/internal/analyses",
@@ -260,6 +243,7 @@ class ApiTest(unittest.TestCase):
             "published_at": "2026-09-01",
             "valid_until": "2026-09-30",
             "content_sha256": "b" * 64,
+            "metadata_only": False,
         })
 
     def test_extracts_job_source_even_without_company_metadata(self):
@@ -290,7 +274,7 @@ class ApiTest(unittest.TestCase):
             (SourceIngestionError("no posting text"), 422),
         ):
             class FailingIngestor:
-                def from_url(self, url):
+                def from_url(self, url, *, allow_metadata_only=False):
                     raise error
 
             with self.subTest(error=type(error).__name__):

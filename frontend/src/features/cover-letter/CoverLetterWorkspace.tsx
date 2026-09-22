@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { ApiError, isRateLimited } from '../../api/client';
 import { CompanyPicker } from './CompanyPicker';
-import { parseJobPosting, registerJobPosting } from './api';
+import { parseJobPosting, parseJobPostingImages, registerJobPosting } from './api';
+import {
+  MAX_POSTING_IMAGES_BYTES,
+  MAX_POSTING_IMAGE_BYTES,
+  preparePostingImages,
+} from './preparePostingImages';
 import type { CoverLetterInput, PendingJobPosting } from './types';
 
 interface CoverLetterWorkspaceProps {
@@ -618,6 +623,9 @@ export function CoverLetterWorkspace({
 
 type PostingStatus = 'idle' | 'loading' | 'done' | 'error';
 
+/** AI 쪽 OCR 예산(UPLOAD_OCR_MAX_IMAGES)과 맞춘다. 더 받아도 뒤쪽은 읽히지 않는다. */
+const MAX_POSTING_IMAGES = 8;
+
 /**
  * 채용공고 URL 을 넣고 확인하면 지원 회사와 직무를 대신 채워 준다.
  * 공고 내용은 저장하지 않는다 — 입력칸을 채우고 나면 버린다.
@@ -637,33 +645,93 @@ function JobPostingBar({
   const [message, setMessage] = useState('');
   // 자동 인식이 안 되는 것으로 판명난 URL. 같은 주소 재파싱은 성공하지 않으므로 다시 못 누르게 막는다.
   const [blockedUrl, setBlockedUrl] = useState<string | null>(null);
+  // 붙여넣은 공고 이미지. 공고는 위에서 아래로 읽히므로 넣은 순서를 지킨다.
+  const [images, setImages] = useState<File[]>([]);
+
+  const describeFailure = (error: unknown, fallback: string) => {
+    setStatus('error');
+    if (error instanceof ApiError && isRateLimited(error)) {
+      setMessage('요청이 많습니다. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+    if (error instanceof ApiError && error.status === 413) {
+      setMessage('이미지 용량이 너무 큽니다. 장수를 줄이거나 화면을 나눠 캡처해 주세요.');
+      return;
+    }
+    setMessage(error instanceof ApiError ? error.message : fallback);
+  };
+
+  const urlReady = url.trim() !== '' && url.trim() !== blockedUrl;
+  // 이미지를 넣었으면 그쪽을 먼저 쓴다. 주소로 안 읽혀서 직접 넣은 경우가 대부분이다.
+  const canConfirm = images.length > 0 || urlReady;
 
   const confirm = async () => {
+    if (images.length > 0) {
+      await confirmImages();
+      return;
+    }
     const target = url.trim();
-    if (!target || target === blockedUrl) return;
+    if (!urlReady) return;
     setStatus('loading');
     setMessage('');
     try {
       const result = await parseJobPosting(target);
-      onParsed(result.companyName, result.positions, result.sourceUrl, result.sourceKey);
+      onParsed(result.companyName, result.positions, result.sourceUrl ?? target, result.sourceKey);
       // 잘 됐다는 말은 하지 않는다. 회사·직무 칸이 채워진 것으로 이미 보인다.
       setStatus('done');
       setMessage('');
     } catch (error) {
-      setStatus('error');
       if (error instanceof ApiError && error.code === 'JOB_POSTING_PARSE_FAILED') {
-        // 같은 URL 재시도는 무의미 → 그 주소를 잠그고 다른 주소/직접 입력으로 유도한다.
+        // 같은 URL 재시도는 무의미 → 그 주소를 잠그고 이미지/직접 입력으로 유도한다.
         setBlockedUrl(target);
-        setMessage('이 공고는 자동 인식이 안 돼요. 다른 주소를 넣거나 회사·직무를 직접 입력해 주세요.');
-      } else if (error instanceof ApiError && isRateLimited(error)) {
-        setMessage('요청이 많습니다. 잠시 후 다시 시도해 주세요.');
-      } else {
-        setMessage(
-          error instanceof ApiError
-            ? error.message
-            : '공고를 확인하지 못했습니다. 주소를 다시 확인해 주세요.',
-        );
+        setStatus('error');
+        setMessage('이 공고는 주소로 읽히지 않아요. 공고 이미지를 붙여넣거나 직접 입력해 주세요.');
+        return;
       }
+      describeFailure(error, '공고를 확인하지 못했습니다. 주소를 다시 확인해 주세요.');
+    }
+  };
+
+  /** 붙여넣은 이미지는 원본 그대로 담는다. 줄이고 자르는 일은 보낼 때 한다. */
+  const addImages = (candidates: File[]) => {
+    const picked = candidates.filter((file) => file.type.startsWith('image/'));
+    if (picked.length === 0) return;
+    setImages((prev) => [...prev, ...picked].slice(0, MAX_POSTING_IMAGES));
+    if (status === 'error') {
+      setStatus('idle');
+      setMessage('');
+    }
+  };
+
+  const confirmImages = async () => {
+    if (images.length === 0) return;
+    setStatus('loading');
+    setMessage('이미지를 준비하는 중…');
+    try {
+      // 전체 페이지 캡처는 세로가 아주 길다. 통째로 보내면 프록시가 413 으로 끊으므로
+      // 여기서 띠 모양으로 잘라 조각마다 JPEG 로 줄인다.
+      const prepared = await preparePostingImages(images, (done) =>
+        setMessage(`이미지를 준비하는 중… ${done}조각`),
+      );
+      const total = prepared.reduce((sum, file) => sum + file.size, 0);
+      if (
+        total > MAX_POSTING_IMAGES_BYTES ||
+        prepared.some((file) => file.size > MAX_POSTING_IMAGE_BYTES)
+      ) {
+        setStatus('error');
+        setMessage('이미지 용량이 너무 큽니다. 공고를 나눠 캡처해 주세요.');
+        return;
+      }
+      // 여기서부터가 대기의 대부분이다(조각당 OCR 6초, 동시 4개). 몇 초쯤 걸리는지
+      // 알려 주지 않으면 멈춘 것처럼 보인다.
+      setMessage(`공고를 읽는 중… 조각 ${prepared.length}개`);
+      const result = await parseJobPostingImages(prepared);
+      onParsed(result.companyName, result.positions, result.sourceUrl ?? '', result.sourceKey);
+      setStatus('done');
+      setMessage('');
+      setImages([]);
+    } catch (error) {
+      describeFailure(error, '이미지에서 공고를 읽지 못했습니다.');
     }
   };
 
@@ -696,12 +764,70 @@ function JobPostingBar({
         />
         <button
           onClick={confirm}
-          disabled={status === 'loading' || url.trim() === '' || url.trim() === blockedUrl}
-          className="h-[42px] shrink-0 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          disabled={status === 'loading' || !canConfirm}
+          className="h-[42px] w-full shrink-0 rounded-lg bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-[92px]"
           type="button"
         >
           {status === 'loading' ? '확인 중…' : '확인'}
         </button>
+      </div>
+
+      {/*
+        본문이 이미지인데 그 주소가 서버가 받는 HTML 에 없어 주소로는 못 읽는 공고가 있다.
+        화면에는 보이므로 복사해 온 이미지를 그대로 받는다.
+      */}
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <div
+          className="min-w-0 flex-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 focus-within:border-blue-400"
+          onPaste={(event) => {
+            const pasted = Array.from(event.clipboardData.files);
+            if (!pasted.some((file) => file.type.startsWith('image/'))) return;
+            event.preventDefault();
+            addImages(pasted);
+          }}
+          tabIndex={0}
+        >
+          {images.length === 0 ? (
+            <span className="text-[12.5px] text-slate-400">
+              공고가 이미지면 여기를 누르고 <kbd className="rounded bg-slate-100 px-1">Ctrl</kbd>+
+              <kbd className="rounded bg-slate-100 px-1">V</kbd> 로 붙여넣으세요
+            </span>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {images.map((image, index) => (
+                <span
+                  key={`${image.name}-${index}`}
+                  className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[12px] text-slate-600"
+                >
+                  {index + 1}. {image.name || '붙여넣은 이미지'}
+                  <button
+                    aria-label={`${index + 1}번 이미지 빼기`}
+                    className="text-slate-400 hover:text-slate-700"
+                    onClick={() => setImages((prev) => prev.filter((_, at) => at !== index))}
+                    type="button"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <label className="flex h-[42px] w-full shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:w-[92px]">
+          파일 선택
+          <input
+            aria-label="공고 이미지 선택"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            multiple
+            onChange={(event) => {
+              addImages(Array.from(event.target.files ?? []));
+              event.target.value = '';
+            }}
+            className="sr-only"
+          />
+        </label>
       </div>
 
       <p

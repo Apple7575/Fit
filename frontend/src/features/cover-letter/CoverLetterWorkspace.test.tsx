@@ -6,6 +6,7 @@ import type { CoverLetterInput } from './types';
 
 vi.mock('./api', () => ({
   parseJobPosting: vi.fn(),
+  parseJobPostingImages: vi.fn(),
   registerJobPosting: vi.fn(),
 }));
 
@@ -15,7 +16,7 @@ vi.mock('./CompanyPicker', () => ({
   ),
 }));
 
-const { parseJobPosting, registerJobPosting } = await import('./api');
+const { parseJobPosting, parseJobPostingImages, registerJobPosting } = await import('./api');
 
 const initial: CoverLetterInput = {
   title: '2026 상반기 백엔드',
@@ -173,5 +174,71 @@ describe('CoverLetterWorkspace', () => {
       'key-1',
     );
     expect(onReview.mock.calls[0][0].jobContextId).toBe('ctx-9');
+  });
+
+  it('공고 이미지를 붙여넣어 회사·직무를 채운다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(parseJobPostingImages).mockResolvedValue({
+      companyName: '뷰웍스',
+      positions: ['영상처리 개발'],
+      sourceUrl: '',
+      sourceKey: 'img-key',
+    });
+    render(
+      <CoverLetterWorkspace
+        initial={initial}
+        isLoggedIn
+        onSave={vi.fn()}
+        onReview={vi.fn()}
+      />,
+    );
+
+    const file = new File(['fake'], 'posting.png', { type: 'image/png' });
+    await user.upload(screen.getByLabelText('공고 이미지 선택'), file);
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(vi.mocked(parseJobPostingImages).mock.calls[0][0]).toHaveLength(1);
+    expect(screen.getByLabelText('지원 회사')).toHaveValue('뷰웍스');
+  });
+
+  it('붙여넣은 이미지를 개별로 뺄 수 있다', async () => {
+    const user = userEvent.setup();
+    render(
+      <CoverLetterWorkspace
+        initial={initial}
+        isLoggedIn
+        onSave={vi.fn()}
+        onReview={vi.fn()}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('공고 이미지 선택'),
+      [
+        new File(['a'], 'one.png', { type: 'image/png' }),
+        new File(['b'], 'two.png', { type: 'image/png' }),
+      ],
+    );
+    expect(screen.getByLabelText('2번 이미지 빼기')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('1번 이미지 빼기'));
+    expect(screen.queryByLabelText('2번 이미지 빼기')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('1번 이미지 빼기')).toBeInTheDocument();
+  });
+
+  it('줄여도 너무 큰 이미지는 보내지 않고 안내한다', async () => {
+    const user = userEvent.setup();
+    render(
+      <CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />,
+    );
+
+    // 전체 페이지 캡처 PNG 는 십수 MB 가 흔하다. 그대로 보내면 프록시가 413 으로 끊는다.
+    const huge = new File(['x'], 'long-posting.png', { type: 'image/png' });
+    Object.defineProperty(huge, 'size', { value: 9 * 1024 * 1024 });
+    await user.upload(screen.getByLabelText('공고 이미지 선택'), huge);
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('나눠 캡처');
+    expect(vi.mocked(parseJobPostingImages)).not.toHaveBeenCalled();
   });
 });

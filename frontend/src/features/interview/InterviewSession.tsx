@@ -73,6 +73,9 @@ export function InterviewSession({
   const current = queue[idx];
   const isLast = idx + 1 >= queue.length;
   const badge = SOURCE_BADGE[current.sourceType];
+  // 이어서 진행하는 세션인지. 되살린 답변이 하나라도 있으면 점검 화면에 진행 상황을 알려 준다.
+  const answeredCount = queue.filter((item) => item.transcript.trim().length > 0).length;
+  const resuming = answeredCount > 0;
 
   const setTranscript = (text: string) =>
     setQueue((prev) => prev.map((item, i) => (i === idx ? { ...item, transcript: text } : item)));
@@ -289,6 +292,15 @@ export function InterviewSession({
             <h1 className="mt-2 text-xl font-extrabold tracking-tight text-slate-950">시작 전에 확인할게요</h1>
             <p className="mt-1 text-[13px] text-slate-500">평소 말하듯 한 문장을 소리 내 보세요.</p>
 
+            {resuming && (
+              <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                <p className="text-[13px] font-bold text-blue-900">이어보는 면접이에요</p>
+                <p className="mt-1 text-[12px] leading-5 break-keep text-blue-800/80">
+                  전체 {queue.length}문항 중 <b className="font-bold">{answeredCount}문항</b>부터 이어서 진행합니다.
+                </p>
+              </div>
+            )}
+
             <ul className="mt-4 space-y-2">
               <CheckRow
                 label="카메라"
@@ -353,7 +365,7 @@ export function InterviewSession({
               onClick={() => setChecked(true)}
               type="button"
             >
-              {queue.length}문항 면접 시작
+              {resuming ? '이어서 진행하기' : `${queue.length}문항 면접 시작`}
             </button>
           </aside>
         </div>
