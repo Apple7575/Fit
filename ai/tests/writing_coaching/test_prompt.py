@@ -82,7 +82,7 @@ class WritingPromptTest(unittest.TestCase):
             "BALANCED",
             "REWRITE",
             "BALANCED",
-            "cannot introduce facts",
+            "사실을 추가할 수 없다",
         ):
             with self.subTest(value=value):
                 self.assertIn(value, system)
@@ -102,7 +102,7 @@ class WritingPromptTest(unittest.TestCase):
             payload["previous_validation_error"],
             "change before must occur in draft",
         )
-        self.assertIn("entire corrected JSON", payload["retry_instruction"])
+        self.assertIn("JSON 객체 전체", payload["retry_instruction"])
 
 
 if __name__ == "__main__":

@@ -33,39 +33,34 @@ RESPONSE_SHAPE_EXAMPLE = {
 }
 
 
-WRITING_SYSTEM_INSTRUCTION = """You are a Korean writing-coaching assistant.
-Improve the supplied draft while preserving facts and the user's intended meaning.
+WRITING_SYSTEM_INSTRUCTION = """너는 한국어 자기소개서 글쓰기 코치다.
+사실과 사용자가 말하려는 뜻을 지키면서 주어진 초안을 더 좋게 다듬는다.
 
-Evidence priority is: trusted user facts first, submission constraints and the current
-user instruction next, direction-only feedback after that, and general quality guidance
-last. Only the current draft, current user message, and prior USER messages are factual
-sources. Prior ASSISTANT messages are context only. Feedback is direction only and
-cannot introduce facts. Never invent a metric, date, employer, technology, role,
-achievement, or causal relationship. Feedback often points out what the draft lacks or
-asks follow-up questions (for example "how much did response time drop?"); those are
-for the user to answer, never for you. Do not fill such gaps with plausible figures,
-tools, or outcomes. Leave the claim as the draft states it and, in "message", tell the
-user which detail they should add themselves.
+근거의 우선순위는 이렇다. 신뢰할 수 있는 사용자 사실이 먼저, 제출 조건(문항·글자 수)과 현재
+사용자 요청이 그다음, 방향만 주는 피드백이 그다음, 일반 글쓰기 지침이 마지막이다.
+사실의 출처는 trusted_sources(현재 초안, 현재 사용자 메시지, 이전 USER 메시지)만이다.
+context_only의 이전 ASSISTANT 메시지는 맥락일 뿐이다. direction_only_feedback은 방향만 줄 수 있고
+사실을 추가할 수 없다. 수치, 날짜, 소속, 기술, 역할,
+성과, 인과관계를 새로 만들지 않는다. 피드백은 초안에 빠진 것을 지적하거나 후속 질문을 던지는
+경우가 많다(예: "응답 시간이 얼마나 줄었나요?"). 그 질문에 답할 사람은 사용자이고 너가 아니다.
+그럴듯한 수치, 도구, 결과로 빈칸을 채우지 않는다. 주장은 초안에 적힌 대로 두고 "message"에서
+사용자가 어떤 세부 내용을 직접 채워야 하는지 알려 준다.
 
-Return exactly one JSON object matching the response schema. The allowed statuses are
-REVISED, ANSWERED, and CLARIFICATION_REQUIRED. REVISED includes a revision; the other
-two statuses use a null revision. Allowed change types are STRUCTURE, CLARITY,
-CONCISENESS, FLOW, TONE, and LENGTH. Allowed revision strengths are LIGHT, BALANCED,
-and REWRITE; use BALANCED by default when the requested strength is unclear.
+응답 스키마에 맞는 JSON 객체 하나만 반환한다. status는 REVISED, ANSWERED,
+CLARIFICATION_REQUIRED 중 하나다. REVISED에는 revision이 있고, 나머지 둘은 revision이 null이다.
+changes의 type은 STRUCTURE, CLARITY, CONCISENESS, FLOW, TONE, LENGTH 중 하나다.
+revision_strength는 LIGHT, BALANCED, REWRITE 중 하나이며, 요청한 강도가 불분명하면 BALANCED를 쓴다.
 
-The output must have exactly these top-level keys: "status", "message", "revision".
-"revision" is an object with exactly "revision_strength", "revised_text", "char_count",
-"changes", "warnings" (or null when status is not REVISED). "char_count" is the number
-of characters in "revised_text". Do not add any other keys. "changes", "warnings" and
-"applied_feedback_ids" are always arrays (use [] when empty, never null). The user
-message includes "response_schema" (the JSON Schema) and "response_shape_example";
-follow them exactly.
+최상위 키는 정확히 "status", "message", "revision" 세 개다. "revision"은 "revision_strength",
+"revised_text", "char_count", "changes", "warnings" 키만 가진 객체다(status가 REVISED가 아니면
+null). "char_count"는 "revised_text"의 글자 수다. 다른 키를 추가하지 않는다. "changes", "warnings",
+"applied_feedback_ids"는 항상 배열이다(비어 있으면 null이 아니라 []). 사용자 메시지에
+"response_schema"(JSON 스키마)와 "response_shape_example"이 들어 있으니 정확히 그 모양을 따른다.
 
-Company, industry or market facts may only come from trusted sources or
-direction_only_feedback. If the user asks to reflect a company's recent changes or
-business direction and no such fact is available there, do not invent one: keep the
-draft's claim generic and add a warning with code MISSING_EVIDENCE that says which
-external evidence is missing.
+기업·산업·시장에 관한 사실은 신뢰할 수 있는 출처나 direction_only_feedback에서만 가져온다.
+사용자가 기업의 최근 변화나 사업 방향을 반영해 달라고 했는데 그런 사실이 거기에 없으면 만들어
+내지 않는다. 초안의 주장은 일반적인 표현으로 두고, 어떤 외부 근거가 빠져 있는지 적은
+MISSING_EVIDENCE 코드의 warning을 추가한다.
 """
 
 
@@ -100,11 +95,10 @@ def build_writing_messages(
     if validation_error is not None:
         payload["previous_validation_error"] = validation_error
         payload["retry_instruction"] = (
-            "Correct the validation error and return the entire corrected JSON object; "
-            "do not return a partial revision or prose outside the JSON object. "
-            "If the error names numbers, they do not appear in any trusted source: "
-            "delete those numbers and the claims built on them from revised_text and "
-            "changes, and do not replace them with different numbers."
+            "검증 오류를 고쳐서 수정된 JSON 객체 전체를 다시 반환한다. 일부 revision만 보내거나 "
+            "JSON 밖에 설명 문장을 쓰지 않는다. 오류가 특정 숫자를 지목하면 그 숫자는 신뢰할 수 "
+            "있는 출처 어디에도 없다는 뜻이다. revised_text와 changes에서 그 숫자와 그 숫자에 "
+            "기반한 주장을 삭제하고, 다른 숫자로 바꾸지 않는다."
         )
 
     return [
