@@ -145,6 +145,11 @@ def _data_start(m: list[list[str]], hrow: int, fp) -> int:
 
     머리말 어휘에 걸린 칸의 숫자는 세지 않는다. '제47기' 가 47 로 읽혀 금액으로
     보이면 남선알미늄의 아랫단이 데이터로 남는다 (실측).
+
+    **각주 표시도 세지 않는다.** `to_num` 은 문자열 어디서든 숫자를 찾으므로
+    `총소요 자금(주1)` 이 1 로 읽힌다 — HEM파마 2024 가 그것 때문에 아랫단이
+    데이터로 남아 `구분` 이 항목이 되고 1 천원이 금액이 됐다 (3차 확대).
+    금액 칸에서 각주를 지워도 진짜 금액은 그대로다(`6,935,726`).
     """
     r = hrow + 1
     while r < len(m):
@@ -156,7 +161,7 @@ def _data_start(m: list[list[str]], hrow: int, fp) -> int:
             if fp.subheader_cell.search(s):
                 hits += 1
                 continue                            # 머리말이다. 숫자로 세지 않는다
-            v = to_num(s)
+            v = to_num(fp.footnote_marker.sub(" ", s))
             if v is not None and not (1900 <= v <= 2100):
                 has_amount = True
         if hits < _SUBHEADER_MIN_HITS or has_amount:

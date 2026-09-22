@@ -48,6 +48,9 @@ type Step = number;
 
 const META_STEP = 0;
 
+/** 문항은 최대 7개까지. 그 이상은 한 자소서로 다루기에 너무 길고, 검토도 늘어진다. */
+const MAX_ITEMS = 7;
+
 /**
  * 지금 어느 단계인지. 눌러서 아무 데나 오갈 수 있다 — 막아 두면 앞을 고치려다 길을 잃는다.
  *
@@ -187,6 +190,7 @@ export function CoverLetterWorkspace({
 
   // 문항을 더하면 그 문항으로 바로 넘어간다. 더해 놓고 찾아가게 하면 한 걸음이 더 든다.
   const addItem = () => {
+    if (items.length >= MAX_ITEMS) return; // 상한을 넘겨 더하지 않는다(버튼도 그때 감춘다).
     setItems((prev) => [...prev, { key: uid(), question: '', answer: '', charLimit: 500 }]);
     setStep(items.length + 1);
     touch();
@@ -314,8 +318,12 @@ export function CoverLetterWorkspace({
     /*
      * 기업 검색·모의 면접 준비와 같은 짜임이다 — 영상 위 어두운 한 장에 흰 카드를 얹는다.
      * 이 화면만 회색 바탕이라 혼자 따로 놀았다.
+     *
+     * overflow-hidden 은 걷었다. 기업명 검색 결과는 칸 아래로 펼쳐지는데, 결과가 많으면
+     * 이 장의 밑변을 넘어서 잘려 나갔다 — 둥근 아래 모서리도, 그 아래 "그대로 쓰기" 단추도
+     * 함께 사라졌다. 배경 영상은 fixed 라 이 속성과 무관하니 잘라낼 것이 없다.
      */
-    <section className="relative isolate overflow-hidden bg-slate-950 text-white">
+    <section className="relative isolate bg-slate-950 text-white">
       {/*
         화면(fixed)에 붙인다. 이 장은 문항을 늘릴수록 세로로 길어지는데, 그 길이에
         맞춰 늘이면 가로로 긴 영상이 두 배로 확대되고 좌우가 잘려 책상 귀퉁이만 남는다.
@@ -368,7 +376,7 @@ export function CoverLetterWorkspace({
         <StepRail
           filled={items.map((item) => item.question.trim() !== '' && item.answer.trim() !== '')}
           locked={!metaReady}
-          onAdd={step === META_STEP ? undefined : addItem}
+          onAdd={step === META_STEP || items.length >= MAX_ITEMS ? undefined : addItem}
           onGo={goStep}
           step={step}
         />
