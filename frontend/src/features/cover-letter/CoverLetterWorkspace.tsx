@@ -486,7 +486,7 @@ export function CoverLetterWorkspace({
         {step !== META_STEP && (
           <button
             className="mt-4 flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-white/10 px-4 py-3 text-left text-[13px] text-white/70 ring-1 ring-white/15 backdrop-blur transition hover:bg-white/15 hover:text-white"
-            onClick={() => setStep(1)}
+            onClick={() => setStep(META_STEP)}
             type="button"
           >
             <span className="font-bold text-white">{title.trim() || UNTITLED_COVER_LETTER}</span>
@@ -497,6 +497,44 @@ export function CoverLetterWorkspace({
             )}
             <span className="ml-auto shrink-0 text-[12px] font-semibold text-white/50">고치기</span>
           </button>
+        )}
+
+        {/*
+          단계 칩은 그대로 두고, 좌우 여백에 앞뒤로 넘길 화살표를 더한다. 답변이 길어져
+          스크롤해도 자리를 지키도록 화면에 고정한다. 여백이 없는 좁은 화면에서는 감춘다 —
+          칩으로 오갈 수 있다. 문항 단계에서만 낸다(첫 단계엔 이미 '문항 쓰기'가 있다).
+          오른쪽은 다음 문항으로 넘어가고, 마지막 문항에서는 새 문항을 더해 그리로 옮긴다 —
+          '+ 문항 추가' 를 찾지 않아도 손이 머문 자리에서 이어서 쓴다.
+        */}
+        {step !== META_STEP && (
+          <>
+            <button
+              aria-label="이전 단계"
+              className="group fixed top-1/2 left-0 z-10 hidden h-2/3 w-[calc((100vw-56rem)/2)] -translate-y-1/2 items-center justify-center rounded-r-2xl transition hover:bg-white/5 lg:flex"
+              onClick={() => goStep(step - 1)}
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                className="text-6xl leading-none font-light text-white/40 transition group-hover:text-white/90"
+              >
+                ←
+              </span>
+            </button>
+            <button
+              aria-label={step < items.length ? '다음 문항' : '문항 추가'}
+              className="group fixed top-1/2 right-0 z-10 hidden h-2/3 w-[calc((100vw-56rem)/2)] -translate-y-1/2 items-center justify-center rounded-l-2xl transition hover:bg-white/5 lg:flex"
+              onClick={() => (step < items.length ? goStep(step + 1) : addItem())}
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                className="text-6xl leading-none font-light text-white/40 transition group-hover:text-white/90"
+              >
+                →
+              </span>
+            </button>
+          </>
         )}
 
         {/* 한 화면에 한 문항만. 나머지는 지우지 않고 감춘다 — 입력한 것이 날아가면 안 된다 */}
