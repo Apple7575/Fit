@@ -15,10 +15,12 @@
   [2] source 가 있던 행은 모두 publisher 로 옮겨졌다 (행 단위 대조)
   [3] guid 가 있던 행은 모두 provider_article_id 로 옮겨졌다 (행 단위 대조)
   [4] 새 자연키에 중복이 없다 (제공처 기준 · 원문 URL 기준 둘 다)
-  [5] 기존 Google 뉴스 행의 provider_url 이 채워졌다
+  [5] 기존 Google 뉴스 행의 provider_url 이 original_url 과 **값까지** 같다
   [6] normalized_url 에 빈 문자열이 없다 — 부분 UNIQUE 인덱스가 빈 문자열을 값으로
       보아 같은 기업의 두 번째 행부터 충돌한다 (백엔드 지적)
   [7] AI 코드가 더 이상 source·guid 를 조회하지 않는다 (DB 없이 코드로 본다)
+  [8] provider 가 모든 행에 채워졌다 — 비면 제공처 기준 자연키가 성립하지 않는다
+  [9] id 집합이 보존됐다 — 행 수가 같아도 지워지고 새로 들어갔을 수 있다
 
 [7] 만 DB 없이 돈다. `--code-only` 로 그것만 볼 수 있다.
 """
@@ -163,21 +165,63 @@ def _check_duplicate_keys(cur, columns) -> Check:
 
 
 def _check_provider_url(cur, columns, by_id) -> Check:
-    check = Check(5, "기존 Google 뉴스 행의 provider_url 이 채워졌다")
+    check = Check(5, "기존 Google 뉴스 행의 provider_url 이 original_url 과 같다")
     if "provider_url" not in columns:
         check.fail("provider_url 컬럼이 없다 — 마이그레이션이 적용되지 않았다")
         return check
-    google_ids = [i for i, r in by_id.items()
-                  if (r["original_url"] or "").startswith(GOOGLE_PREFIX)]
-    if not google_ids:
+    google = {i: r["original_url"] for i, r in by_id.items()
+              if (r["original_url"] or "").startswith(GOOGLE_PREFIX)}
+    if not google:
         check.skip("배포 전에 구글 링크 행이 없었다")
         return check
-    cur.execute("SELECT id FROM news_article WHERE id = ANY(%s) AND provider_url IS NULL",
-                (google_ids,))
-    empty = [r[0] for r in cur.fetchall()]
-    check.detail = {"google_rows": len(google_ids), "still_null": len(empty)}
+    cur.execute("SELECT id, provider_url FROM news_article WHERE id = ANY(%s)",
+                (list(google),))
+    after = dict(cur.fetchall())
+    empty = [i for i in google if after.get(i) is None]
+    # 채워졌는지만 보면 엉뚱한 값이 들어가도 통과한다. 값까지 맞춘다 (백엔드 요청).
+    wrong = {i: (want, after.get(i)) for i, want in google.items()
+             if after.get(i) is not None and after.get(i) != want}
+    check.detail = {"google_rows": len(google), "still_null": len(empty),
+                    "mismatched": len(wrong)}
     if empty:
         check.fail(f"{len(empty)}행이 아직 NULL 이다 (예: id={empty[:5]})")
+    for i, (want, got) in list(wrong.items())[:5]:
+        check.fail(f"id={i}: original_url={want!r} 인데 provider_url={got!r}")
+    if len(wrong) > 5:
+        check.fail(f"… 외 {len(wrong) - 5}건")
+    return check
+
+
+def _check_provider_backfill(cur, columns) -> Check:
+    check = Check(8, "provider 가 모든 행에 채워졌다")
+    if "provider" not in columns:
+        check.fail("provider 컬럼이 없다 — 마이그레이션이 적용되지 않았다")
+        return check
+    cur.execute("SELECT count(*) FROM news_article WHERE provider IS NULL")
+    empty = cur.fetchone()[0]
+    cur.execute("SELECT provider, count(*) FROM news_article GROUP BY provider "
+                "ORDER BY count(*) DESC")
+    check.detail = {"null_rows": empty,
+                    "by_provider": {row[0]: row[1] for row in cur.fetchall()}}
+    if empty:
+        # provider 가 비면 제공처 기준 자연키가 성립하지 않는다.
+        check.fail(f"{empty}행의 provider 가 NULL 이다")
+    return check
+
+
+def _check_id_set(cur, by_id) -> Check:
+    check = Check(9, "id 집합이 보존됐다")
+    cur.execute("SELECT id FROM news_article")
+    after = {row[0] for row in cur.fetchall()}
+    before = set(by_id)
+    lost = sorted(before - after)
+    added = sorted(after - before)
+    check.detail = {"lost": len(lost), "added": len(added)}
+    # 행 수가 같아도 지워지고 새로 들어갔을 수 있다. 집합으로 본다 (백엔드 요청).
+    if lost:
+        check.fail(f"없어진 id {len(lost)}개 (예: {lost[:5]})")
+    if added:
+        check.fail(f"새로 생긴 id {len(added)}개 (예: {added[:5]})")
     return check
 
 
@@ -220,12 +264,15 @@ def run_compare(snapshot_path: Path) -> list[Check]:
             checks.append(_check_duplicate_keys(cur, columns))
             checks.append(_check_provider_url(cur, columns, by_id))
             checks.append(_check_blank_normalized_url(cur, columns))
+            checks.append(_check_provider_backfill(cur, columns))
+            checks.append(_check_id_set(cur, by_id))
 
     checks.append(check_ai_code())
     return checks
 
 
 def report(checks: list[Check], json_path: Path | None) -> int:
+    checks = sorted(checks, key=lambda c: c.number)
     print("뉴스 ERD 마이그레이션 전후 대조")
     print("=" * 64)
     for check in checks:

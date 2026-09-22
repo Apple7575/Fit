@@ -82,6 +82,18 @@ def natural_key(table: str, schema=None) -> tuple[str, ...]:
             return candidate
     return NATURAL_KEY_CANDIDATES[table][0]
 
+
+def conflict_predicate(table: str, key: tuple[str, ...], schema=None) -> str | None:
+    """그 자연키가 **부분 UNIQUE 인덱스**면 인덱스의 WHERE 절을 돌려준다.
+
+    없으면 None 이고, 그때는 예전처럼 조건 없는 `ON CONFLICT (키)` 가 된다.
+    부분 인덱스인데 이것을 빼면 PostgreSQL 이 중재자를 못 찾아 적재가 통째로
+    죽는다 — news_article 의 제공처 기준 키가 그렇게 될 예정이다 (MR !209).
+    """
+    resolved = schema or flyway.load()
+    found = resolved.table(table)
+    return found.predicate_for(key) if found else None
+
 # 정리 범위를 corp_code 밖으로 한 칸 더 좁히는 표.
 #
 # `company_metric` 은 **한 표를 여러 원천이 나눠 쓴다.** 시드가 만드는 것은 재무 5종 +
@@ -242,7 +254,8 @@ def main() -> int:
 
             key = natural_key(table)
             cols = [c for c in rows[0] if c != "id"]
-            stats = db.upsert(conn, table, rows, pk=key, columns=cols)
+            stats = db.upsert(conn, table, rows, pk=key, columns=cols,
+                              conflict_where=conflict_predicate(table, key))
 
             # 시드에 없는 행 정리. 범위 안(시드에 든 기업)만 본다.
             seen = [tuple(str(r[c]) for c in key) for r in rows]
