@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
-import { MediaSlot } from '../../components/brand/MediaSlot';
+import { PersonMark } from '../../components/brand/MediaSlot';
 import { prefersReducedMotion, useInView } from '../../hooks/useInView';
 
 /** 모의 면접 화면과 같은 영상 */
@@ -26,6 +26,13 @@ const FEEDBACK = [
   { kind: 'IMPROVEMENT', cat: '전달력', text: '첫 20초에 결론을 먼저 말하면 더 또렷해짐' },
 ] as const;
 
+/**
+ * REC 는 계속 떠 있다. 다만 못 박아 두면 그림이 되므로 5초마다 잠깐 껐다 켠다 —
+ * 실제로 녹화 중인 화면처럼 시간이 흐르는 것이 보인다.
+ */
+const REC_ON_MS = 5000;
+const REC_OFF_MS = 450;
+
 const TYPE_MS = 28;
 const ANSWER_MS = 3200;
 const FEEDBACK_MS = 2600;
@@ -45,6 +52,28 @@ export function InterviewDemo() {
   const [phase, setPhase] = useState<Phase>(reduce ? 'feedback' : 'question');
   const [seconds, setSeconds] = useState(0);
   const [shownFeedback, setShownFeedback] = useState(reduce ? FEEDBACK.length : 0);
+  // 녹화 표시는 데모 단계와 따로 돈다. 질문을 읽는 동안에도 화면은 녹화 중이다
+  const [recOn, setRecOn] = useState(true);
+  const [recSeconds, setRecSeconds] = useState(0);
+
+  useEffect(() => {
+    if (reduce || !inView) return;
+    let timer: number;
+
+    if (!recOn) {
+      timer = window.setTimeout(() => {
+        setRecSeconds(0);
+        setRecOn(true);
+      }, REC_OFF_MS);
+    } else if (recSeconds * 1000 < REC_ON_MS) {
+      timer = window.setTimeout(() => setRecSeconds((s) => s + 1), 1000);
+    } else {
+      // 5초를 다 세면 곧바로 끈다. 0ms 인 것은 effect 안에서 바로 setState 하지 않기 위해서다
+      timer = window.setTimeout(() => setRecOn(false), 0);
+    }
+
+    return () => window.clearTimeout(timer);
+  }, [inView, reduce, recOn, recSeconds]);
 
   useEffect(() => {
     if (reduce || !inView) return;
@@ -93,8 +122,8 @@ export function InterviewDemo() {
   }, [inView, reduce, phase, typed, seconds, shownFeedback, qi]);
 
   const current = QUESTIONS[qi];
-  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const ss = String(seconds % 60).padStart(2, '0');
+  const mm = String(Math.floor(recSeconds / 60)).padStart(2, '0');
+  const ss = String(recSeconds % 60).padStart(2, '0');
 
   return (
     <section
@@ -125,16 +154,24 @@ export function InterviewDemo() {
           className="order-2 grid gap-4 lg:order-1 lg:grid-cols-[1.1fr_1fr]"
           role="img"
         >
-          <div className="relative aspect-video overflow-hidden rounded-[var(--radius-card)] ring-1 ring-white/15">
-            <MediaSlot label="면접 화면 클립" placeholder="person" />
-            {phase === 'answer' && (
+          {/*
+            "▶ 면접 화면 클립" 이름표는 걷었다. 누를 수 없는 그림인데 재생 단추처럼 보였다.
+            그 자리에는 정작 사람들이 궁금해하는 말(영상을 저장하지 않는다)을 세운다.
+          */}
+          <div
+            aria-label="면접 화면 자리"
+            className="relative flex aspect-video flex-col items-center justify-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-slate-900 ring-1 ring-white/15"
+            role="img"
+          >
+            <PersonMark />
+            <span className="rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
+              🎥 영상은 저장되지 않습니다 · 답변 텍스트만 분석
+            </span>
+            {recOn && (
               <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-bold text-white">
                 <span className="size-2 animate-pulse rounded-full bg-white" /> REC {mm}:{ss}
               </span>
             )}
-            <span className="absolute bottom-3 left-3 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
-              🎥 영상은 저장되지 않습니다 · 답변 텍스트만 분석
-            </span>
           </div>
           <div className="flex flex-col gap-3 rounded-[var(--radius-card)] bg-white p-4 text-slate-900 ring-1 ring-white/10">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
