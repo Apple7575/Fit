@@ -1,10 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CharacterSlot } from '../../components/brand/CharacterSlot';
-import type { CharacterKey } from '../../components/brand/characters';
 import { useInView } from '../../hooks/useInView';
-
-/** 가운데(제일 큰 자리)에 핑크가 서도록 늘어세운 코치 다섯 */
-const LINEUP: readonly CharacterKey[] = ['hamster', 'otter', 'fox', 'owl', 'chick'];
 
 interface PrepCtaProps {
   corpName: string | null;
@@ -25,18 +20,6 @@ export function PrepCta({ corpName }: PrepCtaProps) {
     >
       <div aria-hidden="true" className="image-fallback absolute inset-0 opacity-90" />
       <div className="relative">
-        <ul aria-label="코치 다섯" className="mb-6 flex items-end justify-center gap-2 sm:gap-4">
-          {LINEUP.map((key, i) => (
-            <li
-              className="reveal"
-              data-inview={inView}
-              key={key}
-              style={{ '--reveal-delay': `${i * 80}ms`, transform: `translateY(${i % 2 ? 0 : 8}px)` } as never}
-            >
-              <CharacterSlot character={key} size={i === 2 ? 84 : 64} />
-            </li>
-          ))}
-        </ul>
         <h2 className="display-lg text-balance" id="prep-cta-title">
           {corpName ? `${corpName}, ` : ''}함께 준비해 볼까요?
         </h2>

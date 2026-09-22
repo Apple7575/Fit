@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { EVENT_META, type ClipEvent, type ClipEventKind, type MetricRow } from './delivery';
 import { EvidenceClip } from './EvidenceClip';
+import { FaceCompare } from './FaceCompare';
 import { Icon } from './icons';
 import { groupMetrics, groupStatus, type MetricGroup } from './metricGroups';
 import { METRIC_ICON } from './metricIcons';
 import { T, TONE } from './reportTokens';
+import type { VisionSample } from './vision';
 
 /** 지표가 무엇을 어떻게 잰 값인지. 사용자가 "이게 뭐지?" 하지 않도록 한 줄로 설명한다. */
 const HOW: Record<string, string> = {
@@ -14,7 +16,7 @@ const HOW: Record<string, string> = {
   '말이 멈춘 시간': '소리가 나지 않은 구간을 모아, 말을 시작하기까지와 가장 길게 멈춘 시간을 쟀어요.',
   '목소리 크기': '말하는 동안의 음량이 얼마나 오르내렸는지 봤어요.',
   '얼굴 위치': '얼굴이 화면 가운데(가로 25~75%, 세로 20~85%)에 있던 시간 비율이에요.',
-  '정면 유지': '코를 기준으로 좌우 뺨의 거리를 비교해, 고개를 돌리지 않은 시간 비율을 냈어요.',
+  '정면 유지': '얼굴 전체에서 머리가 향한 방향을 각도로 구해, 정면에서 15도 안쪽이던 시간 비율이에요.',
   '카메라 응시': '눈 안에서 눈동자가 가운데에 있던 시간 비율이에요. 화면을 보는 것과 렌즈를 보는 것은 구분하지 못해요.',
   '고개 흔들림': '얼굴 중심이 프레임 안에서 얼마나 자주 움직였는지예요.',
   '고개 각도': '눈높이에서 코까지의 거리로 고개가 숙여졌는지 봤어요. 답변 첫 2초 자세가 기준이에요.',
@@ -22,6 +24,9 @@ const HOW: Record<string, string> = {
   '상체 안정': '어깨 중앙점이 얼마나 흔들렸는지예요.',
   '어깨 수평': '양쪽 어깨를 잇는 선이 수평에서 몇 도 기울었는지예요.',
   '얼굴 인식': '얼굴이 인식된 프레임 비율이에요. 낮으면 다른 값도 정확하지 않아요.',
+  '고개 기울기': '머리가 좌우로 갸우뚱한 각도의 평균이에요.',
+  '표정': '입꼬리가 올라간 정도를 시간에 따라 봤어요. 감정을 알아맞히는 게 아니라 표정이 움직였는지만 봅니다.',
+  '손짓': '화면에 잡힌 손목이 어깨 너비 대비 얼마나 움직였는지예요. 손이 화면 밖이면 재지 않아요.',
 };
 
 /** 지표 → 영상에서 찾아볼 구간의 종류 */
@@ -40,6 +45,8 @@ interface Clip {
   url?: string;
   durationMs: number;
   events: ClipEvent[] | null;
+  /** 프레임별 추적값. 표정 근거처럼 구간이 아닌 값에 쓴다 */
+  samples?: VisionSample[] | null;
   wave: number[] | null;
   waveStepMs: number | null;
 }
@@ -83,7 +90,8 @@ export function EvidenceCards({
                   <span
                     className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${tone.chip}`}
                   >
-                    {g.warnCount > 0 ? `${g.warnCount}개 고칠 것` : '모두 좋아요'}
+                    {/* 권장 범위를 벗어났다는 뜻이지 틀렸다는 뜻이 아니다. "고칠 것"이라고 단정하지 않는다 */}
+                    {g.warnCount > 0 ? `${g.warnCount}개 살펴보기` : '모두 좋아요'}
                   </span>
                   <span className={`mt-1 block ${T.caption}`}>{groupStatus(g)}</span>
                 </span>
@@ -205,6 +213,14 @@ function GroupModal({
           <div>
             <p className={T.label}>어떻게 쟀나요</p>
             <p className={`mt-1 ${T.body}`}>{HOW[row.key] ?? '이 브라우저에서 계산한 값이에요.'}</p>
+            {/*
+              기준을 숨기면 점수처럼 읽힌다. 일반적인 권장 범위일 뿐이라는 걸 값과 같은 자리에서 밝힌다
+              (임계값은 delivery.ts·vision.ts 에 초안으로 적혀 있다).
+            */}
+            <p className={`mt-2 ${T.caption}`}>
+              여기서 쓰는 기준은 일반적인 권장 범위예요. 회사와 직무, 질문에 따라 알맞은 값이 다를 수
+              있으니 참고로만 봐 주세요.
+            </p>
           </div>
 
           <Evidence
@@ -248,6 +264,14 @@ function Evidence({ row, clip, onSeek }: { row: MetricRow; clip: Clip | undefine
               : '이 문항의 녹화가 없어 구간을 보여줄 수 없어요.'}
           </p>
         ))}
+
+      {/*
+        표정은 "언제 나빴다"로 짚을 수 있는 구간이 없다. 대신 답변 중 가장 밝았던 얼굴과 가장
+        굳었던 얼굴을 나란히 세운다. 둘이 똑같아 보이면 그게 곧 근거다.
+      */}
+      {row.key === '표정' && (
+        <FaceCompare flat={row.tone === 'warn'} samples={clip?.samples ?? null} url={clip?.url} />
+      )}
 
       {WAVE_METRICS.has(row.key) &&
         (clip?.wave && clip.wave.length > 0 ? (

@@ -7,9 +7,27 @@ import type {
   JobPostingParseResult,
 } from './types';
 
+/**
+ * 제목 없이 저장할 때 붙는 이름. 목록에서 "제목 없는 자소서" 들이 구분되지 않으므로
+ * 좋은 이름은 아니지만, 이름 없는 자소서를 목록에 내보낼 수는 없다.
+ */
+export const UNTITLED_COVER_LETTER = '제목 없는 자소서';
+
 /** 채용공고 URL 에서 회사명과 모집 직무를 읽어 온다(무저장, 공개). */
 export const parseJobPosting = (url: string, signal?: AbortSignal) =>
   apiSend<JobPostingParseResult>('POST', '/api/job-postings/parse', { url }, { signal });
+
+/**
+ * 붙여넣은 공고 이미지에서 회사·직무를 읽어 온다.
+ *
+ * <p>본문이 이미지인데 그 주소가 서버가 받는 HTML 에 없어 주소로는 못 읽는 공고가 있다.
+ * 화면에는 보이므로 복사해 온 이미지를 그대로 보낸다. 넣은 순서를 지킨다.
+ */
+export const parseJobPostingImages = (images: File[], signal?: AbortSignal) => {
+  const form = new FormData();
+  images.forEach((image) => form.append('files', image));
+  return apiSend<JobPostingParseResult>('POST', '/api/job-postings/parse-images', form, { signal });
+};
 
 /**
  * 확인한 공고를 등록하고 검토 방에 붙일 식별자를 받는다.

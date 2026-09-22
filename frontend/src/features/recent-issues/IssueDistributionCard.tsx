@@ -1,3 +1,4 @@
+import { EmptyCard } from '../../components/common/EmptyCard';
 import { DonutChart } from '../../components/charts/DonutChart';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import type { QueryState } from '../../hooks/useApiQuery';
@@ -17,7 +18,7 @@ export function IssueDistributionCard({ state, onRetry }: IssueDistributionCardP
     return (
       <div
         aria-busy="true"
-        className="h-56 animate-pulse rounded-3xl border border-slate-200 bg-white"
+        className="h-56 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
         role="status"
       >
         <span className="sr-only">이슈 분포를 불러오는 중입니다</span>
@@ -34,7 +35,13 @@ export function IssueDistributionCard({ state, onRetry }: IssueDistributionCardP
   }
 
   const { distribution } = state.data;
-  if (distribution.byCategory.length === 0) return null;
+  if (distribution.byCategory.length === 0) {
+    return (
+      <EmptyCard title="이슈 분포">
+        이슈를 갈래별로 나누는 분석이 아직 준비되지 않았어요. 최신 뉴스는 아래에서 볼 수 있습니다.
+      </EmptyCard>
+    );
+  }
   const total =
     distribution.total ?? distribution.byCategory.reduce((acc, c) => acc + c.count, 0);
   const segments = distribution.byCategory.map((c, i) => ({
@@ -46,7 +53,7 @@ export function IssueDistributionCard({ state, onRetry }: IssueDistributionCardP
   return (
     <section
       aria-labelledby="issue-distribution-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-base font-extrabold text-slate-950" id="issue-distribution-title">
@@ -65,6 +72,7 @@ export function IssueDistributionCard({ state, onRetry }: IssueDistributionCardP
               </span>
             </>
           }
+          formatValue={(v) => `${v.toLocaleString('ko-KR')}건`}
           segments={segments}
           title="카테고리별 이슈 분포 도넛 차트"
         />

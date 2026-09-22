@@ -2,6 +2,8 @@ package com.ssafy.companyanalysis.jobposting.service;
 
 import com.ssafy.companyanalysis.agent.ai.JobContextClient;
 import com.ssafy.companyanalysis.agent.ai.JobSourceClient;
+import com.ssafy.companyanalysis.global.error.BusinessException;
+import com.ssafy.companyanalysis.global.error.ErrorCode;
 import com.ssafy.companyanalysis.jobposting.cache.JobPostingSourceCache;
 import com.ssafy.companyanalysis.jobposting.dto.JobPostingContextResponse;
 import org.springframework.stereotype.Service;
@@ -57,6 +59,12 @@ public class JobPostingContextService {
             if (company != null && position != null) {
                 return jobContextClient.fromSource(source, company, position);
             }
+        }
+        // 붙여넣은 이미지로 확인한 공고에는 주소가 없다. 보관분이 사라졌으면(30분 만료·재기동)
+        // 다시 읽을 곳이 없으므로, 주소로 되돌아가는 대신 사용자에게 다시 넣어 달라고 한다.
+        if (url == null || url.isBlank()) {
+            throw new BusinessException(ErrorCode.JOB_POSTING_PARSE_FAILED,
+                    "공고 내용을 다시 넣어 주세요.");
         }
         return jobContextClient.fromUrl(url, companyName, positionName);
     }

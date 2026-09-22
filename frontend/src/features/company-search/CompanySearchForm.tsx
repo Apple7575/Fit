@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { MAX_KEYWORD } from './api';
 
 type CompanySearchFormProps = {
   onSearch?: (keyword: string) => void;
@@ -40,6 +41,8 @@ export function CompanySearchForm({ onSearch }: CompanySearchFormProps) {
           autoComplete="off"
           className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
           id="company-search-keyword"
+          // 긴 글을 붙여 넣어도 여기서 잘린다. 기업명은 이보다 길 수 없다
+          maxLength={MAX_KEYWORD}
           onChange={(event) => setKeyword(event.target.value)}
           placeholder="기업명을 입력하세요"
           spellCheck={false}

@@ -1,3 +1,4 @@
+import { EmptyCard } from '../../components/common/EmptyCard';
 import { SourceBadge } from '../../components/common/SourceBadge';
 import type { FocusState } from './hooks';
 
@@ -11,14 +12,20 @@ export function DirectionCard({ state }: DirectionCardProps) {
     return (
       <div
         aria-busy="true"
-        className="h-64 animate-pulse rounded-3xl border border-slate-200 bg-white"
+        className="h-64 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
         role="status"
       >
         <span className="sr-only">사업 방향을 불러오는 중입니다</span>
       </div>
     );
   }
-  if (state.status === 'error' || !state.data.direction) return null;
+  if (state.status === 'error' || !state.data.direction) {
+    return (
+      <EmptyCard title="사업 방향">
+        공시에서 뽑은 사업 방향 정보가 아직 없어요. 사업 탭의 사업부 구성과 주요 제품을 참고하세요.
+      </EmptyCard>
+    );
+  }
   const { newBusiness, keywords, strategyChange } = state.data.direction;
 
   const rows: Array<{ label: string; value: string }> = [
@@ -30,7 +37,7 @@ export function DirectionCard({ state }: DirectionCardProps) {
   return (
     <section
       aria-labelledby="direction-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-extrabold text-slate-950" id="direction-title">

@@ -2,7 +2,7 @@ import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { characterForAgent } from '../../components/brand/characters';
 import { useEffect, useRef, useState } from 'react';
 import { agentPalette } from './agentStyle';
-import type { RoomMessage, TurnStatus } from './types';
+import type { Evidence, RoomMessage, TurnStatus } from './types';
 
 interface MessageThreadProps {
   messages: RoomMessage[];
@@ -57,6 +57,79 @@ function BasedOnChips({
           {source.agentName ?? source.agentKey}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** AI 가 주는 자료 종류를 사람이 읽는 말로. 모르는 값은 그대로 쓴다. */
+const SOURCE_LABEL: Record<string, string> = {
+  NEWS_ARTICLE: '뉴스',
+  JOB_POSTING: '공고',
+  USER_DOCUMENT: '자소서',
+  COMPANY_REPORT: '공시',
+};
+
+const sourceLabel = (docType: string | null) =>
+  docType ? (SOURCE_LABEL[docType.toUpperCase()] ?? docType) : '자료';
+
+/**
+ * 그 담당이 실제로 읽은 자료.
+ *
+ * <p>이 서비스의 코치는 성격이 아니라 자료로 나뉜다. 어느 문서 몇 년 자료에서 나온 말인지
+ * 붙지 않으면 일반 챗봇과 구별되지 않는다. 눌러서 원문 조각까지 펼친다.
+ */
+function EvidenceList({ evidences }: { evidences: Evidence[] }) {
+  const [open, setOpen] = useState<number | null>(null);
+  if (evidences.length === 0) {
+    return null;
+  }
+  const opened = open !== null ? evidences[open] : null;
+
+  return (
+    <div className="mt-2">
+      <ul className="flex flex-wrap items-center gap-1.5">
+        <li className="text-[11px] text-slate-400">읽은 자료</li>
+        {evidences.map((evidence, i) => (
+          <li key={i}>
+            <button
+              aria-expanded={open === i}
+              className={`inline-flex max-w-[220px] items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition ${
+                open === i
+                  ? 'border-slate-400 bg-white text-slate-800'
+                  : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-white'
+              }`}
+              onClick={() => setOpen(open === i ? null : i)}
+              type="button"
+            >
+              <span className="shrink-0 font-semibold">{sourceLabel(evidence.docType)}</span>
+              <span className="truncate">{evidence.title ?? '제목 없음'}</span>
+              {evidence.year !== null && <span className="shrink-0 text-slate-400">{evidence.year}</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {opened && (opened.snippet || opened.url) && (
+        <div className="mt-1.5 rounded-xl border border-slate-200 bg-white p-2.5">
+          {opened.snippet && (
+            <p className="text-[12px] leading-5 break-keep whitespace-pre-wrap text-slate-600">
+              {opened.snippet}
+            </p>
+          )}
+          {/* 기사 근거는 원문으로 넘어갈 수 있어야 "무엇을 읽었나"가 끝까지 확인된다 */}
+          {opened.url && (
+            <a
+              className={`inline-block text-[12px] font-semibold text-blue-600 hover:underline ${
+                opened.snippet ? 'mt-1.5' : ''
+              }`}
+              href={opened.url}
+              rel="noreferrer"
+              target="_blank"
+            >
+              원문 보기 ↗
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -182,6 +255,7 @@ function AgentRow({
           </div>
         )}
 
+        <EvidenceList evidences={message.evidences} />
         <BasedOnChips basedOn={message.basedOn} lookup={lookup} onJump={onJump} />
       </div>
     </li>

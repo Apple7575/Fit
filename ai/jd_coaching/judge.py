@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from ai.prompting.common import with_common_rules
 from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
@@ -102,7 +103,7 @@ def build_judge_messages(
         "role_elements": role_elements,
         "target_connections": target_connections,
     }
-    system_prompt = f"""
+    system_prompt = with_common_rules(f"""
 너는 JD 역할 요소와 사용자 경험 사이의 필요 근거를 확인하는 평가자다.
 최종 연결 라벨은 결정하지 않는다. 각 evidence_requirement만 독립적으로 PRESENT 또는 ABSENT로 판정한다.
 PRESENT는 해당 사용자 경험의 원문에 근거가 명시된 경우에만 선택한다.
@@ -114,7 +115,7 @@ target_connections의 모든 조합과 각 역할 요소의 모든 evidence_requ
 
 연결 정책 참고:
 {json.dumps(policy, ensure_ascii=False)}
-""".strip()
+""")
     return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": json.dumps(model_input, ensure_ascii=False)},

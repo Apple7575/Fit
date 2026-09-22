@@ -1,5 +1,7 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
+import { lineSegments } from './lineSegments';
 import { niceTicks, useContainerWidth } from './chartMath';
+import { ChartTooltip, useChartHover } from './ChartTooltip';
 
 export interface LineSeries {
   label: string;
@@ -34,6 +36,8 @@ export function MultiLineChart({
 }: MultiLineChartProps) {
   const tableId = useId();
   const { ref, width: W } = useContainerWidth();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const hover = useChartHover(svgRef);
   const H = height;
   const PLOT_W = W - PAD.left - PAD.right;
   const PLOT_H = H - PAD.top - PAD.bottom;
@@ -47,31 +51,51 @@ export function MultiLineChart({
   const vMax = ticks[ticks.length - 1];
   const yOf = (v: number) => PAD.top + PLOT_H - ((v - vMin) / (vMax - vMin || 1)) * PLOT_H;
 
-  const segmentsOf = (s: LineSeries) => {
-    const out: string[] = [];
-    let cur: string[] = [];
-    s.points.forEach((p, i) => {
-      if (p.y !== null) cur.push(`${xOf(i)},${yOf(p.y)}`);
-      else if (cur.length) {
-        out.push(cur.join(' '));
-        cur = [];
-      }
+  // 중간 해의 값이 없어도 선을 끊지 않는다. 건너뛴 구간만 점선으로 구분한다
+  const segmentsOf = (s: LineSeries) =>
+    lineSegments(s.points.map((p) => p.y), xOf, yOf);
+  const hasGap = series.some((s) => segmentsOf(s).bridges.length > 0);
+
+  /** 어느 점 가까이인지. 가로로 가깝고, 그 해의 어떤 선 위에라도 세로로 가까워야 한다 */
+  const hitTest = (x: number, y: number) => {
+    let best: { index: number; dist: number } | null = null;
+    xLabels.forEach((_, i) => {
+      if (Math.abs(x - xOf(i)) > 22) return;
+      series.forEach((s) => {
+        const v = s.points[i]?.y;
+        if (v === null || v === undefined) return;
+        const dy = Math.abs(y - yOf(v));
+        if (dy <= 26 && (best === null || dy < best.dist)) best = { index: i, dist: dy };
+      });
     });
-    if (cur.length) out.push(cur.join(' '));
-    return out;
+    return best === null ? null : (best as { index: number; dist: number }).index;
   };
 
   return (
-    <div ref={ref}>
+    <div className="relative" ref={ref}>
       <svg
         aria-describedby={tableId}
         aria-label={title}
         className="block w-full max-w-full overflow-visible"
         data-testid="multi-line-chart"
         height={H}
+        onMouseLeave={hover.clear}
+        onMouseMove={(e) => hover.track(e, hitTest)}
+        ref={svgRef}
         role="img"
         viewBox={`0 0 ${W} ${H}`}
       >
+        {hover.point && (
+          <line
+            className="stroke-slate-400"
+            strokeDasharray="3 3"
+            strokeWidth={1}
+            x1={xOf(hover.point.index)}
+            x2={xOf(hover.point.index)}
+            y1={PAD.top}
+            y2={PAD.top + PLOT_H}
+          />
+        )}
         {ticks.map((t) => (
           <g key={t}>
             <line
@@ -108,7 +132,20 @@ export function MultiLineChart({
 
         {series.map((s) => (
           <g data-series={s.label} data-testid="line-series" key={s.label}>
-            {segmentsOf(s).map((pts) => (
+            {segmentsOf(s).bridges.map((pts) => (
+              <polyline
+                data-testid="line-bridge"
+                fill="none"
+                key={pts}
+                points={pts}
+                stroke={s.color}
+                strokeDasharray="4 4"
+                strokeLinecap="round"
+                strokeOpacity={0.55}
+                strokeWidth={s.emphasis ? 3 : 2}
+              />
+            ))}
+            {segmentsOf(s).solid.map((pts) => (
               <polyline
                 fill="none"
                 key={pts}
@@ -137,7 +174,26 @@ export function MultiLineChart({
             )}
           </g>
         ))}
+
       </svg>
+
+      {hover.point && (
+        <ChartTooltip
+          rows={series.map((s) => {
+            const y = s.points[hover.point!.index]?.y;
+            return {
+              label: s.label,
+              value: y === null || y === undefined ? '미제공' : formatValue(y),
+              color: s.color,
+              emphasis: s.emphasis,
+            };
+          })}
+          title={`${xLabels[hover.point.index]} · ${valueName}`}
+          width={W}
+          x={hover.point.x}
+          y={hover.point.y}
+        />
+      )}
 
       <ul aria-label="범례" className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-slate-600">
         {series.map((s) => {
@@ -154,6 +210,16 @@ export function MultiLineChart({
             </li>
           );
         })}
+        {/* 점선이 있으면 왜 있는지 말해 준다. 그냥 이어 놓으면 없는 값을 있는 것처럼 읽는다 */}
+        {hasGap && (
+          <li className="inline-flex items-center gap-1.5 text-slate-400">
+            <span
+              aria-hidden="true"
+              className="inline-block h-0 w-4 border-t-2 border-dashed border-slate-400"
+            />
+            값이 없는 해를 건너뛴 구간
+          </li>
+        )}
       </ul>
 
       <table className="sr-only" id={tableId}>

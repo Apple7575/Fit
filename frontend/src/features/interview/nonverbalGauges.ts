@@ -7,6 +7,9 @@ import {
   POSTURE_OK,
   SLOUCH_WARN,
   TILT_WARN,
+  ROLL_WARN,
+  EXPRESSION_FLAT,
+  GESTURE_BUSY,
   type NonverbalMetrics,
 } from './vision';
 
@@ -84,6 +87,35 @@ export function nonverbalGauges(m: NonverbalMetrics): Gauge[] {
       ok: Math.abs(m.postureTiltDeg) <= TILT_WARN,
       basis: `기울기 ${TILT_WARN}° 이하`,
       hint: `한쪽으로 ${Math.abs(Math.round(m.postureTiltDeg))}° 기울어 있어요`,
+    });
+  }
+
+  // 아래 셋은 새로 재는 값이다. 옛 기록에는 없으므로 플래그가 선 기록에서만 넣는다
+  if (m.hasFace && m.headRollDeg > 0) {
+    out.push({
+      label: '고개 기울기',
+      value: Math.max(0, 100 - Math.round((m.headRollDeg / ROLL_WARN) * 100)),
+      ok: m.headRollDeg <= ROLL_WARN,
+      basis: `기울기 ${ROLL_WARN}° 이하`,
+      hint: `고개가 ${Math.round(m.headRollDeg)}° 기울어 있어요`,
+    });
+  }
+  if (m.hasExpression) {
+    out.push({
+      label: '표정 변화',
+      value: Math.min(100, Math.round((m.expressionRange / EXPRESSION_FLAT) * 100)),
+      ok: m.expressionRange >= EXPRESSION_FLAT,
+      basis: '내내 같은 표정이 아니면 적정',
+      hint: '표정이 굳어 있으면 듣는 쪽도 긴장합니다',
+    });
+  }
+  if (m.hasHands) {
+    out.push({
+      label: '손짓',
+      value: Math.max(0, 100 - Math.round((m.gestureAmount / GESTURE_BUSY) * 100)),
+      ok: m.gestureAmount <= GESTURE_BUSY,
+      basis: `움직임 ${GESTURE_BUSY} 이하`,
+      hint: '손이 자주 움직이면 말에 집중하기 어려워집니다',
     });
   }
   return out;

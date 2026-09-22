@@ -39,4 +39,19 @@ describe('groupMetrics', () => {
     const [speech] = groupMetrics([row('말 속도'), row('답변 길이')]);
     expect(groupStatus(speech)).toBe('2개 항목 모두 적정');
   });
+
+  it('재지 못한 항목은 고칠 것으로 세지 않는다', () => {
+    const [speech] = groupMetrics([row('말 속도', 'none'), row('답변 길이')]);
+    expect(speech.warnCount).toBe(0);
+  });
+
+  it('재지 못한 항목이 섞이면 모두 적정이라고 하지 않는다', () => {
+    const [speech] = groupMetrics([row('말 속도', 'none'), row('답변 길이')]);
+    expect(groupStatus(speech)).toBe('1개 적정 · 1개 재지 못함');
+  });
+
+  it('하나도 못 쟀으면 그렇게만 말한다', () => {
+    const [speech] = groupMetrics([row('말 속도', 'none'), row('답변 길이', 'none')]);
+    expect(groupStatus(speech)).toBe('2개 항목 재지 못함');
+  });
 });

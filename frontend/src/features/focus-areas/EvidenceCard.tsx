@@ -1,3 +1,4 @@
+import { EmptyCard } from '../../components/common/EmptyCard';
 import { SourceBadge } from '../../components/common/SourceBadge';
 import { buildEvidenceRows } from './evidence';
 import type { ActivitiesState, FocusState, WorkforceState } from './hooks';
@@ -16,7 +17,7 @@ export function EvidenceCard({ focus, activities, workforce }: EvidenceCardProps
     return (
       <div
         aria-busy="true"
-        className="h-64 animate-pulse rounded-3xl border border-slate-200 bg-white"
+        className="h-64 animate-pulse rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
         role="status"
       >
         <span className="sr-only">판단 근거를 정리하는 중입니다</span>
@@ -29,12 +30,18 @@ export function EvidenceCard({ focus, activities, workforce }: EvidenceCardProps
     activities.status === 'success' ? activities.data : null,
     workforce.status === 'success' ? workforce.data : null,
   );
-  if (rows.length === 0) return null;
+  if (rows.length === 0) {
+    return (
+      <EmptyCard title="근거">
+        이 기업은 공시에서 뽑은 근거가 아직 쌓이지 않았어요.
+      </EmptyCard>
+    );
+  }
 
   return (
     <section
       aria-labelledby="evidence-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-extrabold text-slate-950" id="evidence-title">

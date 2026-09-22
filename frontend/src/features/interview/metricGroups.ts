@@ -36,14 +36,14 @@ const DEFS: Array<{ key: string; title: string; icon: IconName; about: string; k
     title: '시선과 표정',
     icon: 'eye',
     about: '카메라를 보며 정면을 유지했는지',
-    keys: ['얼굴 위치', '정면 유지', '카메라 응시', '얼굴 인식'],
+    keys: ['얼굴 위치', '정면 유지', '카메라 응시', '표정', '얼굴 인식'],
   },
   {
     key: 'posture',
     title: '자세',
     icon: 'posture',
     about: '고개와 상체를 바르게 두었는지',
-    keys: ['고개 각도', '고개 흔들림', '상체 자세', '상체 안정', '어깨 수평'],
+    keys: ['고개 각도', '고개 기울기', '고개 흔들림', '상체 자세', '상체 안정', '어깨 수평', '손짓'],
   },
 ];
 
@@ -80,11 +80,22 @@ export function groupMetrics(rows: MetricRow[]): MetricGroup[] {
   return groups;
 }
 
-/** 묶음 상태 한 줄. 고칠 것이 있으면 그 이름을, 없으면 모두 적정이라고 알린다. */
+/**
+ * 묶음 상태 한 줄. 볼 것이 있으면 그 이름을, 없으면 개수로 알린다.
+ *
+ * <p>재지 못한 항목(none)이 섞여 있으면 "모두 적정"이라고 말하지 않는다. 마이크가 꺼져 있어서
+ * 못 잰 것을 적정이라고 하면 거짓말이 된다.
+ */
 export function groupStatus(group: MetricGroup): string {
-  if (group.warnCount === 0) return `${group.rows.length}개 항목 모두 적정`;
-  return group.rows
-    .filter((r) => r.tone === 'warn')
-    .map((r) => r.key)
-    .join(' · ');
+  if (group.warnCount > 0) {
+    return group.rows
+      .filter((r) => r.tone === 'warn')
+      .map((r) => r.key)
+      .join(' · ');
+  }
+  const unmeasured = group.rows.filter((r) => r.tone === 'none').length;
+  if (unmeasured === 0) return `${group.rows.length}개 항목 모두 적정`;
+  const measured = group.rows.length - unmeasured;
+  if (measured === 0) return `${unmeasured}개 항목 재지 못함`;
+  return `${measured}개 적정 · ${unmeasured}개 재지 못함`;
 }

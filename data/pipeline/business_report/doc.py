@@ -1,31 +1,35 @@
-"""사업보고서 XML 한 건에 대한 읽기 계층.
-
-`pipeline/normalize/rnd.py` 가 표만 필요해서 만든 `collect_tables` 를 확대한 것이다.
-company_text 는 표가 아니라 **문단**에서 나오므로 둘을 같은 순서로 들고 있어야 한다.
-
-rnd.py 와 나눠 둔 이유
----------------------
-rnd.py 는 검증까지 끝난 코드다(50건 3경로 교차검증). 거기에 문단 수집을 끼워 넣으면
-회귀 기준선(tests/fixtures/normalize)을 다시 만들어야 한다. XML 로딩·격자 변환처럼
-검증된 부분은 **가져다 쓰고** 새로 필요한 것만 여기서 더한다.
-
-한 문서가 8MB · 표 2,000개다. 파싱은 문서당 한 번만 하고 결과를 재사용한다.
-"""
+"""사업보고서 XML 한 건을 본문과 표의 원문 계보로 읽는다."""
 from __future__ import annotations
 
 import re
+import math
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..patterns import Patterns, patterns as default_patterns
-from ..normalize.rnd import load_xml, matrix, parse_xml_bytes
+from ..normalize.rnd import load_xml, parse_xml_bytes, parse_xml_bytes_strict, matrix
 from ..normalize.text import squash
+from ..patterns import Patterns, patterns as default_patterns
 
-# 본문 문단으로 볼 태그. rnd.collect_tables 의 캡션 수집과 같은 집합이다.
+
 TEXT_TAGS = ("P", "SPAN", "TU")
-
-# '단위' 표기 바로 뒤 구간만 잘라낸다. 괄호·대괄호가 닫히거나 20자를 넘으면 끊는다.
+MAX_TABLE_EXPANDED_CHARS = 8_000_000
 _UNIT_SCOPE = re.compile(r"단위\s*[)\]]?\s*[::]?\s*([^)\]|]{0,20})")
+_ENTITY_HEADING = re.compile(r"【\s*([^【】]+?)\s*】")
+_NON_ENTITY_HEADINGS = {"해외현지법인", "계열회사", "종속회사", "관계회사"}
+_NON_ENTITY_HEADING_WORDS = re.compile(r"주요|현황|해외|자회사|종속회사|BTL|계정")
+_GROUP_HEADING_WORDS = re.compile(r"주요|현황|해외|자회사|종속회사|BTL|계열회사|관계회사")
+
+
+def _entity_heading_value(text: str) -> str | None:
+    match = _ENTITY_HEADING.fullmatch(text)
+    if not match:
+        return None
+    name = match.group(1).rsplit(":", 1)[-1].strip()
+    if not name or name in _NON_ENTITY_HEADINGS or _NON_ENTITY_HEADING_WORDS.search(name):
+        return None
+    return name
+_SPACE = re.compile(r"\s+")
 
 
 def foreign_unit_in_blob(blob: str, markers) -> str | None:
@@ -35,11 +39,36 @@ def foreign_unit_in_blob(blob: str, markers) -> str | None:
     더 거슬러 오르면 남의 표에 붙은 원화 단위를 집는다 (doc.unit 주석 참고).
     """
     for m in _UNIT_SCOPE.finditer(blob):
-        scope = m.group(1)
+        scope = _SPACE.sub("", m.group(1))
         for name in markers:
             if name in scope:
                 return name
     return None
+
+
+def _is_in_table(element) -> bool:
+    parent = element.getparent()
+    while parent is not None:
+        if isinstance(parent.tag, str) and parent.tag.upper() == "TABLE":
+            return True
+        parent = parent.getparent()
+    return False
+
+
+def _has_text_ancestor(element) -> bool:
+    parent = element.getparent()
+    while parent is not None:
+        if isinstance(parent.tag, str) and parent.tag.upper() in TEXT_TAGS:
+            return True
+        parent = parent.getparent()
+    return False
+
+
+def _has_nested_table(element) -> bool:
+    return any(
+        isinstance(descendant.tag, str) and descendant.tag.upper() == "TABLE"
+        for descendant in element.iterdescendants()
+    )
 
 
 def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
@@ -50,9 +79,14 @@ def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
     단위는 '억원' 인데, 전체 검색은 앞의 '조원' 을 먼저 집어 값이 1만 배가 됐다.
 
     units 는 긴 표기가 앞이어야 한다 ('십억원' 이 '억원' 보다 먼저).
+
+    **띄어쓰기를 무시하고 본다.** 회사가 `(단위: 백만 원)` 으로 띄어 적으면 '백만원' 이
+    안 걸리고 뒤의 '원' 이 걸려 **값이 100만분의 1이 된다.** 엔젤로보틱스 2023~2024 가
+    금형투자 5.78억을 578원으로 적어 놓은 꼴이 됐다(3차 확대에서 실측 8행). '십억 원',
+    '억 원' 도 같다. 자릿수가 작아지는 쪽이라 눈으로는 "투자가 적나 보다" 로 보인다.
     """
     for m in _UNIT_SCOPE.finditer(blob):
-        scope = m.group(1)
+        scope = _SPACE.sub("", m.group(1))
         for name, mult in units:
             if name in scope:
                 return name, mult
@@ -61,108 +95,254 @@ def unit_from_blob(blob: str, units) -> tuple[str, int] | None:
 
 @dataclass
 class Table:
-    idx: int                       # 문서 전체 표 순번. 증거로 남긴다
-    title: str                     # 직전 TITLE (= 섹션 제목)
-    caption: str                   # 직전 문단 3개
-    m: list[list[str]]             # ROWSPAN/COLSPAN 을 펼친 격자
+    idx: int
+    title: str
+    caption: str
+    m: list[list[str]]
+    excluded_reason: str | None = None
+    header_rows: int = 0
+    entity_scope: str | None = None
 
     @property
     def rows(self) -> int:
         return len(self.m)
 
     def head(self, n: int = 3) -> str:
-        return " ".join(" ".join(r) for r in self.m[:n])
+        return " ".join(" ".join(row) for row in self.m[:n])
+
+
+@dataclass(frozen=True)
+class ParagraphEntry:
+    index: int
+    text: str
 
 
 @dataclass
 class Section:
-    """TITLE 하나와 그 아래 본문·표.
-
-    사업보고서의 TITLE 은 계층이 아니라 평면이다. '2. 주요 제품 및 서비스' 다음
-    TITLE 이 나올 때까지가 그 섹션이며, 같은 제목이 여러 번 나올 수 있다
-    (연결/별도 주석이 같은 이름을 쓴다). 그래서 제목으로 찾을 때는 **전부** 본다.
-    """
     title: str
     paragraphs: list[str] = field(default_factory=list)
+    paragraph_entries: list[ParagraphEntry] = field(default_factory=list)
     tables: list[Table] = field(default_factory=list)
 
     def text(self, limit: int | None = None) -> str:
-        t = "\n".join(self.paragraphs)
-        return t[:limit] if limit else t
+        value = "\n".join(self.paragraphs)
+        return value[:limit] if limit else value
+
+
+def _normalized_span(value: str | None) -> int | None:
+    try:
+        numeric = float(value or "1")
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(numeric):
+        return None
+    return max(1, int(numeric))
+
+
+def _cell_text_length(cell) -> int:
+    return sum(len(value) for value in cell.itertext() if value)
+
+
+def _table_shape(
+    table, cell_tags: set[str], *, max_table_cells: int, max_table_expanded_chars: int,
+) -> tuple[int, int, int] | None:
+    """`matrix`와 같은 span 규칙으로 행과 열의 곱을 계산하되 격자는 만들지 않는다."""
+    pending: list[tuple[int, int, int]] = []
+    row_count = 0
+    width = 0
+    expanded_chars = 0
+    for row in table.iter("TR"):
+        row_count += 1
+        column = 0
+        row_width = max((end for _, end, _ in pending), default=0)
+        if row_count * max(width, row_width) > max_table_cells:
+            return row_count, max(width, row_width), expanded_chars
+        for cell in row:
+            tag = cell.tag.upper() if isinstance(cell.tag, str) else ""
+            if tag not in cell_tags:
+                continue
+            colspan = _normalized_span(cell.get("COLSPAN") or cell.get("colspan"))
+            rowspan = _normalized_span(cell.get("ROWSPAN") or cell.get("rowspan"))
+            if colspan is None or rowspan is None:
+                return None
+            column = _next_free_column(column, pending)
+            end = column + colspan
+            row_width = max(row_width, end)
+            width = max(width, row_width)
+            expanded_chars += _cell_text_length(cell) * colspan * rowspan
+            if expanded_chars > max_table_expanded_chars:
+                return row_count, width, expanded_chars
+            if row_count * width > max_table_cells:
+                return row_count, width, expanded_chars
+            if rowspan > 1:
+                # `matrix`와 같은 수명: 이 행을 포함해 rowspan개 행을 덮고 행 끝마다 1씩 줄인다.
+                pending = _overlay_pending(pending, column, end, rowspan)
+            column = end
+        pending = _decrement_pending(pending)
+    return row_count, width, expanded_chars
+
+
+def _next_free_column(column: int, pending: list[tuple[int, int, int]]) -> int:
+    while True:
+        for start, end, _ in pending:
+            if column < start:
+                return column
+            if column < end:
+                column = end
+                break
+        else:
+            return column
+
+
+def _overlay_pending(
+    pending: list[tuple[int, int, int]], start: int, end: int, remaining: int,
+) -> list[tuple[int, int, int]]:
+    """행 안에서 새 rowspan이 기존 pending 열을 덮어쓰는 matrix 규칙을 구간으로 재현한다."""
+    intervals: list[tuple[int, int, int]] = []
+    for current_start, current_end, current_remaining in pending:
+        if current_end <= start or end <= current_start:
+            intervals.append((current_start, current_end, current_remaining))
+            continue
+        if current_start < start:
+            intervals.append((current_start, start, current_remaining))
+        if end < current_end:
+            intervals.append((end, current_end, current_remaining))
+    intervals.append((start, end, remaining))
+    intervals.sort()
+    merged: list[tuple[int, int, int]] = []
+    for interval in intervals:
+        if merged and merged[-1][1] == interval[0] and merged[-1][2] == interval[2]:
+            previous = merged.pop()
+            merged.append((previous[0], interval[1], previous[2]))
+        else:
+            merged.append(interval)
+    return merged
+
+
+def _decrement_pending(pending: list[tuple[int, int, int]]) -> list[tuple[int, int, int]]:
+    return [
+        (start, end, remaining - 1)
+        for start, end, remaining in pending
+        if remaining - 1 > 0
+    ]
 
 
 class Document:
-    """사업보고서 한 건. 생성 시점에 한 번 훑고 그 뒤로는 메모리에서 본다."""
+    """사업보고서 하나를 한 번 순회해 섹션, 문단, 표를 만든다."""
 
-    def __init__(self, source: Path | str | bytes, p: Patterns | None = None,
-                 rcept_no: str | None = None):
-        """파일 경로 또는 XML 바이트를 받는다.
-
-        바이트를 받는 것은 Spark 태스크가 HDFS 에서 읽은 내용을 임시 파일로
-        떨구지 않고 그대로 넘기기 위해서다 (S15P21A504-73 0차). 어느 쪽이든
-        parse_xml_bytes 를 지나므로 로컬과 분산의 해석이 갈리지 않는다.
-        """
+    def __init__(
+        self, source: Path | str | bytes | bytearray, p: Patterns | None = None, *, rcept_no: str | None = None,
+        max_table_cells: int = 200_000, max_table_expanded_chars: int = MAX_TABLE_EXPANDED_CHARS,
+        _strict_bytes: bool = False,
+    ):
+        self.p = p or default_patterns()
+        self.max_table_cells = max_table_cells
+        if max_table_expanded_chars < 1:
+            raise ValueError("max_table_expanded_chars는 1 이상이어야 합니다")
+        self.max_table_expanded_chars = max_table_expanded_chars
+        self._excluded_table_counts: Counter[str] = Counter()
         if isinstance(source, (bytes, bytearray)):
             self.path = None
             self.rcept_no = rcept_no or ""
-            root, self.encoding = parse_xml_bytes(bytes(source), rcept_no or "<bytes>")
+            parse = parse_xml_bytes_strict if _strict_bytes else parse_xml_bytes
+            root, self.encoding = parse(bytes(source), f"document_{self.rcept_no}.xml")
         else:
             self.path = Path(source)
             self.rcept_no = rcept_no or self.path.stem.replace("document_", "")
             root, self.encoding = load_xml(self.path)
-        self.p = p or default_patterns()
         self.sections: list[Section] = []
         self.tables: list[Table] = []
         self._walk(root)
 
+    @classmethod
+    def from_bytes(
+        cls, payload: bytes | bytearray, *, rcept_no: str, p: Patterns | None = None,
+        max_table_cells: int = 200_000, max_table_expanded_chars: int = MAX_TABLE_EXPANDED_CHARS,
+    ) -> "Document":
+        return cls(
+            payload, p, rcept_no=rcept_no, max_table_cells=max_table_cells,
+            max_table_expanded_chars=max_table_expanded_chars, _strict_bytes=True,
+        )
+
     def _walk(self, root) -> None:
-        """문서를 한 번만 훑어 섹션·표를 동시에 만든다.
-
-        표의 caption 은 rnd.collect_tables 와 같은 규칙(직전 문단 3개)을 유지한다.
-        R&D 파서가 단위를 그 문자열에서 찾고 있어 규칙이 갈리면 안 된다.
-        """
-        cur = Section(title="")
-        self.sections.append(cur)
+        current = Section(title="")
+        self.sections.append(current)
         recent: list[str] = []
-        idx = 0
-        for el in root.iter():
-            tag = el.tag.upper() if isinstance(el.tag, str) else ""
+        entity_scope: str | None = None
+        paragraph_index = 0
+        table_index = 0
+        for element in root.iter():
+            tag = element.tag.upper() if isinstance(element.tag, str) else ""
             if tag == "TITLE":
-                cur = Section(title=squash("".join(el.itertext())))
-                self.sections.append(cur)
+                current = Section(title=squash("".join(element.itertext())))
+                self.sections.append(current)
                 recent = []
+                entity_scope = None
+                paragraph_index = 0
             elif tag in TEXT_TAGS:
-                t = squash("".join(el.itertext()))
-                if t:
-                    cur.paragraphs.append(t)
-                    recent = (recent + [t])[-4:]
+                if _is_in_table(element) or _has_text_ancestor(element):
+                    continue
+                text = squash("".join(element.itertext()))
+                current.paragraph_entries.append(ParagraphEntry(paragraph_index, text))
+                paragraph_index += 1
+                if text:
+                    current.paragraphs.append(text)
+                    recent = (recent + [text])[-4:]
+                    heading = _entity_heading_value(text)
+                    if heading:
+                        entity_scope = heading
+                    elif _ENTITY_HEADING.fullmatch(text) and _GROUP_HEADING_WORDS.search(text):
+                        entity_scope = None
             elif tag == "TABLE":
-                tb = Table(idx=idx, title=cur.title,
-                           caption=" | ".join(recent[-3:]), m=matrix(el, self.p))
-                self.tables.append(tb)
-                cur.tables.append(tb)
-                idx += 1
+                if _has_nested_table(element):
+                    excluded_reason = "nested_table_container"
+                    self._excluded_table_counts[excluded_reason] += 1
+                    table_matrix = []
+                else:
+                    excluded_reason = None
+                    shape = _table_shape(
+                        element, self.p.rnd.cell_tags, max_table_cells=self.max_table_cells,
+                        max_table_expanded_chars=self.max_table_expanded_chars,
+                    )
+                    if shape is None:
+                        excluded_reason = "table_invalid_span"
+                        self._excluded_table_counts[excluded_reason] += 1
+                        table_matrix = []
+                    elif shape[0] * shape[1] > self.max_table_cells or shape[2] > self.max_table_expanded_chars:
+                        excluded_reason = "table_too_large"
+                        self._excluded_table_counts[excluded_reason] += 1
+                        table_matrix = []
+                    else:
+                        table_matrix = matrix(element, self.p)
+                table = Table(
+                    idx=table_index,
+                    title=current.title,
+                    caption=" | ".join(recent[-3:]),
+                    m=table_matrix,
+                    excluded_reason=excluded_reason,
+                    header_rows=len(element.findall("./THEAD/TR")),
+                    entity_scope=entity_scope,
+                )
+                self.tables.append(table)
+                current.tables.append(table)
+                table_index += 1
                 recent = []
 
-    # ------------------------------------------------------------------ 조회
+    @property
+    def excluded_table_counts(self) -> dict[str, int]:
+        return dict(self._excluded_table_counts)
 
     def sections_matching(self, rx) -> list[Section]:
-        """제목이 정규식에 걸리는 섹션 전부. 같은 제목이 여러 번 나올 수 있다."""
-        return [s for s in self.sections if s.title and rx.search(s.title)]
+        return [section for section in self.sections if section.title and rx.search(section.title)]
 
     def tables_matching(self, rx, *, in_title=None) -> list[Table]:
-        """제목·캡션·머리 3행 중 어디든 걸리는 표.
-
-        머리 행까지 보는 이유는 캡션이 비어 있는 표가 흔하기 때문이다 —
-        삼성전자 부문별 매출표(idx=65)가 캡션 없이 헤더에 '부 문' 만 있다.
-        """
-        out = []
-        for t in self.tables:
-            if in_title is not None and not in_title.search(t.title):
+        result = []
+        for table in self.tables:
+            if in_title is not None and not in_title.search(table.title):
                 continue
-            if rx.search(t.title) or rx.search(t.caption) or rx.search(t.head()):
-                out.append(t)
-        return out
+            if rx.search(table.title) or rx.search(table.caption) or rx.search(table.head()):
+                result.append(table)
+        return result
 
     def unit(self, table: Table) -> tuple[str | None, int | None, str | None]:
         """표의 금액 단위 → (표기, 원 환산 배수, 어디서 찾았나).
@@ -171,21 +351,20 @@ class Document:
         50건 중 44건). 그래서 자기 표부터 직전 N개까지 거슬러 오른다. 규칙과 배수
         목록을 rnd 쪽 patterns 에서 그대로 가져와 두 파서가 갈리지 않게 한다.
         """
-        rp = self.p.rnd
-        i = table.idx
-        for k in range(i, max(-1, i - rp.unit_lookback_tables - 1), -1):
-            t = self.tables[k]
-            blob = t.caption + " " + t.head(3)
+        rules = self.p.rnd
+        for index in range(table.idx, max(-1, table.idx - rules.unit_lookback_tables - 1), -1):
+            candidate = self.tables[index]
+            blob = candidate.caption + " " + candidate.head(3)
             # 외화가 보이면 원화 표기가 같이 있어도 버린다. 행마다 통화가 다른 표라
             # 곱할 수를 하나로 정할 수 없다. 계속 거슬러 오르면 남의 표의 원화 단위를
             # 집어 값이 1억 배가 되고(SJG세종 2021 · 240조원), 표 안에 '원' 이 섞여
             # 있으면 그대로 원화로 읽혀 자릿수 검증까지 통과한다(같은 회사 2024).
             # 둘 다 S15P21A504-73 1차 확대에서 실측했다.
-            foreign = foreign_unit_in_blob(blob, rp.foreign_currency_markers)
+            foreign = foreign_unit_in_blob(blob, rules.foreign_currency_markers)
             if foreign:
                 return None, None, f"외화표기:{foreign}"
-            found = unit_from_blob(blob, rp.units)
+            found = unit_from_blob(blob, rules.units)
             if found:
-                name, mult = found
-                return name, mult, "자기표" if k == i else f"직전표-{i - k}"
+                name, multiplier = found
+                return name, multiplier, "자기표" if index == table.idx else f"직전표-{table.idx - index}"
         return None, None, None

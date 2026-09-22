@@ -16,7 +16,7 @@ from pathlib import Path
 
 from pipeline.news import corpmap, curate, flyway, manifest, rawstore, stage
 from pipeline.news.csvio import read_csv, row_count
-from pipeline.news.schema import PROVIDER, SEED_FIELDS, SEED_TABLE
+from pipeline.news.schema import PROVIDER, SEED_COLUMN_FILL, SEED_FIELDS, SEED_TABLE
 
 DATA = rawstore.ROOT
 DOCS = DATA / "docs"
@@ -231,6 +231,14 @@ def check_09_headers() -> Check:
     schema = flyway.load()
     problems = []
     expected = curate.seed_header(schema)
+    # 진짜 방어는 이것이다 — 채울 줄 모르는 컬럼이 생기면 시드가 조용히 빈 칸을
+    # 내보내는 대신 멈춘다 (curate.build 도 같은 검사를 한다).
+    unknown = [c for c in expected if c not in SEED_COLUMN_FILL]
+    if unknown:
+        problems.append(f"시드에 어떻게 채울지 모르는 컬럼: {unknown} — "
+                        "schema.SEED_COLUMN_FILL 에 적어라")
+    # 상수는 사본이라 낡는다. 낡아도 시드는 만들어지지만(헤더는 Flyway 를 따른다)
+    # 문서·테스트가 옛 모양을 말하게 되므로 알린다.
     if expected != SEED_FIELDS:
         problems.append(f"SEED_FIELDS 가 Flyway 와 다르다: {SEED_FIELDS} != {expected}")
     seed_path = SEED_DIR / f"{SEED_TABLE}.csv"

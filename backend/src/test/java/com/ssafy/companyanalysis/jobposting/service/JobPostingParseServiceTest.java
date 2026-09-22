@@ -25,7 +25,7 @@ class JobPostingParseServiceTest {
 
     private JobPostingParseService service(String modelOutput) {
         return service(modelOutput,
-                new JobSourceClient.JobSource(POSTING, null, null, null, null, null, null));
+                new JobSourceClient.JobSource(POSTING, null, null, null, null, null, null, false));
     }
 
     private JobPostingParseService service(String modelOutput, JobSourceClient.JobSource source) {
@@ -37,6 +37,45 @@ class JobPostingParseServiceTest {
 
         return new JobPostingParseService(jobSourceClient, llmClient, new ObjectMapper(),
                 new JobPostingSourceCache(Duration.ofMinutes(30), 200));
+    }
+
+    @Test
+    @DisplayName("모델이 JSON 을 안 주면 수집 단계가 찾은 회사·직무로 이어간다")
+    void fallsBackWhenModelBreaksFormat() {
+        // 모델이 형식을 어기는 일이 드물게 있다. 그때 수집 단계가 이미 찾아 둔 값까지
+        // 버리면 화면에는 "찾지 못했습니다" 만 남는다.
+        JobPostingParseResponse response = service("사업기획·운영, 조사연구",
+                new JobSourceClient.JobSource(POSTING, "금융결제원", "신입직원",
+                        "https://example.com/job/8", null, null, null, false))
+                .parse("https://example.com/job/8");
+
+        assertThat(response.companyName()).isEqualTo("금융결제원");
+        assertThat(response.positions()).containsExactly("신입직원");
+    }
+
+    @Test
+    @DisplayName("본문을 얻은 공고는 등록에서 재사용하도록 보관 키를 준다")
+    void keepsSourceForRegistration() {
+        JobPostingParseResponse response = service("""
+                {"companyName": "삼성전자", "positions": ["백엔드 개발자"]}
+                """).parse("https://example.com/job/1");
+
+        assertThat(response.sourceKey()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("제목·메타만으로 채운 응답은 보관하지 않는다")
+    void doesNotKeepMetadataOnlySource() {
+        JobPostingParseResponse response = service("""
+                {"companyName": "중앙대학교의료원", "positions": ["기능사"]}
+                """, new JobSourceClient.JobSource("[중앙대학교의료원] 기능사 채용", null, null,
+                        "https://example.com/job/9", null, null, null, true))
+                .parse("https://example.com/job/9");
+
+        assertThat(response.companyName()).isEqualTo("중앙대학교의료원");
+        // 보관 키가 없어야 등록 쪽이 주소로 다시 읽는다. 그대로 넘기면 본문이 거의 없는
+        // 공고가 검토 방에 붙는다.
+        assertThat(response.sourceKey()).isNull();
     }
 
     @Test
@@ -95,7 +134,7 @@ class JobPostingParseServiceTest {
     }
 
     @Test
-    @DisplayName("모델 응답이 JSON 이 아니면 400 을 낸다")
+    @DisplayName("모델 응답이 JSON 이 아니고 수집 값도 없으면 400 을 낸다")
     void failsWhenModelReturnsNonJson() {
         assertThatThrownBy(() -> service("죄송합니다, 공고를 읽을 수 없습니다.")
                 .parse("https://example.com/job/6"))
@@ -110,7 +149,7 @@ class JobPostingParseServiceTest {
         JobPostingParseResponse response = service("""
                 {"companyName": null, "positions": []}
                 """, new JobSourceClient.JobSource(POSTING, "네이버", "백엔드 개발자",
-                        "https://example.com/job/7", null, null, null))
+                        "https://example.com/job/7", null, null, null, false))
                 .parse("https://example.com/job/7");
 
         assertThat(response.companyName()).isEqualTo("네이버");

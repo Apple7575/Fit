@@ -2,6 +2,7 @@ package com.ssafy.companyanalysis.agent.service;
 
 import com.ssafy.companyanalysis.agent.domain.JobContext;
 import com.ssafy.companyanalysis.agent.domain.Message;
+import com.ssafy.companyanalysis.agent.domain.MessageRole;
 import com.ssafy.companyanalysis.agent.domain.MessageStatus;
 import com.ssafy.companyanalysis.agent.domain.Room;
 import com.ssafy.companyanalysis.agent.domain.RoomAgent;
@@ -114,6 +115,14 @@ class TurnServiceTest {
             throw new IllegalStateException(e);
         }
         return item;
+    }
+
+    /** 한도를 달리한 서비스. 자동 검토가 한 바퀴에 몇 번을 세는지 보려면 한도를 좁혀야 한다. */
+    private TurnService serviceWithLimit(int limit) {
+        return new TurnService(roomRepository, messageRepository, jobContextRepository,
+                itemRepository, turnExecutor,
+                new AnalysisRateLimiter(limit, java.time.Duration.ofHours(1)),
+                noTransaction());
     }
 
     private void roomWith(String... agentKeys) {
@@ -374,7 +383,7 @@ class TurnServiceTest {
     void autoReviewLeavesTheRootEmpty() {
         roomWith("writing", "position");
 
-        service.autoReview(USER, ROOM);
+        service.autoReview(USER, ROOM, service.newAutoReviewQuota(USER));
 
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
         then(messageRepository).should().save(captor.capture());
@@ -387,7 +396,7 @@ class TurnServiceTest {
     void autoReviewSendsADefaultInstruction() {
         roomWith("writing");
 
-        service.autoReview(USER, ROOM);
+        service.autoReview(USER, ROOM, service.newAutoReviewQuota(USER));
 
         ArgumentCaptor<TurnContext> captor = ArgumentCaptor.forClass(TurnContext.class);
         then(turnExecutor).should().runTurnNow(anyLong(), captor.capture());
@@ -400,7 +409,7 @@ class TurnServiceTest {
     void autoReviewRunsOnTheCallingThread() {
         roomWith("writing");
 
-        service.autoReview(USER, ROOM);
+        service.autoReview(USER, ROOM, service.newAutoReviewQuota(USER));
 
         then(turnExecutor).should().runTurnNow(anyLong(), any());
         then(turnExecutor).should(Mockito.never()).runTurn(anyLong(), any());
@@ -410,9 +419,9 @@ class TurnServiceTest {
     @DisplayName("이미 말이 오간 방은 자동 검토가 물러난다")
     void autoReviewSkipsRoomThatAlreadyTalked() {
         roomWith("writing");
-        given(messageRepository.existsByRoomId(ROOM)).willReturn(true);
+        given(messageRepository.countByRoomId(ROOM)).willReturn(3L);
 
-        service.autoReview(USER, ROOM);
+        service.autoReview(USER, ROOM, service.newAutoReviewQuota(USER));
 
         then(turnExecutor).shouldHaveNoInteractions();
         then(messageRepository).should(Mockito.never()).save(any(Message.class));
@@ -424,7 +433,7 @@ class TurnServiceTest {
         roomWith("writing");
         given(itemRepository.findByCoverLetterIdOrderBySeqAsc(anyLong())).willReturn(List.of());
 
-        service.autoReview(USER, ROOM);
+        service.autoReview(USER, ROOM, service.newAutoReviewQuota(USER));
 
         then(turnExecutor).shouldHaveNoInteractions();
     }
@@ -438,11 +447,105 @@ class TurnServiceTest {
                 new RoomAgent("position", Map.of("jobRole", "백엔드 개발"))));
         given(roomRepository.findByIdAndUserId(ROOM, USER)).willReturn(Optional.of(room));
 
-        service.autoReview(USER, ROOM);
+        service.autoReview(USER, ROOM, service.newAutoReviewQuota(USER));
 
         ArgumentCaptor<List<Message>> captor = ArgumentCaptor.forClass(List.class);
         then(messageRepository).should().saveAll(captor.capture());
         assertThat(captor.getValue()).extracting(Message::getAgentKey)
                 .contains("writing", "position", "supervisor");
+    }
+
+    @Test
+    @DisplayName("한 바퀴에 방을 여럿 돌아도 한도는 한 번만 센다 — 방마다 세면 한 번 열고 바닥난다")
+    void oneSweepSpendsOneAllowance() {
+        roomWith("writing");
+        TurnService limited = serviceWithLimit(1);
+        AutoReviewQuota quota = limited.newAutoReviewQuota(USER);
+
+        limited.autoReview(USER, ROOM, quota);
+        limited.autoReview(USER, ROOM, quota);
+        limited.autoReview(USER, ROOM, quota);
+
+        then(turnExecutor).should(Mockito.times(3)).runTurnNow(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("돌 방이 없는 바퀴는 한도를 쓰지 않는다 — 화면을 다시 열었다는 이유로 깎이면 안 된다")
+    void sweepWithNothingToDoSpendsNothing() {
+        roomWith("writing");
+        given(messageRepository.countByRoomId(ROOM)).willReturn(3L);
+        TurnService limited = serviceWithLimit(1);
+        AutoReviewQuota quota = limited.newAutoReviewQuota(USER);
+
+        limited.autoReview(USER, ROOM, quota);
+
+        assertThat(quota.allowed()).isTrue();
+    }
+
+    @Test
+    @DisplayName("한도에 걸리면 조용히 사라지지 않고 자리마다 안내를 남긴다")
+    void rateLimitLeavesANoticeInsteadOfAnEmptyRoom() {
+        roomWith("writing", "position");
+        TurnService limited = serviceWithLimit(0);
+
+        limited.autoReview(USER, ROOM, limited.newAutoReviewQuota(USER));
+
+        then(turnExecutor).shouldHaveNoInteractions();
+        ArgumentCaptor<List<Message>> captor = ArgumentCaptor.forClass(List.class);
+        then(messageRepository).should().saveAll(captor.capture());
+        assertThat(captor.getValue()).isNotEmpty();
+        assertThat(captor.getValue()).allSatisfy(slot -> {
+            assertThat(slot.getStatus()).isEqualTo(MessageStatus.FAILED);
+            assertThat(slot.getError()).contains("잠시 후");
+        });
+    }
+
+    @Test
+    @DisplayName("안내 턴의 뿌리는 실패로 남는다 — 다음 바퀴가 이 표식을 보고 다시 돈다")
+    void theNoticeRootIsMarkedFailed() {
+        roomWith("writing");
+        TurnService limited = serviceWithLimit(0);
+
+        limited.autoReview(USER, ROOM, limited.newAutoReviewQuota(USER));
+
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        then(messageRepository).should().save(captor.capture());
+        assertThat(captor.getValue().getContent()).isNull();
+        assertThat(captor.getValue().getStatus()).isEqualTo(MessageStatus.FAILED);
+    }
+
+    @Test
+    @DisplayName("안내만 남은 방은 안내를 지우고 다시 검토한다 — 안 그러면 영영 검토를 못 받는다")
+    void aRoomLeftWithOnlyANoticeIsReviewedAgain() {
+        roomWith("writing");
+        Message notice = withId(Message.deferredAutoReview(ROOM), 700L);
+        Message slot = withId(Message.pendingAgent(ROOM, 700L, "writing"), 701L);
+        given(messageRepository.countByRoomId(ROOM)).willReturn(2L);
+        given(messageRepository.findFirstByRoomIdAndRoleAndStatus(
+                ROOM, MessageRole.USER, MessageStatus.FAILED)).willReturn(Optional.of(notice));
+        given(messageRepository.findByParentMessageIdOrderByIdAsc(700L)).willReturn(List.of(slot));
+
+        service.autoReview(USER, ROOM, service.newAutoReviewQuota(USER));
+
+        then(messageRepository).should().deleteAll(List.of(slot));
+        then(messageRepository).should().delete(notice);
+        then(turnExecutor).should().runTurnNow(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("안내 말고 다른 말도 오간 방은 건드리지 않는다 — 사용자가 쓰고 있는 방이다")
+    void aRoomWithRealTalkIsLeftAloneEvenIfANoticeIsThere() {
+        roomWith("writing");
+        Message notice = withId(Message.deferredAutoReview(ROOM), 700L);
+        Message slot = withId(Message.pendingAgent(ROOM, 700L, "writing"), 701L);
+        given(messageRepository.countByRoomId(ROOM)).willReturn(9L);
+        given(messageRepository.findFirstByRoomIdAndRoleAndStatus(
+                ROOM, MessageRole.USER, MessageStatus.FAILED)).willReturn(Optional.of(notice));
+        given(messageRepository.findByParentMessageIdOrderByIdAsc(700L)).willReturn(List.of(slot));
+
+        service.autoReview(USER, ROOM, service.newAutoReviewQuota(USER));
+
+        then(messageRepository).should(Mockito.never()).delete(any(Message.class));
+        then(turnExecutor).shouldHaveNoInteractions();
     }
 }

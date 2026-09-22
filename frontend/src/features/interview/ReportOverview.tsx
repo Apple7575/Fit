@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { CompanyLogo } from '../company-summary/CompanyLogo';
+import { GuideImage } from './GuideImage';
 import { Icon } from './icons';
 import type { Axis, Highlight } from './reportSummary';
 import { CARD, T, TONE } from './reportTokens';
@@ -69,9 +70,19 @@ export function ReportOverview({
                 <p className={`mt-5 ${T.label}`}>
                   {focus ? '이번 면접에서 가장 먼저 고칠 것' : '이번 면접에서 잘한 것'}
                 </p>
-                {/* 한 줄이 너무 길어지면 읽히지 않는다. 화면이 넓어도 글 폭은 묶어 둔다 */}
-                <p className={`mt-1.5 max-w-[42ch] ${T.hero}`}>{focus?.body ?? praise?.body}</p>
-                {next && <p className={`mt-2 max-w-[56ch] ${T.body}`}>다음엔 이렇게 — {next.body}</p>}
+                {/* 그림은 장식이다. 파일이 없으면 조용히 빠지고 글은 그대로 자리를 채운다 */}
+                <div className="mt-1.5 flex items-start gap-4">
+                  <GuideImage
+                    alt=""
+                    className="hidden size-20 shrink-0 sm:block"
+                    name="focus.png"
+                  />
+                  <div className="min-w-0">
+                    {/* 한 줄이 너무 길어지면 읽히지 않는다. 화면이 넓어도 글 폭은 묶어 둔다 */}
+                    <p className={`max-w-[42ch] ${T.hero}`}>{focus?.body ?? praise?.body}</p>
+                    {next && <p className={`mt-2 max-w-[56ch] ${T.body}`}>다음엔 이렇게 — {next.body}</p>}
+                  </div>
+                </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   {focusSeq != null && (

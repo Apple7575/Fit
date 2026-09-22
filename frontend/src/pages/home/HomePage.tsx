@@ -1,10 +1,10 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SiteHeader } from '../../components/layout/SiteHeader';
 import { prefersReducedMotion } from '../../hooks/useInView';
 import { AgentDemo } from './AgentDemo';
 import { FinalCta } from './FinalCta';
-import { Hero } from './Hero';
+import { Opening } from './Opening';
 import { InterviewDemo } from './InterviewDemo';
 import { SectionDots } from './SectionDots';
 
@@ -25,6 +25,13 @@ export function HomePage() {
   const heroRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLElement>(null);
 
+  // 랜딩은 한 화면에 딱 맞아 문서가 스크롤되지 않는다. 스크롤바 자리까지 비워 두면 오른쪽에 띠가 생긴다
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('no-scrollbar-gutter');
+    return () => root.classList.remove('no-scrollbar-gutter');
+  }, []);
+
   const behavior = () => (prefersReducedMotion() ? 'auto' : 'smooth') as ScrollBehavior;
 
   const goNext = useCallback(() => {
@@ -35,12 +42,12 @@ export function HomePage() {
 
   return (
     <div className="relative h-screen overflow-hidden bg-slate-50">
-      {/* 첫 장 위에 흰 유리 헤더로 떠 있는다. 아래 섹션들이 헤더 높이만큼 위 여백을 갖는다 */}
-      <SiteHeader overlay scrolled />
+      {/* 랜딩은 네 장이 모두 어두운 영상이라, 스크롤해도 흰 유리로 바꾸지 않고 끝까지 투명하게 둔다 */}
+      <SiteHeader overlay />
 
       {/* 화면 높이 그대로 한 장씩 스냅. 각 섹션이 헤더 높이(3.5rem) 만큼 위 여백을 가진다 */}
       <main className="h-screen snap-y snap-mandatory overflow-y-auto scroll-smooth" ref={scrollerRef}>
-        <Hero onNext={goNext} ref={heroRef} />
+        <Opening onNext={goNext} ref={heroRef} />
         <AgentDemo />
         <InterviewDemo />
         <FinalCta onStart={() => navigate('/companies')} />

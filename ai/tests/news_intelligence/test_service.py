@@ -82,8 +82,10 @@ class FakeProvider:
         self.error = error
         self.calls: list[tuple[object, ...]] = []
 
-    def search(self, corp_name, position_name, missing_scopes, from_date, to_date, limit):
+    def search(self, corp_name, position_name, missing_scopes, from_date, to_date, limit,
+               *, industry_name=None):
         self.calls.append((corp_name, position_name, tuple(missing_scopes), from_date, to_date, limit))
+        self.industry_names = getattr(self, "industry_names", []) + [industry_name]
         if self.error:
             raise self.error
         return self.rows
@@ -141,6 +143,85 @@ def build_service(
         repository,
         model,
     )
+
+
+class FakeChat:
+    def __init__(self, answer="제목으로 보면 투자 확대 흐름으로 읽힙니다.", error=None):
+        self.answer = answer
+        self.error = error
+        self.calls = []
+
+    def respond(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.error is not None:
+            raise self.error
+        return {"answer": self.answer, "referenced_signal_ids": ["signal-001"], "follow_up_questions": []}
+
+
+class NewsConversationTest(unittest.TestCase):
+    """신호 목록 위에서 이번 질문에 답한다. 목록만 돌려주면 무엇을 물어도 같은 답이다."""
+
+    def build(self, chat, stored=None):
+        repository = FakeRepository(stored if stored is not None else candidates())
+        model = FakeModel()
+        service = NewsIntelligenceService(
+            repository, FakeProvider([]), model, chat=chat, now=lambda: NOW,
+        )
+        return service, model
+
+    def test_answer_replaces_the_signal_list_and_keeps_the_analysis(self):
+        chat = FakeChat()
+        service, _ = self.build(chat)
+
+        response = service.analyze(REQUEST)
+
+        self.assertEqual(response.message, "제목으로 보면 투자 확대 흐름으로 읽힙니다.")
+        self.assertEqual(response.analysis.analysis_status, "COMPLETED")
+        self.assertEqual(len(response.analysis.signals), 1)  # 근거 패널은 그대로
+        call = chat.calls[0]
+        self.assertEqual(call["message"], REQUEST.instruction)
+        self.assertEqual(call["analysis"], response.analysis)
+        self.assertEqual(call["context"], CONTEXT)
+
+    def test_conversation_is_handed_over_as_history(self):
+        chat = FakeChat()
+        service, _ = self.build(chat)
+        request = REQUEST.model_copy(update={"conversation": [
+            {"message_id": "u1", "role": "USER", "content": "최근 소식"},
+            {"message_id": "a1", "role": "ASSISTANT", "content": "투자 확대 소식이 있습니다."},
+        ]})
+
+        service.analyze(NewsAnalysisRequest.model_validate(request.model_dump()))
+
+        history = chat.calls[0]["history"]
+        self.assertEqual([item["role"] for item in history], ["USER", "ASSISTANT"])
+
+    def test_chat_failure_falls_back_to_the_signal_list(self):
+        """대화는 신호 위에 얹는 것이다. 답을 못 만들었다고 기사까지 숨기지 않는다."""
+        service, _ = self.build(FakeChat(error=RuntimeError("모델 죽음")))
+
+        with self.assertLogs("ai.news_intelligence.service", level="ERROR"):
+            response = service.analyze(REQUEST)
+
+        self.assertIn("[COMPANY] 서비스 투자 확대", response.message)
+        self.assertEqual(response.analysis.analysis_status, "COMPLETED")
+
+    def test_no_signals_means_no_chat_call(self):
+        """근거가 없으면 대화도 없다. 없는 소식을 아는 것처럼 말하게 두지 않는다."""
+        chat = FakeChat()
+        service, _ = self.build(chat, stored=[])
+
+        response = service.analyze(REQUEST)
+
+        self.assertEqual(response.analysis.analysis_status, "INSUFFICIENT_EVIDENCE")
+        self.assertEqual(chat.calls, [])
+
+    def test_without_a_chat_service_the_list_is_returned_as_before(self):
+        service, _ = self.build(None)
+
+        response = service.analyze(REQUEST)
+
+        self.assertIn("[COMPANY] 서비스 투자 확대", response.message)
 
 
 class NewsIntelligenceServiceTest(unittest.TestCase):

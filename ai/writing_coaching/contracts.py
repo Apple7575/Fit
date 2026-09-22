@@ -33,7 +33,7 @@ class StrictModel(BaseModel):
 
 class WritingFeedback(StrictModel):
     feedback_id: str = Field(min_length=1, max_length=100)
-    source: Literal["jd", "position", "news", "supervisor"]
+    source: Literal["jd", "position", "news", "company", "supervisor"]
     content: str = Field(min_length=1, max_length=2_000)
 
 

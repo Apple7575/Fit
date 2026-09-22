@@ -1,0 +1,357 @@
+"""기업별 정본 데이터를 PostgreSQL RAG 코퍼스로 결정적으로 재구축한다.
+
+    python data/scripts/build_rag_corpus.py --dry-run
+    python data/scripts/build_rag_corpus.py --corp-code 00126380
+"""
+from __future__ import annotations
+
+import argparse
+from contextlib import ExitStack
+import json
+import sys
+import time
+from collections import Counter
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, ContextManager, Iterable, Protocol
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pipeline.rag_corpus.load import (  # noqa: E402
+    BuildResult,
+    build_business_report_records,
+    build_company_records,
+    replace_business_reports,
+    replace_company,
+)
+from pipeline.rag_corpus.source import load_company_source_rows  # noqa: E402
+from pipeline.rag_corpus.models import EvidenceRecord  # noqa: E402
+from pipeline.raw_sources.business_report import BusinessReportSource  # noqa: E402
+from pipeline.raw_sources.dart_archive import DartArchive, extract_archive  # noqa: E402
+from pipeline.raw_sources.chunking_profiles import chunking_profile_names, get_chunking_profile  # noqa: E402
+from pipeline.raw_sources.parallel import iter_parallel_batches  # noqa: E402
+from pipeline.raw_sources.models import EvidenceBatch  # noqa: E402
+
+
+ConnectionFactory = Callable[[], ContextManager[object]]
+
+
+class ExternalEvidenceProvider(Protocol):
+    def batch(self, corp_code: str) -> EvidenceBatch: ...
+
+    def inventory(self) -> dict[str, object]: ...
+
+
+def connect():
+    """실행 시점에만 DB 드라이버를 가져와 변환 단위 테스트를 독립시킨다."""
+    from pipeline.db import connect as database_connect
+
+    return database_connect()
+
+
+@dataclass
+class BuildSummary:
+    """JSON 출력에 쓰는 기업별·전체 구축 계측값이다."""
+
+    started_at: float = field(default_factory=time.monotonic)
+    companies: dict[str, dict[str, object]] = field(default_factory=dict)
+    input_counts: Counter[str] = field(default_factory=Counter)
+    excluded_counts: Counter[str] = field(default_factory=Counter)
+    record_count: int = 0
+    failures: list[dict[str, object]] = field(default_factory=list)
+
+    def add(
+        self, corp_code: str, result: BuildResult, *, failures: list[dict[str, object]], write_status: str,
+        elapsed_ms: int,
+    ) -> None:
+        records = len(result.records)
+        self.companies[corp_code] = {
+            "company_count": 1,
+            "record_count": records,
+            "input_counts": dict(sorted(result.input_counts.items())),
+            "excluded_counts": dict(sorted(result.excluded_counts.items())),
+            "write_status": write_status,
+            "elapsed_ms": elapsed_ms,
+        }
+        if failures:
+            self.companies[corp_code]["failures"] = failures
+            self.failures.extend(failures)
+        self.input_counts.update(result.input_counts)
+        self.excluded_counts.update(result.excluded_counts)
+        self.record_count += records
+
+    def add_external(self, corp_code: str, batch: EvidenceBatch) -> None:
+        """사업보고서 배치의 원문·청크 계측값을 기업 및 전체 합계에 반영한다."""
+        input_counts = Counter(batch.input_counts)
+        input_counts.update(
+            f"business_report_{record.metadata['content_type'].lower()}_chunks"
+            for record in batch.records
+            if getattr(record, "source_type", None) == "DART_BUSINESS_REPORT"
+            and getattr(record, "metadata", {}).get("content_type") in ("TEXT", "TABLE")
+        )
+        company = self.companies[corp_code]
+        for key, counts in (
+            ("input_counts", input_counts),
+            ("excluded_counts", batch.excluded_counts),
+        ):
+            total = Counter(company[key])
+            total.update(counts)
+            company[key] = dict(sorted(total.items()))
+            external = Counter(company.get(f"external_{key}", {}))
+            external.update(counts)
+            company[f"external_{key}"] = dict(sorted(external.items()))
+        self.input_counts.update(input_counts)
+        self.excluded_counts.update(batch.excluded_counts)
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "company_count": len(self.companies),
+            "record_count": self.record_count,
+            "input_counts": dict(sorted(self.input_counts.items())),
+            "excluded_counts": dict(sorted(self.excluded_counts.items())),
+            "companies": dict(sorted(self.companies.items())),
+            "failures": self.failures,
+            "elapsed_ms": int((time.monotonic() - self.started_at) * 1000),
+        }
+
+
+def add_embedding_estimate(summary: dict[str, object], dimension: int) -> dict[str, object]:
+    if dimension <= 0:
+        raise ValueError("embedding_dimension은 양수여야 합니다")
+    return {
+        **summary,
+        "embedding_dimension": dimension,
+        "estimated_embedding_bytes": int(summary["record_count"]) * dimension * 4,
+    }
+
+
+def resolve_company_codes(conn_factory: ConnectionFactory, corp_codes: list[str] | None) -> list[str]:
+    """기업 마스터에서 전수 목록을 읽고, 지정 코드는 적재 전 모두 검증한다."""
+    with conn_factory() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT corp_code FROM company ORDER BY corp_code")
+            known = {row[0] for row in cur.fetchall()}
+
+    if corp_codes is None:
+        return sorted(known)
+
+    selected = list(dict.fromkeys(corp_codes))
+    unknown = [corp_code for corp_code in selected if corp_code not in known]
+    if unknown:
+        raise ValueError(f"기업을 찾을 수 없습니다: {unknown[0]}")
+    return selected
+
+
+# 문서 하나 단위의 실패. 그 문서만 빠지고 나머지 해는 그대로 쓸 수 있다.
+#   manifest_missing_xml  아카이브에 그 해 XML 이 아예 없다(정정본 수집 실패 등)
+#   xml_parse_error       XML 은 있는데 읽히지 않는다
+# 기업 전체가 비는 no_source_documents 는 여기 넣지 않는다 — 넣으면 빈 적재로 기존 행을 지운다.
+DOCUMENT_LEVEL_FAILURES = frozenset({"manifest_missing_xml", "xml_parse_error"})
+
+
+def _write_status(dry_run: bool, wrote: bool, failures: list[dict]) -> str:
+    if dry_run:
+        return "dry_run"
+    if not wrote:
+        return "skipped_due_to_source_failure"
+    return "replaced_with_missing_documents" if failures else "replaced"
+
+
+def run(
+    conn_factory: ConnectionFactory, corp_codes: list[str] | None, *, dry_run: bool,
+    external_providers: Iterable[ExternalEvidenceProvider] = (),
+    embedding_dimension: int = 1024,
+    business_report_only: bool = False,
+) -> dict[str, object]:
+    """기업별 독립 트랜잭션으로 코퍼스를 교체하고 요약값을 반환한다."""
+    if embedding_dimension <= 0:
+        raise ValueError("embedding_dimension은 양수여야 합니다")
+    selected = resolve_company_codes(conn_factory, corp_codes)
+    providers = list(external_providers)
+    summary = BuildSummary()
+    for corp_code in selected:
+        company_started_at = time.monotonic()
+        with conn_factory() as conn:
+            rows = None if business_report_only else load_company_source_rows(conn, corp_code)
+            batches = [(provider.__class__.__name__, provider.batch(corp_code)) for provider in providers]
+            external = [record for _, batch in batches for record in batch.records]
+            failures = [
+                {**failure, "corp_code": corp_code, "provider": provider}
+                for provider, batch in batches for failure in batch.failures
+            ]
+            if business_report_only and not failures and sum(
+                batch.input_counts.get("documents", 0) for _, batch in batches
+            ) == 0:
+                failures.append({
+                    "corp_code": corp_code,
+                    "provider": batches[0][0] if batches else "BusinessReportSource",
+                    "reason": "no_source_documents",
+                })
+            if business_report_only:
+                result = build_business_report_records(corp_code, external)
+            else:
+                result = build_company_records(rows, external_records=external) if providers else build_company_records(rows)
+            blocking = [f for f in failures if f.get("reason") not in DOCUMENT_LEVEL_FAILURES]
+            # 문서 하나를 못 읽은 것과 기업 전체를 못 읽은 것은 다르다. 앞은 그 해만 빠지고
+            # 나머지 해는 멀쩡하므로 넣는다 — 한 해 때문에 네 해를 버리면 그 기업은 검색에서
+            # 통째로 사라진다.
+            #
+            # 다만 실패가 있는데 결과까지 비면 넣지 않는다. 그 적재는 기존 행을 지우기만 한다.
+            # 실패가 없는데 비는 것은 정상이다(근거가 없는 기업) — 그때는 지우는 것이 맞다.
+            wrote = False
+            if not dry_run and not blocking and (result.records or not failures):
+                if business_report_only:
+                    replace_business_reports(conn, corp_code, result.records)
+                else:
+                    replace_company(conn, corp_code, result.records)
+                wrote = True
+        company_elapsed_ms = int((time.monotonic() - company_started_at) * 1000)
+        summary.add(
+            corp_code, result, failures=failures,
+            write_status=_write_status(dry_run, wrote, failures),
+            elapsed_ms=company_elapsed_ms,
+        )
+        for _, batch in batches:
+            summary.add_external(corp_code, batch)
+    result = summary.as_dict()
+    result["companies"] = {
+        code: add_embedding_estimate(company, embedding_dimension)
+        for code, company in result["companies"].items()
+    }
+    result["external_sources"] = [
+        {"provider": provider.__class__.__name__, "inventory": provider.inventory()}
+        for provider in providers
+    ]
+    return add_embedding_estimate(result, embedding_dimension)
+
+
+def run_parallel_business_reports(
+    conn_factory: ConnectionFactory, corp_codes: list[str], *, archive_dir: Path,
+    staging_dir: Path, source_signature: str, dry_run: bool, workers: int,
+    embedding_dimension: int = 1024, profile_name: str = "structural-1500-v2",
+) -> dict[str, object]:
+    """압축 해제된 사업보고서를 기업 단위로 병렬 청킹한다."""
+    summary = BuildSummary()
+    for corp_code, staged in zip(
+        corp_codes, iter_parallel_batches(
+            archive_dir, corp_codes, workers=workers, staging_dir=staging_dir,
+            source_signature=source_signature, profile_name=profile_name,
+        ), strict=True,
+    ):
+        failures = [
+            {**failure, "provider": "BusinessReportSource"}
+            for failure in staged["failures"]
+        ]
+        company = {
+            "company_count": 1, "record_count": int(staged["record_count"]),
+            "input_counts": staged["input_counts"], "excluded_counts": staged["excluded_counts"],
+            "write_status": staged["write_status"], "elapsed_ms": int(staged["elapsed_ms"]),
+            "records_path": staged["records_path"],
+        }
+        if failures:
+            company["failures"] = failures
+            summary.failures.extend(failures)
+        summary.companies[corp_code] = company
+        summary.input_counts.update(staged["input_counts"])
+        summary.excluded_counts.update(staged["excluded_counts"])
+        summary.record_count += int(staged["record_count"])
+    result = add_embedding_estimate(summary.as_dict(), embedding_dimension)
+    result["chunking_profile"] = profile_name
+    return result
+
+
+def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="기업별 RAG 코퍼스 재구축")
+    parser.add_argument("--corp-code", action="append", help="재구축할 8자리 기업 코드 (여러 번 지정 가능)")
+    parser.add_argument("--dry-run", action="store_true", help="삭제·삽입 없이 입력과 변환 결과만 집계")
+    parser.add_argument("--dart-archive", type=Path, help="사업보고서 XML과 manifest가 든 ZIP")
+    parser.add_argument("--business-report-only", action="store_true", help="DART 사업보고서 근거만 동기화")
+    parser.add_argument("--embedding-dimension", type=int, default=1024,
+                        help="float32 벡터 저장량 추정에 쓸 차원 (기본: 1024)")
+    parser.add_argument("--workers", type=int, default=1,
+                        help="사업보고서 청킹 프로세스 수 (기본: 1)")
+    parser.add_argument("--extract-dir", type=Path,
+                        help="DART ZIP 압축 해제 캐시 디렉터리")
+    parser.add_argument("--staging-dir", type=Path,
+                        help="기업별 압축 JSONL 청크 저장 디렉터리")
+    parser.add_argument(
+        "--chunking-profile", choices=chunking_profile_names(), default="structural-1500-v2",
+        help="사업보고서 청킹 프로필",
+    )
+    parser.add_argument("--output", type=Path, help="전체 실행 결과를 저장할 JSON 경로")
+    args = parser.parse_args(argv)
+    if args.embedding_dimension <= 0:
+        parser.error("--embedding-dimension은 양수여야 합니다")
+    if args.business_report_only and args.dart_archive is None:
+        parser.error("--business-report-only는 --dart-archive와 함께 사용해야 합니다")
+    if args.workers <= 0:
+        parser.error("--workers는 양수여야 합니다")
+    return args
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        with ExitStack() as stack:
+            providers: list[ExternalEvidenceProvider] = []
+            selected_corp_codes = args.corp_code
+            parallel_archive_dir: Path | None = None
+            if args.dart_archive:
+                archive = stack.enter_context(DartArchive(args.dart_archive))
+                if args.business_report_only and selected_corp_codes is None:
+                    selected_corp_codes = list(archive.companies())
+                if args.business_report_only and (args.workers > 1 or args.staging_dir is not None):
+                    parallel_archive_dir = extract_archive(
+                        args.dart_archive,
+                        args.extract_dir or args.dart_archive.with_suffix(".extracted"),
+                    )
+                else:
+                    providers.append(BusinessReportSource(
+                        archive, profile=get_chunking_profile(args.chunking_profile),
+                    ))
+            if parallel_archive_dir is not None:
+                staging_dir = args.staging_dir or (
+                    args.output.parent / "company-rag-staging" if args.output
+                    else Path("outputs/company-rag-staging")
+                )
+                source_signature = (
+                    parallel_archive_dir / ".complete"
+                ).read_text(encoding="utf-8")
+                summary = run_parallel_business_reports(
+                    connect, selected_corp_codes or [], archive_dir=parallel_archive_dir,
+                    staging_dir=staging_dir, source_signature=source_signature,
+                    dry_run=args.dry_run, workers=args.workers,
+                    embedding_dimension=args.embedding_dimension,
+                    profile_name=args.chunking_profile,
+                )
+            else:
+                summary = run(
+                    connect, selected_corp_codes, dry_run=args.dry_run, external_providers=providers,
+                    embedding_dimension=args.embedding_dimension, business_report_only=args.business_report_only,
+                )
+    except Exception as error:
+        print(json.dumps({"status": "failed", "error": str(error)}, ensure_ascii=False))
+        return 1
+    partial = bool(summary["failures"])
+    payload = {"status": "partial" if partial else "success", **summary}
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        print(json.dumps({
+            "status": payload["status"],
+            "company_count": payload["company_count"],
+            "record_count": payload["record_count"],
+            "failure_count": len(payload["failures"]),
+            "elapsed_ms": payload["elapsed_ms"],
+            "output": str(args.output),
+        }, ensure_ascii=False, sort_keys=True))
+    else:
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+    return 1 if partial else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

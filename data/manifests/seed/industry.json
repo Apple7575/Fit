@@ -1,6 +1,6 @@
 {
   "table": "industry",
-  "generated_at": "2026-09-17T07:04:07.787400+00:00",
+  "generated_at": "2026-09-21T11:40:45.397310+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "industry_code",
@@ -33,7 +33,14 @@
     "V23__agent_message.sql",
     "V24__agent_room_job_context.sql",
     "V25__agent_room_context_id.sql",
-    "V26__cover_letter_context_corp.sql"
+    "V26__cover_letter_context_corp.sql",
+    "V27__rag_evidence.sql",
+    "V28__rag_business_report_evidence.sql",
+    "V29__rag_evidence_embedding.sql",
+    "V30__company_analysis_report.sql",
+    "V31__company_analysis_conversation.sql",
+    "V32__rag_evidence_entity_scope.sql",
+    "V33__company_table_row.sql"
   ],
   "source": "config/ksic_division.csv",
   "seed_rows": 77,

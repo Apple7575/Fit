@@ -97,6 +97,9 @@ public class RoomService {
         // 채용공고·뉴스 담당이 볼 것이 없어 자기 자리에서 안내로 떨어진다.
         String contextId = existingContextId(coverLetter.getContextId());
 
+        // 자소서 저장 뒤 공고 분석이 끝난 경우에도 전에 생성된 방이 새 공고를 보게 한다.
+        existing.forEach(room -> room.setJobContextId(contextId));
+
         List<Room> created = new ArrayList<>();
         for (AgentType type : selectable) {
             boolean already = existing.stream().anyMatch(room -> isSoloRoomFor(room, type));
@@ -300,18 +303,21 @@ public class RoomService {
                 .toList();
         room.replaceAgents(replaced);
 
-        return toAgentView(new RoomAgent(type.key(), validated), false, corpNames(replaced));
+        return toAgentView(new RoomAgent(type.key(), validated), false, corpNames(replaced),
+                jobContextRef(room.getJobContextId()));
     }
 
     private RoomResponse toDetail(Room room, CoverLetter coverLetter) {
         List<RoomAgent> stored = room.getAgents();
         Map<String, String> names = corpNames(stored);
+        RoomResponse.JobContextRef jobContext = jobContextRef(room.getJobContextId());
 
         List<RoomResponse.Agent> agents = new ArrayList<>(stored.stream()
-                .map(agent -> toAgentView(agent, false, names))
+                .map(agent -> toAgentView(agent, false, names, jobContext))
                 .toList());
         if (stored.size() >= 2) {
-            agents.add(toAgentView(new RoomAgent(AgentType.SUPERVISOR.key(), Map.of()), true, names));
+            agents.add(toAgentView(
+                    new RoomAgent(AgentType.SUPERVISOR.key(), Map.of()), true, names, jobContext));
         }
 
         return new RoomResponse(
@@ -320,7 +326,7 @@ public class RoomService {
                 coverLetter == null
                         ? null
                         : new RoomResponse.CoverLetterRef(coverLetter.getId(), coverLetter.getTitle()),
-                jobContextRef(room.getJobContextId()),
+                jobContext,
                 agents,
                 room.getCreatedAt(),
                 room.getLastMessageAt());
@@ -369,14 +375,28 @@ public class RoomService {
                 .orElse(null);
     }
 
-    /** 저장된 설정을 화면이 쓰기 좋게 바꾼다. corpCodes 는 기업명·ragReady 를 붙인 companies 가 된다. */
-    private RoomResponse.Agent toAgentView(RoomAgent agent, boolean auto, Map<String, String> names) {
+    /**
+     * 저장된 설정을 화면이 쓰기 좋게 바꾼다. corpCodes 는 기업명·ragReady 를 붙인 companies 가 된다.
+     *
+     * <p>ready 는 {@link AgentContexts} 가 실제로 그 담당을 돌리는 조건과 같아야 한다. 어긋나면
+     * 준비됐다고 적힌 담당이 막상 돌리면 빠져, 왜 아무도 답을 안 하는지 알 길이 없어진다.
+     */
+    private RoomResponse.Agent toAgentView(RoomAgent agent, boolean auto, Map<String, String> names,
+                                           RoomResponse.JobContextRef jobContext) {
         AgentType type = AgentType.from(agent.agentKey())
                 .orElseThrow(() -> new BusinessException(ErrorCode.AGENT_NOT_SUPPORTED, agent.agentKey()));
 
         Map<String, Object> view = new LinkedHashMap<>(agent.config());
-        // 필수 설정이 덜 찼으면 아직 쓸 수 없다. 화면이 "설정 필요" 로 보여준다.
-        boolean ready = type.isConfigured(agent.config());
+        boolean ready = switch (type) {
+            // 채울 설정이 없는 담당이라 필수 항목만 보면 늘 준비됨이 된다. 실제로는 방에 붙은
+            // 공고를 읽으므로 공고가 없으면 아무것도 못 본다.
+            case JD -> jobContext != null;
+            // 공고에서 뽑은 요구사항과 기업 뉴스를 겹쳐 본다. 둘 중 하나만 있으면 돌지 않는다.
+            case NEWS -> jobContext != null && type.isConfigured(agent.config());
+            // 자소서에서 받은 직무가 비어도 공고에 적힌 직무명으로 대신한다.
+            case POSITION -> type.isConfigured(agent.config()) || hasPositionName(jobContext);
+            default -> type.isConfigured(agent.config());
+        };
 
         Object corpCodes = view.remove("corpCodes");
         if (corpCodes instanceof Collection<?> codes) {
@@ -391,10 +411,17 @@ public class RoomService {
                     })
                     .toList();
             view.put("companies", companies);
-            ready = companies.stream().allMatch(one -> Boolean.TRUE.equals(one.get("ragReady")));
+            // 덮어쓰지 않고 겹친다. 기업이 하나도 없으면 allMatch 가 참이라 준비됨이 되어 버린다.
+            ready = ready && companies.stream().allMatch(one -> Boolean.TRUE.equals(one.get("ragReady")));
         }
 
         return new RoomResponse.Agent(type.key(), type.displayName(), auto, ready, view);
+    }
+
+    private static boolean hasPositionName(RoomResponse.JobContextRef jobContext) {
+        return jobContext != null
+                && jobContext.positionName() != null
+                && !jobContext.positionName().isBlank();
     }
 
     /** 설정에 실린 corpCode 를 한 번에 이름으로 바꾼다(에이전트마다 조회하지 않는다). */

@@ -120,7 +120,7 @@ class NewsBudgetTest(unittest.TestCase):
                         return super().load_context(*args)
 
                 class Provider(FakeProvider):
-                    def search(self, *args):
+                    def search(self, *args, **kwargs):
                         clock.advance(90)
                         return []
 

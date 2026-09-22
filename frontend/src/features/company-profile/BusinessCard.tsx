@@ -17,7 +17,7 @@ export function BusinessCard({ items, year = null }: BusinessCardProps) {
   return (
     <section
       aria-labelledby="business-card-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70 sm:p-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-extrabold text-slate-950" id="business-card-title">

@@ -34,6 +34,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -204,6 +205,25 @@ class AuthControllerTest {
     @DisplayName("비로그인 상태의 내 정보 조회는 401 UNAUTHENTICATED")
     void meWithoutLoginIsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+    }
+
+    @Test
+    @DisplayName("현재 비밀번호를 확인하고 회원탈퇴한 뒤 세션을 끝낸다")
+    void withdrawReturnsOk() throws Exception {
+        User user = User.create("user@example.com", "hash", "민재");
+        user.activate();
+
+        mockMvc.perform(delete("/api/auth/me").with(user(principal(user))).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @DisplayName("비로그인 상태의 회원탈퇴는 401 UNAUTHENTICATED")
+    void withdrawWithoutLoginIsUnauthorized() throws Exception {
+        mockMvc.perform(delete("/api/auth/me").with(csrf()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
     }

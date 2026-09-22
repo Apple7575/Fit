@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { useAuth } from '../../features/auth/AuthProvider';
+import { loginReason } from '../../features/auth/loginReason';
 
 const FIELD_CLASS =
   'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
@@ -17,6 +18,8 @@ export function LoginPage() {
   const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/';
   // 세션 만료로 튕겨 온 경우(전역 401 처리). AuthProvider 가 redirect 와 함께 붙인다.
   const expired = searchParams.get('expired') === '1';
+  // 무엇을 하려다 막혔는지에 따라 안내를 바꾼다 (모의 면접 · 자소서 · 검토 방)
+  const reason = loginReason(redirectParam);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -44,17 +47,9 @@ export function LoginPage() {
   };
 
   return (
-    <AuthLayout
-      character="fox"
-      headline="오늘은 어느 회사를 볼까요?"
-      lines={[
-        '어서 오세요, 기다렸어요',
-        '지난번 보던 회사 이어서 볼까요?',
-        '로그인하면 자소서와 면접이 저장돼요',
-      ]}
-    >
+    <AuthLayout character={reason.character} headline={reason.headline} lines={reason.lines}>
       <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-slate-950">로그인</h1>
-      <p className="mb-6 text-sm text-slate-500">자소서·면접 기록은 로그인한 나에게만 보입니다.</p>
+      <p className="mb-6 text-sm break-keep text-slate-500">{reason.note}</p>
 
       {expired && !error && (
         <p

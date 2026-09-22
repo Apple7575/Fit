@@ -1,3 +1,4 @@
+import { EmptyCard } from '../../components/common/EmptyCard';
 import type { ComparisonInsightsState } from './useComparisonInsights';
 
 interface ComparisonInsightsCardProps {
@@ -21,13 +22,17 @@ export function ComparisonInsightsCard({ state }: ComparisonInsightsCardProps) {
     );
   }
   if (state.status === 'error' || state.data.length === 0) {
-    return null;
+    return (
+      <EmptyCard title="핵심 인사이트">
+        비교 인사이트는 아직 준비 중이에요. 아래 표와 그래프로 직접 견주어 볼 수 있습니다.
+      </EmptyCard>
+    );
   }
 
   return (
     <section
       aria-labelledby="comparison-insights-title"
-      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
     >
       <h3
         className="flex items-center gap-2 text-base font-extrabold text-slate-950"

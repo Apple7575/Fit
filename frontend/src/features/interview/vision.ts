@@ -10,6 +10,7 @@ import type {
   PoseLandmarker,
 } from '@mediapipe/tasks-vision';
 import type { ClipEvent, ClipEventKind, MetricRow, Tone } from './delivery';
+import { headAnglesFromMatrix, offAxisDeg, type HeadAngles } from './headPose';
 
 const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm';
 const FACE_MODEL =
@@ -30,9 +31,46 @@ const EYE_R_INNER = 362;
 const EYE_R_OUTER = 263;
 const IRIS_L = 468;
 const IRIS_R = 473;
-// Pose(33) 어깨
+// Pose(33) 어깨·팔
 const SHOULDER_L = 11;
 const SHOULDER_R = 12;
+const WRIST_L = 15;
+const WRIST_R = 16;
+/** 이 값 아래면 그 점은 화면에서 제대로 안 잡힌 것으로 본다 */
+const VISIBLE = 0.5;
+
+/**
+ * 한 프레임의 추적 결과. 리포트에서 영상 위에 겹쳐 그리고 그 순간의 수치를 같이 보여준다.
+ *
+ * <p>"당신은 시선이 자주 흔들렸습니다"라는 말보다, 그 순간의 영상 위에 네모와 숫자를 얹어
+ * 보여주는 편이 훨씬 빨리 납득된다. 그래서 요약값과 별개로 프레임별 값을 남긴다.
+ *
+ * <p>0.1초마다 한 개라 1분 답변이면 600개다. 자리를 아끼려고 소수 셋째 자리에서 끊는다.
+ */
+export interface VisionSample {
+  /** 녹화 시작 기준 ms */
+  t: number;
+  /** 얼굴 상자 (0~1 비율) */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** 고개 각도(도). 행렬을 못 받았으면 null */
+  yaw: number | null;
+  pitch: number | null;
+  roll: number | null;
+  /** 눈동자가 가운데서 벗어난 정도 */
+  gaze: number;
+  /** 이 순간 정면으로 봤는지 */
+  frontal: boolean;
+  /** 어깨 두 점 (없으면 null) */
+  sl: [number, number] | null;
+  sr: [number, number] | null;
+  /** 손목 (화면에 잡혔을 때만) */
+  hand: [number, number] | null;
+  /** 웃는 정도 0~1. 표정 계수를 못 받았으면 null */
+  smile: number | null;
+}
 
 /** 문항별 비언어 지표(요약값). 값은 0~1 비율 또는 근사 각도. */
 export interface NonverbalMetrics {
@@ -47,8 +85,22 @@ export interface NonverbalMetrics {
   headDownRatio: number;
   /** 어깨와 얼굴 간격이 좁아진(구부정한) 시간 비율 (0 좋음 ~ 1 내내 구부정) */
   slouchRatio: number;
+  /** 고개가 좌우로 기울어 있던 평균 각도(도). 변환 행렬이 있을 때만 */
+  headRollDeg: number;
+  /** 웃는 표정이었던 시간 비율 (0~1) */
+  smileRatio: number;
+  /** 표정이 움직인 정도. 0 이면 내내 굳어 있었다는 뜻 */
+  expressionRange: number;
+  /** 손이 화면에 잡힌 시간 비율 */
+  handsVisibleRatio: number;
+  /** 손이 움직인 정도 (0 가만히 ~ 1 매우 큼) */
+  gestureAmount: number;
   hasFace: boolean;
   hasPose: boolean;
+  /** 표정 계수를 받았는지 (모델 옵션이 꺼져 있거나 옛 기록이면 false) */
+  hasExpression: boolean;
+  /** 손이 충분히 잡혀 손짓을 말할 수 있는지 */
+  hasHands: boolean;
 }
 
 interface FaceFrame {
@@ -57,16 +109,35 @@ interface FaceFrame {
   height: number;
   yawAsym: number; // 0 정면
   gazeOffset: number; // |평균 홍채 오프셋 - 0.5|
-  /** 눈높이에서 코까지 거리 / 얼굴 높이. 고개를 숙일수록 작아진다 */
+  /** 눈높이에서 코까지 거리 / 얼굴 높이. 고개를 숙일수록 작아진다 (행렬이 없을 때의 대비책) */
   pitch: number;
+  /** 변환 행렬에서 낸 고개 각도. 모델이 행렬을 주지 않으면 null */
+  angles: HeadAngles | null;
+  /** 웃는 정도 0~1. 표정 계수가 없으면 null */
+  smile: number | null;
 }
 interface PoseFrame {
   midX: number;
   midY: number;
   tiltDeg: number;
+  /** 화면에 잡힌 손목 위치(어깨 너비로 정규화). 안 잡히면 null */
+  handX: number | null;
+  handY: number | null;
+  /** 겹쳐 그리기용 원본 좌표 */
+  slX: number;
+  slY: number;
+  srX: number;
+  srY: number;
+  /** 손목 화면 좌표 (잡혔을 때만) */
+  handRawX: number | null;
+  handRawY: number | null;
 }
 
-function extractFace(lm: NormalizedLandmark[]): FaceFrame {
+function extractFace(
+  lm: NormalizedLandmark[],
+  matrix: ArrayLike<number> | null,
+  smile: number | null,
+): FaceFrame {
   let minX = 1;
   let maxX = 0;
   let minY = 1;
@@ -95,7 +166,16 @@ function extractFace(lm: NormalizedLandmark[]): FaceFrame {
   const eyeY = (lm[EYE_L_INNER].y + lm[EYE_L_OUTER].y + lm[EYE_R_INNER].y + lm[EYE_R_OUTER].y) / 4;
   const height = maxY - minY;
   const pitch = height > 0 ? (nose.y - eyeY) / height : 0;
-  return { centerX: (minX + maxX) / 2, centerY: (minY + maxY) / 2, height, yawAsym, gazeOffset, pitch };
+  return {
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+    height,
+    yawAsym,
+    gazeOffset,
+    pitch,
+    angles: headAnglesFromMatrix(matrix),
+    smile,
+  };
 }
 
 function extractPose(lm: NormalizedLandmark[]): PoseFrame | null {
@@ -106,7 +186,31 @@ function extractPose(lm: NormalizedLandmark[]): PoseFrame | null {
   // 그대로 atan2 를 쓰면 반듯하게 앉아도 180도 근처가 나오므로, 가로 성분은 절댓값으로 눕혀
   // "수평에서 몇 도 벗어났는지"(0~90)만 남긴다.
   const tiltDeg = Math.abs((Math.atan2(sr.y - sl.y, Math.abs(sr.x - sl.x)) * 180) / Math.PI);
-  return { midX: (sl.x + sr.x) / 2, midY: (sl.y + sr.y) / 2, tiltDeg };
+
+  /*
+   * 손은 앉은 웹캠 화면에서 자주 잘린다. 잡힌 손목만 쓰고, 어깨 너비로 나눠 카메라와의
+   * 거리에 영향받지 않게 한다 (가까이 앉으면 모든 움직임이 커 보인다).
+   */
+  const span = Math.hypot(sr.x - sl.x, sr.y - sl.y) || 1;
+  const midX = (sl.x + sr.x) / 2;
+  const midY = (sl.y + sr.y) / 2;
+  const hands = [lm[WRIST_L], lm[WRIST_R]].filter((w) => w && (w.visibility ?? 0) >= VISIBLE);
+  const handX = hands.length ? mean(hands.map((w) => (w.x - midX) / span)) : null;
+  const handY = hands.length ? mean(hands.map((w) => (w.y - midY) / span)) : null;
+
+  return {
+    midX,
+    midY,
+    tiltDeg,
+    handX,
+    handY,
+    slX: sl.x,
+    slY: sl.y,
+    srX: sr.x,
+    srY: sr.y,
+    handRawX: hands.length ? mean(hands.map((w) => w.x)) : null,
+    handRawY: hands.length ? mean(hands.map((w) => w.y)) : null,
+  };
 }
 
 function std(values: number[], mean: number): number {
@@ -117,6 +221,28 @@ function std(values: number[], mean: number): number {
 function mean(values: number[]): number {
   return values.length ? values.reduce((a, x) => a + x, 0) / values.length : 0;
 }
+/**
+ * 표정 계수에서 "웃는 정도"만 꺼낸다.
+ *
+ * <p>MediaPipe 는 52가지 계수를 주지만 면접에서 뜻이 분명한 것만 쓴다. 입꼬리 양쪽 값을
+ * 평균해 0~1 로 본다. 감정을 분류하는 게 아니라 얼굴이 움직였는지를 보는 용도다.
+ */
+function smileOf(blendshapes: { categories: Array<{ categoryName: string; score: number }> } | undefined): number | null {
+  if (!blendshapes?.categories?.length) return null;
+  let sum = 0;
+  let found = 0;
+  for (const c of blendshapes.categories) {
+    if (c.categoryName === 'mouthSmileLeft' || c.categoryName === 'mouthSmileRight') {
+      sum += c.score;
+      found += 1;
+    }
+  }
+  return found > 0 ? sum / found : null;
+}
+
+/** 저장 자리를 아끼려고 소수 셋째 자리에서 끊는다 (화면에 그릴 때 그 이상은 의미 없다) */
+const r3 = (x: number) => Math.round(x * 1000) / 1000;
+
 function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
@@ -135,6 +261,8 @@ interface Accumulator {
   /** 얼굴과 어깨가 같은 프레임에서 잡혔을 때의 목 길이(어깨 중앙 y - 얼굴 중앙 y) */
   neck: number[];
   neckT: number[];
+  /** 리포트에서 영상 위에 겹쳐 그릴 프레임별 값 */
+  samples: VisionSample[];
 }
 
 /** 답변 첫 2초(20프레임)의 중앙값을 그 사람의 기준 자세로 본다. 표본이 적으면 전체 중앙값. */
@@ -156,8 +284,14 @@ function summarize(acc: Accumulator): NonverbalMetrics {
   const face = acc.face;
   const faceRatio = face.length / total;
   const inFrameRatio = face.length ? face.filter(inFrame).length / face.length : 0;
-  const frontalRatio = face.length ? face.filter((f) => f.yawAsym < 0.2).length / face.length : 0;
-  const gazeRatio = face.length ? face.filter((f) => f.yawAsym < 0.2 && f.gazeOffset < 0.15).length / face.length : 0;
+  /*
+   * 정면인지는 변환 행렬에서 낸 각도로 본다. 코와 양 볼 세 점으로 재던 예전 값(yawAsym)은
+   * 고개를 살짝 기울이기만 해도 흔들렸다. 행렬을 못 받는 환경에서는 그 근사로 떨어진다.
+   */
+  const isFrontal = (f: FaceFrame) =>
+    f.angles ? offAxisDeg(f.angles) < FRONTAL_DEG : f.yawAsym < 0.2;
+  const frontalRatio = face.length ? face.filter(isFrontal).length / face.length : 0;
+  const gazeRatio = face.length ? face.filter((f) => isFrontal(f) && f.gazeOffset < 0.15).length / face.length : 0;
   const cx = face.map((f) => f.centerX);
   const cy = face.map((f) => f.centerY);
   const headMovement = clamp01((std(cx, mean(cx)) + std(cy, mean(cy))) * 15);
@@ -174,6 +308,28 @@ function summarize(acc: Accumulator): NonverbalMetrics {
   const neckBase = baseline(acc.neck);
   const slouchRatio =
     acc.neck.length && neckBase > 0 ? acc.neck.filter((n) => n < neckBase * NECK_SHRINK).length / acc.neck.length : 0;
+
+  // 고개 갸우뚱: 행렬이 있을 때만 (평균 기울기)
+  const rolls = face.map((f) => f.angles).filter((a): a is HeadAngles => a != null);
+  const headRollDeg = rolls.length ? Math.round(mean(rolls.map((a) => Math.abs(a.rollDeg))) * 10) / 10 : 0;
+
+  // 표정: 웃는 정도가 얼마나 오래, 얼마나 움직였는지
+  const smiles = face.map((f) => f.smile).filter((v): v is number => v != null);
+  const smileRatio = smiles.length ? smiles.filter((v) => v > SMILE_ON).length / smiles.length : 0;
+  // 최댓값과 최솟값의 차. 0 에 가까우면 내내 같은 표정이었다는 뜻이다
+  const expressionRange = smiles.length
+    ? Math.round((Math.max(...smiles) - Math.min(...smiles)) * 100) / 100
+    : 0;
+
+  // 손짓: 잡힌 시간과 움직인 폭
+  const handsSeen = pose.filter((p) => p.handX != null);
+  const handsVisibleRatio = pose.length ? handsSeen.length / pose.length : 0;
+  const hx = handsSeen.map((p) => p.handX as number);
+  const hy = handsSeen.map((p) => p.handY as number);
+  const gestureAmount = handsSeen.length >= 5
+    ? clamp01((std(hx, mean(hx)) + std(hy, mean(hy))) * 2)
+    : 0;
+
   return {
     faceRatio: Math.round(faceRatio * 100) / 100,
     inFrameRatio: Math.round(inFrameRatio * 100) / 100,
@@ -184,8 +340,16 @@ function summarize(acc: Accumulator): NonverbalMetrics {
     postureTiltDeg,
     headDownRatio: Math.round(headDownRatio * 100) / 100,
     slouchRatio: Math.round(slouchRatio * 100) / 100,
+    headRollDeg,
+    smileRatio: Math.round(smileRatio * 100) / 100,
+    expressionRange,
+    handsVisibleRatio: Math.round(handsVisibleRatio * 100) / 100,
+    gestureAmount: Math.round(gestureAmount * 100) / 100,
     hasFace: face.length >= 5,
     hasPose: pose.length >= 5,
+    hasExpression: smiles.length >= 5,
+    // 절반 넘게 잡혀야 손짓을 말할 수 있다. 잠깐 스친 것으로 판단하면 틀린 말을 한다
+    hasHands: handsSeen.length >= 5 && handsVisibleRatio >= 0.5,
   };
 }
 
@@ -250,7 +414,10 @@ function buildSlouchEvents(neck: number[], t: number[]): ClipEvent[] {
   return events;
 }
 
-// 임계값(초안)
+/*
+ * 아래 숫자도 일반적인 권장 범위지 정답이 아니다 (delivery.ts 의 임계값과 같은 성격).
+ * 화면에서는 단정 대신 "조금 ~한 편"으로 적고, 재지 못한 경우는 warn 이 아니라 none 으로 둔다.
+ */
 export const FRAMING_OK = 0.8;
 export const FRONTAL_OK = 0.7;
 export const GAZE_OK = 0.6;
@@ -260,6 +427,16 @@ export const TILT_WARN = 7;
 /** 고개 떨굼·구부정은 이 비율을 넘으면 알린다 (답변 시간의 20%) */
 export const HEAD_DOWN_WARN = 0.2;
 export const SLOUCH_WARN = 0.2;
+/** 정면에서 이만큼(도) 넘게 벗어나 있으면 정면이 아니라고 본다 */
+export const FRONTAL_DEG = 15;
+/** 고개가 이만큼(도) 넘게 기울어 있으면 알린다 */
+export const ROLL_WARN = 8;
+/** 웃는 정도가 이 값을 넘으면 "웃는 표정"으로 센다 */
+const SMILE_ON = 0.2;
+/** 표정이 움직인 폭이 이보다 작으면 내내 굳어 있었다고 본다 */
+export const EXPRESSION_FLAT = 0.15;
+/** 손짓이 이보다 크면 과하다고 본다 */
+export const GESTURE_BUSY = 0.35;
 
 function row(key: string, value: string, tone: Tone, hint?: string): MetricRow {
   return { key, value, tone, hint };
@@ -273,47 +450,82 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     rows.push(
       m.inFrameRatio >= FRAMING_OK
         ? row('얼굴 위치', pct(m.inFrameRatio), 'good')
-        : row('얼굴 위치', pct(m.inFrameRatio), 'warn', '얼굴을 화면 가운데에 두세요'),
+        : row('얼굴 위치', pct(m.inFrameRatio), 'warn', '화면을 조금 벗어난 편이에요. 가운데에 두면 좋아요'),
     );
     rows.push(
       m.frontalRatio >= FRONTAL_OK
         ? row('정면 유지', pct(m.frontalRatio), 'good')
-        : row('정면 유지', pct(m.frontalRatio), 'warn', '고개를 정면으로 향해 보세요'),
+        : row('정면 유지', pct(m.frontalRatio), 'warn', '고개가 조금 돌아간 편이에요'),
     );
     rows.push(
       m.gazeRatio >= GAZE_OK
         ? row('카메라 응시', pct(m.gazeRatio), 'good')
-        : row('카메라 응시', pct(m.gazeRatio), 'warn', '렌즈를 보며 말해 보세요'),
+        : row('카메라 응시', pct(m.gazeRatio), 'warn', '시선이 렌즈를 조금 비껴간 편이에요'),
     );
     rows.push(
       m.headMovement <= MOVEMENT_WARN
         ? row('고개 흔들림', '안정적', 'good')
-        : row('고개 흔들림', '잦음', 'warn', '고개 움직임을 줄여 보세요'),
+        : row('고개 흔들림', '조금 잦음', 'warn', '고개가 자주 움직인 편이에요'),
     );
     rows.push(
       m.headDownRatio <= HEAD_DOWN_WARN
         ? row('고개 각도', '든 상태 유지', 'good')
-        : row('고개 각도', `숙임 ${pct(m.headDownRatio)}`, 'warn', '말할 때 고개를 들고 정면을 보세요'),
+        : row('고개 각도', `숙임 ${pct(m.headDownRatio)}`, 'warn', '말할 때 고개가 내려가는 편이에요'),
     );
   } else {
-    rows.push(row('얼굴 인식', '잘 안 됨', 'warn', '조명을 밝히고 카메라와의 거리를 맞춰 보세요'));
+    // 인식 실패는 사용자가 고칠 점이 아니다. 고칠 것으로 세지 않고 안내만 한다
+    rows.push(row('얼굴 인식', '재지 못함', 'none', '조명을 밝히고 카메라와의 거리를 맞춰 보세요'));
   }
   if (m.hasPose) {
     rows.push(
       m.slouchRatio <= SLOUCH_WARN
         ? row('상체 자세', '바르게 유지', 'good')
-        : row('상체 자세', `구부정 ${pct(m.slouchRatio)}`, 'warn', '등을 펴고 어깨를 열어 앉아 보세요'),
+        : row('상체 자세', `구부정 ${pct(m.slouchRatio)}`, 'warn', '등이 조금 굽은 편이에요. 어깨를 열어 앉아 보세요'),
     );
     rows.push(
       m.postureStable >= POSTURE_OK
         ? row('상체 안정', '안정적', 'good')
-        : row('상체 안정', '흔들림', 'warn', '상체를 편안히 고정해 보세요'),
+        : row('상체 안정', '조금 흔들림', 'warn', '상체가 자주 움직인 편이에요'),
     );
     rows.push(
       m.postureTiltDeg <= TILT_WARN
         ? row('어깨 수평', '반듯함', 'good')
-        : row('어깨 수평', `${m.postureTiltDeg}° 기울어짐`, 'warn', '한쪽으로 기울지 않게 앉아 보세요'),
+        : row('어깨 수평', `${m.postureTiltDeg}° 기울어짐`, 'warn', '한쪽으로 조금 기운 편이에요'),
     );
+  }
+
+  // 고개 갸우뚱 (변환 행렬을 받은 기록에서만)
+  if (m.hasFace && m.headRollDeg > 0) {
+    rows.push(
+      m.headRollDeg <= ROLL_WARN
+        ? row('고개 기울기', '반듯함', 'good')
+        : row('고개 기울기', `${m.headRollDeg}° 기울어짐`, 'warn', '고개가 한쪽으로 조금 기운 편이에요'),
+    );
+  }
+
+  /*
+   * 표정. 웃으라고 요구하지 않는다 — 면접에서 웃는 게 늘 정답은 아니다. 내내 한 표정으로
+   * 굳어 있었는지만 알린다.
+   */
+  if (m.hasExpression) {
+    rows.push(
+      m.expressionRange >= EXPRESSION_FLAT
+        ? row('표정', `웃는 표정 ${pct(m.smileRatio)}`, 'good')
+        : row('표정', '거의 그대로', 'warn', '표정이 내내 굳어 있던 편이에요'),
+    );
+  } else {
+    rows.push(row('표정', '재지 못함', 'none', '얼굴이 또렷하게 잡혀야 표정을 볼 수 있어요'));
+  }
+
+  // 손짓. 화면에 손이 잡힌 기록에서만 말한다 (앉은 화면에서는 자주 잘린다)
+  if (m.hasHands) {
+    rows.push(
+      m.gestureAmount <= GESTURE_BUSY
+        ? row('손짓', '차분함', 'good')
+        : row('손짓', '조금 잦음', 'warn', '손이 자주 움직인 편이에요'),
+    );
+  } else if (m.hasPose) {
+    rows.push(row('손짓', '재지 못함', 'none', '손이 화면에 거의 안 잡혔어요'));
   }
   return rows;
 }
@@ -333,6 +545,14 @@ export function averageNonverbal(list: NonverbalMetrics[]): NonverbalMetrics | n
     headDownRatio: avg((m) => m.headDownRatio ?? 0),
     slouchRatio: avg((m) => m.slouchRatio ?? 0),
     headMovement: avg((m) => m.headMovement),
+    // 새로 생긴 값들. 옛 기록에는 없으므로 0 으로 보고, 있는지 여부는 아래 플래그로 가린다
+    headRollDeg: avg((m) => m.headRollDeg ?? 0),
+    smileRatio: avg((m) => m.smileRatio ?? 0),
+    expressionRange: avg((m) => m.expressionRange ?? 0),
+    handsVisibleRatio: avg((m) => m.handsVisibleRatio ?? 0),
+    gestureAmount: avg((m) => m.gestureAmount ?? 0),
+    hasExpression: list.some((m) => m.hasExpression),
+    hasHands: list.some((m) => m.hasHands),
     postureStable: avg((m) => m.postureStable),
     postureTiltDeg: Math.round(avg((m) => m.postureTiltDeg) * 10) / 10,
     hasFace: list.some((m) => m.hasFace),
@@ -342,13 +562,6 @@ export function averageNonverbal(list: NonverbalMetrics[]): NonverbalMetrics | n
 
 export type VisionStatus = 'idle' | 'loading' | 'ready' | 'unsupported' | 'error';
 
-function liveWarn(f: FaceFrame | null): string | null {
-  if (!f) return '얼굴이 화면에서 벗어났어요';
-  if (!inFrame(f)) return '화면 중앙으로 이동해 주세요';
-  if (f.yawAsym >= 0.2) return '정면을 바라봐 주세요';
-  return null;
-}
-
 /**
  * MediaPipe Face/Pose Landmarker 로 녹화 구간의 비언어 신호를 모은다.
  * 마운트 시 모델을 미리 로드(prewarm)하고, start()~stop() 사이에만 프레임을 분석한다.
@@ -356,14 +569,22 @@ function liveWarn(f: FaceFrame | null): string | null {
 export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
   const faceRef = useRef<FaceLandmarker | null>(null);
   const poseRef = useRef<PoseLandmarker | null>(null);
-  const accRef = useRef<Accumulator>({ total: 0, startPerf: 0, face: [], faceT: [], pose: [], neck: [], neckT: [] });
+  const accRef = useRef<Accumulator>({
+    total: 0,
+    startPerf: 0,
+    face: [],
+    faceT: [],
+    pose: [],
+    neck: [],
+    neckT: [],
+    samples: [],
+  });
   const activeRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef(0);
   const [status, setStatus] = useState<VisionStatus>(() =>
     typeof WebAssembly === 'undefined' ? 'unsupported' : 'loading',
   );
-  const [warn, setWarn] = useState<string | null>(null);
 
   // 모델 prewarm
   useEffect(() => {
@@ -378,6 +599,9 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
             baseOptions: { modelAssetPath: FACE_MODEL, delegate },
             runningMode: 'VIDEO',
             numFaces: 1,
+            // 고개 각도(행렬)와 표정 계수. 추론은 어차피 도므로 받아 쓰는 비용은 거의 없다
+            outputFacialTransformationMatrixes: true,
+            outputFaceBlendshapes: true,
           });
         const makePose = (delegate: 'GPU' | 'CPU') =>
           v.PoseLandmarker.createFromOptions(fileset, {
@@ -414,10 +638,18 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
 
   const start = useCallback(() => {
     if (status !== 'ready') return;
-    accRef.current = { total: 0, startPerf: performance.now(), face: [], faceT: [], pose: [], neck: [], neckT: [] };
+    accRef.current = {
+      total: 0,
+      startPerf: performance.now(),
+      face: [],
+      faceT: [],
+      pose: [],
+      neck: [],
+      neckT: [],
+      samples: [],
+    };
     lastRef.current = 0;
     activeRef.current = true;
-    setWarn(null);
 
     // 함수 선언(호이스팅)이라 자기 자신을 참조해 재귀 rAF 를 돌릴 수 있다.
     function tick() {
@@ -434,7 +666,8 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
           accRef.current.total += 1;
           let faceFrame: FaceFrame | null = null;
           if (fr.faceLandmarks.length > 0) {
-            faceFrame = extractFace(fr.faceLandmarks[0]);
+            const matrix = fr.facialTransformationMatrixes?.[0]?.data ?? null;
+            faceFrame = extractFace(fr.faceLandmarks[0], matrix, smileOf(fr.faceBlendshapes?.[0]));
             accRef.current.face.push(faceFrame);
             accRef.current.faceT.push(now - accRef.current.startPerf);
           }
@@ -449,8 +682,34 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
               }
             }
           }
-          const next = liveWarn(faceFrame);
-          setWarn((prev) => (prev === next ? prev : next));
+          // 리포트에서 되돌려 볼 수 있게 이 순간의 값을 남긴다
+          if (faceFrame) {
+            const box = boxOf(faceFrame);
+            const pf = accRef.current.pose[accRef.current.pose.length - 1];
+            const fresh = pr.landmarks.length > 0 ? pf : undefined;
+            accRef.current.samples.push({
+              t: Math.round(now - accRef.current.startPerf),
+              x: r3(box.x),
+              y: r3(box.y),
+              w: r3(box.w),
+              h: r3(box.h),
+              yaw: faceFrame.angles ? Math.round(faceFrame.angles.yawDeg) : null,
+              pitch: faceFrame.angles ? Math.round(faceFrame.angles.pitchDeg) : null,
+              roll: faceFrame.angles ? Math.round(faceFrame.angles.rollDeg) : null,
+              gaze: r3(faceFrame.gazeOffset),
+              frontal: faceFrame.angles
+                ? offAxisDeg(faceFrame.angles) < FRONTAL_DEG
+                : faceFrame.yawAsym < 0.2,
+              sl: fresh ? [r3(fresh.slX), r3(fresh.slY)] : null,
+              sr: fresh ? [r3(fresh.srX), r3(fresh.srY)] : null,
+              hand:
+                fresh && fresh.handRawX != null && fresh.handRawY != null
+                  ? [r3(fresh.handRawX), r3(fresh.handRawY)]
+                  : null,
+              smile: faceFrame.smile == null ? null : r3(faceFrame.smile),
+            });
+          }
+
         } catch {
           /* 개별 프레임 분석 실패는 무시 */
         }
@@ -460,13 +719,16 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
     rafRef.current = requestAnimationFrame(tick);
   }, [status, videoRef]);
 
-  const stop = useCallback((): { metrics: NonverbalMetrics; events: ClipEvent[] } | null => {
+  const stop = useCallback((): {
+    metrics: NonverbalMetrics;
+    events: ClipEvent[];
+    samples: VisionSample[];
+  } | null => {
     activeRef.current = false;
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
-    setWarn(null);
     const acc = accRef.current;
     if (acc.total === 0) return null;
     return {
@@ -474,8 +736,9 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
       events: [...buildFaceEvents(acc.face, acc.faceT), ...buildSlouchEvents(acc.neck, acc.neckT)].sort(
         (a, b) => a.startMs - b.startMs,
       ),
+      samples: acc.samples,
     };
   }, []);
 
-  return { status, warn, start, stop };
+  return { status, start, stop };
 }

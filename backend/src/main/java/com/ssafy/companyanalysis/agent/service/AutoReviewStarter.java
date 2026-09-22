@@ -17,6 +17,9 @@ import java.util.concurrent.Executor;
  *
  * <p>한 방이 실패해도 다음 방으로 넘어간다. 자동 검토는 사용자가 부탁한 일이 아니라 미리 해
  * 두는 일이라, 하나가 안 됐다고 나머지를 접을 이유가 없다.
+ *
+ * <p>한 바퀴가 한도 한 장을 나눠 쓴다({@link AutoReviewQuota}). 방마다 세면 자소서 하나를
+ * 여는 것만으로 방 수만큼 깎인다.
  */
 @Component
 public class AutoReviewStarter {
@@ -38,9 +41,10 @@ public class AutoReviewStarter {
             return;
         }
         autoReviewExecutor.execute(() -> {
+            AutoReviewQuota quota = turnService.newAutoReviewQuota(userId);
             for (Long roomId : roomIds) {
                 try {
-                    turnService.autoReview(userId, roomId);
+                    turnService.autoReview(userId, roomId, quota);
                 } catch (Exception e) {
                     log.warn("자동 검토를 돌리지 못했다: roomId={}, 사유={}", roomId, e.getMessage());
                 }

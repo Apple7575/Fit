@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { CharacterSlot } from '../../components/brand/CharacterSlot';
-import { CHARACTER_BY_KEY } from '../../components/brand/characters';
+import { useOutletContext } from 'react-router-dom';
 import {
   QUESTION_BY_TAB,
   questionNumber,
   type CompanyQuestion,
 } from '../../features/company-detail/questions';
-import { withSubject } from '../../utils/koreanParticle';
+import { CompanyMedia } from '../../features/company-summary/CompanyMedia';
+import { industryGroupOf } from '../../features/company-summary/industryGroups';
+import type { CompanyDetailOutletContext } from './CompanyDetailPage';
 
 interface DetailHeaderProps {
   tab: CompanyQuestion['tab'];
@@ -16,32 +17,54 @@ interface DetailHeaderProps {
   aside?: ReactNode;
 }
 
+/** 탭마다 다른 사진을 쓴다. 그 슬롯이 없는 업종은 첫 화면 사진으로 떨어진다. */
+const SLOT_BY_TAB: Record<CompanyQuestion['tab'], string> = {
+  business: 'point-business',
+  growth: 'point-momentum',
+  focus: 'point-direction',
+  comparison: 'point-rank',
+  issues: 'point-issues',
+};
+
 /**
- * 상세 탭 머리. 요약 카드와 같은 번호·질문·코치를 그대로 이어 받아
- * "그 카드를 눌러서 들어왔다"는 감각을 유지한다.
+ * 상세 탭 머리.
+ *
+ * <p>검색해서 들어온 첫 화면이 사진 위에 흰 글씨였는데 탭은 흰 종이에 검은 글씨라 다른 서비스처럼
+ * 보였다. 그래서 탭 머리도 같은 업종 사진을 깔고 같은 말투로 번호·질문을 얹는다.
+ * 첫 화면이 한 장 전체라면 이쪽은 띠 한 줄이다.
  */
 export function DetailHeader({ tab, description, aside }: DetailHeaderProps) {
+  const { detailState } = useOutletContext<CompanyDetailOutletContext>();
+  const detail = detailState.status === 'success' ? detailState.data : null;
+  const group = industryGroupOf(detail?.industryCode);
   const question = QUESTION_BY_TAB[tab];
-  const coach = CHARACTER_BY_KEY[question.coach];
 
   return (
-    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-      <div className="flex items-center gap-4">
-        <CharacterSlot character={question.coach} className="shrink-0" size={56} />
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600">
+    <header className="relative isolate overflow-hidden rounded-3xl bg-slate-950 text-white">
+      <div aria-hidden="true" className="absolute inset-0">
+        <CompanyMedia
+          alt=""
+          className="size-full"
+          fallback={<CompanyMedia alt="" className="size-full" group={group} slot="hero" />}
+          group={group}
+          slot={SLOT_BY_TAB[tab]}
+        />
+        {/* 글씨가 앉는 왼쪽을 더 눌러 둔다 */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/35" />
+      </div>
+
+      <div className="relative flex flex-wrap items-end justify-between gap-x-6 gap-y-3 px-6 py-7 sm:px-8 sm:py-8">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold tracking-[0.16em] text-white/60 uppercase">
             {questionNumber(tab)} · {question.short}
-            <span className="ml-2 font-semibold normal-case tracking-normal text-slate-400">
-              {withSubject(coach.name)} 답해요
-            </span>
           </p>
-          <h2 className="mt-0.5 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+          <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-balance sm:text-3xl">
             {question.title}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">{description ?? question.body}</p>
+          <p className="mt-1.5 text-sm break-keep text-white/70">{description ?? question.body}</p>
         </div>
+        {aside && <div className="text-xs font-semibold text-white/60">{aside}</div>}
       </div>
-      {aside && <div className="text-xs font-semibold text-slate-400">{aside}</div>}
     </header>
   );
 }
