@@ -24,8 +24,8 @@ class FakePositionService:
     def __init__(self):
         self.calls = []
 
-    def analyze(self, rubric_id, position_context, documents, conversation):
-        self.calls.append((rubric_id, position_context, documents, conversation))
+    def analyze(self, rubric_id, position_context, documents, conversation, instruction=None):
+        self.calls.append((rubric_id, position_context, documents, conversation, instruction))
         return {
             "analysis_status": "NO_EXPERIENCE_CLAIM",
             "rubric": {"id": rubric_id},
@@ -124,6 +124,7 @@ class AgentRegistryTest(unittest.TestCase):
             },
             position_documents,
             [],
+            "검토",  # 사용자 요청문이 포지션 서비스까지 전달되어야 한다
         )])
 
     def test_position_rejects_request_without_supported_documents(self):

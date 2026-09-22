@@ -67,6 +67,7 @@ class PositionAgentAdapter:
             context["position_context"],
             supported_documents,
             list(conversation),
+            instruction=instruction,
         )
         # 단독 API(/position/internal/analyses)와 같은 모양으로 맞춘다. 백엔드는 결과의
         # message 만 말풍선에 띄우므로 이 키가 없으면 성공해도 "답을 만들지 못했다"로 보인다.

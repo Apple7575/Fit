@@ -61,3 +61,20 @@ class PositionPromptTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_includes_user_instruction_only_when_given(self):
+        without = build_position_messages(
+            self.rubric, self.position_context, self.documents, []
+        )
+        self.assertNotIn("user_instruction", json.loads(without[1]["content"]))
+
+        with_instruction = build_position_messages(
+            self.rubric, self.position_context, self.documents, [],
+            instruction="  Redis 성능 개선 경험만 구체화할 질문을 줘  ",
+        )
+        payload = json.loads(with_instruction[1]["content"])
+        self.assertEqual(
+            payload["user_instruction"], "Redis 성능 개선 경험만 구체화할 질문을 줘"
+        )
+        self.assertIn("user_instruction", with_instruction[0]["content"])
+        self.assertIn("사실 근거가 아니", with_instruction[0]["content"])

@@ -39,6 +39,7 @@ class PositionAnalysisService:
         position_context: Mapping[str, Any],
         documents: Sequence[Mapping[str, Any]],
         conversation: Sequence[Mapping[str, Any]],
+        instruction: str | None = None,
     ) -> dict[str, Any]:
         if rubric_id != "experience-depth-v1":
             raise ValueError("unsupported rubric_id")
@@ -51,6 +52,7 @@ class PositionAnalysisService:
             position_context,
             validated_documents,
             conversation,
+            instruction,
         )
 
         for attempt in range(2):

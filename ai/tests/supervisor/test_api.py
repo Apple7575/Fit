@@ -322,6 +322,7 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
                 request["agent_contexts"]["position"]["position_context"],
                 request["documents"],
                 request["conversation"],
+                request["instruction"],
             )
         ])
 
