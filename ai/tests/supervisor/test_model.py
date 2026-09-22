@@ -2,6 +2,7 @@ import unittest
 import json
 from unittest.mock import patch
 
+from ai.supervisor.adapters import AgentRegistry, PositionAgentAdapter
 from ai.supervisor.contracts import AgentResult
 from ai.supervisor.model import PLAN_SCHEMA, PlanOutputError, QwenSupervisorModel
 
@@ -65,6 +66,28 @@ class QwenSupervisorModelTest(unittest.TestCase):
         payload = json.loads(calls[0][1]["content"])
         self.assertEqual(payload["agent_capabilities"], {"jd": "jd", "news": "뉴스 담당"})
 
+    def test_position_capability_does_not_assume_backend_role(self):
+        # 소개문은 어댑터가 쥐고, 총괄은 AgentRegistry.describe 로 받아 싣는다.
+        # 백엔드 전제가 들어가면 다른 직무 요청에서 총괄이 포지션 담당을 못 고른다.
+        qwen = FakeQwen()
+        model = QwenSupervisorModel({}, qwen_caller=qwen)
+
+        model.create_plan(
+            instruction="디자인 직무 경험을 검토해줘",
+            documents=[],
+            conversation=[],
+            available_agents=["position"],
+            validation_error=None,
+            agent_capabilities=AgentRegistry(
+                [PositionAgentAdapter(lambda: None)]
+            ).describe(["position"]),
+        )
+
+        payload = json.loads(qwen.calls[0]["messages"][1]["content"])
+        capability = payload["agent_capabilities"]["position"]
+        self.assertIn("지원 직무", capability)
+        self.assertNotIn("백엔드", capability)
+
     def test_malformed_plan_output_uses_dedicated_contract_error(self):
         for response in (
             {}, None, {"output": None},
@@ -84,7 +107,7 @@ class QwenSupervisorModelTest(unittest.TestCase):
         model = QwenSupervisorModel(
             {"base_url": "http://qwen.test", "model": "qwen", "api_key": "test"}
         )
-        with patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+        with patch("ai.llm.vllm.urllib.request.urlopen") as urlopen:
             urlopen.return_value.__enter__.return_value.read.return_value = (
                 b'{"choices": [{"message": {"content": "not JSON"}}]}'
             )

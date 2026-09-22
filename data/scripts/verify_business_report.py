@@ -46,6 +46,21 @@ ACTIVITY_TYPES = {"facility", "corporate_invest", "ma", "transfer"}
 
 # 부문 합계 허용 오차. config/patterns.yaml 의 segment_sum_tolerance 와 같은 값이다.
 SEGMENT_SUM_TOLERANCE = 0.05
+
+
+def _alt_revenue() -> dict:
+    """(corp, 연도) → {consolidated, separate} 매출.
+
+    추출기와 **같은 함수**를 쓴다 (scripts/parse_business_reports.alt_revenue_map).
+    판정 규칙이 두 곳으로 갈라지면 한쪽만 고쳐져 어긋난다. staged 재무가 없는
+    환경(다른 사람 PC)에서는 빈 dict 라 예전처럼 연결만 보고 판정한다.
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from parse_business_reports import alt_revenue_map
+        return alt_revenue_map()
+    except (ImportError, FileNotFoundError, OSError):
+        return {}
 RD_RATIO_MAX = 60.0
 # 시설투자 금액 상식 범위(원). 이 축의 목적은 **자릿수 사고**를 잡는 것이지
 # 작은 투자를 걸러내는 것이 아니다.
@@ -163,23 +178,33 @@ def main() -> int:
              bad, len(metric) + len(segment) + len(text))
 
     # ── D. 부문 합계 == 전사 매출
+    #
+    # **대조 상대는 하나가 아니다.** 부문표가 연결 기준인지 별도 기준인지는 표마다
+    # 다르고, 추출기도 둘 다 보고 가까운 쪽으로 판정한다 (segments.extract 의
+    # alt_revenues). 여기서 연결만 보면 **별도 기준 표가 전부 실패로 잡힌다** —
+    # 실제로 고려아연·케이씨티시 등 824건이 그렇게 잡혔다. 같은 규칙으로 본다.
     revenue = {(r["corp_code"], r["fiscal_year"]): float(r["metric_value"])
                for r in metric if r["metric_code"] == "revenue" and r["metric_value"]}
+    alt = _alt_revenue()
     seg_sum: dict[tuple, float] = collections.defaultdict(float)
     for r in segment:
         if r["metric_code"] == "segment_revenue" and r["metric_value"]:
             seg_sum[(r["corp_code"], r["fiscal_year"])] += float(r["metric_value"])
     bad = []
     for key, total_krw in sorted(seg_sum.items()):
-        rev = revenue.get(key)
-        if rev is None:
+        cands = {"": revenue.get(key)}
+        cands.update(alt.get((key[0], int(key[1]))) or {})
+        cands = {k: v for k, v in cands.items() if v}
+        if not cands:
             bad.append(f"{label(*key)}: 대조할 revenue 가 없다")
             continue
-        gap = abs(total_krw - rev) / rev if rev else 1.0
+        gap, basis, rev = min(((abs(total_krw - v) / v, k, v) for k, v in cands.items()),
+                              key=lambda x: x[0])
         if gap > SEGMENT_SUM_TOLERANCE:
             bad.append(f"{label(*key)}: 부문합 {total_krw / 1e12:,.2f}조 vs "
-                       f"매출 {rev / 1e12:,.2f}조 (오차 {gap:.1%})")
-    rep.axis("D", "부문 합계 == 전사 매출", bad, len(seg_sum))
+                       f"매출 {rev / 1e12:,.2f}조 (오차 {gap:.1%}"
+                       + (f", {basis} 기준으로도)" if basis else ")"))
+    rep.axis("D", "부문 합계 == 전사 매출 (연결·별도 중 가까운 쪽)", bad, len(seg_sum))
 
     # ── E. R&D 상식 범위
     bad, total = [], 0

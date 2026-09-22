@@ -1,10 +1,11 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
-import { useEffect, useState } from 'react';
-import { Link, Navigate, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, Navigate, useBlocker, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, isRateLimited, isRetryable } from '../../api/client';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { analyzeAnswers, createInterview, generateQuestions } from '../../features/interview/api';
+import { clearDraft, readDraft, saveDraft, type InterviewDraft } from '../../features/interview/draft';
 import { attachServerId } from '../../features/interview/localVideo';
 import { InterviewReport, type ReportItem } from '../../features/interview/InterviewReport';
 import { InterviewSession } from '../../features/interview/InterviewSession';
@@ -69,17 +70,51 @@ type Phase = 'setup' | 'generating' | 'session' | 'analyzing' | 'saving' | 'repo
 
 function NewInterview() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   // 기업 분석에서 넘어온 ?corpCode=&company= 가 로그인 후에도 남도록 검색 문자열째 되돌려준다
-  const { pathname, search, state: navState } = useLocation();
+  const { pathname, search } = useLocation();
+
+  if (loading) {
+    return (
+      <Shell>
+        <Loading message="불러오는 중…" />
+      </Shell>
+    );
+  }
+  if (!user) return <Navigate replace to={`/login?redirect=${encodeURIComponent(pathname + search)}`} />;
+
+  // 초안은 유저별로 저장하므로, 로그인이 확정된 뒤에야 읽을 수 있다.
+  return <NewInterviewBody userId={user.id} />;
+}
+
+/** 되살린 초안으로 시작할 단계. 분석 결과가 남아 있으면 재분석 없이 리포트로, 없으면 분석을 이어 돌린다. */
+function resumePhase(draft: InterviewDraft): Phase {
+  if (draft.phase === 'session') return 'session';
+  if (draft.analysis) return 'report';
+  return 'analyzing';
+}
+
+function NewInterviewBody({ userId }: { userId: number }) {
+  const navigate = useNavigate();
+  const { state: navState } = useLocation();
+  const [searchParams] = useSearchParams();
   /*
    * 리포트에서 "이 문항만 다시 연습하기"로 넘어온 경우. 질문을 그대로 들고 오므로 설정도
    * 질문 생성도 건너뛰고 바로 면접으로 들어간다 (AI 한도를 태우지 않는다).
    */
   const [practice] = useState(() => readPractice(navState));
+  /*
+   * 이어서 진행. 목록의 "이어서" 버튼과, 세션 시작 뒤 새로고침이 ?resume=1 을 달고 들어온다.
+   * 연습(practice)은 일회성이라 초안을 남기지 않으므로 되살리지 않는다.
+   */
+  const [draft] = useState<InterviewDraft | null>(() =>
+    !practice && searchParams.get('resume') === '1' ? readDraft(userId) : null,
+  );
 
-  const [phase, setPhase] = useState<Phase>(practice ? 'session' : 'setup');
-  const [localSessionId] = useState(() => crypto.randomUUID());
+  const [phase, setPhase] = useState<Phase>(() =>
+    practice ? 'session' : draft ? resumePhase(draft) : 'setup',
+  );
+  // 로컬 녹화(IndexedDB)를 묶는 id. 되살릴 때는 같은 id 로 완료 문항 녹화를 다시 잇는다.
+  const [localSessionId] = useState(() => draft?.localSessionId ?? crypto.randomUUID());
   const [config, setConfig] = useState<InterviewConfig | null>(() =>
     practice
       ? {
@@ -92,17 +127,25 @@ function NewInterview() {
           // 한 문항만 다시 보는 자리다. 꼬리질문까지 붙으면 "2분이면 끝난다"가 깨진다
           followupEnabled: false,
         }
-      : null,
+      : (draft?.config ?? null),
   );
   const [questions, setQuestions] = useState<GeneratedQuestion[]>(() =>
-    practice ? [{ seq: 1, question: practice.question, sourceType: practice.sourceType }] : [],
+    practice
+      ? [{ seq: 1, question: practice.question, sourceType: practice.sourceType }]
+      : (draft?.questions ?? []),
   );
-  const [sessionItems, setSessionItems] = useState<SessionItem[]>([]);
-  const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
+  const [sessionItems, setSessionItems] = useState<SessionItem[]>(() => draft?.items ?? []);
+  const [analysis, setAnalysis] = useState<AnalyzeResult | null>(() => draft?.analysis ?? null);
   const [error, setError] = useState<string | null>(null);
   // 분석 실패의 성격(재시도 가능/한도초과/입력오류)을 리포트 화면에서 판정하기 위해 에러 객체를 보관한다.
   const [analyzeError, setAnalyzeError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
+  // 세션 진행 상황(답한 문항 + 지금 위치). InterviewSession 이 문항마다 알려 준다 → 초안 저장에 쓴다.
+  const [progress, setProgress] = useState<{ items: SessionItem[]; idx: number } | null>(() =>
+    draft && draft.phase === 'session' ? { items: draft.items, idx: draft.idx } : null,
+  );
+  // 새로 시작하려는데 진행 중이던 초안이 있을 때, 덮어쓰기 전에 확인받는다. 담아 둔 설정으로 이어 시작한다.
+  const [pendingStart, setPendingStart] = useState<InterviewConfig | null>(null);
 
   /*
    * 면접을 보는 중이거나 분석·저장을 기다리는 동안 새로고침하면 그때까지의 답변이 사라진다.
@@ -121,20 +164,59 @@ function NewInterview() {
    * 뒤로가기도 같다. 면접의 모든 단계가 같은 주소(/interviews/new)에서 일어나므로 뒤로
    * 가면 한 단계 앞이 아니라 면접에 들어오기 전 화면으로 나가 버린다. 예상과 다른 데다
    * 답변도 사라진다. 나가기 전에 한 번 묻는다.
+   *
+   * <p>단, 저장이 끝나고 앱이 스스로 결과 리포트로 넘어가는 이동은 사용자의 이탈이 아니므로
+   * 막지 않는다(저장 화면엔 확인창이 없어, 막히면 그대로 멈춰 버린다). persist 가 이 플래그를
+   * 올린 뒤 이동한다.
    */
+  const bypassBlockRef = useRef(false);
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      inProgress && currentLocation.pathname !== nextLocation.pathname,
+      !bypassBlockRef.current && inProgress && currentLocation.pathname !== nextLocation.pathname,
   );
 
-  if (loading) {
-    return (
-      <Shell>
-        <Loading message="불러오는 중…" />
-      </Shell>
-    );
-  }
-  if (!user) return <Navigate replace to={`/login?redirect=${encodeURIComponent(pathname + search)}`} />;
+  /*
+   * 진행 중인 상태를 유저별 초안으로 남긴다. 새로고침·탭 종료 후에도 목록의 "이어서 진행"이나
+   * ?resume=1 새로고침으로 이 지점에서 다시 시작할 수 있다. 설정·질문 생성 단계는 되살릴 게
+   * 없어 건너뛰고, 연습(practice)은 일회성이라 남기지 않는다. 저장에 성공하면 persist 가 지운다.
+   */
+  useEffect(() => {
+    if (practice || !config) return;
+    if (phase === 'setup' || phase === 'generating') return;
+    const items =
+      phase === 'session'
+        ? (progress?.items ??
+          questions.map((q) => ({
+            question: q.question,
+            sourceType: q.sourceType,
+            transcript: '',
+            isFollowup: false,
+          })))
+        : sessionItems;
+    saveDraft(userId, {
+      version: 1,
+      localSessionId,
+      phase,
+      config,
+      questions,
+      items,
+      idx: phase === 'session' ? (progress?.idx ?? 0) : 0,
+      analysis,
+      updatedAt: Date.now(),
+    });
+  }, [practice, phase, config, questions, progress, sessionItems, analysis, localSessionId, userId]);
+
+  /*
+   * 설정 화면에서 "시작"을 누른 순간. 진행 중이던 초안이 있으면 덮어쓰기 전에 확인창을 띄우고,
+   * 없으면 바로 시작한다. (설정 화면에 있는 동안에는 초안을 건드리지 않으므로 여기서 다시 읽는다.)
+   */
+  const requestStart = (next: InterviewConfig) => {
+    if (readDraft(userId)) {
+      setPendingStart(next);
+      return;
+    }
+    void start(next);
+  };
 
   const start = async (next: InterviewConfig) => {
     setConfig(next);
@@ -151,7 +233,13 @@ function NewInterview() {
       });
       if (generated.length === 0) throw new ApiError(502, 'INTERVIEW_AI_FAILED', '질문을 생성하지 못했습니다.');
       setQuestions(generated);
+      // 새 세션은 처음부터. 이전에 되살렸던 흔적이 남아 있으면 지우고 시작한다.
+      setProgress(null);
+      setSessionItems([]);
+      setAnalysis(null);
       setPhase('session');
+      // 이 단계에서 새로고침해도 이어지도록 주소에 표시를 남긴다(같은 경로라 다시 마운트되지 않는다).
+      navigate('/interviews/new?resume=1', { replace: true });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '질문 생성에 실패했습니다.');
       setPhase('setup');
@@ -180,6 +268,10 @@ function NewInterview() {
     const created = await createInterview(input);
     // 로컬 녹화에 서버 면접 id 를 새겨, 저장본 리포트에서 되돌려볼 수 있게 한다.
     await attachServerId(localSessionId, created.id).catch(() => {});
+    // 서버에 저장됐으니 진행 중 초안은 더 필요 없다 — 목록의 "이어서" 대상에서 뺀다.
+    clearDraft(userId);
+    // 앱이 스스로 하는 결과 이동이라 이탈 확인창(blocker)에 막히면 안 된다. 막힘 없이 넘긴다.
+    bypassBlockRef.current = true;
     // 연습으로 만든 기록이면 어느 면접의 몇 번 문항이었는지 넘겨 돌아갈 길을 남긴다
     navigate(`/interviews/${created.id}`, {
       state: practice
@@ -218,6 +310,22 @@ function NewInterview() {
     }
   };
 
+  /*
+   * 분석 도중 끊긴 초안(답변은 있으나 분석 결과 없음)으로 들어오면, 마운트 시 한 번 분석을 이어 돌린다.
+   * 분석 결과가 남아 있던 초안은 resumePhase 가 'report' 로 보내 재분석 없이 저장으로 잇는다.
+   */
+  const resumeAnalyzeItems = useRef<SessionItem[] | null>(
+    draft && draft.phase !== 'session' && !draft.analysis ? draft.items : null,
+  );
+  useEffect(() => {
+    const items = resumeAnalyzeItems.current;
+    if (!items) return;
+    resumeAnalyzeItems.current = null;
+    void finish(items);
+    // 마운트 시 한 번만. finish 는 최신 config(초안에서 복원됨)를 클로저로 참조한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const save = async () => {
     if (!config || !analysis) return;
     setSaving(true);
@@ -238,9 +346,10 @@ function NewInterview() {
       role="dialog"
     >
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
-        <h2 className="text-[17px] font-extrabold text-slate-950">면접을 그만두시겠어요?</h2>
+        <h2 className="text-[17px] font-extrabold text-slate-950">면접에서 나가시겠어요?</h2>
         <p className="mt-2 text-[13px] break-keep text-slate-500">
-          지금까지 답한 내용은 저장되지 않습니다.
+          여기까지 진행한 내용은 저장돼요. 면접 목록에서 <b className="font-semibold text-slate-700">이어서 진행</b>으로
+          돌아올 수 있습니다.
         </p>
         <div className="mt-5 flex justify-center gap-2">
           <button
@@ -302,6 +411,10 @@ function NewInterview() {
           config={config}
           questions={questions}
           localSessionId={localSessionId}
+          // 이어서 진행이면 되살린 답변·위치에서 시작한다(없으면 처음부터).
+          initialItems={progress?.items}
+          initialIdx={progress?.idx}
+          onProgress={(items, idx) => setProgress({ items, idx })}
           onFinish={finish}
           // 연습으로 들어왔으면 돌아갈 설정 화면이 없다. 보고 있던 리포트로 되돌린다
           onExit={() =>
@@ -371,8 +484,53 @@ function NewInterview() {
       <InterviewSetup
         error={error}
         loading={false}
-        onStart={(c) => void start(c)}
+        onStart={requestStart}
       />
+      {pendingStart && (
+        <div
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-6"
+          role="dialog"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
+            <h2 className="text-[17px] font-extrabold text-slate-950">진행 중이던 면접이 있어요</h2>
+            <p className="mt-2 text-[13px] break-keep text-slate-500">
+              새로 시작하면 그 면접은 <b className="font-semibold text-slate-700">이어서 진행할 수 없게</b> 됩니다.
+              이어서 진행하시겠어요?
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-700"
+                // 설정 화면(같은 주소)에서는 다시 마운트되지 않으므로, 되살리기는 새로고침으로 확실히 복원한다.
+                onClick={() => window.location.assign('/interviews/new?resume=1')}
+                type="button"
+              >
+                이어서 진행하기
+              </button>
+              <div className="flex justify-center gap-2">
+                <button
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50"
+                  onClick={() => setPendingStart(null)}
+                  type="button"
+                >
+                  취소
+                </button>
+                <button
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 transition hover:bg-red-50"
+                  onClick={() => {
+                    const next = pendingStart;
+                    setPendingStart(null);
+                    void start(next);
+                  }}
+                  type="button"
+                >
+                  새로 시작
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }

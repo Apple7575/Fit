@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from datetime import date, datetime, timezone
+import logging
+import re
 from time import monotonic as system_monotonic
 from typing import Protocol
 from urllib.error import HTTPError
@@ -23,7 +25,15 @@ FETCH_TIMEOUT_SECONDS = 25
 PROVIDER_TIMEOUT_SECONDS = 30
 _READ_CHUNK_BYTES = 64 * 1024
 _SCOPE_ORDER: tuple[Scope, ...] = ("COMPANY", "INDUSTRY", "ROLE")
-_SCOPE_TERMS: frozenset[Scope] = frozenset(_SCOPE_ORDER)  # 허용 범위 집합
+
+# 직무명을 검색어로 쪼갤 때 버리는 말. "설계", "개발" 같은 낱말 하나로는 기사가 끝없이 나온다.
+_ROLE_STOPWORDS = frozenset({
+    "및", "등", "관련", "담당", "업무", "직무", "분야", "부문", "경력", "신입", "채용",
+    "개발자", "엔지니어", "매니저", "설계", "개발", "운영", "관리", "지원", "시스템",
+})
+_MAX_ROLE_TERMS = 3
+
+LOGGER = logging.getLogger(__name__)
 
 
 class NewsSearchProvider(Protocol):
@@ -68,89 +78,52 @@ class GoogleNewsRssProvider:
         *,
         industry_name: str | None = None,
     ) -> list[NewsCandidate]:
-        """범위(기업·산업·직무)마다 질의를 따로 보내고 결과를 번갈아 섞는다.
+        """부족한 범위마다 넓은 질의를 하나씩 보내고 결과를 합친다.
 
-        구글 뉴스 RSS는 띄어쓰기를 AND 로 처리하므로 회사명·직무명·범위 단어를 한 질의에
-        모두 넣으면 거의 아무것도 돌아오지 않는다(2026-09 실측: 회사명만 77~100건,
-        전부 넣으면 0~9건). 범위별로 나누면 각 범위의 기사가 고르게 들어온다.
+        예전에는 회사명·직무명·범위 이름을 한 질의에 전부 넣었다. 구글 뉴스는 그것을 AND 로
+        읽어서, 범위가 셋 다 부족하면 0건이 나왔다(실측: 회사명만 100건, 셋 다 붙이면 0건).
+        근거가 부족할수록 질의가 좁아져 더 못 찾는 구조였다. 지금은 범위별로 따로 묻고
+        합집합을 만든다. 무엇이 지원자와 관련 있는지는 모델이 제목을 보고 고른다.
         """
         canonical_corp_name = _require_text(corp_name, "corp_name")
         canonical_position_name = _require_text(position_name, "position_name")
-        canonical_industry_name = _optional_text(industry_name)
         scopes = _normalize_scopes(missing_scopes) or ["COMPANY"]
         _validate_range(from_date, to_date)
         _validate_limit(limit)
 
+        queries = _scope_queries(
+            canonical_corp_name, canonical_position_name, industry_name, scopes,
+        )
         deadline = self._monotonic() + remaining_timeout(
             PROVIDER_TIMEOUT_SECONDS, ExternalSearchUnavailable,
         )
-        try:
-            per_scope: list[list[NewsCandidate]] = []
-            for scope in scopes:
-                url = _search_url(
-                    scope_query(
-                        scope,
-                        corp_name=canonical_corp_name,
-                        position_name=canonical_position_name,
-                        industry_name=canonical_industry_name,
-                    ),
-                    from_date,
-                    to_date,
-                )
+        per_scope: list[list[NewsCandidate]] = []
+        last_error: Exception | None = None
+        for scope, query in queries:
+            url = _search_url(query, from_date, to_date)
+            try:
                 if self._fetcher is None:
                     payload = _fetch_rss(url, deadline=deadline, monotonic_clock=self._monotonic)
                 else:
                     payload = self._fetcher(url)
                 _require_before_deadline(deadline, self._monotonic)
                 accepted, _ = screen_quality(parse_feed(payload))
-                _require_before_deadline(deadline, self._monotonic)
                 per_scope.append(_candidates_from_rows(
-                    accepted,
-                    from_date=from_date,
-                    to_date=to_date,
-                    now=self._now(),
-                    limit=limit,
+                    accepted, from_date=from_date, to_date=to_date, now=self._now(), limit=limit,
                 ))
-            _require_before_deadline(deadline, self._monotonic)
-            return _interleave(per_scope, limit)
-        except Exception as error:
-            raise ExternalSearchUnavailable() from error
-
-
-def scope_query(
-    scope: Scope,
-    *,
-    corp_name: str,
-    position_name: str,
-    industry_name: str | None,
-) -> str:
-    """범위별 검색어. 날짜 조건은 _search_url 이 붙인다."""
-    if scope == "COMPANY":
-        return _quote_query_term(corp_name)
-    if scope == "INDUSTRY":
-        if industry_name:
-            return _quote_query_term(industry_name)
-        # 업종명을 모르면 회사명과 '업계'를 함께 검색해 산업 기사에 가깝게 맞춘다.
-        return f"{_quote_query_term(corp_name)} 업계"
-    return _quote_query_term(position_name)
-
-
-def _interleave(groups: Sequence[Sequence[NewsCandidate]], limit: int) -> list[NewsCandidate]:
-    """범위별 결과를 한 건씩 번갈아 뽑아 특정 범위가 목록을 독점하지 않게 한다. 중복 기사는 한 번만."""
-    merged: list[NewsCandidate] = []
-    seen: set[str] = set()
-    for index in range(max((len(group) for group in groups), default=0)):
-        for group in groups:
-            if index >= len(group):
-                continue
-            candidate = group[index]
-            if candidate.article_id in seen:
-                continue
-            seen.add(candidate.article_id)
-            merged.append(candidate)
-            if len(merged) >= limit:
-                return merged
-    return merged
+            except Exception as error:  # noqa: BLE001
+                # 한 범위가 실패해도 나머지는 살린다. 이유는 남긴다 — 전에는 통째로 삼켜서
+                # 응답만 보면 "검색했는데 없더라" 로 보였다.
+                LOGGER.warning(
+                    "news search failed: scope=%s query=%r cause=%s: %s",
+                    scope, query, type(error).__name__, error,
+                )
+                last_error = error
+                if isinstance(error, TimeoutError):
+                    break
+        if not per_scope:
+            raise ExternalSearchUnavailable() from last_error
+        return _interleave(per_scope, limit)
 
 
 def _fetch_rss(
@@ -321,14 +294,73 @@ def _read_once(response, size: int) -> bytes:
     return response.read(size)
 
 
+def _scope_queries(
+    corp_name: str,
+    position_name: str,
+    industry_name: str | None,
+    scopes: Sequence[Scope],
+) -> list[tuple[Scope, str]]:
+    """범위마다 질의 하나. 회사명은 회사 범위에만 붙인다.
+
+    산업·직무 기사는 회사명이 안 들어간 것이 대부분이라, 회사명을 붙이면 그 범위가 통째로
+    빈다. 같은 질의가 두 범위에서 나오면 한 번만 보낸다.
+    """
+    queries: list[tuple[Scope, str]] = []
+    seen: set[str] = set()
+    for scope in scopes:
+        if scope == "COMPANY":
+            query = _quote_query_term(corp_name)
+        elif scope == "INDUSTRY":
+            industry = (industry_name or "").strip()
+            # 산업명이 없으면 회사 기사로 대신한다. 아무것도 안 보내는 것보다 낫다.
+            query = _quote_query_term(industry) if industry else _quote_query_term(corp_name)
+        else:
+            terms = _role_terms(position_name)
+            if not terms:
+                continue
+            query = " ".join(terms)
+        if query in seen:
+            continue
+        seen.add(query)
+        queries.append((scope, query))
+    return queries
+
+
+def _role_terms(position_name: str) -> list[str]:
+    """직무명에서 검색어로 쓸 낱말만 고른다. '액추에이터 시스템/기구 설계' → 액추에이터, 기구."""
+    terms: list[str] = []
+    for token in re.split(r"[\s/·,()\[\]]+", position_name):
+        token = token.strip()
+        if len(token) < 2 or token in _ROLE_STOPWORDS or token in terms:
+            continue
+        terms.append(token)
+        if len(terms) == _MAX_ROLE_TERMS:
+            break
+    return terms
+
+
+def _interleave(per_scope: Sequence[Sequence[NewsCandidate]], limit: int) -> list[NewsCandidate]:
+    """범위별 목록을 번갈아 뽑는다. 회사 기사가 많다고 직무 기사가 밀려나지 않게."""
+    out: list[NewsCandidate] = []
+    seen: set[str] = set()
+    for index in range(max((len(rows) for rows in per_scope), default=0)):
+        for rows in per_scope:
+            if index >= len(rows):
+                continue
+            candidate = rows[index]
+            if candidate.article_id in seen:
+                continue
+            seen.add(candidate.article_id)
+            out.append(candidate)
+            if len(out) == limit:
+                return out
+    return out
+
+
 def _search_url(query: str, from_date: date, to_date: date) -> str:
+    full_query = " ".join([query, f"after:{from_date.isoformat()}", f"before:{to_date.isoformat()}"])
     return "https://news.google.com/rss/search?" + urlencode(
-        {
-            "q": f"{query} after:{from_date.isoformat()} before:{to_date.isoformat()}",
-            "hl": "ko",
-            "gl": "KR",
-            "ceid": "KR:ko",
-        }
+        {"q": full_query, "hl": "ko", "gl": "KR", "ceid": "KR:ko"}
     )
 
 
@@ -422,7 +454,7 @@ def _normalize_scopes(scopes: Sequence[Scope]) -> list[Scope]:
     if isinstance(scopes, (str, bytes)):
         raise ValueError("missing_scopes must be a sequence of scopes")
     provided = set(scopes)
-    if not provided.issubset(_SCOPE_TERMS):
+    if not provided.issubset(_SCOPE_ORDER):
         raise ValueError("missing_scopes contains an unsupported scope")
     return [scope for scope in _SCOPE_ORDER if scope in provided]
 

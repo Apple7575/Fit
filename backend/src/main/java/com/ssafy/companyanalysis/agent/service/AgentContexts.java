@@ -23,7 +23,7 @@ import java.util.Map;
 public final class AgentContexts {
 
     /** AI 총괄이 맡는 담당. 기업 RAG 담당은 아직 총괄이 받지 않아 백엔드에 남아 있다. */
-    public static final List<String> AI_AGENTS = List.of("jd", "position", "news", "writing");
+    public static final List<String> AI_AGENTS = List.of("jd", "position", "news", "writing", "company");
 
     /** 포지션 담당 API 가 이 값만 받는다. */
     private static final String RUBRIC_ID = "experience-depth-v1";
@@ -61,6 +61,15 @@ public final class AgentContexts {
             contexts.put("news", Map.of(
                     "job_context_id", context.jobContextId(),
                     "corp_code", corpCode));
+        }
+        // 기업 담당은 공고도 자소서도 없이 돈다 — 공시만 보고 답하기 때문이다. 기업 코드만 있으면 된다.
+        if (corpCode != null) {
+            Map<String, Object> company = new LinkedHashMap<>();
+            company.put("corp_code", corpCode);
+            if (context.hasJobContext()) {
+                company.put("job_context_id", context.jobContextId());
+            }
+            contexts.put("company", Map.copyOf(company));
         }
         // 글쓰기 담당은 자소서 문서가 정확히 하나여야 돈다. 문항을 고르지 않은 턴은 분석만 받는다.
         if (documents.size() == 1) {

@@ -168,11 +168,9 @@ class QwenNewsModelTest(unittest.TestCase):
     def test_common_word_overlap_does_not_ground_fabricated_clauses(self):
         for changes in (
             {"summary": "서비스 사업을 전면 중단하고 모든 직원을 해고했습니다."},
-            {"jd_relevance": "API 개발 직무는 Rust 박사 학위와 해외 근무 경험이 필수입니다."},
             {"title": "서비스 투자 확대 및 전직원 해고"},
             {"summary": "서비스 투자 확대가 확인됩니다. 모든 직원을 해고했습니다."},
             {"summary": "서비스 투자 확대가 확인되며 모든 직원을 해고했습니다."},
-            {"jd_relevance": "API 개발과 서비스 운영에 관련됩니다. Rust 박사 학위가 필수입니다."},
         ):
             with self.subTest(changes=changes), self.assertRaises(NewsOutputError):
                 QwenNewsModel(CONFIG, FakeQwen({"signals": [{**DRAFT, **changes}]})).extract_signals(
@@ -249,8 +247,6 @@ class QwenNewsModelTest(unittest.TestCase):
         cases = [
             {"title": "Quantum computing breakthroughs"},
             {"summary": "An aerospace merger was announced."},
-            {"jd_relevance": "This JD requires five years of Rust experience."},
-            {"jd_relevance": "JD job requirements are relevant."},
         ]
         for changes in cases:
             with self.subTest(changes=changes), self.assertRaises(NewsOutputError):
@@ -262,7 +258,6 @@ class QwenNewsModelTest(unittest.TestCase):
         for changes in (
             {"title": "서비스 투자 200% 확대"},
             {"summary": "서비스 투자 200% 증가가 확인됩니다."},
-            {"jd_relevance": "API 개발 경력 200년이 필수입니다."},
         ):
             with self.subTest(changes=changes), self.assertRaises(NewsOutputError):
                 QwenNewsModel(CONFIG, FakeQwen({"signals": [{**DRAFT, **changes}]})).extract_signals(
@@ -304,14 +299,82 @@ class QwenNewsModelTest(unittest.TestCase):
         candidates = CANDIDATES + [CANDIDATES[0].model_copy(update={
             "article_id": "stored:3", "title": "Quantum computing breakthroughs",
         })]
-        for changes in (
-            {"title": "Quantum computing breakthroughs"},
-            {"jd_relevance": "The name requirement is relevant."},
-        ):
-            with self.subTest(changes=changes), self.assertRaises(NewsOutputError):
-                QwenNewsModel(CONFIG, FakeQwen({"signals": [{**DRAFT, **changes}]})).extract_signals(
-                    CONTEXT, candidates, "분석", [],
+        with self.assertRaises(NewsOutputError):
+            QwenNewsModel(CONFIG, FakeQwen({"signals": [
+                {**DRAFT, "title": "Quantum computing breakthroughs"},
+            ]})).extract_signals(CONTEXT, candidates, "분석", [])
+
+    def test_fabricated_jd_relevance_is_replaced_and_never_shown(self):
+        """예전 규칙은 JD 연결 문장이 지어낸 것이면 신호를 통째로 버렸다. 그러면 기사를 찾고도
+        빈손이 된다(실측: 초안 3건 전부 탈락 → 502). 지금은 기사 쪽 주장이 제목에 근거하면
+        신호를 살리고, 지어낸 JD 문장만 서버 문구로 바꾼다. 지어낸 말은 어느 쪽이든 안 나간다."""
+        fabricated = (
+            "API 개발 직무는 Rust 박사 학위와 해외 근무 경험이 필수입니다.",
+            "API 개발과 서비스 운영에 관련됩니다. Rust 박사 학위가 필수입니다.",
+            "This JD requires five years of Rust experience.",
+            "JD job requirements are relevant.",
+            "API 개발 경력 200년이 필수입니다.",
+            "The name requirement is relevant.",
+        )
+        for text in fabricated:
+            with self.subTest(jd_relevance=text):
+                signals = QwenNewsModel(CONFIG, FakeQwen({"signals": [
+                    {**DRAFT, "jd_relevance": text},
+                ]})).extract_signals(CONTEXT, CANDIDATES, "분석", [])
+
+                self.assertEqual(len(signals), 1)
+                self.assertEqual(
+                    signals[0].jd_relevance, "JD의 백엔드 개발자 직무와 관련해 살펴볼 기사입니다.",
                 )
+                for word in ("Rust", "박사", "200", "five", "name"):
+                    self.assertNotIn(word, signals[0].jd_relevance)
+
+    def test_lowercase_enum_values_from_the_model_are_accepted(self):
+        """모델이 scope 를 'company' 로 돌려준다(GMS 실측). 그대로 strict 검증하면 신호를 전부
+        버려 매번 '근거 부족' 이 된다. 뜻이 같은 대소문자만 맞춘다."""
+        coverage = QwenNewsModel(CONFIG, FakeQwen({
+            "company": "covered", "industry": "insufficient", "role": "Insufficient",
+            "requested_scopes": ["company", "role"],
+        })).classify_coverage(CONTEXT, CANDIDATES, "기업과 직무 변화")
+        signals = QwenNewsModel(CONFIG, FakeQwen({
+            "signals": [{**DRAFT, "scope": "company"}],
+        })).extract_signals(CONTEXT, CANDIDATES, "기업과 직무 변화", [])
+
+        self.assertEqual((coverage.company, coverage.industry, coverage.role),
+                         ("COVERED", "INSUFFICIENT", "INSUFFICIENT"))
+        self.assertEqual(coverage.requested_scopes, ["COMPANY", "ROLE"])
+        self.assertEqual(signals[0].scope, "COMPANY")
+
+    def test_jd_relevance_that_copies_the_title_is_replaced_not_dropped(self):
+        """모델이 jd_relevance 에 기사 제목을 넣는다(실측: 초안 3건 전부). 기사 쪽 주장이
+        제목에 근거하면 신호는 살리고 JD 연결 문장만 서버 문구로 바꾼다."""
+        signals = QwenNewsModel(CONFIG, FakeQwen({"signals": [
+            {**DRAFT, "jd_relevance": "JD의 서비스 투자 확대와 관련됩니다."},
+        ]})).extract_signals(CONTEXT, CANDIDATES, "기업 변화", [])
+
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0].title, "서비스 투자 확대")
+        self.assertEqual(signals[0].jd_relevance, "JD의 백엔드 개발자 직무와 관련해 살펴볼 기사입니다.")
+
+    def test_grounded_jd_relevance_is_kept_verbatim(self):
+        signals = QwenNewsModel(CONFIG, FakeQwen({"signals": [DRAFT]})).extract_signals(
+            CONTEXT, CANDIDATES, "기업 변화", [],
+        )
+
+        self.assertEqual(signals[0].jd_relevance, "JD의 서비스 운영과 관련됩니다.")
+
+    def test_ungrounded_article_claims_are_still_dropped(self):
+        """기사 제목에 없는 말을 한 신호는 JD 연결과 무관하게 버린다. 전부 버려지면 재시도한다."""
+        with self.assertRaises(NewsOutputError):
+            QwenNewsModel(CONFIG, FakeQwen({"signals": [
+                {**DRAFT, "title": "반도체 공장 증설 발표", "summary": "기사 제목에서 반도체 공장 증설 발표를 확인할 수 있습니다."},
+            ]})).extract_signals(CONTEXT, CANDIDATES, "기업 변화", [])
+
+    def test_unknown_enum_values_are_still_rejected(self):
+        with self.assertRaises(NewsOutputError):
+            QwenNewsModel(CONFIG, FakeQwen({
+                "signals": [{**DRAFT, "scope": "market"}],
+            })).extract_signals(CONTEXT, CANDIDATES, "기업과 직무 변화", [])
 
     def test_coverage_and_signals_use_separate_strict_bounded_schemas(self):
         coverage_qwen = FakeQwen(COVERAGE)
@@ -414,7 +477,7 @@ class QwenNewsModelTest(unittest.TestCase):
         for raw in (b"not JSON", b'{"choices": []}', b'{"choices": [{"message": {"content": "bad"}}]}'):
             for operation in ("classify_coverage", "extract_signals"):
                 args = (CONTEXT, CANDIDATES, "분석") + (([],) if operation == "extract_signals" else ())
-                with self.subTest(raw=raw, operation=operation), patch("ai.jd_coaching.baseline.urllib.request.urlopen") as urlopen:
+                with self.subTest(raw=raw, operation=operation), patch("ai.llm.vllm.urllib.request.urlopen") as urlopen:
                     urlopen.return_value.__enter__.return_value.read.return_value = raw
                     with self.assertRaises(NewsOutputError):
                         getattr(QwenNewsModel(CONFIG), operation)(*args)

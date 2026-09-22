@@ -1,6 +1,8 @@
 package com.ssafy.companyanalysis.agent.service;
 
+import com.ssafy.companyanalysis.agent.ai.CompanyAnalysisClient;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
+import com.ssafy.companyanalysis.agent.domain.Evidence;
 import com.ssafy.companyanalysis.agent.domain.Message;
 import com.ssafy.companyanalysis.agent.domain.MessageStatus;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
@@ -14,6 +16,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -25,23 +30,69 @@ class AgentTaskRunnerTest {
     private static final Long MESSAGE_ID = 31L;
 
     private MessageRepository messageRepository;
+    private CompanyAnalysisClient companyAnalysisClient;
     private AgentTaskRunner runner;
 
     @BeforeEach
     void setUp() {
         messageRepository = Mockito.mock(MessageRepository.class);
-        runner = new AgentTaskRunner(messageRepository);
+        companyAnalysisClient = Mockito.mock(CompanyAnalysisClient.class);
+        runner = new AgentTaskRunner(messageRepository, companyAnalysisClient);
     }
 
     @Test
-    @DisplayName("기업 RAG 담당은 볼 Vector DB 가 없어 자기 자리에서 실패한다")
-    void companyAgentFailsUntilTheVectorDbExists() {
+    @DisplayName("기업 RAG 담당은 무상태 대화 API 를 직접 불러 자기 자리를 채운다")
+    void companyAgentAnswersThroughItsOwnApi() {
         Message message = slotOf(AgentType.COMPANY);
+        Evidence evidence = new Evidence("DART_BUSINESS_REPORT", "현대자동차", 2026, null, "근거", "https://dart.fss.or.kr/x");
+        given(companyAnalysisClient.answer(eq("봐줘"), eq("00126380"), any(), anyList()))
+                .willReturn(new CompanyAnalysisClient.Answer("주력은 자동차입니다.", List.of(evidence)));
+
+        runner.run(MESSAGE_ID, contextOf(AgentType.COMPANY, Map.of("corpCodes", List.of("00126380"))));
+
+        assertThat(message.getStatus()).isEqualTo(MessageStatus.DONE);
+        assertThat(message.getContent()).isEqualTo("주력은 자동차입니다.");
+        assertThat(message.getEvidences()).containsExactly(evidence);
+    }
+
+    @Test
+    @DisplayName("방에 들어와 도는 첫 턴에는 대화 대신 기업 리포트를 펼친다")
+    void firstTurnShowsTheReportInsteadOfChatting() {
+        Message message = slotOf(AgentType.COMPANY);
+        given(companyAnalysisClient.report("00126380"))
+                .willReturn(new CompanyAnalysisClient.Answer("## 삼성전자 기업 분석", List.of()));
+
+        runner.run(MESSAGE_ID, contextOf(AgentType.COMPANY, Map.of("corpCodes", List.of("00126380")), true));
+
+        assertThat(message.getStatus()).isEqualTo(MessageStatus.DONE);
+        assertThat(message.getContent()).isEqualTo("## 삼성전자 기업 분석");
+        Mockito.verify(companyAnalysisClient, Mockito.never())
+                .answer(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyList());
+    }
+
+    @Test
+    @DisplayName("담당 API 가 실패하면 그 자리만 실패로 남는다")
+    void companyAgentFailureStaysInItsOwnSlot() {
+        Message message = slotOf(AgentType.COMPANY);
+        given(companyAnalysisClient.answer(any(), any(), any(), anyList()))
+                .willThrow(new IllegalStateException("AI 죽음"));
 
         runner.run(MESSAGE_ID, contextOf(AgentType.COMPANY, Map.of("corpCodes", List.of("00126380"))));
 
         assertThat(message.getStatus()).isEqualTo(MessageStatus.FAILED);
-        assertThat(message.getError()).contains("볼 자료가 아직 준비되지 않았습니다");
+        assertThat(message.getError()).isEqualTo("지금은 이 에이전트를 쓸 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("기업 코드가 여덟 자리가 아니면 AI 를 부르지 않는다")
+    void companyAgentRejectsMalformedCorpCode() {
+        Message message = slotOf(AgentType.COMPANY);
+
+        runner.run(MESSAGE_ID, contextOf(AgentType.COMPANY, Map.of("corpCodes", List.of("126380"))));
+
+        assertThat(message.getStatus()).isEqualTo(MessageStatus.FAILED);
+        assertThat(message.getError()).contains("기업 코드가 올바르지 않습니다");
+        Mockito.verifyNoInteractions(companyAnalysisClient);
     }
 
     @Test
@@ -73,8 +124,12 @@ class AgentTaskRunnerTest {
     }
 
     private static TurnContext contextOf(AgentType type, Map<String, Object> config) {
+        return contextOf(type, config, false);
+    }
+
+    private static TurnContext contextOf(AgentType type, Map<String, Object> config, boolean autoReview) {
         return new TurnContext(
                 List.of(new TurnContext.CoverLetterPart(1, "문항", "답변", 500)),
-                "봐줘", null, null, List.of(), Map.of(type.key(), config));
+                "봐줘", null, null, List.of(), Map.of(type.key(), config), autoReview);
     }
 }

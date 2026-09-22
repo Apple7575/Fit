@@ -27,13 +27,16 @@ import java.util.Set;
  * @param conversation     이 턴 앞의 대화. 오래된 것부터 최대 20개
  * @param agentConfigs     방이 고른 담당 전부. agentKey 별 설정(기업 선택·직무 선택)이고,
  *                         설정을 안 적은 담당도 빈 map 으로 들어온다 — 키 자체가 방의 담당 목록이다
+ * @param autoReview       사용자가 묻기 전에 방을 한 바퀴 도는 첫 턴. 기업 담당은 이때 대화 대신
+ *                         리포트를 보여 준다 — 아직 아무것도 묻지 않아 답할 질문이 없다
  */
 public record TurnContext(List<CoverLetterPart> coverLetterParts,
                           String userMessage,
                           String jobContextId,
                           String jobPositionName,
                           List<SupervisorClient.Turn> conversation,
-                          Map<String, Map<String, Object>> agentConfigs) {
+                          Map<String, Map<String, Object>> agentConfigs,
+                          boolean autoReview) {
 
     public boolean hasJobContext() {
         return jobContextId != null && !jobContextId.isBlank();

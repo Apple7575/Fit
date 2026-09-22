@@ -81,4 +81,15 @@ class AuthServiceTest {
 
         verify(emailVerificationService, never()).issue(any());
     }
+
+    @Test
+    @DisplayName("탈퇴 요청한 회원을 삭제한다")
+    void withdrawDeletesUser() {
+        User user = User.create("user@example.com", "{bcrypt}hash", "민재");
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+        authService.withdraw(1L);
+
+        verify(userRepository).delete(user);
+    }
 }

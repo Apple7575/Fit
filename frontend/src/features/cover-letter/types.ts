@@ -37,7 +37,8 @@ export interface CoverLetterSummary {
 export interface JobPostingParseResult {
   companyName: string | null;
   positions: string[];
-  sourceUrl: string;
+  /** 붙여넣은 이미지로 확인한 공고에는 주소가 없다. 그때는 sourceKey 로만 등록한다. */
+  sourceUrl: string | null;
   /** 서버가 방금 긁은 본문을 들고 있다는 표시. 등록할 때 돌려주면 다시 긁지 않는다(30분). */
   sourceKey: string | null;
 }

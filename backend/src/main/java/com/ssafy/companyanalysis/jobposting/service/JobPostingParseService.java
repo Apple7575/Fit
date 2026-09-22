@@ -9,6 +9,7 @@ import com.ssafy.companyanalysis.jobposting.dto.JobPostingParseResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -42,6 +43,10 @@ public class JobPostingParseService {
             규칙:
             - companyName 은 채용하는 회사의 이름이다. 공고가 올라온 채용 사이트 이름(사람인,
               잡코리아, 원티드 등)을 회사명으로 쓰지 않는다.
+            - 그룹 통합 채용사이트에 올라온 계열사 공고면, 사이트를 운영하는 그룹이 아니라
+              실제로 뽑는 계열사 이름을 쓴다. 공고 제목과 본문에 더 자주 나오는 쪽이 채용 주체다.
+            - 공고를 올린 기관과 뽑는 주체가 다르면 뽑는 주체를 쓴다. 사업·프로그램·전형
+              이름을 회사명으로 쓰지 않는다.
             - positions 는 공고에 쓰인 직무 이름을 그대로 옮긴다. 줄이거나 일반화하지 않는다.
             - 한 공고에서 여러 직무를 모집하면 전부 담는다. 같은 직무가 여러 번 나오면 하나로 합친다.
             - 공고에 없는 회사나 직무를 지어내지 않는다. 찾지 못하면 companyName 은 null,
@@ -65,7 +70,21 @@ public class JobPostingParseService {
     }
 
     public JobPostingParseResponse parse(String url) {
-        JobSourceClient.JobSource source = jobSourceClient.fromUrl(url);
+        return extract(jobSourceClient.fromUrl(url), url);
+    }
+
+    /**
+     * 사용자가 붙여넣은 공고 이미지에서 읽어 낸다.
+     *
+     * <p>공고 본문이 이미지인데 그 주소가 서버가 받는 HTML 에 없어 주소로는 못 읽는
+     * 공고가 있다. 그때 화면에 보이는 이미지를 그대로 받는 길이다. 주소가 없으므로
+     * 돌려주는 sourceUrl 도 없다.
+     */
+    public JobPostingParseResponse parseImages(List<MultipartFile> images) {
+        return extract(jobSourceClient.fromImages(images), null);
+    }
+
+    private JobPostingParseResponse extract(JobSourceClient.JobSource source, String url) {
         JsonNode parsed = readJson(llmClient.generateJson(INSTRUCTION, truncate(source.jdText())));
 
         String companyName = text(parsed.path("companyName"));
@@ -82,19 +101,29 @@ public class JobPostingParseService {
         if (companyName == null && positions.isEmpty()) {
             throw new BusinessException(ErrorCode.JOB_POSTING_PARSE_FAILED);
         }
-        return new JobPostingParseResponse(companyName, positions, url, sourceCache.put(source));
+        // 제목·메타만으로 채운 응답은 보관하지 않는다. 그대로 등록에 넘기면 본문이 거의
+        // 없는 공고가 검토 방에 붙는다 — 보관 키가 없으면 등록 쪽이 주소로 다시 읽는다.
+        String sourceKey = source.metadataOnly() ? null : sourceCache.put(source);
+        return new JobPostingParseResponse(companyName, positions, url, sourceKey);
     }
 
     private static String truncate(String posting) {
         return posting.length() > MAX_POSTING_CHARS ? posting.substring(0, MAX_POSTING_CHARS) : posting;
     }
 
+    /**
+     * 모델이 JSON 이 아닌 응답을 내면 빈 노드를 돌려준다.
+     *
+     * <p>여기서 실패로 끊으면, 수집 단계가 이미 찾아 둔 회사·직무까지 함께 버려진다.
+     * 모델이 형식을 어기는 일은 드물지만 있고, 그때 화면에는 "찾지 못했습니다" 만 남는다.
+     * 뒤의 폴백이 수집 값을 쓰도록 두고, 그것마저 없을 때만 실패시킨다.
+     */
     private JsonNode readJson(String raw) {
         try {
             return objectMapper.readTree(raw);
         } catch (JacksonException e) {
-            log.warn("공고 파싱 응답이 JSON 이 아님: reason={}", e.getMessage());
-            throw new BusinessException(ErrorCode.JOB_POSTING_PARSE_FAILED);
+            log.warn("공고 파싱 응답이 JSON 이 아님 — 수집 단계 값으로 이어간다: reason={}", e.getMessage());
+            return objectMapper.nullNode();
         }
     }
 

@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 import unittest
 from unittest.mock import Mock, patch
 
+from ai.news_intelligence.contracts import NewsCandidate
 from ai.news_intelligence.search_provider import (
     ExternalSearchUnavailable,
     GoogleNewsRssProvider,
@@ -93,17 +94,22 @@ def _feed(items):
 
 
 class GoogleNewsRssProviderTest(unittest.TestCase):
-    def test_google_provider_makes_one_bounded_request(self):
+    def test_google_provider_makes_one_bounded_request_per_missing_scope(self):
         fetcher = Mock(return_value=RSS_BYTES)
         provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
 
         rows = provider.search(**REQUEST)
 
-        self.assertEqual(fetcher.call_count, 1)
+        self.assertEqual(fetcher.call_count, 1)  # 부족한 범위가 INDUSTRY 하나
         self.assertLessEqual(len(rows), 20)
         self.assertTrue(all(item.origin == "EXTERNAL" for item in rows))
 
-    def test_sends_one_query_per_requested_scope(self):
+    def test_each_scope_gets_its_own_broad_query(self):
+        """회사명·직무명·범위 이름을 한 질의에 다 넣으면 AND 가 되어 0건이 난다(실측).
+
+        범위마다 따로 묻는다. 회사 범위는 회사명만, 산업 범위는 산업명만, 직무 범위는
+        직무명의 핵심어만 — '기업'·'산업'·'직무' 같은 범위 이름은 검색어가 아니다.
+        """
         fetcher = Mock(return_value=RSS_BYTES)
         provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
 
@@ -117,7 +123,6 @@ class GoogleNewsRssProviderTest(unittest.TestCase):
             industry_name="반도체 제조업",
         )
 
-        self.assertEqual(fetcher.call_count, 3)
         queries = []
         for call in fetcher.call_args_list:
             parsed = urlsplit(call.args[0])
@@ -126,21 +131,69 @@ class GoogleNewsRssProviderTest(unittest.TestCase):
             params = parse_qs(parsed.query)
             self.assertEqual((params["hl"], params["gl"], params["ceid"]), (["ko"], ["KR"], ["KR:ko"]))
             queries.append(params["q"][0])
-        # 기업 → 산업 → 직무 순서. 회사명·직무명·범위 단어를 한 질의에 AND 로 섞지 않는다.
+
         self.assertEqual(queries, [
             '"삼성전자" after:2026-06-18 before:2026-09-16',
             '"반도체 제조업" after:2026-06-18 before:2026-09-16',
-            '"백엔드 개발자" after:2026-06-18 before:2026-09-16',
+            '백엔드 after:2026-06-18 before:2026-09-16',  # '개발자' 는 흔한 말이라 뺀다
         ])
 
-    def test_industry_query_falls_back_to_company_when_industry_name_is_unknown(self):
+    def test_industry_without_a_name_falls_back_to_the_company_and_is_not_sent_twice(self):
         fetcher = Mock(return_value=RSS_BYTES)
         provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
 
-        provider.search(**{**REQUEST, "missing_scopes": ["INDUSTRY"]})
+        provider.search(**{**REQUEST, "missing_scopes": ["COMPANY", "INDUSTRY"]})
 
-        query = parse_qs(urlsplit(fetcher.call_args.args[0]).query)["q"][0]
-        self.assertTrue(query.startswith('"삼성전자" 업계 after:'))
+        self.assertEqual(fetcher.call_count, 1)
+
+    def test_role_terms_drop_generic_words_and_split_on_slashes(self):
+        from ai.news_intelligence.search_provider import _role_terms
+
+        self.assertEqual(_role_terms("액추에이터 시스템/기구 설계"), ["액추에이터", "기구"])
+        self.assertEqual(_role_terms("로보틱스 모터 설계"), ["로보틱스", "모터"])
+        self.assertEqual(_role_terms("백엔드 개발자"), ["백엔드"])
+        self.assertEqual(_role_terms("개발자"), [])
+
+    def test_one_failed_scope_does_not_lose_the_others(self):
+        """전에는 예외 하나로 통째로 빈손이 됐고 이유도 삼켰다."""
+        fetcher = Mock(side_effect=[RSS_BYTES, ValueError("malformed")])
+        provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
+
+        with self.assertLogs("ai.news_intelligence.search_provider", level="WARNING") as logs:
+            rows = provider.search(**{**REQUEST, "missing_scopes": ["COMPANY", "ROLE"]})
+
+        self.assertEqual(fetcher.call_count, 2)
+        self.assertGreater(len(rows), 0)
+        self.assertIn("scope=ROLE", logs.output[0])
+        self.assertIn("ValueError", logs.output[0])
+
+    def test_all_scopes_failing_is_unavailable_with_the_cause_attached(self):
+        fetcher = Mock(side_effect=ValueError("malformed"))
+        provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
+
+        with self.assertLogs("ai.news_intelligence.search_provider", level="WARNING"), \
+                self.assertRaises(ExternalSearchUnavailable) as raised:
+            provider.search(**REQUEST)
+
+        self.assertIsInstance(raised.exception.__cause__, ValueError)
+
+    def test_results_are_interleaved_across_scopes(self):
+        """회사 기사가 많다고 직무 기사가 밀려나지 않는다."""
+        from ai.news_intelligence.search_provider import _interleave
+
+        def item(key, day):
+            return NewsCandidate(
+                article_id=f"external:{key}", origin="EXTERNAL", title=key,
+                published_at=datetime(2026, 9, day, tzinfo=timezone.utc),
+                url=f"https://example.com/{key}",
+            )
+
+        merged = _interleave(
+            [[item("c1", 9), item("c2", 8), item("c3", 7)], [item("r1", 9), item("c2", 8)]],
+            limit=4,
+        )
+
+        self.assertEqual([c.title for c in merged], ["c1", "r1", "c2", "c3"])
 
     def test_empty_scopes_search_company_only(self):
         fetcher = Mock(return_value=RSS_BYTES)

@@ -176,6 +176,8 @@ class JobSourceFromUrlResponse(BaseModel):
     published_at: str | None
     valid_until: str | None
     content_sha256: str | None
+    # 본문 없이 제목·메타만으로 채운 응답. 확인 화면은 써도 되지만 검토 원문으로는 부족하다.
+    metadata_only: bool = False
 
 
 class ApplicantDocumentRequest(BaseModel):
@@ -334,18 +336,8 @@ def _read_env_value(path: Path, key: str) -> str:
 def get_source_ingestor() -> JdSourceIngestor:
     env_file = Path(os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env")))
     gms_key = os.environ.get("GMS_KEY", "").strip() or _read_env_value(env_file, "GMS_KEY")
-    clova_ocr_endpoint = os.environ.get("CLOVA_OCR_ENDPOINT", "").strip() or _read_env_value(
-        env_file, "CLOVA_OCR_ENDPOINT"
-    )
-    clova_ocr_secret = os.environ.get("CLOVA_OCR_SECRET", "").strip() or _read_env_value(
-        env_file, "CLOVA_OCR_SECRET"
-    )
-    # GMS_KEY가 없으면(로컬 등) 회사명·직무명 보완만 건너뛰고 크롤링 자체는 그대로 동작한다.
-    return JdSourceIngestor(
-        gms_key=gms_key or None,
-        clova_ocr_endpoint=clova_ocr_endpoint or None,
-        clova_ocr_secret=clova_ocr_secret or None,
-    )
+    # GMS_KEY가 없으면(로컬 등) 이미지 OCR과 회사명·직무명 보완만 꺼지고 크롤링은 그대로 동작한다.
+    return JdSourceIngestor(gms_key=gms_key or None)
 
 
 app = FastAPI(title="JD Essay Coaching API", version="0.1.0")
@@ -380,13 +372,46 @@ def ingest_job_source_from_url(
     ingestor: Annotated[JdSourceIngestor, Depends(get_source_ingestor)],
 ) -> JobSourceFromUrlResponse:
     try:
-        return JobSourceFromUrlResponse.model_validate(ingestor.from_url(request.url))
+        # 확인은 회사·직무만 채우면 되므로 본문을 못 얻어도 제목·메타로 답한다.
+        return JobSourceFromUrlResponse.model_validate(
+            ingestor.from_url(request.url, allow_metadata_only=True)
+        )
     except UnsupportedSourceError as error:
         raise HTTPException(status_code=415, detail=str(error)) from error
     except SourceFetchError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
     except SourceIngestionError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.post(
+    "/internal/job-sources/from-images",
+    response_model=JobSourceFromUrlResponse,
+    tags=["internal"],
+)
+async def ingest_job_source_from_images(
+    ingestor: Annotated[JdSourceIngestor, Depends(get_source_ingestor)],
+    files: Annotated[list[UploadFile], File()],
+) -> JobSourceFromUrlResponse:
+    """사용자가 붙여넣은 공고 이미지를 OCR해 본문으로 돌려준다.
+
+    공고 본문이 이미지인데 그 주소가 서버가 받는 HTML에 없는 사이트가 있다. 그런 공고는
+    화면에는 보이므로 사용자가 복사해 온 이미지를 그대로 받는 편이 확실하다.
+    받은 순서를 그대로 유지한다 — 공고는 위에서 아래로 읽힌다.
+    """
+    try:
+        images = [
+            (await file.read(DEFAULT_MAX_SOURCE_BYTES + 1), file.content_type or "")
+            for file in files
+        ]
+        return JobSourceFromUrlResponse.model_validate(ingestor.from_images(images))
+    except UnsupportedSourceError as error:
+        raise HTTPException(status_code=415, detail=str(error)) from error
+    except SourceIngestionError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        for file in files:
+            await file.close()
 
 
 @app.post(

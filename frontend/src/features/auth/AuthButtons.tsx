@@ -20,9 +20,12 @@ export function AuthButtons({ onDark = false }: AuthButtonsProps) {
   if (user) {
     return (
       <div className="flex items-center gap-1 sm:gap-2">
-        <span className={`px-2 text-sm font-semibold ${onDark ? 'text-white' : 'text-slate-700'}`}>
+        <Link
+          className={`${linkClass} ${onDark ? 'text-white' : 'text-slate-700'}`}
+          to="/mypage"
+        >
           {user.nickname}님
-        </span>
+        </Link>
         <button
           className={linkClass}
           onClick={async () => {

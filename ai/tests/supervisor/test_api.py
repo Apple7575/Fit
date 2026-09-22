@@ -322,7 +322,7 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
                 request["agent_contexts"]["position"]["position_context"],
                 request["documents"],
                 request["conversation"],
-                request["instruction"],
+                request["instruction"],  # 사용자 요청문이 포지션 서비스까지 전달되어야 한다
             )
         ])
 

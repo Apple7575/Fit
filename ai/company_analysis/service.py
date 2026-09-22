@@ -16,7 +16,7 @@ import threading
 from collections.abc import Callable
 from concurrent.futures import Executor
 from datetime import datetime, timezone
-from typing import Protocol
+from typing import Any, Protocol
 
 from .contracts import CompanyReport, ReportStatus
 from .deterministic import build_deterministic_report
@@ -66,6 +66,11 @@ class CompanyAnalysisService:
     def status(self, corp_code: str) -> ReportStatus | None:
         stored = self._store.get(corp_code)
         return stored.status if stored else None
+
+    @property
+    def facts_repository(self) -> Any:
+        """확정 지표 저장소. 대화 쪽이 기업 이름 조회에 쓴다."""
+        return self._repository
 
     def facts(self, corp_code: str) -> CompanyFacts | None:
         """확정 지표·프로필 원본. 채팅이 표준 지표 질문을 결정적으로 답할 때 쓴다."""

@@ -97,7 +97,8 @@ public class SupervisorTurnRunner {
                 request.documents(),
                 context.conversation(),
                 request.contexts(),
-                request.lead());
+                request.lead(),
+                context.autoReview());
 
         Map<String, Message> waiting = new LinkedHashMap<>(aiSlots);
         List<Long> answered = new ArrayList<>();

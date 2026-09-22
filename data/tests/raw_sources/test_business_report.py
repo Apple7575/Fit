@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 import zipfile
 
@@ -56,6 +57,30 @@ class BusinessReportSourceTest(unittest.TestCase):
         self.assertEqual(
             [table.entity_scope for table in document.tables],
             ["우리자산운용", "우리자산운용", "우리은행", None],
+        )
+
+    def test_long_section_heading_is_trimmed_to_the_column_width(self):
+        """rag_evidence.title 은 varchar(300) 이다. 넘치면 그 기업 적재가 통째로 실패한다.
+
+        절 제목 자리에 표 머리글이 통째로 들어오는 문서가 있다(현대위아 2021년은 2,302자).
+        """
+        from pipeline.raw_sources.business_report import _title
+
+        ref = SimpleNamespace(corp_name="현대위아", year=2021)
+        title = _title(ref, "발행회사 증권종류 발행방법 " * 200)
+
+        self.assertLessEqual(len(title), 300)
+        self.assertTrue(title.startswith("현대위아 2021년 사업보고서 · "))
+        self.assertTrue(title.endswith("…"))
+
+    def test_short_section_heading_is_kept_whole(self):
+        from pipeline.raw_sources.business_report import _title
+
+        ref = SimpleNamespace(corp_name="현대위아", year=2021)
+
+        self.assertEqual(
+            _title(ref, "2. 주요 제품 및 서비스"),
+            "현대위아 2021년 사업보고서 · 2. 주요 제품 및 서비스",
         )
 
     def test_generic_bracket_heading_is_not_a_company_name(self):

@@ -6,6 +6,7 @@ import type { CoverLetterInput } from './types';
 
 vi.mock('./api', () => ({
   parseJobPosting: vi.fn(),
+  parseJobPostingImages: vi.fn(),
   registerJobPosting: vi.fn(),
 }));
 
@@ -15,7 +16,7 @@ vi.mock('./CompanyPicker', () => ({
   ),
 }));
 
-const { parseJobPosting, registerJobPosting } = await import('./api');
+const { parseJobPosting, parseJobPostingImages, registerJobPosting } = await import('./api');
 
 const initial: CoverLetterInput = {
   title: '2026 상반기 백엔드',
@@ -37,39 +38,32 @@ async function confirmPosting(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByDisplayValue('삼성전자');
 }
 
+/** 한 화면에 한 가지만 둔다. AI 검토는 문항을 쓰는 화면에 있다. */
+async function goToItems(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: '문항 1' }));
+}
+
 describe('CoverLetterWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('저장은 공고를 분석하지 않고 자소서만 넘긴다', async () => {
+  it('저장은 공고 분석 식별자를 받은 뒤 자소서를 넘긴다', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
-
-    render(
-      <CoverLetterWorkspace initial={initial} isLoggedIn onSave={onSave} onReview={vi.fn()} />,
-    );
-    await confirmPosting(user);
-    await user.click(screen.getByRole('button', { name: '저장' }));
-
-    expect(registerJobPosting).not.toHaveBeenCalled();
-    expect(onSave).toHaveBeenCalledTimes(1);
-  });
-
-  it('등록하지 않은 공고는 저장을 받는 쪽에 함께 넘겨 뒤에서 붙이게 한다', async () => {
-    const user = userEvent.setup();
-    const onSave = vi.fn().mockResolvedValue(undefined);
-
-    render(
-      <CoverLetterWorkspace initial={initial} isLoggedIn onSave={onSave} onReview={vi.fn()} />,
-    );
-    await confirmPosting(user);
-    await user.click(screen.getByRole('button', { name: '저장' }));
-
-    expect(onSave.mock.calls[0][1]).toEqual({
-      url: 'https://jobs.example.com/1',
-      sourceKey: 'key-1',
+    vi.mocked(registerJobPosting).mockResolvedValue({
+      jobContextId: 'ctx-9', companyName: '삼성전자', positionName: '백엔드 개발',
+      sourceUrl: 'https://jobs.example.com/1',
     });
+
+    render(
+      <CoverLetterWorkspace initial={initial} isLoggedIn onSave={onSave} onReview={vi.fn()} />,
+    );
+    await confirmPosting(user);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(registerJobPosting).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0][0].jobContextId).toBe('ctx-9');
   });
 
   it('공고가 없으면 넘길 것도 없다', async () => {
@@ -81,7 +75,7 @@ describe('CoverLetterWorkspace', () => {
     );
     await user.click(screen.getByRole('button', { name: '저장' }));
 
-    expect(onSave.mock.calls[0][1]).toBeNull();
+    expect(onSave.mock.calls[0][0].jobContextId).toBeNull();
   });
 
   it('저장하면 그 자리에 저장했다고 알린다', async () => {
@@ -113,20 +107,47 @@ describe('CoverLetterWorkspace', () => {
     expect(screen.queryByText('저장했습니다 ✓')).not.toBeInTheDocument();
   });
 
-  it('저장하는 동안 AI 검토 버튼이 공고 분석 중으로 바뀌지 않는다', async () => {
+  it('공고를 분석하는 동안 AI 검토로 넘어가지 않는다', async () => {
     const user = userEvent.setup();
-    let release = () => {};
-    const onSave = vi.fn().mockReturnValue(new Promise<void>((resolve) => (release = resolve)));
+    let release = (_value: { jobContextId: string; companyName: string; positionName: string; sourceUrl: string }) => {};
+    vi.mocked(registerJobPosting).mockReturnValue(new Promise((resolve) => (release = resolve)));
+    const onSave = vi.fn().mockResolvedValue(undefined);
 
     render(
       <CoverLetterWorkspace initial={initial} isLoggedIn onSave={onSave} onReview={vi.fn()} />,
     );
     await confirmPosting(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
+    await goToItems(user);
 
-    expect(screen.getByRole('button', { name: 'AI 검토' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '공고 분석 중…' })).not.toBeInTheDocument();
-    release();
+    expect(screen.getByRole('button', { name: '공고 분석 중…' })).toBeDisabled();
+    expect(onSave).not.toHaveBeenCalled();
+    release({ jobContextId: 'ctx-9', companyName: '삼성전자', positionName: '백엔드 개발', sourceUrl: 'https://jobs.example.com/1' });
+    await screen.findByText('저장했습니다 ✓');
+    expect(onSave.mock.calls[0][0].jobContextId).toBe('ctx-9');
+  });
+
+  it('게스트는 공고 등록을 시도하지 않고 로그인 화면에 넘길 주소를 보존한다', async () => {
+    const user = userEvent.setup();
+    const onReview = vi.fn().mockResolvedValue(undefined);
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn={false} onSave={vi.fn()} onReview={onReview} />);
+    await confirmPosting(user);
+    await goToItems(user);
+    await user.click(screen.getByRole('button', { name: 'AI 검토' }));
+    expect(registerJobPosting).not.toHaveBeenCalled();
+    expect(onReview.mock.calls[0][1]).toEqual({ url: 'https://jobs.example.com/1', sourceKey: 'key-1' });
+  });
+
+  it('공고 분석이 실패하면 이유를 보여 주고 검토 방으로 이동하지 않는다', async () => {
+    const user = userEvent.setup();
+    const onReview = vi.fn();
+    vi.mocked(registerJobPosting).mockRejectedValue(new Error('AI unavailable'));
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={onReview} />);
+    await confirmPosting(user);
+    await goToItems(user);
+    await user.click(screen.getByRole('button', { name: 'AI 검토' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('채용공고 분석에 실패했습니다');
+    expect(onReview).not.toHaveBeenCalled();
   });
 
   it('AI 검토는 공고를 등록해 식별자를 붙인 뒤 넘어간다', async () => {
@@ -143,6 +164,7 @@ describe('CoverLetterWorkspace', () => {
       <CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={onReview} />,
     );
     await confirmPosting(user);
+    await goToItems(user);
     await user.click(screen.getByRole('button', { name: 'AI 검토' }));
 
     expect(registerJobPosting).toHaveBeenCalledWith(
@@ -152,5 +174,71 @@ describe('CoverLetterWorkspace', () => {
       'key-1',
     );
     expect(onReview.mock.calls[0][0].jobContextId).toBe('ctx-9');
+  });
+
+  it('공고 이미지를 붙여넣어 회사·직무를 채운다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(parseJobPostingImages).mockResolvedValue({
+      companyName: '뷰웍스',
+      positions: ['영상처리 개발'],
+      sourceUrl: '',
+      sourceKey: 'img-key',
+    });
+    render(
+      <CoverLetterWorkspace
+        initial={initial}
+        isLoggedIn
+        onSave={vi.fn()}
+        onReview={vi.fn()}
+      />,
+    );
+
+    const file = new File(['fake'], 'posting.png', { type: 'image/png' });
+    await user.upload(screen.getByLabelText('공고 이미지 선택'), file);
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(vi.mocked(parseJobPostingImages).mock.calls[0][0]).toHaveLength(1);
+    expect(screen.getByLabelText('지원 회사')).toHaveValue('뷰웍스');
+  });
+
+  it('붙여넣은 이미지를 개별로 뺄 수 있다', async () => {
+    const user = userEvent.setup();
+    render(
+      <CoverLetterWorkspace
+        initial={initial}
+        isLoggedIn
+        onSave={vi.fn()}
+        onReview={vi.fn()}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText('공고 이미지 선택'),
+      [
+        new File(['a'], 'one.png', { type: 'image/png' }),
+        new File(['b'], 'two.png', { type: 'image/png' }),
+      ],
+    );
+    expect(screen.getByLabelText('2번 이미지 빼기')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('1번 이미지 빼기'));
+    expect(screen.queryByLabelText('2번 이미지 빼기')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('1번 이미지 빼기')).toBeInTheDocument();
+  });
+
+  it('줄여도 너무 큰 이미지는 보내지 않고 안내한다', async () => {
+    const user = userEvent.setup();
+    render(
+      <CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />,
+    );
+
+    // 전체 페이지 캡처 PNG 는 십수 MB 가 흔하다. 그대로 보내면 프록시가 413 으로 끊는다.
+    const huge = new File(['x'], 'long-posting.png', { type: 'image/png' });
+    Object.defineProperty(huge, 'size', { value: 9 * 1024 * 1024 });
+    await user.upload(screen.getByLabelText('공고 이미지 선택'), huge);
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('나눠 캡처');
+    expect(vi.mocked(parseJobPostingImages)).not.toHaveBeenCalled();
   });
 });

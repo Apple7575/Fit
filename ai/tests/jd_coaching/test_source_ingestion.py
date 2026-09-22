@@ -110,7 +110,7 @@ class JdSourceIngestorTest(unittest.TestCase):
 
         self.assertTrue(_looks_like_job_posting(text))
 
-    def test_job_posting_marker_accepts_clova_ocr_section_labels(self):
+    def test_job_posting_marker_accepts_ocr_section_labels(self):
         text = """
         업무내용
         캠프 관리, 차량 적재 및 하차, CS 처리 및 반송 업무
@@ -372,7 +372,7 @@ class JdSourceIngestorTest(unittest.TestCase):
 
         self.assertIn("모집분야: 데이터 엔지니어", result.jd_text)
 
-    def test_image_ocr_probes_later_candidate_before_tall_non_posting_image(self):
+    def test_image_ocr_probes_every_candidate_so_tall_banner_cannot_hog_budget(self):
         from PIL import Image
 
         banner_buffer = io.BytesIO()
@@ -415,7 +415,10 @@ class JdSourceIngestorTest(unittest.TestCase):
         ).from_url("https://example.test/job/1")
 
         self.assertIn("모집부문: 백엔드 개발", result.jd_text)
-        self.assertEqual(call_colors, [(255, 0, 0), (0, 128, 0)])
+        # 후보마다 첫 조각 하나씩만 읽어 어느 쪽이 공고인지 가린다. 24,001px 짜리 배너가
+        # 6번 호출을 독점하면 뒤에 있는 진짜 공고를 못 읽는다.
+        # 조각을 동시에 읽으므로 호출 순서는 보장하지 않는다 — 무엇을 읽었는지만 본다.
+        self.assertCountEqual(call_colors, [(255, 0, 0), (0, 128, 0)])
 
     def test_saramin_detail_is_retried_once_after_transient_fetch_error(self):
         shell = SourceFetchResult(
@@ -570,43 +573,6 @@ class JdSourceIngestorTest(unittest.TestCase):
         ).from_url("https://example.test/job/1")
 
         self.assertIn("담당 업무", result.jd_text)
-
-    def test_image_only_posting_prefers_clova_ocr_over_gemini(self):
-        fetcher = RoutingFakeFetcher({
-            ".png": SourceFetchResult(
-                content=b"fake-image-bytes", content_type="image/png",
-                final_url="https://example.test/flyer.png",
-            ),
-            "": SourceFetchResult(
-                content='<img src="flyer.png">'.encode(),
-                content_type="text/html; charset=utf-8",
-                final_url="https://example.test/job/1",
-            ),
-        })
-        calls: list[str] = []
-
-        def fake_clova(endpoint, secret, image_bytes, mime_type):
-            calls.append(f"clova:{endpoint}:{secret}:{mime_type}")
-            self.assertEqual(image_bytes, b"fake-image-bytes")
-            return "담당 업무: 백엔드 서비스 개발\n자격 요건: 3년 이상 경력"
-
-        def failing_gemini(*_args):
-            raise AssertionError("CLOVA OCR should be preferred")
-
-        result = JdSourceIngestor(
-            fetcher=fetcher,
-            gms_key="gms-key",
-            clova_ocr_endpoint="https://ocr.example.test/general",
-            clova_ocr_secret="clova-secret",
-            clova_ocr_caller=fake_clova,
-            image_ocr_caller=failing_gemini,
-        ).from_url("https://example.test/job/1")
-
-        self.assertIn("담당 업무", result.jd_text)
-        self.assertEqual(
-            calls,
-            ["clova:https://ocr.example.test/general:clova-secret:image/png"],
-        )
 
     def test_image_ocr_reached_even_when_page_has_no_visible_text(self):
         # 공고가 이미지 한 장뿐인 페이지는 title도 없이 <img> 하나만 있는 경우가

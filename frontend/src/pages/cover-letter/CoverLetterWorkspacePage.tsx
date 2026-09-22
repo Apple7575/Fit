@@ -1,49 +1,21 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import {
   createCoverLetter,
-  fetchCoverLetter,
-  registerJobPosting,
   updateCoverLetter,
 } from '../../features/cover-letter/api';
+import { UNTITLED_COVER_LETTER } from '../../features/cover-letter/api';
 import { CoverLetterWorkspace } from '../../features/cover-letter/CoverLetterWorkspace';
 import { useCoverLetter } from '../../features/cover-letter/queries';
 import type { CoverLetterInput, PendingJobPosting } from '../../features/cover-letter/types';
 import { CoverLetterHeader } from './CoverLetterHeader';
 
 const STASH_KEY = 'cover-letter:draft';
-
-/**
- * 저장한 자소서에 공고를 마저 붙인다. 화면을 목록으로 넘긴 뒤에 부른다.
- *
- * 등록은 수십 초 걸려 저장을 붙잡아 둘 수 없다. 그사이 사용자가 자소서를 고쳤을 수 있으므로
- * 다시 읽어 와 식별자만 얹는다 — 저장할 때 보낸 내용을 그대로 쓰면 그 수정이 덮인다.
- *
- * 화면을 이미 떠났으니 실패를 알릴 자리가 없다. 공고를 다시 넣고 AI 검토를 누르면 그때 붙는다.
- */
-async function attachPosting(id: number, input: CoverLetterInput, posting: PendingJobPosting) {
-  try {
-    const context = await registerJobPosting(
-      posting.url,
-      input.targetCompany ?? null,
-      input.targetPosition ?? null,
-      posting.sourceKey,
-    );
-    const latest = await fetchCoverLetter(id);
-    await updateCoverLetter(id, {
-      title: latest.title,
-      targetCompany: latest.targetCompany,
-      targetPosition: latest.targetPosition,
-      jobContextId: context.jobContextId,
-      items: latest.items,
-    });
-  } catch {
-    /* 알릴 자리가 없다. 공고 없이 남는다. */
-  }
-}
+const POSTING_STASH_KEY = 'cover-letter:posting';
+const COVER_LETTER_LIST_URL = '/cover-letters#my-cover-letters';
 
 const blankInput = (): CoverLetterInput => ({
   title: '',
@@ -62,7 +34,30 @@ function readStash(): CoverLetterInput | null {
 }
 function writeStash(input: CoverLetterInput) {
   try {
-    sessionStorage.setItem(STASH_KEY, JSON.stringify(input));
+    /*
+     * 저장 본문에는 제목이 비면 기본 이름이 붙는다. 그것을 초안에까지 남기면 로그인하고
+     * 돌아왔을 때 제목 칸에 '제목 없는 자소서' 가 적힌 채로 열린다 — 쓴 적 없는 제목이
+     * 쓴 것처럼 보이고, 지우지 않으면 그 이름으로 저장된다. 안 쓴 것은 안 쓴 채로 되돌린다.
+     */
+    const draft =
+      input.title === UNTITLED_COVER_LETTER ? { ...input, title: '' } : input;
+    sessionStorage.setItem(STASH_KEY, JSON.stringify(draft));
+  } catch {
+    /* sessionStorage 불가 환경은 무시 */
+  }
+}
+function readPostingStash(): PendingJobPosting | null {
+  try {
+    const raw = sessionStorage.getItem(POSTING_STASH_KEY);
+    return raw ? (JSON.parse(raw) as PendingJobPosting) : null;
+  } catch {
+    return null;
+  }
+}
+function writePostingStash(posting: PendingJobPosting | null | undefined) {
+  try {
+    if (posting) sessionStorage.setItem(POSTING_STASH_KEY, JSON.stringify(posting));
+    else sessionStorage.removeItem(POSTING_STASH_KEY);
   } catch {
     /* sessionStorage 불가 환경은 무시 */
   }
@@ -70,6 +65,7 @@ function writeStash(input: CoverLetterInput) {
 function clearStash() {
   try {
     sessionStorage.removeItem(STASH_KEY);
+    sessionStorage.removeItem(POSTING_STASH_KEY);
   } catch {
     /* noop */
   }
@@ -87,10 +83,12 @@ function NewWorkspace() {
   const fresh = (location.state as { fresh?: boolean } | null)?.fresh === true;
   // 로그인 후 돌아온 경우(퍼널)에만 초안을 복원한다. '새 자소서'(fresh)는 항상 빈 화면.
   const [initial] = useState<CoverLetterInput>(() => (fresh ? blankInput() : readStash() ?? blankInput()));
+  const [initialPosting] = useState<PendingJobPosting | null>(() => fresh ? null : readPostingStash());
 
-  const onSave = async (input: CoverLetterInput, pendingPosting: PendingJobPosting | null) => {
+  const onSave = async (input: CoverLetterInput, pendingPosting?: PendingJobPosting | null) => {
     if (!user) {
       writeStash(input);
+      writePostingStash(pendingPosting);
       navigate('/login?redirect=/cover-letters/new');
       return;
     }
@@ -99,13 +97,13 @@ function NewWorkspace() {
     // 목록으로 보내지 않고 방금 저장한 자소서에 그대로 머문다. 주소만 /new 에서 그 자소서로
     // 바꾼다 — 그러지 않으면 한 번 더 저장할 때 같은 자소서가 또 만들어진다.
     navigate(`/cover-letters/${saved.id}`, { replace: true, state: { justSaved: true } });
-    if (pendingPosting) void attachPosting(saved.id, input, pendingPosting);
   };
 
   // 검토 방은 저장된 자소서에 붙으므로 먼저 저장하고 넘어간다.
-  const onReview = async (input: CoverLetterInput) => {
+  const onReview = async (input: CoverLetterInput, pendingPosting?: PendingJobPosting | null) => {
     if (!user) {
       writeStash(input);
+      writePostingStash(pendingPosting);
       navigate('/login?redirect=/cover-letters/new');
       return;
     }
@@ -115,15 +113,37 @@ function NewWorkspace() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <CoverLetterHeader />
+    <WorkspaceShell>
       <CoverLetterWorkspace
         initial={initial}
+        initialPosting={initialPosting}
         isLoggedIn={!!user}
         onSave={onSave}
         onReview={onReview}
-        onBack={user ? () => navigate('/cover-letters') : undefined}
+        onBack={user ? () => navigate(COVER_LETTER_LIST_URL) : undefined}
       />
+    </WorkspaceShell>
+  );
+}
+
+/**
+ * 쓰는 화면의 껍데기. 첫 화면을 영상에 내주므로 헤더와 서브바를 위로 치워 두고,
+ * 조금이라도 내리면 반투명 유리로 내려온다 — 기업 검색·자소서 첫 화면과 같다.
+ */
+function WorkspaceShell({ children }: { children: ReactNode }) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-950">
+      <CoverLetterHeader floating scrolled={scrolled} />
+      {children}
     </div>
   );
 }
@@ -152,9 +172,8 @@ function ExistingLoaded({ id }: { id: number }) {
   const justSaved = (location.state as { justSaved?: boolean } | null)?.justSaved === true;
 
   // 저장하고 화면을 떠나지 않는다. 고치던 자리에 그대로 두고 저장했다는 것만 알린다.
-  const onSave = async (input: CoverLetterInput, pendingPosting: PendingJobPosting | null) => {
+  const onSave = async (input: CoverLetterInput) => {
     await updateCoverLetter(id, input);
-    if (pendingPosting) void attachPosting(id, input, pendingPosting);
   };
 
   // 고친 내용을 에이전트가 보도록 저장부터 하고 넘어간다.
@@ -168,19 +187,16 @@ function ExistingLoaded({ id }: { id: number }) {
     (state.error.status === 404 || state.error.code === 'COVER_LETTER_NOT_FOUND');
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <CoverLetterHeader />
+    <WorkspaceShell>
+      {state.status === 'loading' && <LoadingScreen />}
 
-      {state.status === 'loading' && (
-        <LoadingScreen />
-      )}
-
+      {/* 못 불러온 경우에는 영상을 깔지 않는다. 읽을 것이 안내 한 줄뿐이다 */}
       {state.status === 'error' && (
-        <div className="mx-auto max-w-6xl px-6 py-8">
+        <div className="mx-auto max-w-6xl px-6 pt-28 pb-8">
           {notFound ? (
             <InlineNotice>
               자소서를 찾을 수 없습니다.{' '}
-              <button className="ml-2 font-semibold text-blue-600" onClick={() => navigate('/cover-letters')} type="button">
+              <button className="ml-2 font-semibold text-blue-600" onClick={() => navigate(COVER_LETTER_LIST_URL)} type="button">
                 목록으로
               </button>
             </InlineNotice>
@@ -199,9 +215,9 @@ function ExistingLoaded({ id }: { id: number }) {
           justSaved={justSaved}
           onSave={onSave}
           onReview={onReview}
-          onBack={() => navigate('/cover-letters')}
+          onBack={() => navigate(COVER_LETTER_LIST_URL)}
         />
       )}
-    </div>
+    </WorkspaceShell>
   );
 }

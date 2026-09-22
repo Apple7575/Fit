@@ -123,6 +123,11 @@ class SupervisorRunRequest(StrictModel):
     # lead 모드: 총괄의 계획 단계를 건너뛰고 이 담당부터 실행한다(담당 직접 호출).
     # 위임과 재실행은 그대로 동작하고 최종 메시지는 lead 담당의 것을 쓴다.
     lead: AgentName | None = None
+    # 담당 고르기. auto 는 총괄이 질문을 보고 고른다(기본).
+    # all 은 실행 가능한 담당을 전부 돌린다 — 부르는 쪽이 이미 "전부 봐 달라"고 정한 경우다.
+    # 자소서를 받아 방을 한 바퀴 도는 첫 검토가 그렇다: 고를 질문이 없는데 총괄이 골라내면
+    # 담당 대부분이 "이 관점은 필요 없다" 로 남아 미리 봐 두는 의미가 사라진다.
+    agent_selection: Literal["auto", "all"] = "auto"
 
     @field_validator("instruction")
     @classmethod
@@ -200,7 +205,7 @@ class TraceStep(StrictModel):
     step: int = Field(ge=1)
     phase: TracePhase
     agent: ToolCaller
-    called_by: str = Field(min_length=1, max_length=40)  # "request" | "plan" | "lead" | 요청 담당 이름
+    called_by: str = Field(min_length=1, max_length=40)  # "request" | "plan" | "lead" | "all" | 요청 담당 이름
     status: Literal["SUCCESS", "FAILED", "SKIPPED"]
     duration_ms: int = Field(ge=0)
     tool_calls: list[ToolCall] = Field(default_factory=list)

@@ -14,6 +14,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from ai.llm import LlmConnectionError, LlmHttpError, LlmResponseError, complete_structured
+from ai.llm.config import GMS, VLLM, load_llm_config
+
 
 class ModelTimeoutError(RuntimeError):
     pass
@@ -33,32 +36,28 @@ class StructuredCompletionClient(Protocol):
 
 @dataclass(frozen=True)
 class QwenConfig:
+    """LLM 접속 설정. 이름은 Qwen 이지만 `provider` 가 gms 면 GMS 설정이 담긴다."""
+
     base_url: str
     model: str
     api_key: str
     timeout_seconds: int = 180
+    provider: str = VLLM
 
     @classmethod
     def from_env_file(cls, path: Path, *, timeout_seconds: int = 180) -> "QwenConfig":
-        values: dict[str, str] = {}
-        if path.exists():
-            for raw in path.read_text(encoding="utf-8").splitlines():
-                line = raw.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                values[key.strip()] = value.strip().strip("\"'")
-        import os
-
-        resolved = {key: os.environ.get(key, "").strip() or values.get(key, "") for key in ("QWEN_BASE_URL", "QWEN_MODEL", "QWEN_API_KEY")}
-        missing = [key for key, value in resolved.items() if not value]
-        if missing:
-            raise RuntimeError(f"Qwen 설정이 비어 있습니다: {', '.join(missing)}")
+        """`LLM_PROVIDER`(또는 `COMPANY_ANALYSIS_LLM_PROVIDER`)에 맞는 설정을 읽는다."""
+        try:
+            config = load_llm_config(path, prefix="COMPANY_ANALYSIS")
+        except ValueError as error:
+            # 이 모듈의 호출부는 설정 누락을 RuntimeError 로 잡는다(api.py 의 503 변환).
+            raise RuntimeError(str(error)) from error
         return cls(
-            base_url=resolved["QWEN_BASE_URL"].rstrip("/"),
-            model=resolved["QWEN_MODEL"],
-            api_key=resolved["QWEN_API_KEY"],
+            base_url=config.base_url,
+            model=config.model,
+            api_key=config.api_key,
             timeout_seconds=timeout_seconds,
+            provider=config.provider,
         )
 
 
@@ -129,3 +128,54 @@ class QwenStructuredClient:
         if not isinstance(output, dict):
             raise InvalidModelResponse("Qwen JSON 결과는 객체여야 합니다")
         return output
+
+
+class GmsStructuredClient:
+    """GMS(Gemini) 로 나가는 같은 모양의 클라이언트.
+
+    `QwenStructuredClient` 와 달리 transport 를 주입받지 않는다. 요청·응답 변환이 `ai.llm.gms`
+    에 있어 여기서는 오류 종류만 이 모듈의 것으로 옮긴다 — 서비스 코드가 잡는 예외가 공급자에
+    따라 달라지면 안 된다.
+    """
+
+    def __init__(self, config: QwenConfig) -> None:
+        self._config = config
+        self.last_usage: dict[str, int] | None = None
+
+    def complete(self, messages: list[dict[str, str]], schema: dict[str, Any], *, max_tokens: int) -> dict[str, Any]:
+        try:
+            result = complete_structured(
+                self._config.__dict__ | {"provider": GMS},
+                messages,
+                schema=schema,
+                schema_name="company_analysis_output",
+                max_tokens=max_tokens,
+                timeout_seconds=self._config.timeout_seconds,
+            )
+        except LlmConnectionError as error:
+            reason = getattr(error, "__cause__", None)
+            if isinstance(getattr(reason, "reason", None), (TimeoutError, socket.timeout)):
+                raise ModelTimeoutError("GMS 응답 시간이 초과되었습니다") from error
+            raise ModelUpstreamError("GMS 호출 실패") from error
+        except LlmHttpError as error:
+            raise ModelUpstreamError(f"GMS 호출 실패: http_status={error.status}") from error
+        except LlmResponseError as error:
+            raise InvalidModelResponse(str(error)) from error
+        except (TimeoutError, socket.timeout) as error:
+            raise ModelTimeoutError("GMS 응답 시간이 초과되었습니다") from error
+
+        usage = result.get("usage")
+        self.last_usage = (
+            {k: int(v) for k, v in usage.items() if isinstance(v, int) and not isinstance(v, bool)}
+            if isinstance(usage, dict)
+            else None
+        )
+        return result["output"]
+
+
+def build_structured_client(config: QwenConfig) -> StructuredCompletionClient:
+    """설정이 가리키는 공급자의 클라이언트를 만든다. 호출부는 어느 쪽인지 몰라도 된다."""
+    if config.provider == GMS:
+        return GmsStructuredClient(config)
+    return QwenStructuredClient(config)
+
