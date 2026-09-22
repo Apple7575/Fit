@@ -57,7 +57,7 @@ SEED_DIR = ROOT / "curated" / "seed"
 #
 # **표마다 여러 개를 적을 수 있다.** 스키마가 바뀌는 중에도 적재가 멈추지 않게 하려는
 # 것이다. news_article 이 그 경우다 — 확정 ERD 가 중복 방지 키를 guid 기준에서
-# 제공처 기준으로 옮기는 중이고(MR !209 의 V34), 그 마이그레이션이 들어오는 순간
+# 제공처 기준으로 옮기는 중이고(MR !209), 그 마이그레이션이 들어오는 순간
 # 옛 키는 스키마에서 사라진다. 후보를 둘 다 적어 두면 **어느 쪽 스키마에서도**
 # 그때 있는 키로 붙는다.
 NATURAL_KEY_CANDIDATES: dict[str, tuple[tuple[str, ...], ...]] = {
@@ -66,7 +66,7 @@ NATURAL_KEY_CANDIDATES: dict[str, tuple[tuple[str, ...], ...]] = {
     "segment_metric": (("corp_code", "fiscal_year", "segment_name", "metric_code"),),
     "news_article": (
         ("corp_code", "guid"),                              # V17 ~ (현재)
-        ("corp_code", "provider", "provider_article_id"),   # V34 이후 (MR !209)
+        ("corp_code", "provider", "provider_article_id"),   # 뉴스 ERD 이후 (MR !209)
     ),
 }
 
@@ -129,7 +129,7 @@ def _check_keys(table: str, key: tuple[str, ...], schema=None) -> str | None:
 
     **묶음으로 본다.** 예전에는 "PK·UK 가 붙은 컬럼 전부" 를 한 뭉치로 모아 비교했다.
     표에 유일키가 하나뿐일 때는 같은 말이지만, 둘이 되면 두 키의 컬럼이 합쳐져
-    어느 쪽과도 맞지 않는다 — V34 가 news_article 에 제공처 기준과 원문 URL 기준
+    어느 쪽과도 맞지 않는다 — MR !209 가 news_article 에 제공처 기준과 원문 URL 기준
     둘을 걸면 그 상태가 된다 (실측: 코드 ('corp_code','guid') vs 합쳐진 넷).
     """
     resolved = (schema or flyway.load()).table(table)

@@ -80,7 +80,7 @@ def _limits(schema: flyway.Schema) -> dict[str, int]:
 def seed_header(schema: flyway.Schema) -> list[str]:
     """Flyway 컬럼 순서에서 identity 를 뺀 헤더. **이것이 시드 헤더의 정본이다.**
 
-    `SEED_FIELDS` 는 지금 스키마를 적어 둔 사본이라 낡을 수 있다 (V34 가 들어오면
+    `SEED_FIELDS` 는 지금 스키마를 적어 둔 사본이라 낡을 수 있다 (뉴스 ERD 마이그레이션이 들어오면
     그렇게 된다). 낡았다는 사실은 verify 9번이 알려 준다.
     """
     table = schema.table(SEED_TABLE)
@@ -100,7 +100,7 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
     """
     resolved = schema or flyway.load()
     # 헤더는 **스키마에서 받는다.** 상수에 맞추라고 요구하면 컬럼이 바뀌는 날
-    # (V34) 시드가 통째로 멈춘다. 대신 "채울 줄 모르는 컬럼" 만 막는다.
+    # (MR !209) 시드가 통째로 멈춘다. 대신 "채울 줄 모르는 컬럼" 만 막는다.
     header = seed_header(resolved)
     unknown = [c for c in header if c not in SEED_COLUMN_FILL]
     if unknown:
@@ -165,7 +165,7 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
             seen_url[key] = row["article_key"]
 
         # 값은 **이름으로** 채우고 헤더에 있는 것만 내보낸다. 스키마가 바뀌어도
-        # (V34 가 source·guid 를 publisher·provider_article_id 로 옮긴다) 같은
+        # (MR !209 가 source·guid 를 publisher·provider_article_id 로 옮긴다) 같은
         # 코드가 양쪽을 만든다.
         provider_url = (row.get("rss_link") or row.get("google_url") or "").strip()
         values = {
@@ -178,7 +178,7 @@ def build(staged_rows: list[dict], schema: flyway.Schema | None = None,
             # V17 이 더한 중복 방지 키. staged 가 RSS item/guid 를 그대로 들고 있어
             # 옮기기만 하면 된다. 없으면 빈 칸(NULL)이고 NULL 끼리는 충돌하지 않는다.
             "guid": row.get("guid") or "",
-            # ── V34 이후의 자리들 (지금 스키마에는 없어 헤더에서 걸러진다)
+            # ── 뉴스 ERD 마이그레이션 이후의 자리들 (지금 스키마에는 없어 헤더에서 걸러진다)
             "provider": PROVIDER,
             "provider_url": provider_url,
             "provider_article_id": row.get("guid") or "",

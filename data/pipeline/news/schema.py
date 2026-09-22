@@ -107,7 +107,7 @@ SEED_FIELDS = [
 # 시드 컬럼을 무엇으로 채우는지. **여기 없는 컬럼이 스키마에 생기면 시드를 만들지
 # 않고 멈춘다** (`curate.build`) — 새 컬럼을 조용히 빈 칸으로 내보내지 않으려는 것이다.
 #
-# 아래 여섯은 아직 스키마에 없다. 확정 ERD 대조(MR !209 의 V34)가 들어오면 생기고,
+# 아래 여섯은 아직 스키마에 없다. 확정 ERD 대조(MR !209)가 들어오면 생기고,
 # 그때 `source`·`guid` 는 사라진다. **두 모양 모두에서 시드가 만들어지도록** 미리
 # 적어 둔다 — 마이그레이션이 머지되는 순간 적재가 멈추는 것을 피한다.
 SEED_COLUMN_FILL = {
@@ -119,7 +119,7 @@ SEED_COLUMN_FILL = {
     "importance_score": "비운다 — AI 분석 미채택 (2026-09-21 팀장 확정)",
     "collected_at": "staged.collected_at",
     "guid": "staged.guid (RSS item/guid)",
-    # ↓ V34 (MR !209) 가 들어오면 생기는 컬럼
+    # ↓ MR !209 (뉴스 ERD) 가 들어오면 생기는 컬럼
     "provider": "google_news_rss 상수",
     "provider_url": "제공처가 준 링크 = 구글 뉴스 링크",
     "provider_article_id": "staged.guid — guid 가 옮겨 갈 자리다",
