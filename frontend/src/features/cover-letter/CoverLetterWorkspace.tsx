@@ -512,7 +512,7 @@ export function CoverLetterWorkspace({
                     value={item.question}
                     onChange={(event) => editItem(item.key, { question: event.target.value })}
                     placeholder="예: 지원 동기와 입사 후 포부를 기술하시오."
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[14px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[15px] text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
                 <div className="sm:w-32">
@@ -525,7 +525,7 @@ export function CoverLetterWorkspace({
                     onChange={(event) =>
                       editItem(item.key, { charLimit: Math.min(4000, Number(event.target.value) || 0) })
                     }
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[14px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
               </div>
@@ -537,7 +537,7 @@ export function CoverLetterWorkspace({
                   rows={8}
                   maxLength={item.charLimit || 4000}
                   placeholder="답변을 붙여넣거나 입력하세요."
-                  className="w-full resize-y rounded-lg border border-slate-200 p-3 text-[15px] leading-7 text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="w-full resize-y rounded-lg border border-slate-200 p-3 text-[15px] leading-7 text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
                 <div className="mt-1.5 text-right text-[12px] text-slate-400">
                   <span className={item.answer.length > item.charLimit ? 'text-rose-500' : ''}>
@@ -797,7 +797,7 @@ function JobPostingBar({
           tabIndex={0}
         >
           {images.length === 0 ? (
-            <span className="text-[12.5px] text-slate-400">
+            <span className="text-[15px] text-slate-400">
               공고가 이미지면 여기를 누르고 <kbd className="rounded bg-slate-100 px-1">Ctrl</kbd>+
               <kbd className="rounded bg-slate-100 px-1">V</kbd> 로 붙여넣으세요
             </span>
