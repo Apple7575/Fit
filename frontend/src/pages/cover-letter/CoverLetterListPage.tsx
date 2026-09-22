@@ -102,7 +102,7 @@ function Hero({
           <h1 className="display-lg text-balance">회사의 언어로 다시 씁니다</h1>
           {/* 한 줄로 읽히길 바라는 자리다. 46ch 는 한글 42자를 못 담아 줄이 갈렸다 */}
           <p className="mt-3 text-[15px] break-keep text-white/70">
-            작성 중인 자소서를 올리면 코치 다섯이 각자 맡은 자료로 읽고 고칠 곳을 짚어 줍니다.
+            작성 중인 자소서를 올리면 코치 다섯이 자료를 나눠 분석해서 고칠 곳을 짚어 줍니다.
           </p>
           <button
             className="mt-8 rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
