@@ -39,6 +39,20 @@ public class AuthService {
         return new SignupResponse(user.getEmail());
     }
 
+    /**
+     * 현재 비밀번호를 다시 확인한 뒤 회원과 회원 소유 데이터를 영구 삭제한다.
+     * 자소서·면접·검토 방은 users FK 의 ON DELETE CASCADE 로 함께 정리된다.
+     */
+    @Transactional
+    public void withdraw(Long userId, String password) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHENTICATED));
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+        userRepository.delete(user);
+    }
+
     // 이미 인증된 계정이면 중복, 미인증(PENDING)이면 자격을 새로 받아 재발급한다.
     private User reset(User existing, String passwordHash, String nickname) {
         if (existing.getStatus() != UserStatus.PENDING) {
