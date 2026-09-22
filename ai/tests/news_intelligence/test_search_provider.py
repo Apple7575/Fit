@@ -83,6 +83,16 @@ DUPLICATE_GUID_RSS = """<?xml version=\"1.0\"?>
 </channel></rss>""".encode()
 
 
+def _feed(items):
+    body = "".join(
+        f"<item><title>{title} - 매일경제</title><link>https://example.test/{guid}</link>"
+        f"<guid>{guid}</guid><pubDate>Mon, 14 Sep 2026 00:00:00 +0000</pubDate>"
+        f"<source url=\"https://mk.co.kr\">매일경제</source></item>"
+        for guid, title in items
+    )
+    return f'<?xml version="1.0"?><rss><channel>{body}</channel></rss>'.encode("utf-8")
+
+
 class GoogleNewsRssProviderTest(unittest.TestCase):
     def test_google_provider_makes_one_bounded_request_per_missing_scope(self):
         fetcher = Mock(return_value=RSS_BYTES)
@@ -184,6 +194,26 @@ class GoogleNewsRssProviderTest(unittest.TestCase):
         )
 
         self.assertEqual([c.title for c in merged], ["c1", "r1", "c2", "c3"])
+
+    def test_empty_scopes_search_company_only(self):
+        fetcher = Mock(return_value=RSS_BYTES)
+        provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
+
+        provider.search(**{**REQUEST, "missing_scopes": []})
+
+        self.assertEqual(fetcher.call_count, 1)
+        query = parse_qs(urlsplit(fetcher.call_args.args[0]).query)["q"][0]
+        self.assertTrue(query.startswith('"삼성전자" after:'))
+
+    def test_interleaves_scopes_and_drops_duplicates_across_scopes(self):
+        company_feed = _feed([("A1", "기업 기사 1"), ("A2", "기업 기사 2"), ("A3", "기업 기사 3")])
+        role_feed = _feed([("R1", "직무 기사 1"), ("A1", "기업 기사 1")])
+        fetcher = Mock(side_effect=[company_feed, role_feed])
+        provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
+
+        rows = provider.search(**{**REQUEST, "missing_scopes": ["COMPANY", "ROLE"], "limit": 3})
+
+        self.assertEqual([row.guid for row in rows], ["A1", "R1", "A2"])
 
     def test_keeps_valid_rows_sorts_newest_first_and_applies_requested_limit(self):
         provider = GoogleNewsRssProvider(fetcher=Mock(return_value=RSS_BYTES), now=lambda: NOW)

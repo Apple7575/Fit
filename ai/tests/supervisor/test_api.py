@@ -321,9 +321,8 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
                 "experience-depth-v1",
                 request["agent_contexts"]["position"]["position_context"],
                 request["documents"],
-                # 이력 뒤에 이번 질문이 붙는다. 서비스가 instruction 을 받는 자리가 없어
-                # 이력만 넘기면 늘 같은 분석이 돌아온다.
-                [*request["conversation"], {"role": "USER", "content": request["instruction"]}],
+                request["conversation"],
+                request["instruction"],  # 사용자 요청문이 포지션 서비스까지 전달되어야 한다
             )
         ])
 

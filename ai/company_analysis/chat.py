@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+from ai.prompting.common import with_common_rules
 import json
 import logging
 import re
@@ -224,7 +225,7 @@ class CompanyChatService:
         self._retriever = retriever
         self._client = client
         self._store = store
-        self._prompt = prompt_path.read_text(encoding="utf-8").strip()
+        self._prompt = with_common_rules(prompt_path.read_text(encoding="utf-8"))
         self._clock = clock
         self._new_id = id_factory
 

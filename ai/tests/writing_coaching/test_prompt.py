@@ -83,8 +83,8 @@ class WritingPromptTest(unittest.TestCase):
             "REWRITE",
             "BALANCED",
             # 사실 잠금은 그대로다. 문구가 바뀌어도 이 뜻은 남아야 한다.
-            "Never invent a metric, date, employer, technology",
-            "introduce facts",
+            "수치, 날짜, 소속, 기술, 역할, 성과, 인과관계를 새로 만들지 않는다",
+            "사실을 추가할 수 없다",
         ):
             with self.subTest(value=value):
                 self.assertIn(value, system)
@@ -105,15 +105,15 @@ class WritingPromptTest(unittest.TestCase):
         system = build_writing_messages(request, RUBRIC)[0]["content"]
 
         for value in (
-            "Facts and judgment are different things",
-            "your first tool, not your last",
-            "the way its reader will",
+            "사실과 판단은 다르며",
+            "마지막 수단이 아니라",
+            "읽는 사람의 눈으로 읽어라",
             # 자기가 낸 제안을 이어서 쓸 수 있어야 "두 번째 걸로" 가 통한다.
-            "legitimate material for\nexpression and structure",
-            "still not a source of facts",
-            "one thing the user did not ask about",
-            "Do not repeat a point you already made",
-            '"revised_text" may contain only facts already present',
+            "표현과 구조의 재료로",
+            "새로운 주장을 참으로 만들지 않는다",
+            "묻지 않으셨지만",
+            "되풀이하지 않는다",
+            '"revised_text"에는 초안에 이미 있거나 사용자가 말한 사실만',
         ):
             with self.subTest(value=value):
                 self.assertIn(value, system)
@@ -133,7 +133,7 @@ class WritingPromptTest(unittest.TestCase):
             payload["previous_validation_error"],
             "change before must occur in draft",
         )
-        self.assertIn("entire corrected JSON", payload["retry_instruction"])
+        self.assertIn("JSON 객체 전체", payload["retry_instruction"])
 
 
 if __name__ == "__main__":

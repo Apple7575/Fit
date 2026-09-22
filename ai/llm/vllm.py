@@ -34,6 +34,10 @@ def complete(
         "model": config["model"],
         "messages": messages,
         "temperature": 0,
+        # 구조화 출력(json_schema) + temperature 0 에서 모델이 JSON 도중 공백·줄바꿈만 max_tokens 까지
+        # 반복하는 퇴화가 실측(2026-09-22, 총괄 계획·JD 판정)에서 재현됐다. 약한 빈도 페널티가
+        # 이 루프를 끊고(46초 실패 → 6초 정상) 출력 형태는 바꾸지 않는다. repetition_penalty 는 줄바꿈 출력을 되살렸다.
+        "frequency_penalty": 0.2,
         "max_tokens": max_tokens,
         "chat_template_kwargs": {"enable_thinking": False},
         "response_format": {

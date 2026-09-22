@@ -53,8 +53,8 @@ class FakePositionService:
     def __init__(self):
         self.calls = []
 
-    def analyze(self, rubric_id, position_context, documents, conversation):
-        self.calls.append((rubric_id, position_context, documents, conversation))
+    def analyze(self, rubric_id, position_context, documents, conversation, instruction=None):
+        self.calls.append((rubric_id, position_context, documents, conversation, instruction))
         return {
             "analysis_status": "NO_EXPERIENCE_CLAIM",
             "rubric": {"id": rubric_id},
@@ -199,9 +199,8 @@ class AgentRegistryTest(unittest.TestCase):
                 "priority_requirements": ["Spring 기반 API 개발"],
             },
             position_documents,
-            # 이번에 물은 것이 대화 끝에 붙는다. 이력만 넘기면 포지션 담당이 "무엇을 묻는지"
-            # 를 몰라 늘 같은 분석을 낸다.
-            [{"role": "USER", "content": "검토"}],
+            [],
+            "검토",  # 사용자 요청문이 포지션 서비스까지 전달되어야 한다
         )])
 
     def test_position_answers_the_question_on_top_of_the_analysis(self):
@@ -351,3 +350,30 @@ class AgentRegistryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RegistryDescribeTest(unittest.TestCase):
+    def test_describe_returns_each_adapter_own_description_in_requested_order(self):
+        registry = AgentRegistry([
+            JdAgentAdapter(lambda: FakeJdService()),
+            PositionAgentAdapter(lambda: FakePositionService()),
+        ])
+
+        described = registry.describe(["position", "jd", "unknown"])
+
+        self.assertEqual(list(described), ["position", "jd"])
+        self.assertIn("비기술", described["position"])
+        self.assertEqual(described["jd"], JdAgentAdapter.description)
+
+    def test_describe_falls_back_to_name_when_adapter_has_no_description(self):
+        class Bare:
+            name = "bare"
+
+            def is_available(self, context):
+                return True
+
+            def execute(self, *args, **kwargs):
+                return {}
+
+        self.assertEqual(AgentRegistry([Bare()]).describe(["bare"]), {"bare": "bare"})
+

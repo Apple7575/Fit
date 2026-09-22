@@ -8,6 +8,7 @@ citation_ids 는 이번 호출에 넣어 준 근거 ID 만 enum 으로 허용하
 
 from __future__ import annotations
 
+from ai.prompting.common import with_common_rules
 import json
 import logging
 import re
@@ -683,7 +684,7 @@ class NarrativeEnricher:
         self._reports = reports
         self._table_facts = table_facts
         self._plans = tuple(plans) if plans is not None else tuple(PLANS.values())
-        self._prompt = prompt_path.read_text(encoding="utf-8").strip()
+        self._prompt = with_common_rules(prompt_path.read_text(encoding="utf-8"))
         self._max_output_tokens = max_output_tokens
 
     def enrich(self, facts: CompanyFacts, report: CompanyReport) -> CompanyReport:

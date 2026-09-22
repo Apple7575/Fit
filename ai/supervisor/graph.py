@@ -212,6 +212,7 @@ def build_supervisor_graph(
                     conversation=state["conversation"],
                     available_agents=state["available_agents"],
                     validation_error=validation_error,
+                    agent_capabilities=registry.describe(state["available_agents"]),
                 )
             except PlanOutputError as error:
                 validation_error = str(error)
@@ -512,7 +513,8 @@ def build_supervisor_graph(
             writing_message = writing_result.result.get("message")
             writing_text = writing_message if isinstance(writing_message, str) else ""
             if len(successes) == 1:
-                # 글쓰기 혼자 답했다. 종합할 것이 없으니 그 말을 그대로 쓴다.
+                # 글쓰기만 단독으로 성공했으면 종합할 것이 없다. 되묻기(CLARIFICATION_REQUIRED)도
+                # 그대로 전달한다.
                 return {"final_message": writing_text}
             if writing_result.result.get("status") == "CLARIFICATION_REQUIRED":
                 # 되물음은 답이 아니라 사용자에게 던지는 질문이다. 이것만 내보내면 다른 담당이
