@@ -413,9 +413,7 @@ export function CoverLetterWorkspace({
             step === META_STEP ? '' : 'hidden'
           }`}
         >
-          <p className="text-xs text-slate-500">
-            회사·직무는 비워 둬도 됩니다. 채우면 그 기준으로 읽어요.
-          </p>
+          <p className="text-xs text-slate-500">채우면 그 회사·직무 기준으로 읽어요.</p>
 
           <div className="mt-4">
             <JobPostingBar onParsed={applyPosting} />
@@ -762,27 +760,41 @@ function JobPostingBar({
         채용공고 URL <span className="font-medium text-slate-400">(선택)</span>
       </label>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          id="cl-posting-url"
-          value={url}
-          onChange={(event) => {
-            setUrl(event.target.value);
-            if (status === 'error') {
-              setStatus('idle');
-              setMessage('');
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              confirm();
-            }
-          }}
-          type="url"
-          inputMode="url"
-          placeholder="공고 주소를 넣고 확인하면 지원 회사와 직무를 대신 채워 드려요."
-          className="h-[42px] min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-        />
+        {/* 무엇을 넣는 칸인지 글을 읽기 전에 알아보게 한다. 기업명 검색 칸과 같은 자리·크기다 */}
+        <div className="relative min-w-0 flex-1">
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.5 1.5" strokeLinecap="round" />
+            <path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1.5-1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            id="cl-posting-url"
+            value={url}
+            onChange={(event) => {
+              setUrl(event.target.value);
+              if (status === 'error') {
+                setStatus('idle');
+                setMessage('');
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                confirm();
+              }
+            }}
+            type="url"
+            inputMode="url"
+            placeholder="공고 주소를 넣고 확인하면 지원 회사와 직무를 대신 채워 드려요."
+            className="h-[42px] w-full rounded-lg border border-slate-200 pr-3 pl-9 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
         <button
           onClick={confirm}
           disabled={status === 'loading' || !canConfirm}
@@ -809,9 +821,23 @@ function JobPostingBar({
           tabIndex={0}
         >
           {images.length === 0 ? (
-            <span className="text-[13.5px] text-slate-400">
-              공고가 이미지면 여기를 누르고 <kbd className="rounded bg-slate-100 px-1">Ctrl</kbd>+
-              <kbd className="rounded bg-slate-100 px-1">V</kbd> 로 붙여넣으세요
+            <span className="flex items-center gap-2 text-[13.5px] text-slate-400">
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <rect height="18" rx="2" width="18" x="3" y="3" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-4.5-4.5L5.5 21" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="min-w-0">
+                공고가 이미지면 여기를 누르고 <kbd className="rounded bg-slate-100 px-1">Ctrl</kbd>+
+                <kbd className="rounded bg-slate-100 px-1">V</kbd> 로 붙여넣으세요
+              </span>
             </span>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
