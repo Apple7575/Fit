@@ -57,6 +57,7 @@ from data.news_poc.pipeline.collect import build_plan as build_daily_plan  # noq
 from data.news_poc.pipeline.normalize import parse_feed  # noqa: E402
 from pipeline.news import corpmap  # noqa: E402
 from pipeline.paths import CONFIG  # noqa: E402
+from pipeline.universe import is_excluded  # noqa: E402
 
 # 정규 시장 상장사만 받는다. corp_cls=E 1,227개사는 다른 표가 아무도 참조하지 않는다
 # (`build_curated_seed.build_company` 와 같은 경계다).
@@ -82,6 +83,10 @@ def company_names(universe: Path | None = None, *, aliases: bool = True) -> list
     with target.open(encoding="utf-8-sig", newline="") as stream:
         for row in csv.DictReader(stream):
             if (row.get("corp_cls") or "").strip() not in LISTED_CLS:
+                continue
+            # 스팩은 묻지 않는다 — 사업이 없다 (pipeline/universe.py 주석).
+            # 매핑(corpmap)도 같은 규칙으로 거르므로 검색어와 색인이 어긋나지 않는다.
+            if is_excluded(row.get("corp_name") or ""):
                 continue
             name = (row.get("corp_name") or "").strip()
             if name and name not in seen:
