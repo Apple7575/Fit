@@ -91,7 +91,7 @@ export function MediaSlot({
 }
 
 /** 화상 통화 자리에 흔히 쓰는 사람 실루엣. 머리와 어깨만으로 "여기 사람이 앉는다"를 말한다 */
-function PersonMark() {
+export function PersonMark() {
   return (
     <span
       aria-hidden="true"
