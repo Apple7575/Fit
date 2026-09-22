@@ -129,7 +129,6 @@ function Workspace() {
 
   const agentNavigation = error ? null : (
     <ThreadSidebar
-      bookmarks
       rooms={rooms}
       selectedRoomId={selectedRoomId}
       onSelect={setSelectedRoomId}
