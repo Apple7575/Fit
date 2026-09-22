@@ -14,6 +14,7 @@ import csv
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from ..universe import is_excluded
 
 CONFIG = Path(__file__).resolve().parents[2] / "config"
 
@@ -128,6 +129,12 @@ def load(path: Path | None = None) -> CorpMap:
     """company_universe.csv 를 읽어 색인을 만든다. BOM 이 붙어 있어 utf-8-sig 로 읽는다."""
     target = path or (CONFIG / "company_universe.csv")
     with target.open(encoding="utf-8-sig", newline="") as stream:
-        corp_map = CorpMap(list(csv.DictReader(stream)))
+        # 스팩은 색인에 넣지 않는다 — 사업이 없어 수집 대상에서 뺐다
+        # (`pipeline/universe.py` 주석에 근거가 있다). 수집 드라이버가 검색어에서
+        # 빼는 것과 **같은 규칙**이어야 한다. 한쪽만 걸면 기사를 받아 놓고 붙일
+        # 기업이 없어 staged 에서 통째로 버려진다.
+        rows = [r for r in csv.DictReader(stream)
+                if not is_excluded(r.get("corp_name") or "")]
+        corp_map = CorpMap(rows)
     corp_map.add_aliases(load_aliases())
     return corp_map
