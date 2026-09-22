@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { HEADER_LINE, HEADER_SURFACE } from '../../components/layout/SiteHeader';
 import {
   averageDelivery,
   describeDelivery,
@@ -232,7 +233,7 @@ export function InterviewReport({
   return (
     <div>
       {/* 면접 제목은 전역 헤더의 브레드크럼이 맡는다. 여기는 문항 탭과 버튼 한 줄만 둔다 */}
-      <div className="sticky top-14 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+      <div className={`sticky top-14 z-20 ${HEADER_LINE} ${HEADER_SURFACE}`}>
         <div className="mx-auto flex max-w-[1320px] items-end gap-3 px-5 lg:px-8">
           {/* overflow-y-hidden: 탭의 -mb-px 때문에 세로 스크롤바가 생기는 걸 막는다 */}
           <div className="flex gap-1 overflow-x-auto overflow-y-hidden" role="tablist">

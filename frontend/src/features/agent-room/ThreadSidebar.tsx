@@ -6,10 +6,15 @@ interface ThreadSidebarProps {
   rooms: RoomSummary[];
   selectedRoomId: number | null;
   onSelect: (roomId: number) => void;
+  /**
+   * 자리가 넉넉한 곳(입장 화면)에서는 옆으로 밀지 않고 줄바꿈한다. 좁은 곳에서 가로로
+   * 미는 것은 자리가 없어서지, 그게 더 나아서가 아니다.
+   */
+  wrap?: boolean;
 }
 
 /** 에이전트 전담 방과 총괄 논의 방을 한 줄의 선택 버튼으로 보여준다. */
-export function ThreadSidebar({ rooms, selectedRoomId, onSelect }: ThreadSidebarProps) {
+export function ThreadSidebar({ rooms, selectedRoomId, onSelect, wrap = false }: ThreadSidebarProps) {
   // 총괄 논의를 맨 앞에 두고 이어서 개별 에이전트를 배치한다.
   const ordered = [...rooms].sort((a, b) => Number(b.agentCount > 1) - Number(a.agentCount > 1));
 
@@ -48,8 +53,8 @@ export function ThreadSidebar({ rooms, selectedRoomId, onSelect }: ThreadSidebar
   };
 
   return (
-    <nav aria-label="대화 목록" className="overflow-x-auto pb-1">
-      <ul className="flex min-w-max gap-2">
+    <nav aria-label="대화 목록" className={wrap ? undefined : 'overflow-x-auto pb-1'}>
+      <ul className={wrap ? 'flex flex-wrap justify-center gap-2' : 'flex min-w-max gap-2'}>
         {ordered.map(row)}
       </ul>
     </nav>

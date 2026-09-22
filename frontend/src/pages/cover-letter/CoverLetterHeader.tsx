@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { SiteHeader } from '../../components/layout/SiteHeader';
+import { HEADER_LINE, HEADER_SURFACE, SiteHeader } from '../../components/layout/SiteHeader';
 
 const SECTIONS = [
   { to: '/cover-letters', label: '자기소개서' },
@@ -26,14 +26,15 @@ export function CoverLetterHeader({
 
   return (
     <>
-      <SiteHeader floating={floating} scrolled={scrolled} />
+      <SiteHeader floating={floating} scrolled={scrolled} subnav />
+      {/* 헤더와 이 띠는 붙어 있으므로 같은 재질을 쓴다. 값이 다르면 두 겹으로 읽힌다 */}
       <div
         className={
           floating
-            ? `fixed inset-x-0 top-14 z-20 border-b transition-[transform,background-color,border-color,opacity] duration-300 ${
+            ? `fixed inset-x-0 top-14 z-20 ${HEADER_LINE} transition-[transform,background-color,border-color,opacity] duration-300 ${
                 away
                   ? '-translate-y-[200%] border-transparent bg-transparent opacity-0'
-                  : 'translate-y-0 border-slate-200/70 bg-white/70 opacity-100 backdrop-blur-xl'
+                  : `translate-y-0 opacity-100 ${HEADER_SURFACE}`
               }`
             : 'border-b border-slate-200 bg-white'
         }

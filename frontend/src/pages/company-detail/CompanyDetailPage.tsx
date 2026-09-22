@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { CompanyLogo } from '../../features/company-summary/CompanyLogo';
-import { SiteHeader } from '../../components/layout/SiteHeader';
+import { HEADER_LINE, HEADER_SURFACE, SiteHeader } from '../../components/layout/SiteHeader';
 import {
   useCompanyDetail,
   type CompanyDetailState,
@@ -78,17 +78,18 @@ export function CompanyDetailPage() {
   };
 
   const chromeAway = immersive && !revealed;
+  // 헤더와 이 띠는 붙어 있으므로 같은 재질을 쓴다. 값이 다르면 두 겹으로 읽힌다.
   const subBar = immersive
-    ? `fixed inset-x-0 top-14 z-20 border-b transition-[transform,background-color,border-color,opacity] duration-300 ${
+    ? `fixed inset-x-0 top-14 z-20 ${HEADER_LINE} transition-[transform,background-color,border-color,opacity] duration-300 ${
         chromeAway
           ? '-translate-y-[200%] border-transparent bg-transparent opacity-0'
-          : 'translate-y-0 border-slate-200/70 bg-white/70 opacity-100 backdrop-blur-xl'
+          : `translate-y-0 opacity-100 ${HEADER_SURFACE}`
       }`
-    : 'sticky top-14 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md';
+    : `sticky top-14 z-20 ${HEADER_LINE} ${HEADER_SURFACE}`;
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <SiteHeader breadcrumb={detail?.corpName} floating={immersive} scrolled={revealed} />
+      <SiteHeader breadcrumb={detail?.corpName} floating={immersive} scrolled={revealed} subnav />
 
       <div className={subBar} inert={chromeAway}>
         {/* 서브바 높이는 자소서 서브바와 같아야 한다 — 탭을 오갈 때 헤더가 들썩인다 (SUBBAR_ROW) */}
@@ -97,13 +98,11 @@ export function CompanyDetailPage() {
             // 로고·기업명이 곧 요약 화면으로 가는 링크다 (별도 "요약" 탭을 두지 않는다)
             <NavLink
               aria-label={`${detail.corpName} 요약`}
-              className={({ isActive }) =>
-                `-ml-1.5 flex min-w-0 items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-extrabold transition ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-                    : 'text-slate-950 hover:bg-slate-100'
-                }`
-              }
+              /*
+               * 기업명은 탭이 아니라 이 화면이 누구 이야기인지 말하는 이름표다. 알약을
+               * 씌우면 옆의 구획 탭과 같은 급으로 읽혀, 한 줄에 선택된 것이 둘처럼 보인다.
+               */
+              className="-ml-1.5 flex min-w-0 items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-extrabold text-slate-950 transition hover:bg-slate-100"
               onClick={(event) => {
                 // 이미 요약에 있으면 라우터를 거치지 않고 첫 화면으로 굴러 올라간다
                 if (!immersive) return;
@@ -123,8 +122,9 @@ export function CompanyDetailPage() {
           )}
           {detail?.corpName && <span aria-hidden="true" className="hidden h-5 w-px bg-slate-200 sm:block" />}
           <CompanyTabNav />
+          {/* 기준 연도를 알리는 표시지 누를 것이 아니다. 파란 칩이면 버튼처럼 보인다 */}
           {detail?.dataYear != null && (
-            <p className="ml-auto rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            <p className="ml-auto rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
               최근 공시 기준
             </p>
           )}
