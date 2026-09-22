@@ -401,11 +401,11 @@ export function CoverLetterWorkspace({
             }}
             placeholder="예: 2026 상반기 백엔드 신입 지원"
             /*
-             * 예시 글씨 크기를 칸 글씨(24px)와 같게 둔다. 작게 하면 같은 기준선에 앉은 채
+             * 예시 글씨 크기를 칸 글씨(20px)와 같게 둔다. 작게 하면 같은 기준선에 앉은 채
              * 글자만 작아져 아래로 처져 보인다 — 칸 안에서 가운데가 아니게 된다. 옅은 색과
              * 보통 굵기만으로도 예시인 줄 알아본다.
              */
-            className="w-full rounded-xl bg-white/10 px-4 py-3 text-2xl font-bold tracking-tight text-white ring-1 ring-white/20 backdrop-blur outline-none transition placeholder:font-normal placeholder:text-white/35 focus:bg-white/15 focus:ring-2 focus:ring-white/50"
+            className="w-full rounded-xl bg-white/10 px-4 py-3 text-xl font-bold tracking-tight text-white ring-1 ring-white/20 backdrop-blur outline-none transition placeholder:font-normal placeholder:text-white/35 focus:bg-white/15 focus:ring-2 focus:ring-white/50"
           />
         </div>
 
