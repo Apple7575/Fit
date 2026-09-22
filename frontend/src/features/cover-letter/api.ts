@@ -7,6 +7,12 @@ import type {
   JobPostingParseResult,
 } from './types';
 
+/**
+ * 제목 없이 저장할 때 붙는 이름. 목록에서 "제목 없는 자소서" 들이 구분되지 않으므로
+ * 좋은 이름은 아니지만, 이름 없는 자소서를 목록에 내보낼 수는 없다.
+ */
+export const UNTITLED_COVER_LETTER = '제목 없는 자소서';
+
 /** 채용공고 URL 에서 회사명과 모집 직무를 읽어 온다(무저장, 공개). */
 export const parseJobPosting = (url: string, signal?: AbortSignal) =>
   apiSend<JobPostingParseResult>('POST', '/api/job-postings/parse', { url }, { signal });
