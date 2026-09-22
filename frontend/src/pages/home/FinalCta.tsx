@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { CharacterSlot } from '../../components/brand/CharacterSlot';
 import { COACHES } from '../../components/brand/characters';
 import { useInView } from '../../hooks/useInView';
+import { useCoverLetterCta } from './coverLetterCta';
 import { FEATURED_COMPANIES } from './featuredCompanies';
 
 interface FinalCtaProps {
@@ -20,6 +21,7 @@ const START_POSTER = '/landing/start.jpg';
  * 혼자 따로 놀았다. 배경도 레이아웃 문법도 앞 장들에 맞추고, 카드는 걷어낸다.
  */
 export function FinalCta({ onStart }: FinalCtaProps) {
+  const coverLetterCta = useCoverLetterCta();
   const [ref, inView] = useInView<HTMLDivElement>({ threshold: 0.3 });
 
   return (
@@ -73,9 +75,9 @@ export function FinalCta({ onStart }: FinalCtaProps) {
             </button>
             <Link
               className="rounded-full px-8 py-3.5 text-base font-bold text-white/80 ring-1 ring-white/25 transition hover:-translate-y-0.5 hover:bg-white/10 hover:text-white"
-              to="/cover-letters/new"
+              to={coverLetterCta.to}
             >
-              로그인 없이 자소서 써 보기
+              {coverLetterCta.label}
             </Link>
           </div>
           {/*
