@@ -43,7 +43,7 @@ const HERO_POSTER = '/cover-letter-media/hero.jpg';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
-/** 0 = 제목·기업·직무, 1 이상 = 그 번째 문항. 한 화면에 한 가지만 둔다. */
+/** 0 = 희망 기업·직무, 1 이상 = 그 번째 문항. 한 화면에 한 가지만 둔다. */
 type Step = number;
 
 const META_STEP = 0;
@@ -83,7 +83,7 @@ function StepRail({
         onClick={() => onGo(META_STEP)}
         type="button"
       >
-        제목·기업·직무
+        희망 기업·직무
       </button>
 
       <span aria-hidden="true" className="text-white/25">→</span>
