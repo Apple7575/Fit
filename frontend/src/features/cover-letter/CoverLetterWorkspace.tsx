@@ -764,7 +764,7 @@ function JobPostingBar({
         <div className="relative min-w-0 flex-1">
           <svg
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute top-1/2 left-[13px] size-4 -translate-y-1/2 text-slate-400"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -810,8 +810,13 @@ function JobPostingBar({
         화면에는 보이므로 복사해 온 이미지를 그대로 받는다.
       */}
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        {/*
+          옆 단추(42px)에 맞춰 늘어나는 칸이라, 안의 것을 세로 가운데에 두지 않으면 위에 붙어
+          윗줄 입력칸과 눈높이가 어긋난다. 이미지를 넣으면 알약이 줄로 늘어나므로 높이는
+          고정하지 않고 최소값만 준다.
+        */}
         <div
-          className="min-w-0 flex-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 focus-within:border-blue-400"
+          className="flex min-h-[42px] min-w-0 flex-1 items-center rounded-lg border border-dashed border-slate-300 px-3 py-2 focus-within:border-blue-400"
           onPaste={(event) => {
             const pasted = Array.from(event.clipboardData.files);
             if (!pasted.some((file) => file.type.startsWith('image/'))) return;
