@@ -120,6 +120,33 @@ export function InterviewSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checked, phase, stream]);
 
+  /*
+   * 시작 전 '지금 말하고 있다' 안내가 음절·단어 사이마다 깜빡이는 걸 막는다. meter.level 은
+   * 50ms 순간 음량이라 말하는 동안 문턱을 쉴 새 없이 넘나든다. 켜짐(0.12)·꺼짐(0.06) 문턱을
+   * 벌려(히스테리시스) 어중간한 값에서 흔들리지 않게 하고, 말이 잠깐 끊겨도 1.2초는 유지한다.
+   * level 은 계속 갱신되므로 이 효과가 꺼짐 판정까지 맡는다.
+   */
+  const [speaking, setSpeaking] = useState(false);
+  const lastLoudRef = useRef(0);
+  useEffect(() => {
+    if (phase !== 'ready' || status !== 'live') {
+      setSpeaking(false);
+      return;
+    }
+    const now = Date.now();
+    if (meter.level > 0.12) {
+      lastLoudRef.current = now;
+      setSpeaking(true);
+    } else if (meter.level > 0.06 && speaking) {
+      // 낮은 말소리 — 켜져 있으면 유지한다. 꺼진 상태를 새로 켜지는 않는다(잡음 오탐 방지).
+      lastLoudRef.current = now;
+    } else if (now - lastLoudRef.current > 1200) {
+      setSpeaking(false);
+    }
+    // meter 는 안정 객체라 level 값만 본다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meter.level, phase, status, speaking]);
+
   const stopTimer = () => {
     if (timerRef.current !== null) {
       window.clearInterval(timerRef.current);
@@ -409,8 +436,8 @@ export function InterviewSession({
           )}
           {/*
             아직 녹화 전이라는 걸 카메라 화면에서 말해 준다. 사람들은 오른쪽 카드가 아니라
-            자기 얼굴을 보고 있어서, 버튼을 안 누른 채 그냥 말하기 시작하는 경우가 많다.
-            시작 버튼도 보고 있는 그 자리에 둔다.
+            자기 얼굴을 보고 있어서, 시작 버튼을 안 누른 채 그냥 말하기 시작하는 경우가 많다.
+            시작 버튼은 오른쪽 카드에 두고, 여기서는 아직 녹화 전이라는 것만 알린다.
           */}
           {phase === 'ready' && status === 'live' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/55 px-6 text-center">
@@ -418,16 +445,8 @@ export function InterviewSession({
                 <span aria-hidden="true" className="size-2 rounded-full bg-white/50" />
                 아직 녹화 중이 아니에요
               </p>
-              <button
-                className="flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5"
-                onClick={startPrep}
-                type="button"
-              >
-                <Icon className="size-4" name="mic" />
-                답변 시작
-              </button>
               {/* 마이크는 이미 듣고 있다. 지금 말하고 있으면 그 자리에서 알려 준다 */}
-              {meter.level > 0.05 ? (
+              {speaking ? (
                 <p className="rounded-full bg-amber-400/90 px-3 py-1.5 text-[12px] font-bold break-keep text-slate-950">
                   지금 말씀하고 계신가요? 아직 녹화 전이라 담기지 않아요
                 </p>

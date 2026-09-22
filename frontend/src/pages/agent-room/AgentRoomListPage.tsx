@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { ensureDefaultRooms } from '../../features/agent-room/api';
+import { CoverLetterSwitcher } from '../../features/agent-room/CoverLetterSwitcher';
 import { RoomWorkspace } from '../../features/agent-room/RoomWorkspace';
 import { ThreadSidebar } from '../../features/agent-room/ThreadSidebar';
 import type { RoomSummary } from '../../features/agent-room/types';
@@ -93,27 +94,11 @@ function Workspace() {
   }
 
   const coverLetterSelector = (
-    <section aria-label="자기소개서 에이전트 목록" className="rounded-2xl border border-slate-200 bg-white p-3 pt-10">
-        <div>
-          <label htmlFor="workspace-cover-letter" className="sr-only">
-            검토할 자소서
-          </label>
-          <select
-            id="workspace-cover-letter"
-            value={coverLetterId ?? ''}
-            onChange={(event) => setPicked(Number(event.target.value))}
-            className="h-[36px] w-full rounded-lg border border-slate-200 bg-white py-0 pl-2 pr-10 text-[13px] text-slate-800"
-          >
-            {letters.map((letter) => (
-              <option key={letter.id} value={letter.id}>
-                {letter.title}
-              </option>
-            ))}
-          </select>
-        </div>
+    <section aria-label="자기소개서 에이전트 목록" className="min-w-0">
+        <CoverLetterSwitcher letters={letters} onSelect={setPicked} selectedId={coverLetterId} />
 
         {error && (
-          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3">
+          <div role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 p-3">
             <p className="text-[13px] font-medium text-red-700">{error}</p>
             <button
               type="button"

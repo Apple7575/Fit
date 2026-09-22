@@ -69,6 +69,7 @@ class TurnServiceTest {
         service = new TurnService(roomRepository, messageRepository, jobContextRepository,
                 itemRepository, turnExecutor,
                 new AnalysisRateLimiter(100, java.time.Duration.ofHours(1)),
+                new com.ssafy.companyanalysis.agent.config.AgentCatalogProperties(java.util.Set.of()),
                 noTransaction());
 
         AtomicLong seq = new AtomicLong(100);
@@ -122,6 +123,7 @@ class TurnServiceTest {
         return new TurnService(roomRepository, messageRepository, jobContextRepository,
                 itemRepository, turnExecutor,
                 new AnalysisRateLimiter(limit, java.time.Duration.ofHours(1)),
+                new com.ssafy.companyanalysis.agent.config.AgentCatalogProperties(java.util.Set.of()),
                 noTransaction());
     }
 
@@ -243,6 +245,37 @@ class TurnServiceTest {
 
         assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
                 .containsExactly("jd", "position", "writing", "company", "supervisor");
+    }
+
+    @Test
+    @DisplayName("재료가 다 있어도 꺼 둔 담당은 자리를 안 만든다 — 전에 만들어져 그 담당이 붙은 방도 같다")
+    void aDisabledAgentGetsNoSlotEvenWhenItsInputIsReady() {
+        // 뉴스 담당이 돌 조건을 다 채운 방이다. 공고와 여덟 자리 기업코드가 둘 다 있다.
+        Room room = Room.create(USER, 12L, "ctx-1", "총괄 논의", List.of(
+                new RoomAgent("writing", Map.of()),
+                new RoomAgent("news", Map.of("corpCodes", List.of("00126380")))));
+        given(roomRepository.findByIdAndUserId(ROOM, USER)).willReturn(Optional.of(room));
+        // jobContext() 가 그 자체로 stub 을 건다. given() 안에서 부르면 stubbing 이 겹친다.
+        JobContext context = jobContext("ctx-1", "백엔드");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+
+        assertThat(service.start(USER, ROOM, new MessageSendRequest("봐줘", null)).agents())
+                .extracting(TurnStartedResponse.AgentSlot::agentKey)
+                .contains("news");
+
+        assertThat(serviceWithout("news").start(USER, ROOM, new MessageSendRequest("봐줘", null)).agents())
+                .extracting(TurnStartedResponse.AgentSlot::agentKey)
+                .containsExactly("writing");
+    }
+
+    /** 담당 몇을 꺼 둔 서비스. {@code app.agent.disabled-agents} 를 흉내 낸다. */
+    private TurnService serviceWithout(String... disabled) {
+        return new TurnService(roomRepository, messageRepository, jobContextRepository,
+                itemRepository, turnExecutor,
+                new AnalysisRateLimiter(100, java.time.Duration.ofHours(1)),
+                new com.ssafy.companyanalysis.agent.config.AgentCatalogProperties(
+                        java.util.Set.of(), java.util.Set.of(disabled)),
+                noTransaction());
     }
 
     @Test

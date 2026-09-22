@@ -1,6 +1,7 @@
 package com.ssafy.companyanalysis.agent.service;
 
 import com.ssafy.companyanalysis.agent.ai.SupervisorClient;
+import com.ssafy.companyanalysis.agent.config.AgentCatalogProperties;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
 import com.ssafy.companyanalysis.agent.domain.JobContext;
 import com.ssafy.companyanalysis.agent.domain.Message;
@@ -64,6 +65,7 @@ public class TurnService {
     private final CoverLetterItemRepository coverLetterItemRepository;
     private final TurnExecutor turnExecutor;
     private final AnalysisRateLimiter rateLimiter;
+    private final AgentCatalogProperties properties;
     private final TransactionTemplate transactionTemplate;
 
     public TurnService(RoomRepository roomRepository,
@@ -72,6 +74,7 @@ public class TurnService {
                        CoverLetterItemRepository coverLetterItemRepository,
                        TurnExecutor turnExecutor,
                        AnalysisRateLimiter rateLimiter,
+                       AgentCatalogProperties properties,
                        PlatformTransactionManager transactionManager) {
         this.roomRepository = roomRepository;
         this.messageRepository = messageRepository;
@@ -79,6 +82,7 @@ public class TurnService {
         this.coverLetterItemRepository = coverLetterItemRepository;
         this.turnExecutor = turnExecutor;
         this.rateLimiter = rateLimiter;
+        this.properties = properties;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
@@ -344,10 +348,11 @@ public class TurnService {
      * 코드가 없으면 여기서 자리만 만들어 둔다 — 자리가 없으면 "설정을 먼저 채워 주세요" 를
      * 띄울 곳이 없어 턴 자체가 열리지 않는다.
      */
-    private static List<String> participants(Room room, TurnContext context) {
+    private List<String> participants(Room room, TurnContext context) {
         List<String> keys = new ArrayList<>(AgentContexts.of(context).agentKeys());
         boolean companyPicked = room.getAgents().stream()
                 .map(RoomAgent::agentKey)
+                .filter(properties::isAgentVisible)
                 .anyMatch(AgentType.COMPANY.key()::equals);
         if (companyPicked && !keys.contains(AgentType.COMPANY.key())) {
             keys.add(AgentType.COMPANY.key());
@@ -358,9 +363,18 @@ public class TurnService {
         return keys;
     }
 
-    private static Map<String, Map<String, Object>> configsOf(Room room) {
+    /**
+     * 방이 고른 담당과 그 설정. 이 map 의 키가 곧 이 턴에 부를 담당 목록이 된다.
+     *
+     * <p>감춘 담당({@code app.agent.hidden-agents})은 여기서 뺀다. 한 곳만 막으면
+     * {@link AgentContexts} 가 컨텍스트를 안 만들고, 말풍선 자리도 안 생기고, AI 요청에도
+     * 안 실린다 — 전에 만들어져 그 담당이 붙어 있는 방도 마찬가지다.
+     */
+    private Map<String, Map<String, Object>> configsOf(Room room) {
         Map<String, Map<String, Object>> configs = new LinkedHashMap<>();
-        room.getAgents().forEach(agent -> configs.put(agent.agentKey(), agent.config()));
+        room.getAgents().stream()
+                .filter(agent -> properties.isAgentVisible(agent.agentKey()))
+                .forEach(agent -> configs.put(agent.agentKey(), agent.config()));
         return configs;
     }
 
