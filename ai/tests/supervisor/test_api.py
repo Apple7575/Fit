@@ -54,6 +54,7 @@ VALID_RESPONSE = {
             "status": "SUCCESS",
             "result": {"summary": {}},
             "error": None,
+                "error_code": None,
             "evidence": [],
             "needs": [],
             "tool_calls": [],
@@ -203,7 +204,7 @@ class SupervisorApiTest(unittest.TestCase):
                 writing_result = body["agent_results"][-1]
                 self.assertEqual(writing_result, {
                     "agent": "writing", "status": "FAILED", "result": None,
-                    "error": "writing worker failed",
+                    "error": "writing worker failed", "error_code": None,
                     "evidence": [], "needs": [], "tool_calls": [], "usage": None, "delegated_from": None,
                 })
                 writing_provider.assert_not_called()
@@ -293,6 +294,7 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
             {
                 "agent": "jd", "status": "SUCCESS",
                 "result": {"context_id": "jctx"}, "error": None,
+                "error_code": None,
                 "evidence": [
                     {
                         "evidence_id": "jd:jctx", "source_type": "JOB_POSTING",
@@ -311,6 +313,7 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
                     "message": NO_EXPERIENCE_CLAIM_MESSAGE,
                 },
                 "error": None,
+                "error_code": None,
                 "evidence": [], "needs": [], "tool_calls": [], "usage": None, "delegated_from": None,
             },
         ])

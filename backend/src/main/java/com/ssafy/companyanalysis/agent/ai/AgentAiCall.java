@@ -63,8 +63,17 @@ final class AgentAiCall {
         return response;
     }
 
+    /** AI 쪽이 LLM 할당량(429)에 막혔을 때 502 본문에 넣는 코드. ai/llm/contracts.py 와 같은 값이다. */
+    static final String QUOTA_CODE = "LLM_QUOTA_EXCEEDED";
+    /** 화면에 그대로 뜨는 문장. 사용자가 할 일(잠시 뒤 재시도)이 담겨야 한다. */
+    static final String QUOTA_MESSAGE = "AI 요청 한도에 잠시 걸렸습니다. 1분쯤 뒤에 다시 시도해 주세요.";
+
     private static BusinessException translate(RestClientResponseException e, String agentName) {
         int status = e.getStatusCode().value();
+        if (status == 502 && isQuotaExceeded(e)) {
+            // 담당 잘못이 아니라 한도 문제다. "응답을 만들지 못했습니다" 로 뭉뚱그리면 사용자가 자소서를 의심한다.
+            return new BusinessException(ErrorCode.AI_FAILED, QUOTA_MESSAGE);
+        }
         return switch (status) {
             case 503 -> new BusinessException(ErrorCode.AI_UNAVAILABLE,
                     agentName + " AI 서버가 아직 모델에 연결되지 않았습니다.");
@@ -101,6 +110,11 @@ final class AgentAiCall {
             return fallback;
         }
         return message.length() > USER_DETAIL_LIMIT ? message.substring(0, USER_DETAIL_LIMIT) : message;
+    }
+
+    private static boolean isQuotaExceeded(RestClientResponseException e) {
+        String body = e.getResponseBodyAsString();
+        return body != null && body.contains("\"" + QUOTA_CODE + "\"");
     }
 
     private static String detail(RestClientResponseException e) {

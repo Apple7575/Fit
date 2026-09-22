@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
+import contextvars
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Any
@@ -104,7 +105,7 @@ class JdAnalysisService:
         worker_count = min(self._max_concurrency, len(role_stubs))
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
             futures = {
-                executor.submit(self._decompose_role, role): role
+                _submit_with_context(executor, self._decompose_role, role): role
                 for role in role_stubs
             }
             for future in as_completed(futures):
@@ -189,8 +190,8 @@ class JdAnalysisService:
         worker_count = min(self._max_concurrency, len(context.role_elements))
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
             future_to_role = {
-                executor.submit(
-                    self._judge_role, context, role, normalized_documents
+                _submit_with_context(
+                    executor, self._judge_role, context, role, normalized_documents
                 ): role
                 for role in context.role_elements
             }
@@ -518,3 +519,12 @@ def _messages_with_validation_feedback(
         }
     )
     return updated
+
+
+def _submit_with_context(executor: ThreadPoolExecutor, fn, /, *args):
+    """작업 스레드에 호출 문맥(LLM 우선순위 등 contextvar)을 그대로 넘긴다.
+
+    ThreadPoolExecutor 는 contextvar 를 복사하지 않는다. 그대로 두면 자동 검토가 띄운 JD 판정이
+    사용자 질문과 같은 순위로 GMS 줄에 서서, 우선순위를 둔 의미가 사라진다.
+    """
+    return executor.submit(contextvars.copy_context().run, fn, *args)
