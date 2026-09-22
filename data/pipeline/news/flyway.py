@@ -27,6 +27,12 @@ MIGRATION_DIR = (
     / "migration"
 )
 
+
+def _version_of(path: Path) -> int:
+    """`V34__이름.sql` 에서 34 를 꺼낸다."""
+    return int(re.match(r"V(\d+)__", path.name).group(1))
+
+
 # 이 스키마에 실제로 쓰인 타입만 허용한다. 새 타입이 들어오면 여기서 걸려
 # 사전(data_fields.csv)을 갱신하라는 신호가 된다.
 _SIZED_TYPES = ("VARCHAR", "NUMERIC", "CHAR", "DECIMAL")
@@ -391,10 +397,20 @@ def _apply_rename_column(table: Table, old: str, new: str) -> None:
 def load(migration_dir: Path | None = None) -> Schema:
     """마이그레이션을 버전 순으로 적용해 현재 스키마를 만든다."""
     directory = migration_dir or MIGRATION_DIR
-    files = sorted(
-        directory.glob("V*__*.sql"),
-        key=lambda p: int(re.match(r"V(\d+)__", p.name).group(1)),
-    )
+    by_version: dict[int, list[str]] = {}
+    for path in sorted(directory.glob("V*__*.sql")):
+        by_version.setdefault(_version_of(path), []).append(path.name)
+    # 같은 번호가 둘이면 **여기서 멈춘다.** Flyway 자신이 그 상태로는 시작하지 않으므로
+    # 우리가 둘 다 적용해 스키마를 만들면 검증이 가짜로 통과한다. 2026-09-22 에 실제로
+    # 났다 — develop 이 V34 를 임베딩 float16 에 주는 사이 MR !209 가 같은 번호로
+    # news_article 을 고치고 있었고, 아무 검사도 걸리지 않았다.
+    duplicated = {v: names for v, names in by_version.items() if len(names) > 1}
+    if duplicated:
+        detail = " · ".join(f"V{v}: {', '.join(names)}"
+                            for v, names in sorted(duplicated.items()))
+        raise ValueError(
+            f"같은 버전의 마이그레이션이 둘 이상이다 — Flyway 가 시작하지 않는다: {detail}")
+    files = sorted(directory.glob("V*__*.sql"), key=_version_of)
     if not files:
         raise FileNotFoundError(f"마이그레이션을 찾을 수 없다: {directory}")
     schema = Schema()
