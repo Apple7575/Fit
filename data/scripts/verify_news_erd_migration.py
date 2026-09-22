@@ -76,9 +76,28 @@ def _columns(conn) -> set[str]:
         return {row[0] for row in cur.fetchall()}
 
 
+def _database_id(conn) -> dict:
+    """스냅샷을 찍은 DB 를 표시한다.
+
+    `system_identifier` 는 클러스터마다 다른 값이라 **어느 DB 인지 가리는 지문**이
+    된다. 접속 정보가 섞이지 않아 파일에 남겨도 안전하다.
+
+    왜 필요한가: dev 와 prod 는 같은 기사 500건을 들고 있지만 `id` 는 서로 다르다
+    (identity 를 DB 마다 따로 세기 때문이다 — 2026-09-22 실측). 스냅샷을 엉뚱한 DB
+    와 대조하면 "id 집합이 보존됐다" 가 통째로 빨개지고, 사람은 마이그레이션을
+    의심하게 된다.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT system_identifier FROM pg_control_system()")
+        identifier = str(cur.fetchone()[0])
+        cur.execute("SELECT current_database()")
+        return {"system_identifier": identifier, "database": cur.fetchone()[0]}
+
+
 def take_snapshot(path: Path) -> int:
     """배포 전 상태를 적는다. source·guid 를 행 단위로 들고 있는다."""
     with connect() as conn:
+        database = _database_id(conn)
         columns = _columns(conn)
         missing = {"source", "guid"} - columns
         if missing:
@@ -94,6 +113,7 @@ def take_snapshot(path: Path) -> int:
                      "guid": r[3], "original_url": r[4]} for r in cur.fetchall()]
 
     payload = {
+        "database": database,
         "total_rows": total,
         "source_not_null": sum(1 for r in rows if r["source"] is not None),
         "guid_not_null": sum(1 for r in rows if r["guid"] is not None),
@@ -105,6 +125,7 @@ def take_snapshot(path: Path) -> int:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
                     encoding="utf-8")
     print(f"배포 전 스냅샷 → {path}")
+    print(f"  DB {database['database']} (system_identifier {database['system_identifier']})")
     print(f"  전체 {payload['total_rows']}행 · source 있음 {payload['source_not_null']}"
           f" · guid 있음 {payload['guid_not_null']}"
           f" · original_url 이 구글 링크 {payload['google_original_url']}")
@@ -238,12 +259,37 @@ def _check_blank_normalized_url(cur, columns) -> Check:
     return check
 
 
+class WrongDatabase(Exception):
+    """스냅샷을 찍은 DB 가 아닌 곳에 대조하려 한다."""
+
+
+def _guard_same_database(conn, before: dict) -> None:
+    """스냅샷과 지금 DB 가 같은지 본다. 다르면 아무 검사도 하지 않고 멈춘다.
+
+    틀린 짝으로 돌리면 `id` 가 통째로 어긋나 **마이그레이션이 망가진 것처럼 보인다.**
+    예전 스냅샷(이 칸이 없는 것)은 막지 않는다 — 대신 확인할 수 없다고 말한다.
+    """
+    recorded = (before.get("database") or {}).get("system_identifier")
+    if not recorded:
+        print("! 스냅샷에 DB 표시가 없다(예전 형식). 같은 DB 인지 확인할 수 없다.",
+              file=sys.stderr)
+        return
+    now = _database_id(conn)
+    if now["system_identifier"] != recorded:
+        raise WrongDatabase(
+            f"스냅샷은 다른 DB 의 것이다 — 스냅샷 {recorded} vs 지금 "
+            f"{now['system_identifier']} ({now['database']}).\n"
+            "  dev 와 prod 는 기사가 같아도 id 가 달라서, 짝이 틀리면 결과가 통째로 "
+            "어긋난다. 그 DB 에서 찍은 스냅샷으로 다시 돌릴 것.")
+
+
 def run_compare(snapshot_path: Path) -> list[Check]:
     before = json.loads(snapshot_path.read_text(encoding="utf-8"))
     by_id = {r["id"]: r for r in before["rows"]}
     checks: list[Check] = []
 
     with connect() as conn:
+        _guard_same_database(conn, before)
         columns = _columns(conn)
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) FROM news_article")
@@ -316,7 +362,13 @@ def main() -> int:
         print(f"! 스냅샷이 없다: {args.compare}\n"
               "  배포 **전에** --snapshot 으로 먼저 찍어야 한다.", file=sys.stderr)
         return 2
-    return report(run_compare(args.compare), args.json)
+    try:
+        checks = run_compare(args.compare)
+    except WrongDatabase as wrong:
+        # 틀린 결과를 내놓느니 아무것도 내놓지 않는다.
+        print(f"! {wrong}", file=sys.stderr)
+        return 2
+    return report(checks, args.json)
 
 
 if __name__ == "__main__":
