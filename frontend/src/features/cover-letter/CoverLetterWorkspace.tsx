@@ -59,6 +59,7 @@ function StepRail({
   filled,
   locked,
   onGo,
+  onAdd,
 }: {
   step: Step;
   /** 문항별로 질문·답변이 채워졌는지. 어디까지 썼는지 한눈에 보인다 */
@@ -66,6 +67,8 @@ function StepRail({
   /** 앞 단계를 아직 안 채웠다. 문항으로 넘어갈 수 없다 */
   locked: boolean;
   onGo: (next: Step) => void;
+  /** 문항을 더한다. 첫 단계에서는 주지 않는다 — 제목도 없이 문항부터 열리면 안 된다 */
+  onAdd?: () => void;
 }) {
   const chip = (here: boolean) =>
     `flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold transition ${
@@ -108,6 +111,13 @@ function StepRail({
           </button>
         );
       })}
+
+      {/* 문항 칸과 같은 알약이다. 늘어서는 자리 바로 뒤에 두면 어디를 눌러야 할지 묻지 않는다 */}
+      {onAdd && (
+        <button className={chip(false)} onClick={onAdd} type="button">
+          + 문항 추가
+        </button>
+      )}
     </nav>
   );
 }
@@ -340,7 +350,9 @@ export function CoverLetterWorkspace({
             ← 목록으로
           </button>
         )}
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">회사부터 함께 정해볼까요?</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-white">
+          {step === META_STEP ? '회사부터 함께 정해볼까요?' : '이제 문항을 채워볼까요?'}
+        </h1>
         {/*
           첫 단계에서는 설명을 걷었다 — 아래 카드가 "어디에 내나요?" 로 같은 말을 한 번 더 한다.
           문항 단계는 그 안내가 화면에 따로 없어 남긴다.
@@ -356,6 +368,7 @@ export function CoverLetterWorkspace({
         <StepRail
           filled={items.map((item) => item.question.trim() !== '' && item.answer.trim() !== '')}
           locked={!metaReady}
+          onAdd={step === META_STEP ? undefined : addItem}
           onGo={goStep}
           step={step}
         />
@@ -584,16 +597,6 @@ export function CoverLetterWorkspace({
             </div>
           )}
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            {/* 문항을 더하는 일은 저장·검토와 무게가 다르다. 제일 가볍게 왼쪽에 둔다 */}
-            {step !== META_STEP && (
-              <button
-                className="rounded-full border border-dashed border-white/30 px-5 py-3 text-sm font-semibold text-white/60 transition hover:border-white/50 hover:bg-white/10 hover:text-white"
-                onClick={addItem}
-                type="button"
-              >
-                + 문항 추가
-              </button>
-            )}
             <SaveArea
               isLoggedIn={isLoggedIn}
               dirty={dirty}
