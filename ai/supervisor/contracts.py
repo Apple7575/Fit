@@ -232,6 +232,8 @@ class AgentResult(StrictModel):
     status: Literal["SUCCESS", "FAILED"]
     result: dict[str, Any] | None = None
     error: str | None = None
+    # 실패 종류. 지금은 LLM 할당량(LLM_QUOTA_EXCEEDED)만 쓴다. 없으면 일반 실패다.
+    error_code: str | None = Field(default=None, max_length=40)
     evidence: list[Evidence] = Field(default_factory=list, max_length=200)
     needs: list[AgentNeed] = Field(default_factory=list, max_length=4)
     tool_calls: list[ToolCall] = Field(default_factory=list, max_length=100)
