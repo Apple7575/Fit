@@ -43,7 +43,7 @@ const HERO_POSTER = '/cover-letter-media/hero.jpg';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
-/** 0 = 어디에 내나요, 1 이상 = 그 번째 문항. 한 화면에 한 가지만 둔다. */
+/** 0 = 희망 기업·직무, 1 이상 = 그 번째 문항. 한 화면에 한 가지만 둔다. */
 type Step = number;
 
 const META_STEP = 0;
@@ -59,6 +59,7 @@ function StepRail({
   filled,
   locked,
   onGo,
+  onAdd,
 }: {
   step: Step;
   /** 문항별로 질문·답변이 채워졌는지. 어디까지 썼는지 한눈에 보인다 */
@@ -66,6 +67,8 @@ function StepRail({
   /** 앞 단계를 아직 안 채웠다. 문항으로 넘어갈 수 없다 */
   locked: boolean;
   onGo: (next: Step) => void;
+  /** 문항을 더한다. 첫 단계에서는 주지 않는다 — 제목도 없이 문항부터 열리면 안 된다 */
+  onAdd?: () => void;
 }) {
   const chip = (here: boolean) =>
     `flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-bold transition ${
@@ -80,7 +83,7 @@ function StepRail({
         onClick={() => onGo(META_STEP)}
         type="button"
       >
-        어디에 내나요
+        희망 기업·직무
       </button>
 
       <span aria-hidden="true" className="text-white/25">→</span>
@@ -108,6 +111,13 @@ function StepRail({
           </button>
         );
       })}
+
+      {/* 문항 칸과 같은 알약이다. 늘어서는 자리 바로 뒤에 두면 어디를 눌러야 할지 묻지 않는다 */}
+      {onAdd && (
+        <button className={chip(false)} onClick={onAdd} type="button">
+          + 문항 추가
+        </button>
+      )}
     </nav>
   );
 }
@@ -340,15 +350,17 @@ export function CoverLetterWorkspace({
             ← 목록으로
           </button>
         )}
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">회사부터 함께 정해볼까요?</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-white">
+          {step === META_STEP ? '회사부터 함께 정해볼까요?' : '이제 문항을 채워볼까요?'}
+        </h1>
         {/*
-          첫 단계에서는 설명을 걷었다 — 아래 카드가 "어디에 내나요?" 로 같은 말을 한 번 더 한다.
+          첫 단계에서는 설명을 걷었다 — 칸마다 라벨이 붙어 있어 한 번 더 말할 것이 없다.
           문항 단계는 그 안내가 화면에 따로 없어 남긴다.
         */}
         {step !== META_STEP && (
           <p className="mt-1 text-sm break-keep text-white/70">
             {isLoggedIn
-              ? '문항을 추가·삭제하고 답변을 고친 뒤 저장하세요. 코치 다섯이 각자 맡은 자료로 읽습니다.'
+              ? '문항을 추가·삭제하고 답변을 고친 뒤 저장하세요. 코치 다섯이 자료를 나눠 분석합니다.'
               : '로그인 없이 써 볼 수 있어요. 저장하려면 로그인하세요.'}
           </p>
         )}
@@ -356,6 +368,7 @@ export function CoverLetterWorkspace({
         <StepRail
           filled={items.map((item) => item.question.trim() !== '' && item.answer.trim() !== '')}
           locked={!metaReady}
+          onAdd={step === META_STEP ? undefined : addItem}
           onGo={goStep}
           step={step}
         />
@@ -364,10 +377,19 @@ export function CoverLetterWorkspace({
         <div className={step === META_STEP ? 'mt-6' : 'hidden'}>
           {/*
             제목이 있어야 문항으로 넘어간다는 안내. 마무리 바에 두면 정작 채울 칸에서
-            멀었다. 제목을 쓰면 문구만 비우고 자리는 남긴다 — 접으면 첫 글자에 화면이 튄다.
+            멀었다. 자리는 늘 잡아 둔다 — 접으면 첫 글자에 화면이 튄다.
+
+            제목을 쓰면 비우지 않고 통과했다고 알린다. 빈 줄만 남으면 문구가 왜 사라졌는지
+            모른 채 빈자리만 보인다. 끝말("문항을 쓸 수 있어요")을 그대로 물려 같은 말이
+            조건만 풀린 것으로 읽히게 했고, 색은 단계 줄의 채워진 점과 같은 초록을 쓴다.
           */}
-          <p className="mb-1.5 h-5 text-[13px] leading-5 font-semibold text-white/60">
-            {metaReady ? '' : '제목을 입력하면 문항을 쓸 수 있어요.'}
+          <p
+            aria-live="polite"
+            className={`mb-1.5 h-5 text-[13px] leading-5 font-semibold ${
+              metaReady ? 'text-emerald-400' : 'text-white/60'
+            }`}
+          >
+            {metaReady ? '✓ 이제 문항을 쓸 수 있어요.' : '제목을 입력하면 문항을 쓸 수 있어요.'}
           </p>
           <input
             id="cl-title"
@@ -377,8 +399,13 @@ export function CoverLetterWorkspace({
               setTitle(event.target.value);
               touch();
             }}
-            placeholder="제목을 입력하세요 (예: 2026 상반기 백엔드 신입 지원)"
-            className="w-full rounded-xl bg-white/10 px-4 py-3 text-2xl font-bold tracking-tight text-white ring-1 ring-white/20 backdrop-blur outline-none transition placeholder:text-[17px] placeholder:font-normal placeholder:text-white/35 focus:bg-white/15 focus:ring-2 focus:ring-white/50"
+            placeholder="예: 2026 상반기 백엔드 신입 지원"
+            /*
+             * 예시 글씨 크기를 칸 글씨(20px)와 같게 둔다. 작게 하면 같은 기준선에 앉은 채
+             * 글자만 작아져 아래로 처져 보인다 — 칸 안에서 가운데가 아니게 된다. 옅은 색과
+             * 보통 굵기만으로도 예시인 줄 알아본다.
+             */
+            className="w-full rounded-xl bg-white/10 px-4 py-3 text-xl font-bold tracking-tight text-white ring-1 ring-white/20 backdrop-blur outline-none transition placeholder:font-normal placeholder:text-white/35 focus:bg-white/15 focus:ring-2 focus:ring-white/50"
           />
         </div>
 
@@ -391,9 +418,7 @@ export function CoverLetterWorkspace({
             step === META_STEP ? '' : 'hidden'
           }`}
         >
-          <p className="text-xs text-slate-500">
-            회사·직무는 비워 둬도 됩니다. 채우면 그 기준으로 읽어요.
-          </p>
+          <p className="text-xs text-slate-500">채우면 그 회사·직무 기준으로 읽어요.</p>
 
           <div className="mt-4">
             <JobPostingBar onParsed={applyPosting} />
@@ -440,7 +465,7 @@ export function CoverLetterWorkspace({
                   touch();
                 }}
                 placeholder="지원 직무를 입력하세요"
-                className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
               {typingPosition && (
                 <button
@@ -488,7 +513,8 @@ export function CoverLetterWorkspace({
                 먼저 눈에 들어온다.
               */}
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[12px] font-bold text-white">
+                {/* 번호는 몇 번째인지 알려 줄 뿐이다. 카드 바탕에 가까운 회색으로 눌러 둔다 */}
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[12px] font-bold text-slate-600">
                   {index + 1}
                 </span>
                 <span className="text-sm font-bold text-slate-700">문항 {index + 1}</span>
@@ -511,8 +537,8 @@ export function CoverLetterWorkspace({
                   <input
                     value={item.question}
                     onChange={(event) => editItem(item.key, { question: event.target.value })}
-                    placeholder="예: 지원 동기와 입사 후 포부를 기술하시오."
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[15px] text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    placeholder="예: 지원 동기와 입사 후 포부를 기술하시오"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
                 <div className="sm:w-32">
@@ -536,8 +562,8 @@ export function CoverLetterWorkspace({
                   onChange={(event) => editItem(item.key, { answer: event.target.value })}
                   rows={8}
                   maxLength={item.charLimit || 4000}
-                  placeholder="답변을 붙여넣거나 입력하세요."
-                  className="w-full resize-y rounded-lg border border-slate-200 p-3 text-[15px] leading-7 text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  placeholder="답변을 붙여넣거나 입력하세요"
+                  className="w-full resize-y rounded-lg border border-slate-200 p-3 text-[15px] leading-7 text-slate-700 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
                 <div className="mt-1.5 text-right text-[12px] text-slate-400">
                   <span className={item.answer.length > item.charLimit ? 'text-rose-500' : ''}>
@@ -573,7 +599,7 @@ export function CoverLetterWorkspace({
                 {!hasWriting
                   ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
                   : isLoggedIn
-                    ? '코치 다섯이 각자 맡은 자료로 읽습니다.'
+                    ? '코치 다섯이 자료를 나눠 분석합니다.'
                     : '검토를 받으려면 로그인이 필요해요.'}
               </p>
               <p className="mt-0.5 text-xs break-keep text-white/60">
@@ -584,16 +610,6 @@ export function CoverLetterWorkspace({
             </div>
           )}
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            {/* 문항을 더하는 일은 저장·검토와 무게가 다르다. 제일 가볍게 왼쪽에 둔다 */}
-            {step !== META_STEP && (
-              <button
-                className="rounded-full border border-dashed border-white/30 px-5 py-3 text-sm font-semibold text-white/60 transition hover:border-white/50 hover:bg-white/10 hover:text-white"
-                onClick={addItem}
-                type="button"
-              >
-                + 문항 추가
-              </button>
-            )}
             <SaveArea
               isLoggedIn={isLoggedIn}
               dirty={dirty}
@@ -750,27 +766,41 @@ function JobPostingBar({
         채용공고 URL <span className="font-medium text-slate-400">(선택)</span>
       </label>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          id="cl-posting-url"
-          value={url}
-          onChange={(event) => {
-            setUrl(event.target.value);
-            if (status === 'error') {
-              setStatus('idle');
-              setMessage('');
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              confirm();
-            }
-          }}
-          type="url"
-          inputMode="url"
-          placeholder="공고 주소를 넣고 확인하면 지원 회사와 직무를 대신 채워 드려요."
-          className="h-[42px] min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-        />
+        {/* 무엇을 넣는 칸인지 글을 읽기 전에 알아보게 한다. 기업명 검색 칸과 같은 자리·크기다 */}
+        <div className="relative min-w-0 flex-1">
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-[13px] size-4 -translate-y-1/2 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.5 1.5" strokeLinecap="round" />
+            <path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1.5-1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            id="cl-posting-url"
+            value={url}
+            onChange={(event) => {
+              setUrl(event.target.value);
+              if (status === 'error') {
+                setStatus('idle');
+                setMessage('');
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                confirm();
+              }
+            }}
+            type="url"
+            inputMode="url"
+            placeholder="주소를 넣고 확인하면 회사·직무를 대신 채워 드려요"
+            className="h-[42px] w-full rounded-lg border border-slate-200 pr-3 pl-9 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
         <button
           onClick={confirm}
           disabled={status === 'loading' || !canConfirm}
@@ -786,8 +816,13 @@ function JobPostingBar({
         화면에는 보이므로 복사해 온 이미지를 그대로 받는다.
       */}
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        {/*
+          옆 단추(42px)에 맞춰 늘어나는 칸이라, 안의 것을 세로 가운데에 두지 않으면 위에 붙어
+          윗줄 입력칸과 눈높이가 어긋난다. 이미지를 넣으면 알약이 줄로 늘어나므로 높이는
+          고정하지 않고 최소값만 준다.
+        */}
         <div
-          className="min-w-0 flex-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 focus-within:border-blue-400"
+          className="flex min-h-[42px] min-w-0 flex-1 items-center rounded-lg border border-dashed border-slate-300 px-3 py-2 focus-within:border-blue-400"
           onPaste={(event) => {
             const pasted = Array.from(event.clipboardData.files);
             if (!pasted.some((file) => file.type.startsWith('image/'))) return;
@@ -797,9 +832,23 @@ function JobPostingBar({
           tabIndex={0}
         >
           {images.length === 0 ? (
-            <span className="text-[15px] text-slate-400">
-              공고가 이미지면 여기를 누르고 <kbd className="rounded bg-slate-100 px-1">Ctrl</kbd>+
-              <kbd className="rounded bg-slate-100 px-1">V</kbd> 로 붙여넣으세요
+            <span className="flex items-center gap-2 text-[13.5px] text-slate-400">
+              <svg
+                aria-hidden="true"
+                className="size-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <rect height="18" rx="2" width="18" x="3" y="3" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-4.5-4.5L5.5 21" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="min-w-0">
+                여기를 누르고 공고 이미지를 <kbd className="rounded bg-slate-100 px-1">Ctrl</kbd>+
+                <kbd className="rounded bg-slate-100 px-1">V</kbd> 로 붙여넣으세요
+              </span>
             </span>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
