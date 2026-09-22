@@ -155,11 +155,11 @@ function RoomBody({
       {chatOpen ? (
         <aside
           aria-label="AI 에이전트 피드백"
-          className="fixed inset-x-3 bottom-3 top-3 z-40 min-w-0 xl:inset-x-auto xl:bottom-6 xl:right-8 xl:top-14 xl:z-20 xl:w-[430px]"
+          className="fixed inset-x-3 bottom-3 top-3 z-40 min-w-0 xl:inset-x-auto xl:bottom-6 xl:right-8 xl:top-[72px] xl:z-20 xl:w-[430px]"
         >
           <div className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-2xl">
-            <div className="relative shrink-0 bg-slate-50 p-3">
-              {coverLetterSelector}
+            <div className="flex shrink-0 items-start gap-2 bg-slate-50 p-3">
+              <div className="min-w-0 flex-1">{coverLetterSelector}</div>
               <button
                 type="button"
                 aria-label="AI 피드백 닫기"
@@ -167,7 +167,7 @@ function RoomBody({
                   setClosedAtMessageCount(thread.length);
                   setChatOpen(false);
                 }}
-                className="absolute right-5 top-4 z-10 grid h-7 w-7 place-items-center text-xl leading-none text-slate-400 transition hover:text-slate-800"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xl leading-none text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-800"
               >
                 ×
               </button>
