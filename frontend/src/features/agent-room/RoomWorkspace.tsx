@@ -157,10 +157,6 @@ function RoomBody({
           aria-label="AI 에이전트 피드백"
           className="fixed inset-x-3 bottom-3 top-3 z-40 min-w-0 xl:inset-x-auto xl:bottom-6 xl:right-8 xl:top-14 xl:z-20 xl:w-[430px]"
         >
-          <div className="hidden xl:absolute xl:top-4 xl:right-full xl:z-0 xl:block xl:translate-x-3">
-            {agentNavigation}
-          </div>
-
           <div className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-2xl">
             <div className="relative shrink-0 bg-slate-50 p-3">
               {coverLetterSelector}
@@ -177,7 +173,7 @@ function RoomBody({
               </button>
             </div>
 
-            <div className="shrink-0 border-b border-slate-200 bg-slate-50 px-3 pb-3 xl:hidden">
+            <div className="shrink-0 border-b border-slate-200 bg-slate-50 px-3 pb-3">
               {agentNavigation}
             </div>
 
