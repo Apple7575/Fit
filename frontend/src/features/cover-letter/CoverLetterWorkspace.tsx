@@ -325,25 +325,28 @@ export function CoverLetterWorkspace({
       </div>
 
       <div className="relative mx-auto w-full max-w-4xl px-6 pt-24 pb-16">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">무엇을 검토받을까요?</h1>
-          {onBack && (
-            <button
-              className="text-sm font-semibold text-white/60 transition hover:text-white"
-              onClick={onBack}
-              type="button"
-            >
-              목록으로 →
-            </button>
-          )}
-        </div>
-        <p className="mt-1 text-sm break-keep text-white/70">
-          {step === META_STEP
-            ? '어디에 내는 자소서인지 먼저 정하고, 다음에서 문항을 씁니다.'
-            : isLoggedIn
+        {/* 나가는 길은 맨 위 왼쪽에 둔다. 제목과 같은 줄에 두면 제목과 무게를 다툰다 */}
+        {onBack && (
+          <button
+            className="mb-3 block text-sm font-semibold text-white/60 transition hover:text-white"
+            onClick={onBack}
+            type="button"
+          >
+            ← 목록으로
+          </button>
+        )}
+        <h1 className="text-2xl font-extrabold tracking-tight text-white">무엇을 검토받을까요?</h1>
+        {/*
+          첫 단계에서는 설명을 걷었다 — 아래 카드가 "어디에 내나요?" 로 같은 말을 한 번 더 한다.
+          문항 단계는 그 안내가 화면에 따로 없어 남긴다.
+        */}
+        {step !== META_STEP && (
+          <p className="mt-1 text-sm break-keep text-white/70">
+            {isLoggedIn
               ? '문항을 추가·삭제하고 답변을 고친 뒤 저장하세요. 코치 다섯이 각자 맡은 자료로 읽습니다.'
               : '로그인 없이 써 볼 수 있어요. 저장하려면 로그인하세요.'}
-        </p>
+          </p>
+        )}
 
         <StepRail
           filled={items.map((item) => item.question.trim() !== '' && item.answer.trim() !== '')}
@@ -354,11 +357,9 @@ export function CoverLetterWorkspace({
 
         {/* 제목은 이 자소서의 이름이다. 카드 안에 묻지 않고 어두운 바탕에 그대로 둔다 */}
         <div className={step === META_STEP ? 'mt-6' : 'hidden'}>
-          <label className="mb-1.5 block text-[12px] font-semibold text-white/50" htmlFor="cl-title">
-            제목
-          </label>
           <input
             id="cl-title"
+            aria-label="제목"
             value={title}
             onChange={(event) => {
               setTitle(event.target.value);
@@ -736,8 +737,8 @@ function JobPostingBar({
   };
 
   return (
-    <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
-      <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor="cl-posting-url">
+    <div>
+      <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="cl-posting-url">
         채용공고 URL (선택)
       </label>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -759,7 +760,7 @@ function JobPostingBar({
           }}
           type="url"
           inputMode="url"
-          placeholder="공고 주소를 붙여넣으세요"
+          placeholder="공고 주소를 넣고 확인하면 지원 회사와 직무를 대신 채워 드려요."
           className="h-[42px] min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         <button
@@ -832,12 +833,12 @@ function JobPostingBar({
 
       <p
         className={[
-          'mt-2 text-[12.5px]',
+          message ? 'mt-2 text-[12.5px]' : 'sr-only',
           status === 'error' ? 'text-amber-700' : 'text-slate-400',
         ].join(' ')}
         role={status === 'error' ? 'alert' : 'status'}
       >
-        {message || '공고 주소를 넣고 확인하면 지원 회사와 직무를 대신 채워 드려요.'}
+        {message}
       </p>
     </div>
   );
