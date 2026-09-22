@@ -160,7 +160,12 @@ export function InterviewDemo() {
           */}
           <div
             aria-label="면접 화면 자리"
-            className="relative flex aspect-video flex-col items-center justify-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-slate-900 ring-1 ring-white/15"
+            /*
+             * 가운데보다 살짝 아래에 세운다 — 위쪽 REC 딱지와 무게를 맞추면 아래 여백만 넓어
+             * 보였다. px 로 밀면 화면이 좁아질 때 타일이 커지면서 너무 내려가므로 타일 너비에
+             * 비례하는 % 로 민다.
+             */
+            className="relative flex aspect-video flex-col items-center justify-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-slate-900 pt-[5%] ring-1 ring-white/15"
             role="img"
           >
             <PersonMark />
