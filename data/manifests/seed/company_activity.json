@@ -1,6 +1,6 @@
 {
   "table": "company_activity",
-  "generated_at": "2026-09-21T11:41:02.494467+00:00",
+  "generated_at": "2026-09-22T05:47:20.126064+00:00",
   "generated_by": "scripts/build_curated_seed.py",
   "header": [
     "corp_code",
@@ -49,19 +49,20 @@
     "V30__company_analysis_report.sql",
     "V31__company_analysis_conversation.sql",
     "V32__rag_evidence_entity_scope.sql",
-    "V33__company_table_row.sql"
+    "V33__company_table_row.sql",
+    "V34__rag_embedding_half_precision.sql"
   ],
   "source": ".cache/otrCprInvstmntSttus_*.json (타법인 출자현황) + staged/business_report/facility.csv (사업보고서 시설투자)",
-  "seed_rows": 8238,
+  "seed_rows": 8237,
   "null_counts": {
     "corp_code": 0,
     "fiscal_year": 0,
     "activity_type": 0,
     "field_name": 3831,
-    "purpose": 851,
+    "purpose": 850,
     "amount": 356,
     "rcept_no": 0,
-    "counterparty": 4831
+    "counterparty": 4830
   },
   "notes": [
     "activity_type 은 corporate_invest·facility 둘 — ma·transfer 는 수집하지 않기로 했다 (2026-09-21 팀장 확정)",
@@ -72,7 +73,7 @@
   ],
   "row_breakdown": {
     "corporate_invest": 3409,
-    "facility": 4829
+    "facility": 4828
   },
   "distinct_corp_codes": 424,
   "fiscal_years": [
@@ -81,7 +82,7 @@
   ],
   "build_stats": {
     "기말 장부가액 없음(NULL 로 둠)": 356,
-    "시설투자 행": 4829,
+    "시설투자 행": 4828,
     "합계 행 제외": 47,
     "행": 3409
   }
