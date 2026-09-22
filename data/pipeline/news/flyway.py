@@ -27,6 +27,12 @@ MIGRATION_DIR = (
     / "migration"
 )
 
+
+def _version_of(path: Path) -> int:
+    """`V34__이름.sql` 에서 34 를 꺼낸다."""
+    return int(re.match(r"V(\d+)__", path.name).group(1))
+
+
 # 이 스키마에 실제로 쓰인 타입만 허용한다. 새 타입이 들어오면 여기서 걸려
 # 사전(data_fields.csv)을 갱신하라는 신호가 된다.
 _SIZED_TYPES = ("VARCHAR", "NUMERIC", "CHAR", "DECIMAL")
@@ -66,8 +72,12 @@ class Table:
     # (news_article 이 그렇게 될 예정이다) 둘을 합친 컬럼 집합이 되어, 적재기의
     # 자연키 대조가 어느 쪽과도 맞지 않는다.
     unique_keys: list[list[str]] = field(default_factory=list)
+    # 제약·인덱스 **이름** → 키 묶음. `DROP CONSTRAINT` 와 `DROP INDEX` 가 이것으로
+    # 무엇을 지우는지 찾는다. 이름을 안 들고 있으면 키가 사라진 것을 읽을 수 없다.
+    unique_names: dict[str, list[str]] = field(default_factory=dict)
     # 기본키도 묶음으로 남긴다. company_metric 처럼 복합 PK 가 곧 자연키인 표가 있다.
     primary_key: list[str] = field(default_factory=list)
+    primary_key_name: str = ""
 
     def key_groups(self) -> list[list[str]]:
         """이 표에서 한 행을 유일하게 가리키는 키들. 자연키 대조의 기준이다."""
@@ -78,6 +88,29 @@ class Table:
         group = [n for n in (x.strip() for x in names) if n in self.columns]
         if group and group not in self.unique_keys:
             self.unique_keys.append(group)
+
+    def name_unique(self, constraint: str | None, names: list[str]) -> None:
+        """방금 더한 유일키에 제약·인덱스 이름을 이어 둔다."""
+        group = [n for n in (x.strip() for x in names) if n in self.columns]
+        if constraint and group:
+            self.unique_names[constraint.lower()] = group
+
+    def drop_constraint(self, constraint: str) -> bool:
+        """이름으로 유일키(또는 기본키)를 지운다. 지웠으면 True.
+
+        못 찾으면 False 다 — CHECK·FK 처럼 우리가 키로 모으지 않는 제약이 많아서
+        모르는 이름을 예외로 만들지 않는다.
+        """
+        key = constraint.lower()
+        group = self.unique_names.pop(key, None)
+        if group is not None:
+            self.unique_keys = [g for g in self.unique_keys if g != group]
+            return True
+        if self.primary_key_name.lower() == key:
+            self.primary_key = []
+            self.primary_key_name = ""
+            return True
+        return False
 
     @property
     def qualified(self) -> str:
@@ -267,6 +300,21 @@ _DROP_COLUMN_CLAUSE = re.compile(
 _ADD_UNIQUE = re.compile(
     r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+ADD\s+CONSTRAINT\s+\w+\s+UNIQUE\s*\(([^)]*)\)",
     re.IGNORECASE | re.DOTALL)
+# 이름만 따로 꺼낸다. 위 두 정규식의 묶음 번호를 건드리지 않으려는 것이다.
+_ADD_UNIQUE_NAME = re.compile(
+    r"^ALTER\s+TABLE\s+(?:\w+\.)?\w+\s+ADD\s+CONSTRAINT\s+(\w+)\s+UNIQUE", re.IGNORECASE)
+_UNIQUE_INDEX_NAME = re.compile(
+    r"^CREATE\s+UNIQUE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)", re.IGNORECASE)
+# 키가 **사라지는** 문장. 읽지 않으면 없어진 키를 살아 있는 것으로 본다 — 적재기가
+# 그 키로 `ON CONFLICT` 를 걸고 PostgreSQL 이 "there is no unique or exclusion
+# constraint matching the ON CONFLICT specification" 으로 죽는데, 사전 검사는
+# 초록이다 (2026-09-22 실측). 아래 ALTER TABLE 통짜 무시에 걸려 있었다.
+_DROP_CONSTRAINT = re.compile(
+    r"^ALTER\s+TABLE\s+(?:(\w+)\.)?(\w+)\s+DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?(\w+)",
+    re.IGNORECASE)
+_DROP_INDEX = re.compile(
+    r"^DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)",
+    re.IGNORECASE)
 # 컬럼 이름이 바뀌는 문장. 읽지 않으면 사전이 옛 이름을 문서화한 채로 통과한다 —
 # V25 가 agent_room.job_context_id 를 context_id 로 옮겼는데 아래 ALTER TABLE 통짜
 # 무시에 걸려, 사전에는 DB 에 없는 job_context_id 가 남아 있었다 (2026-09-18).
@@ -296,17 +344,24 @@ def _apply_create_table(schema: Schema, match: re.Match) -> None:
     pk_columns: list[str] = []
     fks: list[tuple[list[str], str, list[str]]] = []
     uniques: list[list[str]] = []
+    unique_constraint_names: list[str | None] = []
     ordinal = 0
     for item in _split_top_level(match.group(3)):
         head = item.upper().lstrip()
         if any(head.startswith(k) for k in _CONSTRAINT_STARTS):
             body = item
+            named = None
             if head.startswith("CONSTRAINT"):
+                # 이름을 버리지 않는다. 나중에 DROP CONSTRAINT 가 이것으로 찾는다.
+                named = re.match(r"^\s*CONSTRAINT\s+(\w+)\s+", item, re.IGNORECASE).group(1)
                 body = re.sub(r"^CONSTRAINT\s+\w+\s+", "", item, flags=re.IGNORECASE)
             kind = body.upper().lstrip()
             if kind.startswith("PRIMARY KEY"):
                 pk_columns += [c.strip() for c in re.search(r"\((.*)\)", body, re.DOTALL).group(1).split(",")]
+                if named:
+                    table.primary_key_name = named
             elif kind.startswith("UNIQUE"):
+                unique_constraint_names.append(named)
                 uniques.append([c.strip() for c in re.search(r"\((.*)\)", body, re.DOTALL).group(1).split(",")])
             elif kind.startswith("FOREIGN KEY"):
                 fk = _TABLE_FK.search(body)
@@ -333,6 +388,8 @@ def _apply_create_table(schema: Schema, match: re.Match) -> None:
             pk_columns.append(name)
         if "UNIQUE" in upper:
             uniques.append([name])
+            # 컬럼에 바로 붙은 UNIQUE 는 이름이 없다. 두 목록의 자리를 맞춰 둔다.
+            unique_constraint_names.append(None)
         ref = _REFERENCES.search(rest)
         if ref:
             _add_key(column, "FK")
@@ -343,10 +400,11 @@ def _apply_create_table(schema: Schema, match: re.Match) -> None:
     for name in pk_columns:
         _add_key(table.columns[name], "PK")
         table.columns[name].nullable = False
-    for names in uniques:
+    for names, constraint in zip(uniques, unique_constraint_names):
         for name in names:
             _add_key(table.columns[name], "UK")
         table.add_unique(names)
+        table.name_unique(constraint, names)
     for names, target, target_columns in fks:
         for name, target_column in zip(names, target_columns):
             _add_key(table.columns[name], "FK")
@@ -391,10 +449,20 @@ def _apply_rename_column(table: Table, old: str, new: str) -> None:
 def load(migration_dir: Path | None = None) -> Schema:
     """마이그레이션을 버전 순으로 적용해 현재 스키마를 만든다."""
     directory = migration_dir or MIGRATION_DIR
-    files = sorted(
-        directory.glob("V*__*.sql"),
-        key=lambda p: int(re.match(r"V(\d+)__", p.name).group(1)),
-    )
+    by_version: dict[int, list[str]] = {}
+    for path in sorted(directory.glob("V*__*.sql")):
+        by_version.setdefault(_version_of(path), []).append(path.name)
+    # 같은 번호가 둘이면 **여기서 멈춘다.** Flyway 자신이 그 상태로는 시작하지 않으므로
+    # 우리가 둘 다 적용해 스키마를 만들면 검증이 가짜로 통과한다. 2026-09-22 에 실제로
+    # 났다 — develop 이 V34 를 임베딩 float16 에 주는 사이 MR !209 가 같은 번호로
+    # news_article 을 고치고 있었고, 아무 검사도 걸리지 않았다.
+    duplicated = {v: names for v, names in by_version.items() if len(names) > 1}
+    if duplicated:
+        detail = " · ".join(f"V{v}: {', '.join(names)}"
+                            for v, names in sorted(duplicated.items()))
+        raise ValueError(
+            f"같은 버전의 마이그레이션이 둘 이상이다 — Flyway 가 시작하지 않는다: {detail}")
+    files = sorted(directory.glob("V*__*.sql"), key=_version_of)
     if not files:
         raise FileNotFoundError(f"마이그레이션을 찾을 수 없다: {directory}")
     schema = Schema()
@@ -428,6 +496,8 @@ def load(migration_dir: Path | None = None) -> Schema:
                         if name in table.columns:
                             _add_key(table.columns[name], "UK")
                     table.add_unique(names)
+                    named = _ADD_UNIQUE_NAME.match(statement)
+                    table.name_unique(named.group(1) if named else None, names)
                 continue
             add = _ADD_COLUMN_STMT.match(statement)
             if add and not re.match(r"^ALTER\s+TABLE\s+[\w.]+\s+ADD\s+CONSTRAINT", statement, re.IGNORECASE):
@@ -448,6 +518,8 @@ def load(migration_dir: Path | None = None) -> Schema:
                         if name in table.columns:
                             _add_key(table.columns[name], "UK")
                     table.add_unique(names)
+                    named = _UNIQUE_INDEX_NAME.match(statement)
+                    table.name_unique(named.group(1) if named else None, names)
                 continue
             insert = _INSERT_INTO.match(statement)
             if insert:
@@ -481,6 +553,19 @@ def load(migration_dir: Path | None = None) -> Schema:
                         table.columns.pop(name, None)
                         # 컬럼이 사라지면 그 컬럼이 낀 유일키도 남아 있을 수 없다.
                         table.unique_keys = [g for g in table.unique_keys if name not in g]
+                continue
+            unconstrained = _DROP_CONSTRAINT.match(statement)
+            if unconstrained:
+                table = schema.tables.get(unconstrained.group(2))
+                if table:
+                    table.drop_constraint(unconstrained.group(3))
+                continue
+            unindexed = _DROP_INDEX.match(statement)
+            if unindexed:
+                # 인덱스 이름은 표에 매이지 않아 어느 표의 것인지 찾아야 한다.
+                for table in schema.tables.values():
+                    if table.drop_constraint(unindexed.group(2)):
+                        break
                 continue
             if any(head.startswith(k) for k in (
                 "CREATE INDEX", "CREATE SCHEMA", "CREATE EXTENSION", "ALTER TABLE",
