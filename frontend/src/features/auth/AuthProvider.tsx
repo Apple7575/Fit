@@ -18,7 +18,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, nickname: string) => Promise<void>;
   logout: () => Promise<void>;
-  withdraw: (password: string) => Promise<void>;
+  withdraw: () => Promise<void>;
 }
 
 // Provider 밖에서도 안전하게 동작하도록 기본값을 준다(비로그인 상태).
@@ -104,8 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 탈퇴는 서버 삭제가 성공했을 때만 로컬 인증 상태를 비운다. 실패하면 재시도할 수 있어야 한다.
-  const withdraw = useCallback(async (password: string) => {
-    await authApi.withdraw(password);
+  const withdraw = useCallback(async () => {
+    await authApi.withdraw();
     setUser(null);
   }, []);
 

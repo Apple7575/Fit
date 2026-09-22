@@ -40,16 +40,13 @@ public class AuthService {
     }
 
     /**
-     * 현재 비밀번호를 다시 확인한 뒤 회원과 회원 소유 데이터를 영구 삭제한다.
+     * 확인 화면에서 탈퇴 의사를 확인한 회원과 회원 소유 데이터를 영구 삭제한다.
      * 자소서·면접·검토 방은 users FK 의 ON DELETE CASCADE 로 함께 정리된다.
      */
     @Transactional
-    public void withdraw(Long userId, String password) {
+    public void withdraw(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHENTICATED));
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
-        }
         userRepository.delete(user);
     }
 

@@ -6,7 +6,6 @@ import com.ssafy.companyanalysis.auth.dto.MeResponse;
 import com.ssafy.companyanalysis.auth.dto.SignupRequest;
 import com.ssafy.companyanalysis.auth.dto.SignupResponse;
 import com.ssafy.companyanalysis.auth.dto.VerifyRequest;
-import com.ssafy.companyanalysis.auth.dto.WithdrawRequest;
 import com.ssafy.companyanalysis.auth.service.AuthService;
 import com.ssafy.companyanalysis.auth.service.EmailVerificationService;
 import com.ssafy.companyanalysis.auth.service.UserPrincipal;
@@ -94,9 +93,8 @@ public class AuthController {
 
     @DeleteMapping("/me")
     public ApiResponse<Void> withdraw(@AuthenticationPrincipal UserPrincipal principal,
-            @RequestBody @Valid WithdrawRequest request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-        authService.withdraw(principal.getId(), request.password());
+        authService.withdraw(principal.getId());
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         new SecurityContextLogoutHandler().logout(httpRequest, httpResponse, authentication);
         return ApiResponse.ok(null);

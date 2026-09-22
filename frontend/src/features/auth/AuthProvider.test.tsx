@@ -22,7 +22,7 @@ function Probe() {
       <button onClick={() => logout()} type="button">
         logout
       </button>
-      <button onClick={() => withdraw('secret12')} type="button">
+      <button onClick={() => withdraw()} type="button">
         withdraw
       </button>
     </div>
@@ -96,7 +96,7 @@ describe('AuthProvider', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'withdraw' }));
 
-    expect(mockedApi.withdraw).toHaveBeenCalledWith('secret12');
+    expect(mockedApi.withdraw).toHaveBeenCalledWith();
     await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('anonymous'));
   });
 });
