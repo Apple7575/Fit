@@ -360,7 +360,7 @@ export function CoverLetterWorkspace({
         {step !== META_STEP && (
           <p className="mt-1 text-sm break-keep text-white/70">
             {isLoggedIn
-              ? '문항을 추가·삭제하고 답변을 고친 뒤 저장하세요. 코치 다섯이 각자 맡은 자료로 읽습니다.'
+              ? '문항을 추가·삭제하고 답변을 고친 뒤 저장하세요. 코치 다섯이 자료를 나눠 분석합니다.'
               : '로그인 없이 써 볼 수 있어요. 저장하려면 로그인하세요.'}
           </p>
         )}
@@ -390,7 +390,7 @@ export function CoverLetterWorkspace({
               setTitle(event.target.value);
               touch();
             }}
-            placeholder="제목을 입력하세요 (예: 2026 상반기 백엔드 신입 지원)"
+            placeholder="예: 2026 상반기 백엔드 신입 지원"
             className="w-full rounded-xl bg-white/10 px-4 py-3 text-2xl font-bold tracking-tight text-white ring-1 ring-white/20 backdrop-blur outline-none transition placeholder:text-[17px] placeholder:font-normal placeholder:text-white/35 focus:bg-white/15 focus:ring-2 focus:ring-white/50"
           />
         </div>
@@ -586,7 +586,7 @@ export function CoverLetterWorkspace({
                 {!hasWriting
                   ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
                   : isLoggedIn
-                    ? '코치 다섯이 각자 맡은 자료로 읽습니다.'
+                    ? '코치 다섯이 자료를 나눠 분석합니다.'
                     : '검토를 받으려면 로그인이 필요해요.'}
               </p>
               <p className="mt-0.5 text-xs break-keep text-white/60">
