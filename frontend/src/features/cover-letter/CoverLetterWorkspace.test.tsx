@@ -195,7 +195,9 @@ describe('CoverLetterWorkspace', () => {
 
     const file = new File(['fake'], 'posting.png', { type: 'image/png' });
     await user.upload(screen.getByLabelText('공고 이미지 선택'), file);
-    await user.click(screen.getByRole('button', { name: '확인' }));
+    // 주소 칸 옆 단추는 주소 전용이다. 이미지만 넣었으면 눌리지 않는다
+    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '이미지 1장으로 확인' }));
 
     expect(vi.mocked(parseJobPostingImages).mock.calls[0][0]).toHaveLength(1);
     expect(screen.getByLabelText('지원 회사')).toHaveValue('뷰웍스');
@@ -236,7 +238,7 @@ describe('CoverLetterWorkspace', () => {
     const huge = new File(['x'], 'long-posting.png', { type: 'image/png' });
     Object.defineProperty(huge, 'size', { value: 9 * 1024 * 1024 });
     await user.upload(screen.getByLabelText('공고 이미지 선택'), huge);
-    await user.click(screen.getByRole('button', { name: '확인' }));
+    await user.click(screen.getByRole('button', { name: '이미지 1장으로 확인' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('나눠 캡처');
     expect(vi.mocked(parseJobPostingImages)).not.toHaveBeenCalled();
