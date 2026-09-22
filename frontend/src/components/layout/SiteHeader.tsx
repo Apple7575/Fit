@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AuthButtons } from '../../features/auth/AuthButtons';
 import { BRAND_NAME } from './brand';
@@ -69,6 +70,8 @@ interface SiteHeaderProps {
    * 않아 둘이 한 면으로 읽히게 한다.
    */
   subnav?: boolean;
+  /** 헤더 줄에 얹는 화면별 갈래(자소서의 작성·검토). 브레드크럼 뒤, 전역 메뉴 앞에 선다 */
+  aside?: ReactNode;
 }
 
 function isActive(pathname: string, match: readonly string[]) {
@@ -88,6 +91,7 @@ export function SiteHeader({
   overlay = false,
   scrolled = false,
   subnav = false,
+  aside,
 }: SiteHeaderProps) {
   const { pathname } = useLocation();
   // 어두운 사진·영상 위에 떠 있는 동안만 글자를 흰색으로
@@ -146,6 +150,13 @@ export function SiteHeader({
             </nav>
           )}
         </div>
+
+        {/*
+          지금 보고 있는 것 안에서 갈래가 갈릴 때(자소서의 작성·검토) 그 갈래가 서는 자리.
+          갈래가 둘뿐이면 띠를 한 겹 더 두르는 것보다 이 줄에 얹는 편이 가볍다 — 기업
+          상세처럼 로고·이름·구획 다섯·기준연도를 이고 있는 화면은 여전히 서브바를 쓴다.
+        */}
+        {aside}
 
         <nav aria-label="전역 메뉴" className="ml-auto flex items-center gap-1 sm:gap-2">
           {NAV.map(({ label, to, match }) => {

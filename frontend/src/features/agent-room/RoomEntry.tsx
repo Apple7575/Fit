@@ -18,7 +18,7 @@ const ROOM_IMAGE = '/cover-letter-media/room.jpg';
  * <p>읽어야 할 글은 전부 흰 카드 안에 있으므로 사진이 글 뒤에 오지 않는다. 카드가 뜨는
  * 자리만 사진이 된다 — 모의 면접 준비 화면과 같은 짜임이다.
  */
-export function RoomBackdrop({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
+export function RoomBackdrop({ tone = 'enter' }: { tone?: 'enter' | 'read' }) {
   return (
     <div aria-hidden="true" className="fixed inset-0">
       {/*
@@ -27,13 +27,16 @@ export function RoomBackdrop({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
       */}
       <img alt="" className="size-full scale-105 object-cover blur-[3px]" src={ROOM_IMAGE} />
       {/*
-        종이가 흰색이라 사진이 아주 밝다. 어둡게 누르면 사진이 보이는 게 아니라 검은 판이
-        될 뿐이다. 오래 머무는 읽는 화면에서는 흰 막을 씌워 종이 결만 남긴다.
+        읽는 화면(read)은 자소서 작성 화면과 같은 밝기로 맞춘다. 작성과 검토는 한 자소서의
+        두 면이라 바탕이 따로 놀면 다른 서비스로 읽힌다.
+        재 본 값(0~255): 작성 화면이 위에서부터 59 · 73 · 28 이고, 이 사진의 원본은 124 다.
+        그래서 덮개는 55% · 45% · 85% 여야 같은 자리에 온다(각각 60 · 72 · 25).
+        예전에는 흰 막(white/80)을 씌워 229 였다 — 사진이 아니라 백지에 가까웠다.
       */}
       <div
         className={
-          tone === 'light'
-            ? 'absolute inset-0 bg-gradient-to-b from-white/80 via-white/72 to-white/84'
+          tone === 'read'
+            ? 'absolute inset-0 bg-gradient-to-b from-slate-950/55 via-slate-950/45 to-slate-950/85'
             : 'absolute inset-0 bg-gradient-to-b from-slate-950/88 via-slate-950/82 to-slate-950/94'
         }
       />
@@ -49,17 +52,23 @@ export function RoomBackdrop({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
 export function RoomEntry({
   title,
   description,
+  header,
   children,
 }: {
   title: string;
   description: string;
-  /** 고르는 것(자소서 선택·대화 목록)이 들어오는 자리 */
+  /**
+   * 이 화면이 세울 상단. 자소서에 매인 검토 화면은 그 자소서의 이름표가 달린 띠를 쓴다 —
+   * 기본값은 자소서가 정해지지 않은 자리(저장한 자소서가 아직 없는 경우)를 위한 것이다.
+   */
+  header?: ReactNode;
+  /** 고르는 것(대화 목록)이 들어오는 자리 */
   children?: ReactNode;
 }) {
   return (
     <section className="relative isolate overflow-hidden bg-slate-950 text-white">
       {/* 영상 위에서는 헤더를 투명하게 띄운다. 흰 띠가 가로지르면 인상이 반으로 잘린다 */}
-      <SiteHeader overlay />
+      {header ?? <SiteHeader overlay />}
       <RoomBackdrop />
 
       <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-28 pb-16">

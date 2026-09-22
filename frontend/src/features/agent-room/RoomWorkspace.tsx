@@ -23,7 +23,17 @@ interface RoomWorkspaceProps {
 export function RoomWorkspace({ roomId, coverLetterSelector, agentNavigation, onConversationChanged }: RoomWorkspaceProps) {
   const { state: room, retry: reloadRoom } = useRoom(roomId);
   const { state: messages, reload: reloadMessages } = useLiveMessages(roomId);
-  const [activeTurnId, setActiveTurnId] = useState<number | null>(null);
+  /*
+   * 돌고 있는 턴은 그 방의 것이다. 방마다 새로 마운트하던 때에는 저절로 비워졌지만, 이제
+   * 한 컴포넌트가 방을 갈아 끼우므로 어느 방의 턴인지 함께 들고 있다가 방이 바뀌면 버린다.
+   * (효과로 비우면 한 번 더 그려야 하므로 그릴 때 판단한다)
+   */
+  const [runningTurn, setRunningTurn] = useState<{ roomId: number; turnId: number | null }>({
+    roomId,
+    turnId: null,
+  });
+  const activeTurnId = runningTurn.roomId === roomId ? runningTurn.turnId : null;
+  const setActiveTurnId = (turnId: number | null) => setRunningTurn({ roomId, turnId });
 
   const turn = useTurnPolling(roomId, activeTurnId, () => {
     setActiveTurnId(null);
@@ -43,7 +53,7 @@ export function RoomWorkspace({ roomId, coverLetterSelector, agentNavigation, on
         <div role="alert" className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-[14px] font-medium text-slate-700">검토 방을 찾을 수 없습니다.</p>
           <Link
-            to="/agent-rooms"
+            to="/cover-letters"
             className="mt-2 inline-block text-[13px] font-semibold text-blue-600 underline"
           >
             검토 방 목록으로

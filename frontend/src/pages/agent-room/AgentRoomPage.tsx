@@ -20,13 +20,13 @@ export function AgentRoomPage() {
   }
 
   if (!user) return <Navigate replace to="/login" />;
-  if (!Number.isInteger(parsed) || parsed <= 0) return <Navigate replace to="/agent-rooms" />;
+  if (!Number.isInteger(parsed) || parsed <= 0) return <Navigate replace to="/cover-letters" />;
 
   return (
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
       <div className="mx-auto max-w-[1520px] px-5 py-6 lg:px-8">
-        <Link to="/agent-rooms" className="text-[13px] font-medium text-slate-500 hover:text-slate-700">
+        <Link to="/cover-letters" className="text-[13px] font-medium text-slate-500 hover:text-slate-700">
           ← 검토 방 목록
         </Link>
         <div className="mt-4">
