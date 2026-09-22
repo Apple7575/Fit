@@ -165,7 +165,11 @@ def _validate_finding(finding, documents_by_id, rubric_by_claim_type) -> dict[st
     if claim_type not in rubric_by_claim_type:
         raise ValueError("unsupported claim_type")
     claim = _validate_claim(value["claim"], documents_by_id)
-    present_elements = _validate_present_elements(value["present_elements"], claim["quote"])
+    # 요소 인용은 claim 인용 안이 아니라 같은 문서 원문 안에 있으면 된다. claim 인용을 200자로
+    # 짧게 받기 시작하면서(모델 출력 시간 100초→22초) 요소 근거가 claim 밖 문장에 있는 경우가 정상이 됐다.
+    present_elements = _validate_present_elements(
+        value["present_elements"], documents_by_id[claim["document_id"]]["text"]
+    )
     missing_elements = _validate_missing_elements(value["missing_elements"])
     verdict = _require_string(value["verdict"], "verdict")
     if verdict not in VERDICTS:
@@ -218,7 +222,7 @@ def _validate_claim(claim, documents_by_id) -> dict[str, Any]:
     return {"quote": quote, "document_id": document_id, "start_offset": start, "end_offset": end}
 
 
-def _validate_present_elements(value, claim_quote) -> list[dict[str, str]]:
+def _validate_present_elements(value, document_text) -> list[dict[str, str]]:
     validated = []
     for item in _require_list(value, "present_elements"):
         element = _require_mapping(item, "present_element")
@@ -227,8 +231,8 @@ def _validate_present_elements(value, claim_quote) -> list[dict[str, str]]:
         quote = _require_string(element["quote"], "present element quote")
         if code not in ELEMENT_CODES:
             raise ValueError("unsupported present element")
-        if quote not in claim_quote:
-            raise ValueError("present element quote is not inside claim quote")
+        if quote not in document_text:
+            raise ValueError("present element quote is not found in the claim document")
         validated.append({"element": code, "quote": quote})
     return validated
 

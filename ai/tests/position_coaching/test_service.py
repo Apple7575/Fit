@@ -1,3 +1,4 @@
+import json
 import copy
 import unittest
 
@@ -76,12 +77,12 @@ class PositionAnalysisServiceTest(unittest.TestCase):
             "base_revision": "deployment-alias-unresolved",
             "adapter": None,
             "training_dataset": None,
-            "prompt_version": "experience-depth-v1",
+            "prompt_version": "experience-depth-v2",
         })
         self.assertEqual(result["rubric"], {"id": "experience-depth-v1", "version": 1})
         self.assertEqual(len(qwen.calls), 1)
-        self.assertEqual(qwen.calls[0]["schema_name"], "position_analysis_v2")
-        self.assertEqual(qwen.calls[0]["timeout_seconds"], 45)
+        self.assertEqual(qwen.calls[0]["schema_name"], "position_analysis_v2_model")
+        self.assertEqual(qwen.calls[0]["timeout_seconds"], 90)
 
     def test_retries_once_when_evidence_does_not_match_source(self):
         invalid = valid_output()
@@ -121,3 +122,43 @@ class PositionAnalysisServiceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ModelSchemaTest(unittest.TestCase):
+    def test_model_schema_removes_empty_escape_and_code_owned_fields(self):
+        from ai.position_coaching.service import SCHEMA_PATH, build_model_schema, MAX_FINDINGS
+        stored = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+
+        model_schema = build_model_schema(stored)
+
+        self.assertEqual(model_schema["properties"]["analysis_status"]["enum"], ["COMPLETED"])
+        self.assertEqual(model_schema["properties"]["findings"]["minItems"], 1)
+        self.assertEqual(model_schema["properties"]["findings"]["maxItems"], MAX_FINDINGS)
+        self.assertNotIn("rubric", model_schema["properties"])
+        self.assertNotIn("model_metadata", model_schema["properties"])
+        claim = model_schema["properties"]["findings"]["items"]["properties"]["claim"]
+        self.assertEqual(claim["required"], ["quote", "document_id"])
+        self.assertNotIn("start_offset", claim["properties"])
+        self.assertEqual(claim["properties"]["quote"]["maxLength"], 200)
+        element = model_schema["properties"]["findings"]["items"]["properties"]["present_elements"]["items"]
+        self.assertEqual(element["properties"]["quote"]["maxLength"], 80)
+        # 저장 스키마는 그대로다
+        self.assertIn("NO_EXPERIENCE_CLAIM", stored["properties"]["analysis_status"]["enum"])
+
+    def test_complete_model_output_fills_rubric_and_locates_quote(self):
+        from ai.position_coaching.service import complete_model_output
+        rubric = {"rubric_id": "experience-depth-v1", "version": 1}
+        documents = [{"document_id": "d1", "document_type": "EXPERIENCE", "text": "앞부분. Redis로 성능을 개선했습니다. 뒷부분."}]
+        output = {"analysis_status": "COMPLETED", "findings": [
+            {"claim": {"quote": "Redis로 성능을 개선했습니다.", "document_id": "d1"}},
+            {"claim": {"quote": "문서에 없는 문장", "document_id": "d1"}},
+        ]}
+
+        completed = complete_model_output(output, documents, rubric)
+
+        self.assertEqual(completed["rubric"], {"id": "experience-depth-v1", "version": 1})
+        first = completed["findings"][0]["claim"]
+        self.assertEqual((first["start_offset"], first["end_offset"]), (5, 5 + len("Redis로 성능을 개선했습니다.")))
+        second = completed["findings"][1]["claim"]
+        self.assertEqual((second["start_offset"], second["end_offset"]), (0, 0))
+

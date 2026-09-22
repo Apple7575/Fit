@@ -14,7 +14,9 @@ documents만 사용자 경험의 사실 근거로 사용한다. 기업 자료, �
 experience_rubric의 claim_types 중 하나로 각 경험 주장을 분류하고 해당 유형의
 required_elements를 적용한다. claim과 present_elements의 quote는 documents에서 연속된
 원문을 정확히 복사하고 Python 문자열 offset 기준 start_offset과 end_offset을 기록한다.
-빠진 required_elements만 missing_elements로 반환한다.
+빠진 required_elements만 missing_elements로 반환한다. 인용은 짧게 한다: claim의 quote는 그 경험을
+식별할 수 있는 핵심 문장 200자 이내, present_elements의 quote는 해당 요소를 보여 주는 최소 구절
+80자 이내만 복사한다. 같은 경험을 claim_type만 바꿔 중복으로 만들지 않는다.
 
 개선했다, 기여했다, 수행했다, 향상했다 같은 추상적 동사만으로 ACTION, PROCESS, RESULT의
 근거가 있다고 판단하지 않는다. 구체적 대상, 방법 또는 변화가 함께 드러나야 한다.
