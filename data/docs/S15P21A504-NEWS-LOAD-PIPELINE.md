@@ -5,6 +5,8 @@
 
 - 작성: 데이터 담당 (박세은)
 - 확정된 범위: 전 종목 2,703개사 · 기업당 최신 5건 · 주 1회 · AI 점수 미채택
+- **2026-09-22 갱신**: 마이그레이션 번호가 겹쳤다 — MR !209 는 머지 전에 번호를 다시
+  매겨야 한다 (5-2 장)
 
 ## 1. 지금은 왜 안 되나
 
@@ -91,15 +93,18 @@ load_seed_csv.py → "news_article 시드가 없거나 비어 있다 — 건너�
 | 2 | 수집기를 저장소로 들일까요? | **들인다** — 코드는 커밋 금지 대상이 아니고, 지금은 한 사람 노트북에만 있다 |
 | 3 | 원본 보관 4주면 될까요? | 4주(480MB). 늘리면 용량만 는다 |
 
-## 5-1. ⚠️ MR !209(V34)가 먼저 들어오면 이 경로가 멈춘다 — 실측
+## 5-1. ⚠️ MR !209(뉴스 ERD 마이그레이션)가 먼저 들어오면 이 경로가 멈춘다 — 실측
 
-`fix/S15P21A504-news-article-erd-columns` 의 V34 가 `source`·`guid` 를 지우고
+> **2026-09-22 — 이 장은 그 마이그레이션을 더 이상 번호로 부르지 않는다.**
+> `V34` 는 develop 에서 다른 마이그레이션이 가져갔다. 번호 문제는 5-2 장에 따로 적었다.
+
+`fix/S15P21A504-news-article-erd-columns` 의 마이그레이션이 `source`·`guid` 를 지우고
 `publisher`·`provider`·`provider_article_id`·`provider_url`·`normalized_url`·
 `body_text` 를 더한다. **그 파일을 우리 마이그레이션 폴더에 넣고 파서를 돌려 봤다.**
 
 ```
-V34 적용 뒤 키로 읽히는 칸: corp_code(UK) · provider(UK) · normalized_url(UK)
-                            · provider_article_id(UK)
+적용 뒤 키로 읽히는 칸: corp_code(UK) · provider(UK) · normalized_url(UK)
+                        · provider_article_id(UK)
 load_seed_csv._check_keys → "자연키가 스키마와 다르다 —
     코드 ('corp_code','guid') vs Flyway ('corp_code','provider',
     'normalized_url','provider_article_id')"
@@ -123,8 +128,32 @@ load_seed_csv._check_keys → "자연키가 스키마와 다르다 —
   않기로 한 결정(`news-poc/90-source-review.md`)과 정면으로 부딪힌다. 컬럼을 만드는
   것과 채우는 것은 다른 문제지만, **채울 계획이라면 그 결정을 먼저 다시 여는 것이 맞다**
 
-순서만 맞추면 된다. **V34 를 먼저 넣고 우리 쪽 셋을 같은 날 고치거나, 우리 쪽을 먼저
-고쳐 두고 V34 를 넣는다.** 지금처럼 따로 가면 그 사이에 뉴스 적재가 조용히 멈춘다.
+순서만 맞추면 된다. **그쪽을 먼저 넣고 우리 쪽 셋을 같은 날 고치거나, 우리 쪽을 먼저
+고쳐 두고 그쪽을 넣는다.** 지금처럼 따로 가면 그 사이에 뉴스 적재가 조용히 멈춘다.
+
+## 5-2. ⚠️ 마이그레이션 번호가 겹쳤다 — 머지 전에 다시 매겨 주세요 (2026-09-22 실측)
+
+**같은 `V34` 를 두 브랜치가 서로 다른 파일로 들고 있다.**
+
+| 어디 | 파일 |
+|---|---|
+| `origin/develop` (이미 머지됨) | `V34__rag_embedding_half_precision.sql` |
+| `origin/fix/S15P21A504-news-article-erd-columns` (MR !209) | `V34__news_article_provider_columns.sql` |
+
+MR !209 는 임베딩 float16 마이그레이션이 develop 에 들어오기 **전에** 갈라져 나왔다
+(분기점 `55cbbc6`). 그래서 브랜치 안에서는 V34 가 비어 있었지만 지금은 아니다.
+
+`backend/src/main/resources/application.properties` 에 중복 버전을 넘기는 설정이 없다
+(`spring.flyway.enabled=true` · `locations=classpath:db/migration` ·
+`baseline-on-migrate=false`). Flyway 는 같은 버전이 둘이면 마이그레이션을 시작하지 않으므로
+**이대로 머지되면 백엔드가 뜨지 않는다.** (설정 실측 + Flyway 기본 동작이다. 실제로
+띄워 보지는 않았다.)
+
+**부탁**: `V35__news_article_provider_columns.sql` 로 바꿔 주세요. 2026-09-22 기준
+원격 전 브랜치를 훑어 `V35` 이상을 쓰는 곳은 없습니다 — 지금은 V35 가 비어 있습니다.
+
+우리 쪽 코드는 번호가 아니라 **컬럼 모양**으로 갈라지므로(MR !222) 번호가 바뀌어도
+그대로 돕니다. 5-1 장의 순서 문제는 번호와 무관하게 남아 있습니다.
 
 ## 7. 잡을 만드는 법 (인프라 담당께)
 
