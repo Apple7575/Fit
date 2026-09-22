@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { MAX_KEYWORD, searchCompanies } from '../company-search/api';
+import { useState } from 'react';
+import { MAX_KEYWORD } from '../company-search/api';
+import { useCompanyLookup } from '../company-search/useCompanyLookup';
+import { displayName } from '../company-summary/companyName';
 import { MAX_PEERS, type IndustryCompany } from './types';
 
 interface PeerPickerProps {
@@ -8,8 +10,6 @@ interface PeerPickerProps {
   onChange: (next: IndustryCompany[]) => void;
 }
 
-type SearchStatus = 'idle' | 'loading' | 'success' | 'error';
-
 /**
  * 비교 기업 선택 — 한 줄: [조회 기업(고정)] [선택 기업 ×]… [＋ 기업 추가 입력].
  * 검색 결과는 입력창 아래 드롭다운으로 띄워 레이아웃을 밀지 않는다.
@@ -17,37 +17,13 @@ type SearchStatus = 'idle' | 'loading' | 'success' | 'error';
  */
 export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
   const [keyword, setKeyword] = useState('');
-  const [status, setStatus] = useState<SearchStatus>('idle');
-  const [results, setResults] = useState<IndustryCompany[]>([]);
-  const inFlight = useRef<AbortController | null>(null);
+  // 기업 분석 검색칸과 같다 — 엔터를 치지 않아도 치는 대로 따라온다
+  const lookup = useCompanyLookup(keyword);
+  const status = lookup.status;
+  const results = lookup.items;
   const full = peers.length >= MAX_PEERS;
 
-  useEffect(() => () => inFlight.current?.abort(), []);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const q = keyword.trim();
-    if (!q) return;
-    inFlight.current?.abort();
-    const controller = new AbortController();
-    inFlight.current = controller;
-    setStatus('loading');
-    try {
-      const { items } = await searchCompanies(q, controller.signal);
-      if (controller.signal.aborted) return;
-      setResults(items.map((c) => ({ corpCode: c.corpCode, corpName: c.corpName })));
-      setStatus('success');
-    } catch {
-      if (controller.signal.aborted) return;
-      setResults([]);
-      setStatus('error');
-    }
-  };
-
-  const close = () => {
-    setStatus('idle');
-    setResults([]);
-  };
+  const close = () => lookup.reset();
 
   const add = (company: IndustryCompany) => {
     if (full) return;
@@ -72,7 +48,7 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
 
       <ul aria-label="선택된 비교 기업" className="flex flex-wrap items-center gap-2">
         <li className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-sm font-bold text-blue-700">
-          {target.corpName}
+          {displayName(target.corpName)}
           <span className="text-[10px] font-semibold text-blue-500">조회 기업</span>
         </li>
         {peers.map((peer) => (
@@ -80,9 +56,9 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
             className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white pr-1 pl-2.5 text-sm font-semibold text-slate-700"
             key={peer.corpCode}
           >
-            {peer.corpName}
+            {displayName(peer.corpName)}
             <button
-              aria-label={`${peer.corpName} 제거`}
+              aria-label={`${displayName(peer.corpName)} 제거`}
               className="rounded-md px-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               onClick={() => remove(peer.corpCode)}
               type="button"
@@ -94,7 +70,7 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
       </ul>
 
       <div className="relative">
-        <form className="flex items-center" onSubmit={submit} role="search">
+        <div className="flex items-center" role="search">
           <label className="sr-only" htmlFor="peer-search-keyword">
             비교할 기업명
           </label>
@@ -113,19 +89,15 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
             type="search"
               value={keyword}
             />
-            <button
-              aria-label="검색"
-              className="flex size-6 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={full || keyword.trim() === ''}
-              type="submit"
-            >
-              <svg aria-hidden="true" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            {/* 돋보기는 이제 눌러야 하는 단추가 아니라 여기가 찾는 칸이라는 표시다 */}
+            <span aria-hidden="true" className="flex size-6 items-center justify-center text-slate-400">
+              <svg className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" strokeLinecap="round" />
               </svg>
-            </button>
+            </span>
           </div>
-        </form>
+        </div>
 
         {status !== 'idle' && (
           <div className="absolute top-full left-0 z-20 mt-1 min-w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
@@ -154,7 +126,7 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
                           onClick={() => add(company)}
                           type="button"
                         >
-                          <span>+ {company.corpName}</span>
+                          <span>+ {displayName(company.corpName)}</span>
                           {already && <span className="text-xs text-slate-400">선택됨</span>}
                         </button>
                       </li>

@@ -137,9 +137,21 @@ describe('CompanySearchForm', () => {
     expect(await screen.findByRole('option', { name: /삼성전자/ })).toBeInTheDocument();
     expect(mockedSearch).toHaveBeenNthCalledWith(1, 'tka', expect.anything());
     expect(mockedSearch).toHaveBeenNthCalledWith(2, '삼', expect.anything());
-    // 무엇을 바꿔 찾았는지 목록 맨 위에 적어 둔다
-    expect(screen.getByRole('listbox')).toHaveTextContent('tka');
-    expect(screen.getByRole('listbox')).toHaveTextContent('삼');
+  });
+
+  it('아는 이름이 공시명과 달라도 찾아 준다', async () => {
+    // 삼성SDS 의 공시명은 "삼성에스디에스" 다. 친 그대로는 한 건도 나오지 않는다
+    mockedSearch
+      .mockResolvedValueOnce({ items: [], total: 0 })
+      .mockResolvedValueOnce({ items: [company('00126186', '삼성에스디에스')], total: 1 });
+    render(<CompanySearchForm />);
+
+    type('삼성SDS');
+
+    // 공시명이 아니라 부르는 이름으로 보여 준다 — 아무도 "삼성에스디에스" 라고 하지 않는다
+    expect(await screen.findByRole('option', { name: /삼성SDS/ })).toBeInTheDocument();
+    expect(screen.getByRole('listbox')).not.toHaveTextContent('삼성에스디에스');
+    expect(mockedSearch).toHaveBeenCalledWith('삼성에스디에스', expect.anything());
   });
 
   it('does not retry in hangul when the keyword already found something', async () => {

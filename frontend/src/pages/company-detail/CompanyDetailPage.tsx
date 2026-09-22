@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { CompanyLogo } from '../../features/company-summary/CompanyLogo';
 import { HEADER_LINE, HEADER_SURFACE, SiteHeader } from '../../components/layout/SiteHeader';
+import { displayName } from '../../features/company-summary/companyName';
 import {
   useCompanyDetail,
   type CompanyDetailState,
@@ -89,7 +90,12 @@ export function CompanyDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <SiteHeader breadcrumb={detail?.corpName} floating={immersive} scrolled={revealed} subnav />
+      <SiteHeader
+        breadcrumb={detail?.corpName ? displayName(detail.corpName) : undefined}
+        floating={immersive}
+        scrolled={revealed}
+        subnav
+      />
 
       <div className={subBar} inert={chromeAway}>
         {/* 서브바 높이는 자소서 서브바와 같아야 한다 — 탭을 오갈 때 헤더가 들썩인다 (SUBBAR_ROW) */}
@@ -97,7 +103,7 @@ export function CompanyDetailPage() {
           {detail?.corpName && (
             // 로고·기업명이 곧 요약 화면으로 가는 링크다 (별도 "요약" 탭을 두지 않는다)
             <NavLink
-              aria-label={`${detail.corpName} 요약`}
+              aria-label={`${displayName(detail.corpName)} 요약`}
               /*
                * 기업명은 탭이 아니라 이 화면이 누구 이야기인지 말하는 이름표다. 알약을
                * 씌우면 옆의 구획 탭과 같은 급으로 읽혀, 한 줄에 선택된 것이 둘처럼 보인다.
@@ -117,7 +123,7 @@ export function CompanyDetailPage() {
                 homepageUrl={detail.homepageUrl}
                 size={26}
               />
-              <span className="truncate">{detail.corpName}</span>
+              <span className="truncate">{displayName(detail.corpName)}</span>
             </NavLink>
           )}
           {detail?.corpName && <span aria-hidden="true" className="hidden h-5 w-px bg-slate-200 sm:block" />}
