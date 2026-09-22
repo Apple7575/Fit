@@ -35,7 +35,7 @@ class FakeNewsRepository:
 
 
 class FakeSearchProvider:
-    def search(self, corp_name, position_name, missing_scopes, from_date, to_date, limit):
+    def search(self, corp_name, position_name, missing_scopes, from_date, to_date, limit, *, industry_name=None):
         return [{"title": f"{corp_name} {scope}"} for scope in missing_scopes]
 
 

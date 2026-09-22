@@ -95,6 +95,7 @@ class NewsIntelligenceService:
                     since.date(),
                     now.date(),
                     MAX_EXTERNAL_CANDIDATES,
+                    industry_name=context.industry_name,
                 )
             except ExternalSearchUnavailable:
                 external = []

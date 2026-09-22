@@ -23,11 +23,7 @@ FETCH_TIMEOUT_SECONDS = 25
 PROVIDER_TIMEOUT_SECONDS = 30
 _READ_CHUNK_BYTES = 64 * 1024
 _SCOPE_ORDER: tuple[Scope, ...] = ("COMPANY", "INDUSTRY", "ROLE")
-_SCOPE_TERMS: dict[Scope, str] = {
-    "COMPANY": "기업",
-    "INDUSTRY": "산업",
-    "ROLE": "직무",
-}
+_SCOPE_TERMS: frozenset[Scope] = frozenset(_SCOPE_ORDER)  # 허용 범위 집합
 
 
 class NewsSearchProvider(Protocol):
@@ -39,6 +35,8 @@ class NewsSearchProvider(Protocol):
         from_date: date,
         to_date: date,
         limit: int,
+        *,
+        industry_name: str | None = None,
     ) -> list[NewsCandidate]: ...
 
 
@@ -67,42 +65,92 @@ class GoogleNewsRssProvider:
         from_date: date,
         to_date: date,
         limit: int,
+        *,
+        industry_name: str | None = None,
     ) -> list[NewsCandidate]:
+        """범위(기업·산업·직무)마다 질의를 따로 보내고 결과를 번갈아 섞는다.
+
+        구글 뉴스 RSS는 띄어쓰기를 AND 로 처리하므로 회사명·직무명·범위 단어를 한 질의에
+        모두 넣으면 거의 아무것도 돌아오지 않는다(2026-09 실측: 회사명만 77~100건,
+        전부 넣으면 0~9건). 범위별로 나누면 각 범위의 기사가 고르게 들어온다.
+        """
         canonical_corp_name = _require_text(corp_name, "corp_name")
         canonical_position_name = _require_text(position_name, "position_name")
-        scopes = _normalize_scopes(missing_scopes)
+        canonical_industry_name = _optional_text(industry_name)
+        scopes = _normalize_scopes(missing_scopes) or ["COMPANY"]
         _validate_range(from_date, to_date)
         _validate_limit(limit)
 
-        url = _search_url(
-            canonical_corp_name,
-            canonical_position_name,
-            scopes,
-            from_date,
-            to_date,
-        )
         deadline = self._monotonic() + remaining_timeout(
             PROVIDER_TIMEOUT_SECONDS, ExternalSearchUnavailable,
         )
         try:
-            if self._fetcher is None:
-                payload = _fetch_rss(url, deadline=deadline, monotonic_clock=self._monotonic)
-            else:
-                payload = self._fetcher(url)
+            per_scope: list[list[NewsCandidate]] = []
+            for scope in scopes:
+                url = _search_url(
+                    scope_query(
+                        scope,
+                        corp_name=canonical_corp_name,
+                        position_name=canonical_position_name,
+                        industry_name=canonical_industry_name,
+                    ),
+                    from_date,
+                    to_date,
+                )
+                if self._fetcher is None:
+                    payload = _fetch_rss(url, deadline=deadline, monotonic_clock=self._monotonic)
+                else:
+                    payload = self._fetcher(url)
+                _require_before_deadline(deadline, self._monotonic)
+                accepted, _ = screen_quality(parse_feed(payload))
+                _require_before_deadline(deadline, self._monotonic)
+                per_scope.append(_candidates_from_rows(
+                    accepted,
+                    from_date=from_date,
+                    to_date=to_date,
+                    now=self._now(),
+                    limit=limit,
+                ))
             _require_before_deadline(deadline, self._monotonic)
-            accepted, _ = screen_quality(parse_feed(payload))
-            _require_before_deadline(deadline, self._monotonic)
-            candidates = _candidates_from_rows(
-                accepted,
-                from_date=from_date,
-                to_date=to_date,
-                now=self._now(),
-                limit=limit,
-            )
-            _require_before_deadline(deadline, self._monotonic)
-            return candidates
+            return _interleave(per_scope, limit)
         except Exception as error:
             raise ExternalSearchUnavailable() from error
+
+
+def scope_query(
+    scope: Scope,
+    *,
+    corp_name: str,
+    position_name: str,
+    industry_name: str | None,
+) -> str:
+    """범위별 검색어. 날짜 조건은 _search_url 이 붙인다."""
+    if scope == "COMPANY":
+        return _quote_query_term(corp_name)
+    if scope == "INDUSTRY":
+        if industry_name:
+            return _quote_query_term(industry_name)
+        # 업종명을 모르면 회사명과 '업계'를 함께 검색해 산업 기사에 가깝게 맞춘다.
+        return f"{_quote_query_term(corp_name)} 업계"
+    return _quote_query_term(position_name)
+
+
+def _interleave(groups: Sequence[Sequence[NewsCandidate]], limit: int) -> list[NewsCandidate]:
+    """범위별 결과를 한 건씩 번갈아 뽑아 특정 범위가 목록을 독점하지 않게 한다. 중복 기사는 한 번만."""
+    merged: list[NewsCandidate] = []
+    seen: set[str] = set()
+    for index in range(max((len(group) for group in groups), default=0)):
+        for group in groups:
+            if index >= len(group):
+                continue
+            candidate = group[index]
+            if candidate.article_id in seen:
+                continue
+            seen.add(candidate.article_id)
+            merged.append(candidate)
+            if len(merged) >= limit:
+                return merged
+    return merged
 
 
 def _fetch_rss(
@@ -273,24 +321,14 @@ def _read_once(response, size: int) -> bytes:
     return response.read(size)
 
 
-def _search_url(
-    corp_name: str,
-    position_name: str,
-    scopes: Sequence[Scope],
-    from_date: date,
-    to_date: date,
-) -> str:
-    query = " ".join(
-        [
-            _quote_query_term(corp_name),
-            position_name,
-            *(_SCOPE_TERMS[scope] for scope in scopes),
-            f"after:{from_date.isoformat()}",
-            f"before:{to_date.isoformat()}",
-        ]
-    )
+def _search_url(query: str, from_date: date, to_date: date) -> str:
     return "https://news.google.com/rss/search?" + urlencode(
-        {"q": query, "hl": "ko", "gl": "KR", "ceid": "KR:ko"}
+        {
+            "q": f"{query} after:{from_date.isoformat()} before:{to_date.isoformat()}",
+            "hl": "ko",
+            "gl": "KR",
+            "ceid": "KR:ko",
+        }
     )
 
 

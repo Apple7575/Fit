@@ -82,6 +82,16 @@ DUPLICATE_GUID_RSS = """<?xml version=\"1.0\"?>
 </channel></rss>""".encode()
 
 
+def _feed(items):
+    body = "".join(
+        f"<item><title>{title} - 매일경제</title><link>https://example.test/{guid}</link>"
+        f"<guid>{guid}</guid><pubDate>Mon, 14 Sep 2026 00:00:00 +0000</pubDate>"
+        f"<source url=\"https://mk.co.kr\">매일경제</source></item>"
+        for guid, title in items
+    )
+    return f'<?xml version="1.0"?><rss><channel>{body}</channel></rss>'.encode("utf-8")
+
+
 class GoogleNewsRssProviderTest(unittest.TestCase):
     def test_google_provider_makes_one_bounded_request(self):
         fetcher = Mock(return_value=RSS_BYTES)
@@ -93,33 +103,64 @@ class GoogleNewsRssProviderTest(unittest.TestCase):
         self.assertLessEqual(len(rows), 20)
         self.assertTrue(all(item.origin == "EXTERNAL" for item in rows))
 
-    def test_query_has_only_company_position_requested_scope_and_bounds(self):
+    def test_sends_one_query_per_requested_scope(self):
         fetcher = Mock(return_value=RSS_BYTES)
         provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
 
         provider.search(
             corp_name="  삼성전자  ",
             position_name="백엔드 개발자",
-            missing_scopes=["ROLE", "INDUSTRY"],
+            missing_scopes=["ROLE", "INDUSTRY", "COMPANY"],
             from_date=date(2026, 6, 18),
             to_date=date(2026, 9, 16),
             limit=20,
+            industry_name="반도체 제조업",
         )
 
-        request_url = fetcher.call_args.args[0]
-        parsed = urlsplit(request_url)
-        self.assertEqual(parsed.scheme, "https")
-        self.assertEqual(parsed.netloc, "news.google.com")
-        self.assertEqual(parsed.path, "/rss/search")
-        self.assertEqual(
-            parse_qs(parsed.query),
-            {
-                "q": ['"삼성전자" 백엔드 개발자 산업 직무 after:2026-06-18 before:2026-09-16'],
-                "hl": ["ko"],
-                "gl": ["KR"],
-                "ceid": ["KR:ko"],
-            },
-        )
+        self.assertEqual(fetcher.call_count, 3)
+        queries = []
+        for call in fetcher.call_args_list:
+            parsed = urlsplit(call.args[0])
+            self.assertEqual((parsed.scheme, parsed.netloc, parsed.path),
+                             ("https", "news.google.com", "/rss/search"))
+            params = parse_qs(parsed.query)
+            self.assertEqual((params["hl"], params["gl"], params["ceid"]), (["ko"], ["KR"], ["KR:ko"]))
+            queries.append(params["q"][0])
+        # 기업 → 산업 → 직무 순서. 회사명·직무명·범위 단어를 한 질의에 AND 로 섞지 않는다.
+        self.assertEqual(queries, [
+            '"삼성전자" after:2026-06-18 before:2026-09-16',
+            '"반도체 제조업" after:2026-06-18 before:2026-09-16',
+            '"백엔드 개발자" after:2026-06-18 before:2026-09-16',
+        ])
+
+    def test_industry_query_falls_back_to_company_when_industry_name_is_unknown(self):
+        fetcher = Mock(return_value=RSS_BYTES)
+        provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
+
+        provider.search(**{**REQUEST, "missing_scopes": ["INDUSTRY"]})
+
+        query = parse_qs(urlsplit(fetcher.call_args.args[0]).query)["q"][0]
+        self.assertTrue(query.startswith('"삼성전자" 업계 after:'))
+
+    def test_empty_scopes_search_company_only(self):
+        fetcher = Mock(return_value=RSS_BYTES)
+        provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
+
+        provider.search(**{**REQUEST, "missing_scopes": []})
+
+        self.assertEqual(fetcher.call_count, 1)
+        query = parse_qs(urlsplit(fetcher.call_args.args[0]).query)["q"][0]
+        self.assertTrue(query.startswith('"삼성전자" after:'))
+
+    def test_interleaves_scopes_and_drops_duplicates_across_scopes(self):
+        company_feed = _feed([("A1", "기업 기사 1"), ("A2", "기업 기사 2"), ("A3", "기업 기사 3")])
+        role_feed = _feed([("R1", "직무 기사 1"), ("A1", "기업 기사 1")])
+        fetcher = Mock(side_effect=[company_feed, role_feed])
+        provider = GoogleNewsRssProvider(fetcher=fetcher, now=lambda: NOW)
+
+        rows = provider.search(**{**REQUEST, "missing_scopes": ["COMPANY", "ROLE"], "limit": 3})
+
+        self.assertEqual([row.guid for row in rows], ["A1", "R1", "A2"])
 
     def test_keeps_valid_rows_sorts_newest_first_and_applies_requested_limit(self):
         provider = GoogleNewsRssProvider(fetcher=Mock(return_value=RSS_BYTES), now=lambda: NOW)

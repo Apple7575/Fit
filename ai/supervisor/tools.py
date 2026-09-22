@@ -243,20 +243,25 @@ class NewsRepositoryProxy(_Proxy):
 
 
 class NewsSearchProviderProxy(_Proxy):
-    def search(self, corp_name, position_name, missing_scopes, from_date, to_date, limit):
+    def search(
+        self, corp_name, position_name, missing_scopes, from_date, to_date, limit,
+        *, industry_name=None,
+    ):
         return self._toolbox.call(
             self._agent,
             "search_news_external",
             {
                 "corp_name": corp_name,
                 "position_name": position_name,
+                "industry_name": industry_name,
                 "missing_scopes": [str(scope) for scope in missing_scopes],
                 "from_date": from_date.isoformat(),
                 "to_date": to_date.isoformat(),
                 "limit": limit,
             },
             lambda: self._target.search(
-                corp_name, position_name, missing_scopes, from_date, to_date, limit
+                corp_name, position_name, missing_scopes, from_date, to_date, limit,
+                industry_name=industry_name,
             ),
             count=_len_or_none,
         )

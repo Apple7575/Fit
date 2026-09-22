@@ -82,8 +82,9 @@ class FakeProvider:
         self.error = error
         self.calls: list[tuple[object, ...]] = []
 
-    def search(self, corp_name, position_name, missing_scopes, from_date, to_date, limit):
+    def search(self, corp_name, position_name, missing_scopes, from_date, to_date, limit, *, industry_name=None):
         self.calls.append((corp_name, position_name, tuple(missing_scopes), from_date, to_date, limit))
+        self.industry_names = getattr(self, "industry_names", []) + [industry_name]
         if self.error:
             raise self.error
         return self.rows
