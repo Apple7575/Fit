@@ -5,6 +5,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol
 
 from ai.jd_coaching.baseline import call_qwen
+from ai.prompting.common import with_common_rules
 from ai.supervisor.contracts import AgentResult, SupervisorPlan
 
 
@@ -99,7 +100,7 @@ class QwenSupervisorModel:
                 [
                     {
                         "role": "system",
-                        "content": (
+                        "content": with_common_rules(
                             "사용 가능한 에이전트 안에서 요청 해결에 필요한 최소 집합을 선택하라. "
                             "자기소개서 첨삭·수정 또는 작성 방식 설명 요청은 Writing만 선택하라. "
                             "JD 또는 Position 분석을 첨삭에 반영해 달라고 사용자가 명시한 경우에만 "
@@ -139,7 +140,9 @@ class QwenSupervisorModel:
             [
                 {
                     "role": "system",
-                    "content": "에이전트 결과의 사실만 사용해 중복 없이 한국어 검토 메시지를 작성하라.",
+                    "content": with_common_rules(
+                        "에이전트 결과의 사실만 사용해 중복 없이 한국어 검토 메시지를 작성하라."
+                    ),
                 },
                 {
                     "role": "user",

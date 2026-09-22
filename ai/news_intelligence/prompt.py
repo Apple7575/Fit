@@ -4,6 +4,7 @@ import json
 from collections.abc import Sequence
 
 from ai.news_intelligence.contracts import NewsCandidate, NewsContext
+from ai.prompting.common import with_common_rules
 
 
 SYSTEM_INSTRUCTION = """You analyze company, industry and role changes in Korean.
@@ -68,8 +69,8 @@ def build_news_messages(
         "instruction": instruction,
     }
     return [
-        {"role": "system", "content": SYSTEM_INSTRUCTION + (
+        {"role": "system", "content": with_common_rules(SYSTEM_INSTRUCTION + (
             COVERAGE_INSTRUCTION if coverage else SIGNALS_INSTRUCTION
-        )},
+        ))},
         {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
     ]
