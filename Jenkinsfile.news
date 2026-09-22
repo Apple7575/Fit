@@ -62,7 +62,7 @@ pipeline {
                         # ── 2. 돌린다. 창을 비워 두면 스크립트가 지난 7일을 잡는다.
                         $SSH "$HOST" "CA_ENV=${CA_ENV} \
                             LOAD_NEWS_PROD=${LOAD_NEWS_PROD} \
-                            DRY_RUN=$([ '${DRY_RUN}' = 'true' ] && echo 1 || echo 0) \
+                            DRY_RUN=$([ "$DRY_RUN" = true ] && echo 1 || echo 0) \
                             ${START:+START=${START}} ${END:+END=${END}} \
                             bash /home/ubuntu/newsdata/pkg/data/scripts/news_weekly.sh"
 
