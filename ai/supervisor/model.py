@@ -6,6 +6,16 @@ from typing import Any, Protocol
 
 from ai.jd_coaching.baseline import call_qwen
 from ai.prompting.common import with_common_rules
+from ai.supervisor.aggregate import (
+    AGGREGATE_SCHEMA,
+    AGGREGATE_SCHEMA_VERSION,
+    FORMAT_INSTRUCTION,
+    AggregateOutputError,
+    available_evidence_ids,
+    render_aggregate,
+    successful_agents,
+    validate_aggregate,
+)
 from ai.supervisor.contracts import AgentResult, SupervisorPlan
 
 
@@ -23,12 +33,7 @@ PLAN_SCHEMA = {
     },
 }
 
-AGGREGATE_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["message"],
-    "properties": {"message": {"type": "string", "minLength": 1}},
-}
+# 종합 형식·스키마·검증은 ai/supervisor/aggregate.py 에 있다.
 
 
 class PlanOutputError(ValueError):
@@ -134,33 +139,43 @@ class QwenSupervisorModel:
         plan: SupervisorPlan,
         results: Sequence[AgentResult],
     ) -> str:
-        response = self._qwen_caller(
-            self._config,
-            [
-                {
-                    "role": "system",
-                    "content": with_common_rules(
-                        "에이전트 결과의 사실만 사용해 중복 없이 한국어 검토 메시지를 작성하라."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "instruction": instruction,
-                            "plan": plan.model_dump(),
-                            "agent_results": [item.model_dump() for item in results],
-                        },
-                        ensure_ascii=False,
-                    ),
-                },
-            ],
-            max_tokens=1600,
-            timeout_seconds=30,
-            schema=AGGREGATE_SCHEMA,
-            schema_name="supervisor_aggregate_v1",
-        )
-        message = response["output"].get("message")
-        if not isinstance(message, str) or not message.strip():
-            raise ValueError("aggregate message must not be blank")
-        return message.strip()
+        """네 칸(answer·judgments·conflicts·next_action)을 받아 검증하고 문장으로 조립한다.
+
+        검증에 걸리면 오류 문구를 붙여 한 번 다시 묻는다. 두 번째도 실패하면 예외를 올려
+        그래프의 fallback(담당 결과 나열)으로 넘긴다.
+        """
+        validation_error: str | None = None
+        for attempt in range(2):
+            payload: dict[str, Any] = {
+                "instruction": instruction,
+                "plan": plan.model_dump(),
+                "successful_agents": successful_agents(results),
+                "available_evidence_ids": available_evidence_ids(results),
+                "agent_results": [item.model_dump() for item in results],
+            }
+            if validation_error is not None:
+                payload["previous_validation_error"] = validation_error
+                payload["retry_instruction"] = (
+                    "위 검증 오류를 고쳐 네 칸 전체를 다시 반환한다. 담당 문장을 옮기지 말고 "
+                    "담당 결과들을 연결한 판단으로 쓴다."
+                )
+            response = self._qwen_caller(
+                self._config,
+                [
+                    {"role": "system", "content": with_common_rules(FORMAT_INSTRUCTION)},
+                    {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                ],
+                max_tokens=2400,
+                timeout_seconds=45,
+                schema=AGGREGATE_SCHEMA,
+                schema_name=AGGREGATE_SCHEMA_VERSION,
+            )
+            try:
+                output = validate_aggregate(response["output"], results)
+            except (AggregateOutputError, KeyError, TypeError) as error:
+                validation_error = str(error)
+                if attempt == 1:
+                    raise ValueError(f"aggregate output rejected twice: {error}") from error
+                continue
+            return render_aggregate(output)
+        raise ValueError("aggregate did not produce output")  # pragma: no cover

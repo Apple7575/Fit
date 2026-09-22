@@ -77,8 +77,14 @@ class FakeQwenCaller:
         self.plan_calls = []
 
     def __call__(self, config, messages, **kwargs):
-        if kwargs["schema_name"] == "supervisor_aggregate_v1":
-            return {"output": {"message": "종합 결과"}}
+        if kwargs["schema_name"] == "supervisor_aggregate_v2":
+            # 성공한 담당이 하나뿐인 경우에 통과하는 최소 출력
+            return {"output": {
+                "answer": "종합 결과",
+                "judgments": [{"claim": "담당 결과를 바탕으로 보완이 필요하다.", "agents": ["news"], "evidence_ids": []}],
+                "conflicts": [],
+                "next_action": "문항을 보완한다.",
+            }}
         self.plan_calls.append(messages)
         output = self.plan_outputs.pop(0)
         if isinstance(output, Exception):
@@ -141,7 +147,7 @@ class SupervisorGraphTest(unittest.TestCase):
                 self.assertEqual(source["published_at"], "2026-09-15T12:00:00Z")
                 self.assertEqual(source["url"], "https://example.test/stored/1")
                 self.assertTrue(output["final_message"].startswith("[news]") if fallback
-                                else output["final_message"] == "종합 결과")
+                                else output["final_message"].startswith("종합 결과"))
 
     def test_dispatches_three_selected_workers_in_parallel(self):
         barrier = threading.Barrier(3, timeout=2)

@@ -14,7 +14,12 @@ class FakeQwen:
         self.calls.append({"config": config, "messages": messages, **kwargs})
         if kwargs["schema_name"] == "supervisor_plan_v1":
             return {"output": {"selected_agents": ["jd"], "reason": "JD 검토 요청"}}
-        return {"output": {"message": "JD 기준으로 보완이 필요합니다."}}
+        return {"output": {
+            "answer": "JD 기준으로 보완이 필요합니다.",
+            "judgments": [{"claim": "공고의 핵심 요구를 문서가 뒷받침하지 못한다.", "agents": ["jd"], "evidence_ids": []}],
+            "conflicts": [],
+            "next_action": "1번 문항에 근거 문장을 추가한다.",
+        }}
 
 
 class QwenSupervisorModelTest(unittest.TestCase):
@@ -110,9 +115,11 @@ class QwenSupervisorModelTest(unittest.TestCase):
         )
 
         self.assertEqual(plan.selected_agents, ["jd"])
-        self.assertEqual(message, "JD 기준으로 보완이 필요합니다.")
+        self.assertTrue(message.startswith("JD 기준으로 보완이 필요합니다."))
+        self.assertIn("■ 종합 판단", message)
+        self.assertIn("■ 다음에 할 일", message)
         self.assertEqual(qwen.calls[0]["schema_name"], "supervisor_plan_v1")
-        self.assertEqual(qwen.calls[1]["schema_name"], "supervisor_aggregate_v1")
+        self.assertEqual(qwen.calls[1]["schema_name"], "supervisor_aggregate_v2")
 
     def test_plan_schema_and_prompt_explain_writing_selection_rules(self):
         qwen = FakeQwen()

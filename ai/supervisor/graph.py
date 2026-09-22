@@ -477,20 +477,16 @@ def build_supervisor_graph(
             ),
             None,
         )
-        if writing_result is not None:
+        if writing_result is not None and len(successes) == 1:
+            # 글쓰기만 돌았으면 종합할 것이 없다. 되묻기(CLARIFICATION_REQUIRED)도 그대로 전달한다.
+            # 분석 담당이 함께 성공했으면 글쓰기가 되물어도 종합을 돈다. 그래야 분석 결과가
+            # 사용자에게 도달하고, 되묻는 내용은 종합의 next_action 으로 정리된다.
             writing_message = writing_result.result.get("message")
-            if writing_result.result.get("status") == "CLARIFICATION_REQUIRED":
-                return {
-                    "final_message": (
-                        writing_message if isinstance(writing_message, str) else ""
-                    )
-                }
-            if len(successes) == 1:
-                return {
-                    "final_message": (
-                        writing_message if isinstance(writing_message, str) else ""
-                    )
-                }
+            return {
+                "final_message": (
+                    writing_message if isinstance(writing_message, str) else ""
+                )
+            }
         try:
             message = model.aggregate(
                 instruction=state["instruction"],
