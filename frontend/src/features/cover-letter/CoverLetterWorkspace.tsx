@@ -536,7 +536,7 @@ export function CoverLetterWorkspace({
                   <input
                     value={item.question}
                     onChange={(event) => editItem(item.key, { question: event.target.value })}
-                    placeholder="예: 지원 동기와 입사 후 포부를 기술하시오."
+                    placeholder="예: 지원 동기와 입사 후 포부를 기술하시오"
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
@@ -561,7 +561,7 @@ export function CoverLetterWorkspace({
                   onChange={(event) => editItem(item.key, { answer: event.target.value })}
                   rows={8}
                   maxLength={item.charLimit || 4000}
-                  placeholder="답변을 붙여넣거나 입력하세요."
+                  placeholder="답변을 붙여넣거나 입력하세요"
                   className="w-full resize-y rounded-lg border border-slate-200 p-3 text-[15px] leading-7 text-slate-700 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
                 <div className="mt-1.5 text-right text-[12px] text-slate-400">
@@ -796,7 +796,7 @@ function JobPostingBar({
             }}
             type="url"
             inputMode="url"
-            placeholder="주소를 넣고 확인하면 회사·직무를 대신 채워 드려요."
+            placeholder="주소를 넣고 확인하면 회사·직무를 대신 채워 드려요"
             className="h-[42px] w-full rounded-lg border border-slate-200 pr-3 pl-9 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </div>
