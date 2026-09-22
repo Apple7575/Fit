@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { SiteHeader } from '../../components/layout/SiteHeader';
 import { CompanyLogo } from '../../features/company-summary/CompanyLogo';
 import { searchCompanies } from '../../features/company-search/api';
+import { qwertyToHangul } from '../../features/company-search/qwertyToHangul';
 import { CompanySearchForm } from '../../features/company-search/CompanySearchForm';
 import {
   CompanySearchResults,
@@ -35,6 +36,8 @@ export function CompanySearchPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [total, setTotal] = useState(0);
   const [recent, setRecent] = useState<RecentCompany[]>(() => getRecentCompanies());
+  /** 자판을 안 바꾸고 친 것으로 보여 한글로 되돌려 찾은 경우 */
+  const [swap, setSwap] = useState<{ from: string; to: string } | null>(null);
   // 영상 위에서는 헤더를 투명하게 띄우고, 첫 화면을 벗어나면 흰 유리로 되돌린다
   const [scrolled, setScrolled] = useState(false);
   const inFlight = useRef<AbortController | null>(null);
@@ -58,13 +61,34 @@ export function CompanySearchPage() {
     setStatus('loading');
     resultsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     try {
-      const result = await searchCompanies(nextKeyword, controller.signal);
+      let found = await searchCompanies(nextKeyword, controller.signal);
+      let swapped: { from: string; to: string } | null = null;
+
+      /*
+       * 빈손일 때만 자판을 안 바꾸고 친 것으로 보고 한 번 더 찾는다("tka" → "삼").
+       * 바꿔서 찾았으면 무엇을 바꿨는지 결과 위에 적는다 — 말없이 바꾸면 치지도 않은 말의
+       * 결과가 나온 것으로 보인다.
+       */
+      if (found.items.length === 0) {
+        const hangul = qwertyToHangul(nextKeyword);
+        if (hangul !== nextKeyword) {
+          const retry = await searchCompanies(hangul, controller.signal);
+          if (retry.items.length > 0) {
+            found = retry;
+            swapped = { from: nextKeyword, to: hangul };
+            setKeyword(hangul);
+          }
+        }
+      }
+
       if (controller.signal.aborted) return;
-      setCompanies(result.items);
-      setTotal(result.total);
+      setSwap(swapped);
+      setCompanies(found.items);
+      setTotal(found.total);
       setStatus('success');
     } catch {
       if (controller.signal.aborted) return;
+      setSwap(null);
       setCompanies([]);
       setTotal(0);
       setStatus('error');
@@ -80,8 +104,14 @@ export function CompanySearchPage() {
     <div className="relative flex min-h-screen flex-col bg-slate-50">
       <SiteHeader floating scrolled={scrolled} />
 
-      {/* 화면 전체가 영상 한 장. 헤더도 그 위에 투명하게 뜬다. 바로 볼 수 있는 기업도 그 위에 얹는다 */}
-      <section className="relative isolate overflow-hidden bg-slate-950 text-white">
+      {/*
+        화면 전체가 영상 한 장. 헤더도 그 위에 투명하게 뜬다. 바로 볼 수 있는 기업도 그 위에 얹는다.
+
+        overflow-hidden 은 두지 않는다. 검색칸 아래로 펼쳐지는 추천 목록이 창이 낮을 때
+        이 장의 밑변을 넘어 잘려 나갔다. 배경(영상·그라데이션)은 모두 inset-0 이라 제 상자를
+        벗어나지 않으니 잘라낼 것도 없다.
+      */}
+      <section className="relative isolate bg-slate-950 text-white">
         <div aria-hidden="true" className="absolute inset-0">
           <video
             autoPlay
@@ -107,7 +137,7 @@ export function CompanySearchPage() {
             </p>
 
             <div className="mx-auto mt-8 w-full max-w-2xl text-left text-slate-900">
-              <CompanySearchForm onSearch={runSearch} />
+              <CompanySearchForm onPick={open} onSearch={runSearch} />
             </div>
 
             {/* 다시 찾을 회사는 검색창 바로 아래에서 집게 한다. 처음 온 사람에게는 빈 줄을 보여 주지 않는다 */}
@@ -180,6 +210,12 @@ export function CompanySearchPage() {
 
       {status !== 'idle' && (
         <main className="mx-auto w-full max-w-[1100px] flex-1 scroll-mt-[72px] px-6 py-10" ref={resultsRef}>
+          {status === 'success' && swap && (
+            <p className="mb-3 text-[13px] text-slate-500">
+              한글로 바꿔 찾았어요 · <span className="font-semibold text-slate-700">{swap.from}</span>{' '}
+              → <span className="font-semibold text-slate-700">{swap.to}</span>
+            </p>
+          )}
           <CompanySearchResults
             companies={companies}
             keyword={keyword}

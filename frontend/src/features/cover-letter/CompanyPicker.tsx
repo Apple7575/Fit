@@ -111,17 +111,22 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
               {results.length === 0 ? (
                 <p className="px-2 py-2 text-[13px] font-medium text-slate-400">검색 결과가 없습니다.</p>
               ) : (
-                <ul aria-label="검색 결과" className="max-h-60 overflow-y-auto">
+                <ul
+                  aria-label="검색 결과"
+                  className="max-h-[224px] snap-y snap-mandatory overflow-y-auto"
+                >
                   {results.map((company) => (
                     <li key={company.corpCode}>
                       <button
                         onClick={() => select(company.corpName)}
-                        className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition hover:bg-slate-50"
+                        className="flex h-14 w-full snap-start items-center justify-between gap-3 rounded-lg px-2.5 text-left transition hover:bg-slate-50"
                         type="button"
                       >
-                        <span className="flex flex-col">
-                          <span className="text-[14px] font-semibold text-slate-800">{company.corpName}</span>
-                          <span className="text-[12px] text-slate-400">
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate text-[14px] font-semibold text-slate-800">
+                            {company.corpName}
+                          </span>
+                          <span className="truncate text-[12px] text-slate-400">
                             {company.industryName ?? '업종 정보 없음'}
                           </span>
                         </span>
