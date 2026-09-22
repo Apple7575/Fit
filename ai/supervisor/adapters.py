@@ -10,6 +10,8 @@ from ai.writing_coaching.contracts import WritingMessageRequest
 
 class SupervisorAgentAdapter(Protocol):
     name: str
+    # 총괄이 담당을 고를 때 읽는 한 줄 소개. 담당이 실제로 하는 일과 어긋나면 총괄이 잘못 고른다.
+    description: str
 
     def is_available(self, context: Mapping[str, Any] | None) -> bool: ...
 
@@ -25,6 +27,7 @@ class SupervisorAgentAdapter(Protocol):
 
 class JdAgentAdapter:
     name = "jd"
+    description = "채용 공고 요구사항 하나하나에 대해 지원자 문서에 근거가 있는지 판정"
 
     def __init__(self, service_provider: Callable[[], Any]) -> None:
         self._service_provider = service_provider
@@ -40,6 +43,9 @@ class JdAgentAdapter:
 
 class PositionAgentAdapter:
     name = "position"
+    description = (
+        "사용자 경험(기술·비기술 모두)에서 문제·행동·검증·결과 등 빠진 요소를 찾고 구체화 질문 제시"
+    )
     supported_document_types = {"SELF_INTRO", "EXPERIENCE"}
 
     def __init__(self, service_provider: Callable[[], Any]) -> None:
@@ -76,6 +82,7 @@ class PositionAgentAdapter:
 
 class WritingAgentAdapter:
     name = "writing"
+    description = "자기소개서 첨삭 또는 작성 방식 설명"
 
     def __init__(self, service_provider: Callable[[], Any]) -> None:
         self._service_provider = service_provider
@@ -115,6 +122,7 @@ class WritingAgentAdapter:
 
 class NewsAgentAdapter:
     name = "news"
+    description = "기업·산업·직무 변화의 기사 근거와 JD 관련성 분석"
 
     def __init__(self, service: Any) -> None:
         self._service_provider = service if callable(service) else lambda: service
@@ -140,6 +148,10 @@ class CompanyAgentAdapter:
     """기업 분석 담당. 총괄이 든 대화를 history 로 넘기고 저장은 하지 않는다(answer 는 stateless)."""
 
     name = "company"
+    description = (
+        "공시(사업보고서·확정 재무 지표) 기반 기업 분석 리포트와 기업 관련 질의응답. "
+        "뉴스·주가·평판은 다루지 않음"
+    )
 
     def __init__(self, service: Any) -> None:
         self._service_provider = service if callable(service) else lambda: service
@@ -165,6 +177,14 @@ class AgentRegistry:
         self._adapters = {adapter.name: adapter for adapter in adapters}
         if len(self._adapters) != len(adapters):
             raise ValueError("agent names must be unique")
+
+    def describe(self, names: Sequence[str]) -> dict[str, str]:
+        """총괄 계획 프롬프트에 실을 담당별 소개문. 소개문을 안 둔 어댑터는 이름만 넘어간다."""
+        return {
+            name: getattr(self._adapters[name], "description", "") or name
+            for name in names
+            if name in self._adapters
+        }
 
     def available_names(self, contexts: Mapping[str, Any]) -> list[str]:
         return [

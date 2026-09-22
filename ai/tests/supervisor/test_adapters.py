@@ -222,3 +222,30 @@ class AgentRegistryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RegistryDescribeTest(unittest.TestCase):
+    def test_describe_returns_each_adapter_own_description_in_requested_order(self):
+        registry = AgentRegistry([
+            JdAgentAdapter(lambda: FakeJdService()),
+            PositionAgentAdapter(lambda: FakePositionService()),
+        ])
+
+        described = registry.describe(["position", "jd", "unknown"])
+
+        self.assertEqual(list(described), ["position", "jd"])
+        self.assertIn("비기술", described["position"])
+        self.assertEqual(described["jd"], JdAgentAdapter.description)
+
+    def test_describe_falls_back_to_name_when_adapter_has_no_description(self):
+        class Bare:
+            name = "bare"
+
+            def is_available(self, context):
+                return True
+
+            def execute(self, *args, **kwargs):
+                return {}
+
+        self.assertEqual(AgentRegistry([Bare()]).describe(["bare"]), {"bare": "bare"})
+

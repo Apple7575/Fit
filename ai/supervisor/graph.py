@@ -181,6 +181,7 @@ def build_supervisor_graph(
                     conversation=state["conversation"],
                     available_agents=state["available_agents"],
                     validation_error=validation_error,
+                    agent_capabilities=registry.describe(state["available_agents"]),
                 )
             except PlanOutputError as error:
                 validation_error = str(error)

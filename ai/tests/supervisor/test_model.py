@@ -33,14 +33,32 @@ class QwenSupervisorModelTest(unittest.TestCase):
             conversation=[],
             available_agents=["news"],
             validation_error=None,
+            agent_capabilities={"news": "기업·산업·직무 변화의 기사 근거와 JD 관련성 분석"},
         )
 
         payload = json.loads(calls[0]["messages"][1]["content"])
         self.assertEqual(plan.selected_agents, ["news"])
+        # 소개문은 어댑터가 주는 것을 그대로 싣는다(총괄 안에 하드코딩하지 않는다)
         self.assertEqual(
             payload["agent_capabilities"]["news"],
             "기업·산업·직무 변화의 기사 근거와 JD 관련성 분석",
         )
+
+    def test_capabilities_fall_back_to_agent_name_when_not_described(self):
+        calls = []
+
+        def qwen(config, messages, **kwargs):
+            calls.append(messages)
+            return {"output": {"selected_agents": ["jd"], "reason": "r"}}
+
+        QwenSupervisorModel({}, qwen_caller=qwen).create_plan(
+            instruction="검토", documents=[], conversation=[],
+            available_agents=["jd", "news"], validation_error=None,
+            agent_capabilities={"news": "뉴스 담당"},
+        )
+
+        payload = json.loads(calls[0][1]["content"])
+        self.assertEqual(payload["agent_capabilities"], {"jd": "jd", "news": "뉴스 담당"})
 
     def test_malformed_plan_output_uses_dedicated_contract_error(self):
         for response in (
