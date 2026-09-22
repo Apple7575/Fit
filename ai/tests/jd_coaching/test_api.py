@@ -165,20 +165,16 @@ class ApiTest(unittest.TestCase):
                     "postgresql://user:pass@postgres:5432/app",
                 )
 
-    def test_source_ingestor_reads_clova_ocr_credentials_from_environment(self):
+    def test_source_ingestor_reads_gms_key_from_environment(self):
         get_source_ingestor.cache_clear()
         try:
             with patch.dict(
                 "os.environ",
-                {
-                    "CLOVA_OCR_ENDPOINT": "https://ocr.example.test/general",
-                    "CLOVA_OCR_SECRET": "test-secret",
-                },
+                {"GMS_KEY": "test-gms-key"},
                 clear=True,
             ):
                 ingestor = get_source_ingestor()
-            self.assertEqual(ingestor._clova_ocr_endpoint, "https://ocr.example.test/general")
-            self.assertEqual(ingestor._clova_ocr_secret, "test-secret")
+            self.assertEqual(ingestor._gms_key, "test-gms-key")
         finally:
             get_source_ingestor.cache_clear()
 
