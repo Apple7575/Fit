@@ -10,7 +10,7 @@ import {
 import { UNTITLED_COVER_LETTER } from '../../features/cover-letter/api';
 import { CoverLetterWorkspace } from '../../features/cover-letter/CoverLetterWorkspace';
 import { useCoverLetter } from '../../features/cover-letter/queries';
-import type { CoverLetterInput, PendingJobPosting } from '../../features/cover-letter/types';
+import type { CoverLetter, CoverLetterInput, PendingJobPosting } from '../../features/cover-letter/types';
 import { CoverLetterHeader } from './CoverLetterHeader';
 
 const STASH_KEY = 'cover-letter:draft';
@@ -94,9 +94,15 @@ function NewWorkspace() {
     }
     const saved = await createCoverLetter(input);
     clearStash();
-    // 목록으로 보내지 않고 방금 저장한 자소서에 그대로 머문다. 주소만 /new 에서 그 자소서로
-    // 바꾼다 — 그러지 않으면 한 번 더 저장할 때 같은 자소서가 또 만들어진다.
-    navigate(`/cover-letters/${saved.id}`, { replace: true, state: { justSaved: true } });
+    /*
+     * 목록으로 보내지 않고 방금 저장한 자소서에 그대로 머문다. 주소만 /new 에서 그 자소서로
+     * 바꾼다 — 그러지 않으면 한 번 더 저장할 때 같은 자소서가 또 만들어진다.
+     *
+     * 저장한 자소서를 그대로 들려 보낸다. 주소가 갈리면서 화면이 새로 마운트되는데,
+     * 빈손으로 보내면 방금 저장한 것을 서버에 다시 물어보는 동안 화면이 통째로 비었다 —
+     * 어두운 껍데기만 남아 검게 깜빡이는 것으로 보였다.
+     */
+    navigate(`/cover-letters/${saved.id}`, { replace: true, state: { justSaved: true, saved } });
   };
 
   // 검토 방은 저장된 자소서에 붙으므로 먼저 저장하고 넘어간다.
@@ -168,8 +174,15 @@ function ExistingLoaded({ id }: { id: number }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { state, retry } = useCoverLetter(id);
+  const handed = location.state as { justSaved?: boolean; saved?: CoverLetter } | null;
   // 새 자소서를 저장한 직후 이 주소로 바뀐 경우. 화면이 갈려도 저장했다는 말은 이어서 보여준다.
-  const justSaved = (location.state as { justSaved?: boolean } | null)?.justSaved === true;
+  const justSaved = handed?.justSaved === true;
+  /*
+   * 방금 저장하면서 들고 온 자소서. 서버에 다시 물어보는 동안 이것으로 화면을 세운다 —
+   * 기다리는 자리에 로딩 화면을 두면 쓰던 글이 사라졌다 돌아오는 것처럼 보인다.
+   */
+  const seeded = handed?.saved?.id === id ? handed.saved : null;
+  const data = state.status === 'success' ? state.data : seeded;
 
   // 저장하고 화면을 떠나지 않는다. 고치던 자리에 그대로 두고 저장했다는 것만 알린다.
   const onSave = async (input: CoverLetterInput) => {
@@ -188,10 +201,10 @@ function ExistingLoaded({ id }: { id: number }) {
 
   return (
     <WorkspaceShell>
-      {state.status === 'loading' && <LoadingScreen />}
+      {state.status === 'loading' && !data && <LoadingScreen />}
 
       {/* 못 불러온 경우에는 영상을 깔지 않는다. 읽을 것이 안내 한 줄뿐이다 */}
-      {state.status === 'error' && (
+      {state.status === 'error' && !data && (
         <div className="mx-auto max-w-6xl px-6 pt-28 pb-8">
           {notFound ? (
             <InlineNotice>
@@ -206,10 +219,10 @@ function ExistingLoaded({ id }: { id: number }) {
         </div>
       )}
 
-      {state.status === 'success' && (
+      {data && (
         <CoverLetterWorkspace
           key={id}
-          initial={state.data}
+          initial={data}
           isLoggedIn
           alreadySaved
           justSaved={justSaved}

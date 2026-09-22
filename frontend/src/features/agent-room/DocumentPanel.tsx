@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { updateCoverLetter } from '../cover-letter/api';
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
+import { Spinner } from '../../components/common/Spinner';
 import type { QueryState } from '../../hooks/useApiQuery';
 import type { CoverLetter, CoverLetterInput } from '../cover-letter/types';
 
@@ -159,7 +160,7 @@ export function DocumentPanel({
     >
       <header className="border-b border-slate-100 px-4 py-3">
         <p className="text-[12px] font-semibold text-slate-400">검토 중인 자소서</p>
-        <h2 className="mt-1 text-[15px] font-extrabold break-keep text-slate-950">
+        <h2 className="mt-1 text-[15px] font-extrabold break-keep wrap-anywhere text-slate-950">
           {letter.title}
         </h2>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-slate-500">
@@ -177,7 +178,7 @@ export function DocumentPanel({
                 <span className="mt-0.5 shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
                   문항 {i + 1}
                 </span>
-                <h3 className="pt-0.5 text-[14px] font-bold leading-6 break-keep text-slate-900">
+                <h3 className="min-w-0 pt-0.5 text-[14px] font-bold leading-6 break-keep wrap-anywhere text-slate-900">
                   {item.question}
                 </h3>
               </div>
@@ -185,7 +186,7 @@ export function DocumentPanel({
               <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
                 <p className="mb-1.5 text-[10px] font-bold tracking-wide text-slate-400">답변</p>
                 <p
-                  className="cursor-text text-[13px] leading-6 break-keep whitespace-pre-wrap text-slate-600 selection:bg-blue-200 selection:text-slate-900"
+                  className="cursor-text text-[13px] leading-6 break-keep wrap-anywhere whitespace-pre-wrap text-slate-600 selection:bg-blue-200 selection:text-slate-900"
                   data-cover-letter-answer={i}
                   title="문장을 드래그하면 선택한 부분만 수정할 수 있습니다"
                 >
@@ -246,8 +247,9 @@ export function DocumentPanel({
             type="button"
             disabled={saving || selection.draft === selection.original}
             onClick={() => void saveSelection()}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
+            {saving && <Spinner className="mr-1.5" />}
             {saving ? '저장 중…' : '적용'}
           </button>
         </div>

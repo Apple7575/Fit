@@ -111,7 +111,7 @@ function EvidenceList({ evidences }: { evidences: Evidence[] }) {
       {opened && (opened.snippet || opened.url) && (
         <div className="mt-1.5 rounded-xl border border-slate-200 bg-white p-2.5">
           {opened.snippet && (
-            <p className="text-[12px] leading-5 break-keep whitespace-pre-wrap text-slate-600">
+            <p className="text-[12px] leading-5 break-keep wrap-anywhere whitespace-pre-wrap text-slate-600">
               {opened.snippet}
             </p>
           )}
@@ -162,7 +162,7 @@ function UserRow({ message, ring }: { message: RoomMessage; ring: string }) {
         className={`relative max-w-[78%] rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 ${ring}`}
       >
         <Tail side="right" tint="#ffffff" line="#e2e8f0" />
-        <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
+        <p className="text-[13px] leading-relaxed break-keep wrap-anywhere whitespace-pre-wrap text-slate-800">
           {message.content}
         </p>
       </div>
@@ -248,7 +248,7 @@ function AgentRow({
                 {waitingText(message.status)}
               </p>
             ) : (
-              <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
+              <p className="text-[13px] leading-relaxed break-keep wrap-anywhere whitespace-pre-wrap text-slate-800">
                 {message.content}
               </p>
             )}
