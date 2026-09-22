@@ -121,7 +121,9 @@ export async function apiSend<T>(
   if (xsrfToken) {
     headers['X-XSRF-TOKEN'] = xsrfToken;
   }
-  if (body !== undefined) {
+  // FormData 는 브라우저가 boundary 를 붙여야 하므로 Content-Type 을 직접 넣지 않는다.
+  const isForm = body instanceof FormData;
+  if (body !== undefined && !isForm) {
     headers['Content-Type'] = 'application/json';
   }
 
@@ -131,7 +133,7 @@ export async function apiSend<T>(
       method,
       headers,
       credentials: CREDENTIALS,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
       signal: options.signal,
     });
   } catch (error) {

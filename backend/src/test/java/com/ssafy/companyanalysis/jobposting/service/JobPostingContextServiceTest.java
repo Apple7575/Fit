@@ -39,7 +39,7 @@ class JobPostingContextServiceTest {
 
     private JobSourceClient.JobSource source(String companyName, String positionName) {
         return new JobSourceClient.JobSource("공고 본문입니다.", companyName, positionName, URL,
-                "123", "2026-09-01", "2026-09-30");
+                "123", "2026-09-01", "2026-09-30", false);
     }
 
     @Test

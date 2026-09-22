@@ -132,9 +132,6 @@ services:
       - QWEN_API_KEY=${LLM_KEY:-}
       # 공고에서 회사명·직무명을 뽑는 보완 추출에만 쓴다. 비면 그 보완만 꺼지고 크롤링은 돈다.
       - GMS_KEY=${GMS_KEY:-}
-      # 공고 이미지 OCR(네이버 클로바). 비면 해당 OCR 보완이 꺼진다.
-      - CLOVA_OCR_ENDPOINT=${CLOVA_OCR_ENDPOINT:-}
-      - CLOVA_OCR_SECRET=${CLOVA_OCR_SECRET:-}
       - TZ=${TZ:-Asia/Seoul}
     # backend 와 동일하게 호스트 리버스터널 포트로 vLLM 에 닿는다. infra/tunnel 참고.
     extra_hosts:
