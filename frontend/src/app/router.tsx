@@ -20,6 +20,7 @@ import { SignupPage } from '../pages/auth/SignupPage';
 import { VerifyPage } from '../pages/auth/VerifyPage';
 import { VerifySentPage } from '../pages/auth/VerifySentPage';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage';
+import { MyPage } from '../pages/mypage/MyPage';
 
 const routes: RouteObject[] = [
   {
@@ -45,6 +46,10 @@ const routes: RouteObject[] = [
   {
     path: '/verify',
     element: <VerifyPage />,
+  },
+  {
+    path: '/mypage',
+    element: <MyPage />,
   },
   {
     path: '/cover-letters',

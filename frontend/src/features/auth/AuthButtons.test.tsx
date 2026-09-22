@@ -37,7 +37,7 @@ describe('AuthButtons', () => {
 
     renderButtons();
 
-    expect(screen.getByText('민재님')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '민재님' })).toHaveAttribute('href', '/mypage');
     await userEvent.click(screen.getByRole('button', { name: '로그아웃' }));
     expect(logout).toHaveBeenCalled();
   });

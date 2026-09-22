@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '../../api/client';
+import { apiGet, apiPost, apiSend } from '../../api/client';
 import type { AuthUser } from './types';
 
 export interface SignupResult {
@@ -17,3 +17,6 @@ export const verifyEmail = (token: string) =>
   apiPost<void>('/api/auth/verify', { token });
 
 export const logout = () => apiPost<null>('/api/auth/logout');
+
+export const withdraw = (password: string) =>
+  apiSend<null>('DELETE', '/api/auth/me', { password });

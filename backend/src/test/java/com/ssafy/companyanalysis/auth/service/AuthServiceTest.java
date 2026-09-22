@@ -81,4 +81,31 @@ class AuthServiceTest {
 
         verify(emailVerificationService, never()).issue(any());
     }
+
+    @Test
+    @DisplayName("현재 비밀번호가 맞으면 회원을 삭제한다")
+    void withdrawDeletesUser() {
+        User user = User.create("user@example.com", "{bcrypt}hash", "민재");
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("password123", "{bcrypt}hash")).willReturn(true);
+
+        authService.withdraw(1L, "password123");
+
+        verify(userRepository).delete(user);
+    }
+
+    @Test
+    @DisplayName("현재 비밀번호가 틀리면 INVALID_CREDENTIALS 로 탈퇴를 막는다")
+    void withdrawRejectsWrongPassword() {
+        User user = User.create("user@example.com", "{bcrypt}hash", "민재");
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("wrong-password", "{bcrypt}hash")).willReturn(false);
+
+        assertThatThrownBy(() -> authService.withdraw(1L, "wrong-password"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+
+        verify(userRepository, never()).delete(any());
+    }
 }
