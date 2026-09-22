@@ -513,7 +513,8 @@ export function CoverLetterWorkspace({
                 먼저 눈에 들어온다.
               */}
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[12px] font-bold text-white">
+                {/* 번호는 몇 번째인지 알려 줄 뿐이다. 카드 바탕에 가까운 회색으로 눌러 둔다 */}
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[12px] font-bold text-slate-600">
                   {index + 1}
                 </span>
                 <span className="text-sm font-bold text-slate-700">문항 {index + 1}</span>
