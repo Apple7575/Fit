@@ -22,6 +22,8 @@ def normalize_writing_feedback(
             items.extend(_position_feedback(result.result))
         elif result.agent == "news":
             items.extend(_news_feedback(result.result))
+        elif result.agent == "company":
+            items.extend(_company_feedback(result.result))
     return [
         {**item, "content": item["content"][:2_000]}
         for item in items[:20]
@@ -38,17 +40,33 @@ def _jd_feedback(result: Mapping[str, Any]) -> list[dict[str, str]]:
             continue
         requirement_id = _non_blank_string(requirement.get("requirement_id"))
         label = _non_blank_string(requirement.get("label"))
-        actions = _string_list(requirement.get("suggested_actions"))
-        if requirement_id is None or label is None or actions is None or not actions:
+        if requirement_id is None or label is None:
             continue
         feedback_id = f"jd-{requirement_id}"
         if len(feedback_id) > MAX_WRITING_FEEDBACK_ID_LENGTH:
             continue
-        feedback.append({
-            "feedback_id": feedback_id,
-            "source": "jd",
-            "content": f"{label}: " + " ".join(actions),
-        })
+        name = _non_blank_string(requirement.get("requirement")) or requirement_id
+        if label == "SUPPORTED":
+            # 확인된 근거는 글쓰기가 앞세울 재료다. 없는 것만 넘기면 글쓰기는 고칠 게 없다고 되묻는다.
+            quotes = [
+                item["evidence_quote"]
+                for item in (requirement.get("present_evidence") or [])
+                if isinstance(item, Mapping) and _non_blank_string(item.get("evidence_quote"))
+            ][:2]
+            content = f"SUPPORTED: 공고 요구사항 '{name}'의 근거가 초안에 있다. 이 부분을 요구사항과 연결해 앞세운다."
+            if quotes:
+                content += " 근거 문장: " + " / ".join(quotes)
+        else:
+            actions = _string_list(requirement.get("suggested_actions"))
+            if actions is None or not actions:
+                continue
+            # "추가하세요"는 글쓰기가 할 수 없는 일(사실 추가)이라 되묻기의 원인이 된다.
+            # 글쓰기가 할 수 있는 일로 바꿔 말한다: 주장하지 않고, 사용자에게 알린다.
+            content = (
+                f"{label}: 공고 요구사항 '{name}'의 근거가 초안에 없다. 이 역량을 갖춘 것처럼 쓰지 말고, "
+                f"message 에서 사용자에게 채울 항목으로 알린다. 참고: " + " ".join(actions)
+            )
+        feedback.append({"feedback_id": feedback_id, "source": "jd", "content": content})
     return feedback
 
 
@@ -120,6 +138,19 @@ def _news_feedback(result: Mapping[str, Any]) -> list[dict[str, str]]:
             content += f" 출처: {' / '.join(titles)}"
         feedback.append({"feedback_id": feedback_id, "source": "news", "content": content})
     return feedback
+
+
+def _company_feedback(result: Mapping[str, Any]) -> list[dict[str, str]]:
+    """기업 담당의 공시 기반 답을 방향 피드백으로 넘긴다. 글쓰기는 여기 있는 회사 사실만 쓸 수 있다."""
+    message = _non_blank_string(result.get("message"))
+    if message is None:
+        return []
+    corp_name = _non_blank_string(result.get("corp_name")) or "지원 기업"
+    return [{
+        "feedback_id": "company-analysis",
+        "source": "company",
+        "content": f"[{corp_name} 공시 기반 사실] {message.strip()} 이 사실과 지원자의 경험을 연결할 때만 회사 이야기를 쓴다.",
+    }]
 
 
 def _non_blank_string(value: Any) -> str | None:

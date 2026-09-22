@@ -125,3 +125,42 @@ class WritingFeedbackNormalizerTest(unittest.TestCase):
         feedback = normalize_writing_feedback([too_long, valid])
 
         self.assertEqual([item["feedback_id"] for item in feedback], ["position-kept"])
+
+
+class SupportedAndCompanyFeedbackTest(unittest.TestCase):
+    def test_supported_requirement_becomes_emphasis_feedback_with_quotes(self):
+        jd = AgentResult(agent="jd", status="SUCCESS", result={"requirements": [{
+            "requirement_id": "role-002", "requirement": "Spring 실무 경험", "label": "SUPPORTED",
+            "present_evidence": [{"evidence_quote": "Spring Boot로 서비스를 만들었습니다."}],
+            "suggested_actions": [],
+        }]})
+
+        feedback = normalize_writing_feedback([jd])
+
+        self.assertEqual(feedback[0]["feedback_id"], "jd-role-002")
+        self.assertIn("SUPPORTED", feedback[0]["content"])
+        self.assertIn("앞세운다", feedback[0]["content"])
+        self.assertIn("Spring Boot로 서비스를 만들었습니다.", feedback[0]["content"])
+
+    def test_unsupported_requirement_tells_writer_not_to_claim_it(self):
+        jd = AgentResult(agent="jd", status="SUCCESS", result={"requirements": [{
+            "requirement_id": "role-003", "requirement": "AWS 운영 경험", "label": "NOT_SUPPORTED",
+            "suggested_actions": ["AWS 운영 경험을 추가하세요."],
+        }]})
+
+        content = normalize_writing_feedback([jd])[0]["content"]
+
+        self.assertIn("갖춘 것처럼 쓰지 말고", content)
+        self.assertIn("AWS 운영 경험", content)
+
+    def test_company_message_is_passed_as_direction_feedback(self):
+        company = AgentResult(agent="company", status="SUCCESS", result={
+            "corp_name": "삼성전자", "message": "2025년 매출은 333.6조원이다.", "citations": [],
+        })
+
+        feedback = normalize_writing_feedback([company])
+
+        self.assertEqual(feedback[0]["feedback_id"], "company-analysis")
+        self.assertEqual(feedback[0]["source"], "company")
+        self.assertIn("333.6조원", feedback[0]["content"])
+

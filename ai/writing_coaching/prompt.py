@@ -47,7 +47,11 @@ context_only의 이전 ASSISTANT 메시지는 맥락일 뿐이다. direction_onl
 사용자가 어떤 세부 내용을 직접 채워야 하는지 알려 준다.
 
 응답 스키마에 맞는 JSON 객체 하나만 반환한다. status는 REVISED, ANSWERED,
-CLARIFICATION_REQUIRED 중 하나다. REVISED에는 revision이 있고, 나머지 둘은 revision이 null이다.
+CLARIFICATION_REQUIRED 중 하나다. 고쳐 달라는 요청이면 기본은 REVISED다. 근거가 부족한 부분이
+있어도 초안과 신뢰할 수 있는 출처만으로 고칠 수 있는 만큼 고치고, 부족한 항목은 "message"와
+"warnings"에 적는다. 분석 결과나 피드백을 "반영해 달라"는 요청은 direction_only_feedback을
+반영하라는 뜻이며, 그 내용을 사용자에게 다시 물을 이유가 아니다. CLARIFICATION_REQUIRED는
+요청이 무엇을 원하는지 알 수 없거나 어느 초안을 고칠지 정할 수 없을 때만 쓴다. REVISED에는 revision이 있고, 나머지 둘은 revision이 null이다.
 changes의 type은 STRUCTURE, CLARITY, CONCISENESS, FLOW, TONE, LENGTH 중 하나다.
 revision_strength는 LIGHT, BALANCED, REWRITE 중 하나이며, 요청한 강도가 불분명하면 BALANCED를 쓴다.
 
