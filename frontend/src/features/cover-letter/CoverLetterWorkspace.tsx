@@ -377,10 +377,19 @@ export function CoverLetterWorkspace({
         <div className={step === META_STEP ? 'mt-6' : 'hidden'}>
           {/*
             제목이 있어야 문항으로 넘어간다는 안내. 마무리 바에 두면 정작 채울 칸에서
-            멀었다. 제목을 쓰면 문구만 비우고 자리는 남긴다 — 접으면 첫 글자에 화면이 튄다.
+            멀었다. 자리는 늘 잡아 둔다 — 접으면 첫 글자에 화면이 튄다.
+
+            제목을 쓰면 비우지 않고 통과했다고 알린다. 빈 줄만 남으면 문구가 왜 사라졌는지
+            모른 채 빈자리만 보인다. 끝말("문항을 쓸 수 있어요")을 그대로 물려 같은 말이
+            조건만 풀린 것으로 읽히게 했고, 색은 단계 줄의 채워진 점과 같은 초록을 쓴다.
           */}
-          <p className="mb-1.5 h-5 text-[13px] leading-5 font-semibold text-white/60">
-            {metaReady ? '' : '제목을 입력하면 문항을 쓸 수 있어요.'}
+          <p
+            aria-live="polite"
+            className={`mb-1.5 h-5 text-[13px] leading-5 font-semibold ${
+              metaReady ? 'text-emerald-400' : 'text-white/60'
+            }`}
+          >
+            {metaReady ? '✓ 이제 문항을 쓸 수 있어요.' : '제목을 입력하면 문항을 쓸 수 있어요.'}
           </p>
           <input
             id="cl-title"
