@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ApiError, isRateLimited } from '../../api/client';
+import { Spinner } from '../../components/common/Spinner';
 import { sendMessage } from './api';
 
 interface MessageComposerProps {
@@ -57,7 +58,12 @@ export function MessageComposer({ roomId, busy, onStarted, onConflict }: Message
 
   return (
     <div className="shrink-0 border-t border-slate-200 bg-white p-3">
-      <div className="relative">
+      {/*
+        글자 수와 보내기를 칸 위에 얹어 두었더니, 라벨이 "보내기"(3자) 에서 "전송 중…"
+        으로 넓어지는데 얹힌 자리는 76px 로 고정이라 단추가 칸 밖으로 비어져 나왔다.
+        얹지 않고 칸 아래 한 줄로 내리면 겹칠 자리 자체가 없다.
+      */}
+      <div>
         <textarea
           value={content}
           rows={2}
@@ -76,17 +82,19 @@ export function MessageComposer({ roomId, busy, onStarted, onConflict }: Message
             event.preventDefault();
             if (!disabled) void submit();
           }}
-          className="block min-h-[76px] w-full resize-none rounded-xl border border-slate-200 py-2 pl-3 pr-[92px] text-[14px] leading-relaxed text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+          className="block min-h-[76px] w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-[14px] leading-relaxed text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
         />
 
-        <div className="absolute bottom-2 right-2 flex w-[76px] flex-col items-end gap-1">
-          <span className="text-[10px] tabular-nums text-slate-400">{content.length} / 2000</span>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <span className="text-[11px] tabular-nums text-slate-400">{content.length} / 2000</span>
           <button
             type="button"
             onClick={submit}
             disabled={disabled}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            className="inline-flex shrink-0 items-center rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
+            {/* 답이 오기까지 한참 걸린다. 글자만 바뀌면 눌린 것인지 멈춘 것인지 알 수 없다 */}
+            {disabled && <Spinner className="mr-1.5" />}
             {sending ? '전송 중…' : busy ? '진행 중…' : '보내기'}
           </button>
         </div>

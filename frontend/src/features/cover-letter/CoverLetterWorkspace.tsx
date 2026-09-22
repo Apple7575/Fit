@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { ApiError, isRateLimited } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
+import { Spinner } from '../../components/common/Spinner';
 import { CompanyPicker } from './CompanyPicker';
 import {
   UNTITLED_COVER_LETTER,
@@ -13,6 +15,14 @@ import {
   preparePostingImages,
 } from './preparePostingImages';
 import type { CoverLetterInput, PendingJobPosting } from './types';
+import {
+  MAX_ANSWER,
+  MAX_POSITION,
+  MAX_QUESTION,
+  MAX_TITLE,
+  findProblem,
+  normalizeCharLimit,
+} from './validate';
 
 interface CoverLetterWorkspaceProps {
   initial: CoverLetterInput;
@@ -31,7 +41,8 @@ interface WorkItem {
   key: string;
   question: string;
   answer: string;
-  charLimit: number;
+  /** 비어 있을 수 있다 — 지우는 도중에 1 로 되돌리면 글자를 지울 수가 없다 */
+  charLimit: number | null;
 }
 
 /*
@@ -61,6 +72,7 @@ function StepRail({
   step,
   filled,
   locked,
+  atMax,
   onGo,
   onAdd,
 }: {
@@ -69,6 +81,8 @@ function StepRail({
   filled: boolean[];
   /** 앞 단계를 아직 안 채웠다. 문항으로 넘어갈 수 없다 */
   locked: boolean;
+  /** 상한까지 다 썼다. 추가 알약이 사라진 까닭을 대신 적는다 */
+  atMax: boolean;
   onGo: (next: Step) => void;
   /** 문항을 더한다. 첫 단계에서는 주지 않는다 — 제목도 없이 문항부터 열리면 안 된다 */
   onAdd?: () => void;
@@ -121,6 +135,16 @@ function StepRail({
           + 문항 추가
         </button>
       )}
+
+      {/*
+        상한에 닿으면 추가 알약이 사라진다. 사라진 이유를 말해 주지 않으면 없어진 것인지
+        고장 난 것인지 알 수 없다 — 자리를 물려받아 그 까닭을 적는다.
+      */}
+      {atMax && (
+        <span className="px-2 text-[12px] font-semibold text-white/45">
+          문항은 {MAX_ITEMS}개까지 쓸 수 있어요
+        </span>
+      )}
     </nav>
   );
 }
@@ -170,6 +194,8 @@ export function CoverLetterWorkspace({
   );
   const [registering, setRegistering] = useState(false);
   const [postingError, setPostingError] = useState<string | null>(null);
+  // 저장·검토가 멈춘 까닭. 어느 칸이 문제인지까지 담는다.
+  const [saveError, setSaveError] = useState<string | null>(null);
   /*
    * 한 화면에 다 쌓아 두니 줄줄이 스크롤해야 했다. 어디에 내는지 먼저 정하고 문항을 쓰는
    * 순서가 실제로 쓰는 순서다. 이미 저장한 자소서를 다시 열 때는 고칠 것이 대개 답변이라
@@ -181,6 +207,8 @@ export function CoverLetterWorkspace({
     setDirty(true);
     setJustSavedNotice(false);
     setPostingError(null);
+    // 고치기 시작했으면 방금 짚어 준 문제는 더 이상 그 자리의 이야기가 아니다
+    setSaveError(null);
   };
 
   const editItem = (key: string, next: Partial<WorkItem>) => {
@@ -237,7 +265,8 @@ export function CoverLetterWorkspace({
     items: items.map((item) => ({
       question: item.question,
       answer: item.answer,
-      charLimit: item.charLimit,
+      // 비어 있는 제한은 0 으로 넘긴다 — 검증이 범위 밖으로 잡아 저장 전에 멈춘다
+      charLimit: item.charLimit ?? 0,
     })),
   });
 
@@ -278,7 +307,24 @@ export function CoverLetterWorkspace({
     }
   };
 
+  /*
+   * 저장과 검토는 같은 자소서를 같은 조건으로 보낸다. 잘못된 곳이 있으면 보내지 않고
+   * 그 칸으로 데려가서 무엇이 문제인지 말한다 — 예전에는 그대로 보내고 400 을 받았는데,
+   * 받은 자리에 catch 가 없어 화면에는 아무 말도 뜨지 않았다.
+   */
+  const checked = (): CoverLetterInput | null => {
+    const input = buildInput();
+    const problem = findProblem(input);
+    if (!problem) return input;
+    setStep(problem.step);
+    setSaveError(problem.message);
+    return null;
+  };
+
   const save = async () => {
+    setSaveError(null);
+    // 로그인 전에는 저장이 아니라 초안을 들고 로그인하러 가는 길이다. 쓰다 만 것도 그대로 들고 간다
+    if (isLoggedIn && !checked()) return;
     setSaving(true);
     try {
       const input = await inputWithPosting();
@@ -287,18 +333,24 @@ export function CoverLetterWorkspace({
       setDirty(false);
       setSavedOnce(true);
       setJustSavedNotice(true);
+    } catch (error) {
+      setSaveError(userMessage(error, '저장하지 못했어요. 잠시 후 다시 시도해 주세요.'));
     } finally {
       setSaving(false);
     }
   };
 
   const review = async () => {
+    setSaveError(null);
+    if (isLoggedIn && !checked()) return;
     setReviewing(true);
     try {
       const input = await inputWithPosting();
       if (input) {
         await onReview(input, isLoggedIn ? null : posting);
       }
+    } catch (error) {
+      setSaveError(userMessage(error, '검토를 시작하지 못했어요. 잠시 후 다시 시도해 주세요.'));
     } finally {
       setReviewing(false);
     }
@@ -374,6 +426,7 @@ export function CoverLetterWorkspace({
         )}
 
         <StepRail
+          atMax={step !== META_STEP && items.length >= MAX_ITEMS}
           filled={items.map((item) => item.question.trim() !== '' && item.answer.trim() !== '')}
           locked={!metaReady}
           onAdd={step === META_STEP || items.length >= MAX_ITEMS ? undefined : addItem}
@@ -402,6 +455,7 @@ export function CoverLetterWorkspace({
           <input
             id="cl-title"
             aria-label="제목"
+            maxLength={MAX_TITLE}
             value={title}
             onChange={(event) => {
               setTitle(event.target.value);
@@ -467,6 +521,7 @@ export function CoverLetterWorkspace({
             <>
               <input
                 id="cl-position"
+                maxLength={MAX_POSITION}
                 value={position}
                 onChange={(event) => {
                   setPosition(event.target.value);
@@ -497,9 +552,12 @@ export function CoverLetterWorkspace({
             onClick={() => setStep(META_STEP)}
             type="button"
           >
-            <span className="font-bold text-white">{title.trim() || UNTITLED_COVER_LETTER}</span>
+            {/* 제목은 사용자가 쓴 글이다. 띄어쓰기 없이 길게 쓰면 이 줄을 넘어간다 */}
+            <span className="min-w-0 font-bold break-keep wrap-anywhere text-white">
+              {title.trim() || UNTITLED_COVER_LETTER}
+            </span>
             {(company.trim() || position.trim()) && (
-              <span>
+              <span className="min-w-0 break-keep wrap-anywhere">
                 · {[company.trim(), position.trim()].filter(Boolean).join(' · ')}
               </span>
             )}
@@ -529,6 +587,11 @@ export function CoverLetterWorkspace({
                 ←
               </span>
             </button>
+            {/*
+              마지막 문항에서 상한에 닿으면 이 화살표는 할 일이 없다. 그래도 남겨 두었더니
+              눌러도 아무 일이 없는 단추가 되어, 더 넣을 수 없다는 사실이 "고장" 으로 읽혔다.
+            */}
+            {(step < items.length || items.length < MAX_ITEMS) && (
             <button
               aria-label={step < items.length ? '다음 문항' : '문항 추가'}
               className="group fixed top-1/2 right-0 z-10 hidden h-2/3 w-[calc((100vw-56rem)/2)] -translate-y-1/2 items-center justify-center rounded-l-2xl transition hover:bg-white/5 lg:flex"
@@ -542,6 +605,7 @@ export function CoverLetterWorkspace({
                 →
               </span>
             </button>
+            )}
           </>
         )}
 
@@ -579,43 +643,57 @@ export function CoverLetterWorkspace({
               <div className="space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="flex-1">
-                  <label className="mb-1 block text-[12px] font-medium text-slate-500">질문</label>
+                  <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor={`question-${item.key}`}>질문</label>
                   <input
+                    id={`question-${item.key}`}
                     value={item.question}
                     onChange={(event) => editItem(item.key, { question: event.target.value })}
+                    maxLength={MAX_QUESTION}
                     placeholder="예: 지원 동기와 입사 후 포부를 기술하시오"
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[15px] text-slate-800 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
                 <div className="sm:w-32">
-                  <label className="mb-1 block text-[12px] font-medium text-slate-500">글자 수 제한</label>
+                  <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor={`limit-${item.key}`}>글자 수 제한</label>
                   <input
-                    type="number"
-                    min={1}
-                    max={4000}
-                    value={item.charLimit}
+                    /*
+                     * type="number" 가 아니다. React 는 숫자 입력칸의 DOM 값을 느슨 비교로만
+                     * 맞춰서, "00…050" 과 50 을 같다고 보고 친 글자를 그대로 남겨 두었다.
+                     * 글자로 받고 숫자만 남기면 칸에 보이는 것과 실제 제한이 늘 같다.
+                     */
+                    id={`limit-${item.key}`}
+                    type="text"
+                    inputMode="numeric"
+                    value={item.charLimit ?? ''}
                     onChange={(event) =>
-                      editItem(item.key, { charLimit: Math.min(4000, Number(event.target.value) || 0) })
+                      editItem(item.key, { charLimit: normalizeCharLimit(event.target.value) })
                     }
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[15px] text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-[12px] font-medium text-slate-500">답변</label>
+                <label className="mb-1 block text-[12px] font-medium text-slate-500" htmlFor={`answer-${item.key}`}>답변</label>
                 <textarea
+                  id={`answer-${item.key}`}
                   value={item.answer}
                   onChange={(event) => editItem(item.key, { answer: event.target.value })}
                   rows={8}
-                  maxLength={item.charLimit || 4000}
+                  maxLength={item.charLimit ?? MAX_ANSWER}
                   placeholder="답변을 붙여넣거나 입력하세요"
                   className="w-full resize-y rounded-lg border border-slate-200 p-3 text-[15px] leading-7 text-slate-700 placeholder:text-[13.5px] placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
                 <div className="mt-1.5 text-right text-[12px] text-slate-400">
-                  <span className={item.answer.length > item.charLimit ? 'text-rose-500' : ''}>
+                  <span
+                    className={
+                      item.charLimit !== null && item.answer.length > item.charLimit
+                        ? 'font-bold text-rose-500'
+                        : ''
+                    }
+                  >
                     {item.answer.length}
                   </span>{' '}
-                  / {item.charLimit}자
+                  / {item.charLimit ?? '—'}자
                 </div>
               </div>
             </div>
@@ -633,6 +711,19 @@ export function CoverLetterWorkspace({
             role="alert"
           >
             {postingError}
+          </p>
+        )}
+
+        {/*
+          저장이 멈춘 까닭. 단계별로 감추는 칸 바깥에 둔다 — 문제가 있는 문항으로 옮겨
+          가면서 함께 보여야 하는데, 칸 안에 두면 그 칸이 감춰질 때 같이 사라진다.
+        */}
+        {saveError && (
+          <p
+            className="mt-4 rounded-xl bg-rose-500/15 px-4 py-3 text-sm font-semibold break-keep text-rose-200 ring-1 ring-rose-400/30"
+            role="alert"
+          >
+            {saveError}
           </p>
         )}
 
@@ -682,6 +773,7 @@ export function CoverLetterWorkspace({
                 className="rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
                 type="button"
               >
+                {registering || reviewing ? <Spinner className="mr-1.5" /> : null}
                 {registering ? '공고 분석 중…' : reviewing ? '여는 중…' : 'AI 검토'}
               </button>
             )}
@@ -851,6 +943,7 @@ function JobPostingBar({
           className="h-[42px] w-full shrink-0 rounded-lg bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-[92px]"
           type="button"
         >
+          {status === 'loading' ? <Spinner className="mr-1.5" /> : null}
           {status === 'loading' ? '확인 중…' : '확인'}
         </button>
       </div>
@@ -947,6 +1040,7 @@ function JobPostingBar({
             onClick={confirmImages}
             type="button"
           >
+            {status === 'loading' ? <Spinner className="mr-1.5" /> : null}
             {status === 'loading' ? '읽는 중…' : `이미지 ${images.length}장으로 확인`}
           </button>
         )}
@@ -1035,6 +1129,7 @@ function SaveArea({
         className="rounded-full px-6 py-3 text-sm font-bold text-white/80 ring-1 ring-white/30 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
         type="button"
       >
+        {saving ? <Spinner className="mr-1.5" /> : null}
         {saving ? '이동 중…' : '로그인하고 저장'}
       </button>
     );
@@ -1055,6 +1150,7 @@ function SaveArea({
         className="rounded-full px-6 py-3 text-sm font-bold text-white/80 ring-1 ring-white/30 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         type="button"
       >
+        {saving ? <Spinner className="mr-1.5" /> : null}
         {saving ? '저장 중…' : '저장'}
       </button>
     </div>

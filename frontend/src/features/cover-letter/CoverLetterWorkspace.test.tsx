@@ -243,4 +243,77 @@ describe('CoverLetterWorkspace', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('나눠 캡처');
     expect(vi.mocked(parseJobPostingImages)).not.toHaveBeenCalled();
   });
+
+  describe('저장 전에 잘못된 칸을 짚는다', () => {
+    it('빈 답변은 보내지 않고 까닭을 말한다', async () => {
+      // 예전에는 그대로 보내고 400 을 받았는데, 받는 자리에 catch 가 없어 아무 말도 안 떴다
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={onSave} onReview={vi.fn()} />);
+      await goToItems(user);
+      await user.clear(screen.getByLabelText('답변'));
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('답변을 입력해 주세요');
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it('제한을 줄이면 이미 써 둔 답변도 다시 본다', async () => {
+      // 입력칸의 maxLength 는 새로 치는 글자만 막는다. 줄이기 전에 쓴 글은 그대로 남는다
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={onSave} onReview={vi.fn()} />);
+      await goToItems(user);
+      await user.clear(screen.getByLabelText('글자 수 제한'));
+      await user.type(screen.getByLabelText('글자 수 제한'), '5');
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('넘어요');
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it('로그인 전에는 쓰다 만 것도 그대로 들고 간다', async () => {
+      /*
+       * 로그인하지 않았을 때의 '저장' 은 저장이 아니라 초안을 들고 로그인하러 가는 길이다.
+       * 여기서 빈 칸을 막으면 쓰다 말고 로그인하려는 사람이 로그인을 못 하게 된다.
+       */
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <CoverLetterWorkspace initial={initial} isLoggedIn={false} onSave={onSave} onReview={vi.fn()} />,
+      );
+      await goToItems(user);
+      await user.clear(screen.getByLabelText('답변'));
+      await user.click(screen.getByRole('button', { name: '로그인하고 저장' }));
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('저장이 실패하면 사람이 읽을 말로 알린다', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockRejectedValue(new Error('boom'));
+
+      render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={onSave} onReview={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했어요');
+    });
+  });
+
+  it('글자 수 제한 칸은 친 글자를 숫자 하나로 정리한다', async () => {
+    // "00…050" 을 넣으면 제한은 50 인데 칸에는 친 글자가 그대로 남아 있었다
+    const user = userEvent.setup();
+
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />);
+    await goToItems(user);
+    const limit = screen.getByLabelText('글자 수 제한');
+    await user.clear(limit);
+    await user.type(limit, '0000000000000000000000050');
+
+    expect(limit).toHaveValue('50');
+  });
 });
