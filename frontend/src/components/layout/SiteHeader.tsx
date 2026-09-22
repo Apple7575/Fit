@@ -13,8 +13,30 @@ const NAV = [
 const LINK_BASE = 'rounded-lg px-3 py-2 text-sm transition';
 
 /**
+ * 콘텐츠 위에 떠 있는 띠(헤더·서브바)가 쓰는 한 가지 재질.
+ *
+ * <p>투명은 배경을 우리가 깔았을 때만 안전하다. 히어로 위에서는 그라데이션까지 같이
+ * 깔기 때문에 글자 대비를 보장할 수 있지만, 스크롤을 시작하면 그 아래로 무엇이 지나갈지
+ * 알 수 없다. 반투명(70%)으로 두었더니 어두운 사진이 지나갈 때마다 띠가 회색으로 물들고
+ * 글자가 묻혔다.
+ *
+ * <p>그래서 이 재질은 거의 불투명하다. 흐림과 채도 보정은 유리 느낌을 남기는 몫이고,
+ * 읽히는 것은 90% 의 흰색이 책임진다. 띠마다 값이 달랐던 것(70·85·90)도 여기로 모은다.
+ */
+export const HEADER_SURFACE =
+  'bg-white/90 backdrop-blur-xl backdrop-saturate-150 shadow-[0_1px_0_rgba(15,23,42,0.04)]';
+
+/** 띠 아래에 긋는 선. 바로 아래 다른 띠가 붙는다면 긋지 않는다 (둘이 한 면으로 읽혀야 한다) */
+export const HEADER_LINE = 'border-b border-slate-200/80';
+
+/**
  * 어두운 영상 위(투명 헤더)와 흰 배경에서 각각 쓰는 메뉴 모양.
  * 지금 보고 있는 메뉴(on)는 글자색만으로는 잘 안 보여서 알약 배경까지 준다.
+ *
+ * <p>흰 바탕에서 이 알약은 회색이다. 예전에는 연한 파랑(bg-blue-50 + ring-blue-200)이었는데,
+ * 바로 아래 서브바의 기업명도 같은 파란 알약이고 탭은 검은 알약이라, 한 줄에 "선택됨"을
+ * 말하는 방식이 세 가지나 됐다. 큰 갈래(전역 메뉴)는 회색으로 물러나고, 지금 보는 구획을
+ * 가리키는 검은 알약 하나만 눈에 띄게 둔다.
  */
 const LINK_TONE = {
   light: {
@@ -22,8 +44,8 @@ const LINK_TONE = {
     off: 'font-semibold text-white/75 hover:bg-white/10 hover:text-white',
   },
   dark: {
-    on: 'bg-blue-50 font-bold text-blue-700 ring-1 ring-blue-200',
-    off: 'font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-950',
+    on: 'bg-slate-100 font-bold text-slate-950',
+    off: 'font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-950',
   },
 } as const;
 
@@ -42,6 +64,11 @@ interface SiteHeaderProps {
   overlay?: boolean;
   /** overlay 일 때 첫 화면을 벗어났는지. true 면 흰 유리(blur) 배경으로 돌아온다 */
   scrolled?: boolean;
+  /**
+   * 바로 아래에 서브바가 붙는 화면인지(기업 상세·자소서·면접 리포트). 헤더 밑줄을 긋지
+   * 않아 둘이 한 면으로 읽히게 한다.
+   */
+  subnav?: boolean;
 }
 
 function isActive(pathname: string, match: readonly string[]) {
@@ -60,25 +87,26 @@ export function SiteHeader({
   floating = false,
   overlay = false,
   scrolled = false,
+  subnav = false,
 }: SiteHeaderProps) {
   const { pathname } = useLocation();
   // 어두운 사진·영상 위에 떠 있는 동안만 글자를 흰색으로
   const light = (overlay || floating) && !scrolled;
   const tone = LINK_TONE[light ? 'light' : 'dark'];
 
+  // 바로 아래 서브바가 붙는 화면에서는 헤더 밑줄을 긋지 않는다. 둘이 한 면으로 읽혀야 한다.
+  const line = subnav ? 'border-b border-transparent' : HEADER_LINE;
+  const settled = `${line} ${HEADER_SURFACE}`;
+
   const frame = floating
-    ? `fixed inset-x-0 top-0 z-30 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
-        light
-          ? 'border-transparent bg-transparent'
-          : 'border-slate-200/70 bg-white/70 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-xl'
+    ? `fixed inset-x-0 top-0 z-30 transition-[background-color,border-color,box-shadow] duration-300 ${
+        light ? 'border-b border-transparent bg-transparent' : settled
       }`
     : overlay
-      ? `absolute inset-x-0 top-0 z-30 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
-          light
-            ? 'border-transparent bg-transparent'
-            : 'border-slate-200/80 bg-white/85 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-md'
+      ? `absolute inset-x-0 top-0 z-30 transition-[background-color,border-color,box-shadow] duration-300 ${
+          light ? 'border-b border-transparent bg-transparent' : settled
         }`
-      : 'sticky top-0 z-30 border-b border-slate-200 bg-white';
+      : `sticky top-0 z-30 ${subnav ? 'border-b border-transparent' : 'border-b border-slate-200'} bg-white`;
 
   return (
     <header className={frame} data-scrolled={overlay || floating ? scrolled : undefined}>

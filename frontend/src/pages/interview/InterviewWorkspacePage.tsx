@@ -33,10 +33,13 @@ function Shell({
   breadcrumb,
   /** 첫 화면을 사진에 내주는 화면용. 사진 위에서는 헤더를 투명하게 띄운다 */
   floating = false,
+  /** 리포트처럼 바로 아래 문항 탭 줄이 붙는 화면. 헤더 밑줄을 긋지 않는다 */
+  subnav = false,
 }: {
   children: React.ReactNode;
   breadcrumb?: string | string[];
   floating?: boolean;
+  subnav?: boolean;
 }) {
   const [scrolled, setScrolled] = useState(false);
 
@@ -50,7 +53,7 @@ function Shell({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <InterviewHeader breadcrumb={breadcrumb} floating={floating} scrolled={scrolled} />
+      <InterviewHeader breadcrumb={breadcrumb} floating={floating} scrolled={scrolled} subnav={subnav} />
       {children}
     </div>
   );
@@ -456,7 +459,7 @@ function NewInterviewBody({ userId }: { userId: number }) {
     }
     // 여기 도달하면 자동 저장이 실패한 경우다. 안내와 함께 수동 저장(저장 버튼)으로 폴백한다.
     return (
-      <Shell breadcrumb={crumbs(config.targetCompany, config.targetPosition)}>
+      <Shell breadcrumb={crumbs(config.targetCompany, config.targetPosition)} subnav>
         {error && (
           <div className="mx-auto max-w-4xl px-6 pt-6">
             <InlineNotice>{error}</InlineNotice>
@@ -570,7 +573,7 @@ function SavedLoaded({ id }: { id: number }) {
     state.status === 'error' && (state.error.status === 404 || state.error.code === 'INTERVIEW_NOT_FOUND');
 
   return (
-    <Shell breadcrumb={state.status === 'success' ? crumbs(state.data.targetCompany, state.data.targetPosition) : undefined}>
+    <Shell breadcrumb={state.status === 'success' ? crumbs(state.data.targetCompany, state.data.targetPosition) : undefined} subnav>
       {state.status === 'loading' && <Loading message="불러오는 중…" />}
 
       {state.status === 'error' && (
