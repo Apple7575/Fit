@@ -52,19 +52,31 @@ describe('CompanySearchPage', () => {
     );
   });
 
-  it('opens the overview of a searched company and remembers it as recently viewed', async () => {
+  it('결과 줄을 누르면 그 기업으로 들어가고 최근 본 기업에 남는다', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(searchResponse([samsung])));
     const router = renderPage();
 
     fireEvent.change(screen.getByLabelText('기업명'), { target: { value: '삼성' } });
-    fireEvent.click(screen.getByRole('button', { name: '검색' }));
-    fireEvent.click(await screen.findByRole('button', { name: /삼성전자/ }));
+    // 줄은 mousedown 으로 받는다 — click 을 기다리면 그 전에 목록이 접혀 눌리지 않는다
+    fireEvent.mouseDown(await screen.findByRole('option', { name: /삼성전자/ }));
 
     expect(await screen.findByRole('heading', { name: '상세 화면' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/companies/00126380/overview');
     expect(JSON.parse(window.localStorage.getItem('recent-companies') ?? '[]')).toEqual([
       { corpCode: '00126380', corpName: '삼성전자' },
     ]);
+  });
+
+  it('검색 단추는 맨 윗줄로 들어간다', async () => {
+    // 결과는 칸 아래 목록에 이미 떠 있다. 검색은 결과를 만드는 것이 아니라 들어가는 단추다
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(searchResponse([samsung])));
+    const router = renderPage();
+
+    fireEvent.change(screen.getByLabelText('기업명'), { target: { value: '삼성' } });
+    await screen.findByRole('option', { name: /삼성전자/ });
+    fireEvent.click(screen.getByRole('button', { name: '검색' }));
+
+    expect(router.state.location.pathname).toBe('/companies/00126380/overview');
   });
 
   it('lists recently viewed companies and can clear them', () => {

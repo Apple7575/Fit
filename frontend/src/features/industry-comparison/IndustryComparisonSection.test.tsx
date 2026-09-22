@@ -411,8 +411,8 @@ describe('IndustryComparisonSection', () => {
     await waitFor(() => expect(comparisonUrls(fetchMock)).toHaveLength(2));
     expect(comparisonUrls(fetchMock)[1]).toContain('peers=00164779%2C00401731');
 
+    // 기업 분석 검색칸과 같다 — 엔터를 치지 않아도 치는 대로 따라온다
     fireEvent.change(screen.getByLabelText('비교할 기업명'), { target: { value: 'LG디스' } });
-    fireEvent.click(screen.getByRole('button', { name: '검색' }));
     fireEvent.click(await screen.findByRole('button', { name: /LG디스플레이/ }));
 
     await waitFor(() => expect(comparisonUrls(fetchMock)).toHaveLength(3));

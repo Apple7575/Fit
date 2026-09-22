@@ -23,6 +23,19 @@ interface UseApiQueryOptions {
    * `retry()` 는 언제나 캐시를 건너뛰고 서버에 다시 묻는다.
    */
   reuseMs?: number;
+  /**
+   * 조건을 바꿔 다시 물을 때, 새 값이 올 때까지 앞서 받은 값을 그대로 보여 준다.
+   * 이 값이 그대로인 동안만 지킨다.
+   *
+   * <p>비교 기업을 더하거나 빼면 표와 그래프가 통째로 사라졌다가 회색 자리로 바뀌고 다시
+   * 그려졌다. 보던 것이 눈앞에서 없어지니 화면이 깜빡이는 것처럼 보인다. 바뀌는 것은 줄
+   * 몇 개뿐인데 화면 전체를 다시 그릴 이유가 없다.
+   *
+   * <p>다만 아무 때나 지키면 안 된다. 다른 기업으로 옮겨 갔는데 앞 기업의 표가 남아 있으면
+   * 잘못된 값을 보여 주는 셈이다. 그래서 "무엇이 그대로여야 지킬지" 를 부르는 쪽이 정한다
+   * (대개 기업코드). 이 값이 바뀌면 앞서 받은 것은 버린다.
+   */
+  keepPreviousWhile?: string;
 }
 
 /** key → 받아 둔 값. 탭이 살아 있는 동안만 남는다 */
@@ -74,12 +87,14 @@ function shared<T>(key: string, reuseMs: number, fetcher: (signal: AbortSignal) 
 export function useApiQuery<T>(
   key: string,
   fetcher: (signal: AbortSignal) => Promise<T>,
-  { reuseMs = 0 }: UseApiQueryOptions = {},
+  { reuseMs = 0, keepPreviousWhile }: UseApiQueryOptions = {},
 ) {
   const [attempt, setAttempt] = useState(0);
   const requestKey = `${key}#${attempt}`;
   const [settled, setSettled] = useState<{
     key: string;
+    /** 이 값을 받을 때의 keepPreviousWhile. 달라지면 지키지 않는다 */
+    within: string | undefined;
     state: SettledState<T>;
   } | null>(null);
 
@@ -98,7 +113,7 @@ export function useApiQuery<T>(
     promise
       .then((data) => {
         if (controller.signal.aborted) return;
-        setSettled({ key: requestKey, state: { status: 'success', data } });
+        setSettled({ key: requestKey, within: keepPreviousWhile, state: { status: 'success', data } });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
@@ -106,6 +121,7 @@ export function useApiQuery<T>(
         }
         setSettled({
           key: requestKey,
+          within: keepPreviousWhile,
           state: {
             status: 'error',
             error:
@@ -118,11 +134,26 @@ export function useApiQuery<T>(
 
     return () => controller.abort();
     // 호출 측은 fetcher 를 useCallback 으로 메모해 key 와 함께만 바뀌게 해야 한다
-  }, [requestKey, key, attempt, fetcher, reuseMs]);
+  }, [requestKey, key, attempt, fetcher, reuseMs, keepPreviousWhile]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
-  const state: QueryState<T> = settled?.key === requestKey ? settled.state : LOADING;
+  const fresh = settled?.key === requestKey ? settled.state : null;
 
-  return { state, retry };
+  /*
+   * 새 값이 아직 안 왔다. 앞서 받은 것이 있고 지켜도 되는 자리라면 그대로 보여 준다.
+   * 앞서 실패했던 것은 지키지 않는다 — 옛 오류를 새 조건의 결과인 양 띄울 수는 없다.
+   */
+  const kept =
+    keepPreviousWhile !== undefined &&
+    settled?.within === keepPreviousWhile &&
+    settled.state.status === 'success'
+      ? settled.state
+      : null;
+
+  const state: QueryState<T> = fresh ?? kept ?? LOADING;
+  /** 보고 있는 값이 지난 조건의 것이다. 새 값을 기다리는 중 */
+  const refreshing = fresh === null && kept !== null;
+
+  return { state, retry, refreshing };
 }

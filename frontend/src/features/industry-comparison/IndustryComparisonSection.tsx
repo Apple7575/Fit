@@ -90,9 +90,14 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
   const peers = chosen ?? candidates.slice(0, MAX_PEERS);
   const peerCodes = peers.map((p) => p.corpCode);
   const [metricKey, setMetricKey] = useState<ComparisonMetricKey>(DEFAULT_COMPARISON_METRIC);
-  const { state, retry } = useIndustryComparison(target.corpCode, peerCodes);
+  const { state, retry, refreshing } = useIndustryComparison(target.corpCode, peerCodes);
   const { state: insightsState } = useComparisonInsights(target.corpCode, peerCodes);
   const trends = useComparisonTrends([target, ...peers]);
+  /*
+   * 비교 기업을 더하거나 빼는 동안에는 보던 표·그래프를 그대로 두고 살짝 흐리게만 한다.
+   * 예전에는 통째로 지우고 회색 자리를 깔았다가 다시 그려서 화면이 깜빡였다.
+   */
+  const updating = refreshing || trends.refreshing;
   const comparison = state.status === 'success' ? state.data : null;
   const resolvedIndustry = comparison?.industry?.name ?? industryName;
 
@@ -156,13 +161,22 @@ function ComparisonBody({ target, candidates, industryName }: ComparisonBodyProp
         ))}
 
       {comparison && (
-        <ComparisonResult
-          comparison={comparison}
-          insights={insightsState}
-          metricKey={metricKey}
-          onRetryTrends={trends.retry}
-          trends={trends.state}
-        />
+        /*
+          새 값을 기다리는 동안 살짝 흐려질 뿐 자리는 그대로다. 보던 표가 눈앞에서
+          사라졌다 다시 나타나지 않으므로 깜빡이지 않는다.
+         */
+        <div
+          aria-busy={updating || undefined}
+          className={`space-y-4 transition-opacity duration-200 ${updating ? 'opacity-60' : ''}`}
+        >
+          <ComparisonResult
+            comparison={comparison}
+            insights={insightsState}
+            metricKey={metricKey}
+            onRetryTrends={trends.retry}
+            trends={trends.state}
+          />
+        </div>
       )}
     </>
   );
@@ -220,6 +234,7 @@ export function ComparisonResult({
             </span>
           </h3>
           <div className="mt-4">
+            {/* 처음 받을 때만 회색 자리를 깐다. 기업을 바꿀 때는 그리던 선이 그대로 남는다 */}
             {trends.status === 'loading' && (
               <div aria-busy="true" className="h-64 animate-pulse rounded-2xl bg-slate-50" role="status">
                 <span className="sr-only">기업별 5개년 지표를 불러오는 중입니다</span>
