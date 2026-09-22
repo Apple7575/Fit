@@ -362,6 +362,13 @@ export function CoverLetterWorkspace({
 
         {/* 제목은 이 자소서의 이름이다. 카드 안에 묻지 않고 어두운 바탕에 그대로 둔다 */}
         <div className={step === META_STEP ? 'mt-6' : 'hidden'}>
+          {/*
+            제목이 있어야 문항으로 넘어간다는 안내. 마무리 바에 두면 정작 채울 칸에서
+            멀었다. 제목을 쓰면 문구만 비우고 자리는 남긴다 — 접으면 첫 글자에 화면이 튄다.
+          */}
+          <p className="mb-1.5 h-5 text-[13px] leading-5 font-semibold text-white/60">
+            {metaReady ? '' : '제목을 입력하면 문항을 쓸 수 있어요.'}
+          </p>
           <input
             id="cl-title"
             aria-label="제목"
@@ -384,8 +391,7 @@ export function CoverLetterWorkspace({
             step === META_STEP ? '' : 'hidden'
           }`}
         >
-          <p className="text-sm font-bold text-slate-700">어디에 내나요?</p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="text-xs text-slate-500">
             회사·직무는 비워 둬도 됩니다. 채우면 그 기준으로 읽어요.
           </p>
 
@@ -560,31 +566,24 @@ export function CoverLetterWorkspace({
 
         {/* 상자를 걷었다. 왼쪽이 지금 상태, 오른쪽이 다음 걸음인 짜임은 그대로다 */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-white">
-          <div className="min-w-0">
-            {/*
-              첫 단계에서 할 말은 카드로 옮겼다. 남은 것은 제목이 없어 아직 못 넘어간다는
-              안내뿐이라, 제목을 쓰면 왼쪽은 비고 단추만 남는다.
-            */}
-            {!(step === META_STEP && metaReady) && (
+          {/* 첫 단계에서 할 말은 모두 위로 올라갔다 — 여기에는 단추만 남는다 */}
+          {step !== META_STEP && (
+            <div className="min-w-0">
               <p className="text-sm font-bold">
-                {step === META_STEP
-                  ? '제목을 입력하면 문항을 쓸 수 있어요.'
-                  : !hasWriting
-                    ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
-                    : isLoggedIn
-                      ? '코치 다섯이 각자 맡은 자료로 읽습니다.'
-                      : '검토를 받으려면 로그인이 필요해요.'}
+                {!hasWriting
+                  ? '질문과 답변을 채우면 검토를 받을 수 있어요.'
+                  : isLoggedIn
+                    ? '코치 다섯이 각자 맡은 자료로 읽습니다.'
+                    : '검토를 받으려면 로그인이 필요해요.'}
               </p>
-            )}
-            {step !== META_STEP && (
               <p className="mt-0.5 text-xs break-keep text-white/60">
                 {isLoggedIn
                   ? '저장한 뒤 검토 방으로 넘어갑니다. 문항은 위에서 오갈 수 있어요.'
                   : '로그인하면 쓰던 자소서가 그대로 남습니다.'}
               </p>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+            </div>
+          )}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {/* 문항을 더하는 일은 저장·검토와 무게가 다르다. 제일 가볍게 왼쪽에 둔다 */}
             {step !== META_STEP && (
               <button
