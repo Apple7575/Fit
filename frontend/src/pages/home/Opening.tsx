@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { BRAND_TAGLINE } from '../../components/layout/brand';
 import { prefersReducedMotion } from '../../hooks/useInView';
+import { useCoverLetterCta } from './coverLetterCta';
 
 /** 여기서 바로 갈 수 있는 세 곳. 기업 검색은 '기업 분석' 안에 있다 */
 const ENTRIES = [
@@ -27,6 +28,7 @@ export const Opening = forwardRef<HTMLElement, { onNext: () => void }>(function 
   ref,
 ) {
   const still = prefersReducedMotion();
+  const coverLetterCta = useCoverLetterCta();
 
   return (
     <section
@@ -74,9 +76,9 @@ export const Opening = forwardRef<HTMLElement, { onNext: () => void }>(function 
             </Link>
             <Link
               className="rounded-full px-7 py-3.5 text-base font-bold text-white/80 ring-1 ring-white/25 transition hover:-translate-y-0.5 hover:bg-white/10 hover:text-white"
-              to="/cover-letters/new"
+              to={coverLetterCta.to}
             >
-              로그인 없이 자소서 써 보기
+              {coverLetterCta.label}
             </Link>
           </div>
         </div>
