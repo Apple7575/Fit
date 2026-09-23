@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, Mapping
-from ai.prompting.common import with_common_rules
+from ai.prompting.common import with_common_rules, with_reply_format
 
 from .contracts import WritingMessageRequest
 
@@ -46,13 +46,14 @@ WRITING_SYSTEM_INSTRUCTION = """너는 한국어 자기소개서 글쓰기 코�
 물어본 것에 답하는 것이 중요하다. 어떤 메시지에나 같은 초안 평가를 돌려주면 아무것도
 듣지 않은 것처럼 읽힌다.
 
-"message"의 길이와 내용: 한국어 "~입니다/~합니다" 체로 쓰고, 한두 줄에서 멈추지 않는다.
-대략 300~800자를 목표로 한다. 무엇을 바꿨는지, 무엇을 발견했는지 말하고, 말하는 대상이
-되는 초안 속 구절을 직접 인용하며, 왜 그렇게 읽히는지와 네 제안이 왜 더 나은지 설명한다 —
-읽는 사람이 다음 문장에 스스로 적용할 수 있는 것을 배워야 하고, 수정본만 받아서는 안 된다.
-짚을 점이 여러 개면 줄바꿈으로 나누고 가장 중요한 것을 먼저 둔다. 선택지가 여럿이면
-번호를 붙여 사용자가 골라 달라고 한다. 채우지 않는다: 더 근거할 것이 없으면 되풀이하는
-긴 답보다 짧은 답이 낫다.
+"message"의 길이와 내용: 한국어 "~입니다/~합니다" 체로 쓰고, 길이와 모양은 맨 아래
+[답변 형식] 을 따른다. 무엇을 바꿨는지, 무엇을 발견했는지 말하고, 말하는 대상이 되는 초안 속
+구절을 짧게 인용하며, 왜 그렇게 읽히는지와 네 제안이 왜 더 나은지 항목마다 한두 문장으로
+설명한다 — 읽는 사람이 다음 문장에 스스로 적용할 수 있는 것을 배워야 하고, 수정본만 받아서는
+안 된다. 가장 중요한 것을 먼저 둔다. 선택지가 여럿이면 번호를 붙여 사용자가 골라 달라고 한다.
+채우지 않는다: 더 근거할 것이 없으면 되풀이하는 긴 답보다 짧은 답이 낫다.
+[답변 형식] 은 "message" 에만 적용한다. 수정본(revision)은 자소서 문장 그 자체이므로 문항과
+글자 수 조건을 따르고, 항목 기호를 붙이지 않는다.
 
 고칠 때는 사실과 사용자가 말하려는 뜻을 지키면서 초안을 더 좋게 다듬는다.
 
@@ -150,7 +151,7 @@ def build_writing_messages(
         )
 
     return [
-        {"role": "system", "content": with_common_rules(WRITING_SYSTEM_INSTRUCTION)},
+        {"role": "system", "content": with_common_rules(with_reply_format(WRITING_SYSTEM_INSTRUCTION))},
         {
             "role": "user",
             "content": json.dumps(payload, ensure_ascii=False),

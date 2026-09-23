@@ -9,6 +9,7 @@ from __future__ import annotations
 import unittest
 
 from ai.position_coaching.chat import PositionChatService
+from ai.prompting.common import REPLY_FORMAT_RULES
 
 
 ANALYSIS = {
@@ -170,6 +171,13 @@ class PositionChatServiceTest(unittest.TestCase):
         self.assertIn("채용공고 담당", system)
         self.assertIn("기업분석 담당", system)
         self.assertIn("글쓰기 담당", system)
+
+    def test_reply_format_is_the_last_rule(self):
+        """형식 규칙은 마지막에 읽혀야 잘 지켜진다. 화면은 마크다운을 그리지 않는다."""
+        self.respond()
+
+        system = self.caller.messages[0]["content"]
+        self.assertTrue(system.endswith(REPLY_FORMAT_RULES.rstrip()))
 
     def test_injection_rule_covers_the_current_question(self):
         """지시문 무력화 규칙에 '이번 질문' 이 빠지면 그 자리로 주입이 들어온다."""
