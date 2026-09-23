@@ -164,6 +164,62 @@ class AgentContextsTest {
         assertThat(request.isEmpty()).isTrue();
     }
 
+    @Test
+    @DisplayName("기업을 안 고른 기업 RAG 담당 방은 빠지고, 기업을 고르라고 사유를 남긴다")
+    void aCompanyRoomWithoutACompanyIsBlockedWithItsOwnReason() {
+        // 전에는 자리를 억지로 만들어 30초 뒤 말풍선에서 "설정을 먼저 채워 주세요" 가 떴다.
+        AgentContexts.Request request = AgentContexts.of(soloRoom(
+                "company", Map.of(), "ctx-1", part(1, "문항 1", "답변 1", 500)));
+
+        assertThat(request.agentKeys()).isEmpty();
+        assertThat(request.blockedReason()).isEqualTo(AgentContexts.NEED_COMPANY);
+    }
+
+    @Test
+    @DisplayName("공고가 없어서 못 도는 방은 문항이 아니라 공고를 채우라고 한다")
+    void aRoomBlockedByAMissingPostingSaysSo() {
+        AgentContexts.Request request = AgentContexts.of(soloRoom(
+                "jd", Map.of(), null, part(1, "문항 1", "답변 1", 500)));
+
+        assertThat(request.agentKeys()).isEmpty();
+        assertThat(request.blockedReason()).isEqualTo(AgentContexts.NEED_POSTING);
+    }
+
+    @Test
+    @DisplayName("답변을 안 쓴 방은 기존대로 문항을 먼저 쓰라고 한다")
+    void aRoomWithoutAnyAnswerStillAsksForTheAnswer() {
+        AgentContexts.Request request = AgentContexts.of(soloRoom(
+                "jd", Map.of(), "ctx-1", part(1, "문항 1", "   ", 500)));
+
+        assertThat(request.agentKeys()).isEmpty();
+        assertThat(request.blockedReason()).isEqualTo(AgentContexts.NEED_ANSWER);
+    }
+
+    @Test
+    @DisplayName("글쓰기 전담 방에 문항이 여럿이면 하나를 고르라고 한다")
+    void aWritingRoomWithManyItemsAsksToPickOne() {
+        AgentContexts.Request request = AgentContexts.of(soloRoom(
+                "writing", Map.of(), "ctx-1",
+                part(1, "문항 1", "답변 1", 500),
+                part(2, "문항 2", "답변 2", 500)));
+
+        assertThat(request.agentKeys()).isEmpty();
+        assertThat(request.blockedReason()).isEqualTo(AgentContexts.NEED_ITEM_PICK);
+    }
+
+    @Test
+    @DisplayName("참여하는 담당이 있으면 나머지 담당의 사유만 따로 남는다")
+    void agentsThatRunAreNotBlocked() {
+        AgentContexts.Request request = AgentContexts.of(context(
+                null, "백엔드", Map.of(), part(1, "문항 1", "답변 1", 500)));
+
+        assertThat(request.agentKeys()).contains("position", "writing");
+        // 공고가 없으니 공고·뉴스 담당은 빠지고, 기업을 안 골랐으니 기업 담당도 빠진다
+        assertThat(request.blocked()).containsEntry("jd", AgentContexts.NEED_POSTING);
+        assertThat(request.blocked()).containsEntry("news", AgentContexts.NEED_POSTING);
+        assertThat(request.blocked()).containsEntry("company", AgentContexts.NEED_COMPANY);
+    }
+
     /** 담당을 전부 고른 방(총괄 논의). 넘긴 설정만 채우고 나머지는 빈 설정으로 둔다. */
     private static TurnContext context(String jobContextId,
                                        String jobPositionName,

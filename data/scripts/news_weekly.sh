@@ -34,6 +34,10 @@ KEEP_DAYS=${KEEP_DAYS:-28}
 PER_COMPANY=${PER_COMPANY:-5}
 INTERVAL=${INTERVAL:-5}
 DRY_RUN=${DRY_RUN:-0}
+SKIP_COLLECT=${SKIP_COLLECT:-0}
+# 건너뛰기로 적재할 때 허용하는 시드 나이. 주 1회 잡이라 8일이면 지난주 시드를
+# 이번 주 것으로 착각해 넣는 것을 막는다.
+MAX_SEED_AGE_DAYS=${MAX_SEED_AGE_DAYS:-8}
 
 [ -d "$PKG/data" ] || { echo "꾸러미가 없다: $PKG" >&2; exit 1; }
 [ -f "$cfg" ]      || { echo "환경 파일이 없다: $cfg" >&2; exit 1; }
@@ -87,6 +91,41 @@ run() {
 
 RUN_ENV=()
 
+# ── 수집을 건너뛰고 이미 있는 시드만 적재한다 (SKIP_COLLECT=1)
+#
+# 왜 필요한가: `CA_ENV` 는 **적재 대상 DB 만** 가른다. 그래서 dev 로 한 번 돌린 주에
+# prod 에도 넣으려면 수집(3.8시간)을 통째로 다시 하게 된다. 얻는 것은 없고 잃는 것이
+# 둘이다 — 구글을 주당 두 번 긁고(robots disallow 인 원천이다), **dev 와 prod 가
+# 서로 다른 시점의 기사를 갖게 된다.** 이 저장소는 "운영·개발·시드 셋이 같다" 를
+# 계속 맞춰 왔고 검증도 그 전제 위에 있다.
+#
+# 시드·staged 는 실행 뒤에도 남는다(4주 롤링은 collect·raw 뿐이다). 그래서 같은 주에
+# 만든 시드를 그대로 prod 에 넣을 수 있다 — 수 분이면 끝난다.
+#
+# **위험은 하나다: 오래된 시드를 이번 주 것으로 착각해 넣는 것.** 건너뛰면 시드 생성
+# 단계의 행수 급감 가드도 같이 건너뛰고, `load_seed_csv` 의 PRUNE_LIMIT 는
+# news_article 에 걸리지 않는다(SEED_OWNS_ALL 밖이다). 그래서 **나이를 여기서 본다.**
+if [ "$SKIP_COLLECT" = "1" ]; then
+  seed=$BASE/curated/seed/news_article.csv
+  [ -s "$seed" ] || {
+    echo "시드가 없다: $seed" >&2
+    echo "  SKIP_COLLECT 는 이미 만들어 둔 시드를 넣는 모드다. 먼저 수집부터 돌린다." >&2
+    exit 5
+  }
+
+  age_days=$(( ( $(date +%s) - $(stat -c %Y "$seed") ) / 86400 ))
+  gen=$(grep -o '"generated_at"[^,}]*' "$BASE/manifests/seed/news_article.json" 2>/dev/null | head -1)
+  rows=$(( $(wc -l < "$seed") - 1 ))
+  echo "── 수집을 건너뛴다 (SKIP_COLLECT=1)"
+  echo "   시드 $rows 행 · ${age_days}일 전 · ${gen:-계보 없음}"
+
+  if [ "$age_days" -gt "$MAX_SEED_AGE_DAYS" ]; then
+    echo "시드가 ${age_days}일 됐다 (허용 ${MAX_SEED_AGE_DAYS}일). 넣지 않는다." >&2
+    echo "  수집부터 다시 돌리거나, 일부러 넣는 것이면 MAX_SEED_AGE_DAYS 를 올린다." >&2
+    exit 6
+  fi
+else
+
 echo "── 1. 수집 — $START ~ $END (기업당 1요청, 간격 ${INTERVAL}초)"
 # 종료 코드 2 는 4xx(막힘), 3 은 실패율 초과다. 둘 다 시드로 넘기지 않는다.
 set +e
@@ -110,6 +149,8 @@ echo "── 4. 시드 (기업당 최신 ${PER_COMPANY}건)"
 # 직전 주보다 행이 5% 넘게 줄면 여기서 멈춘다 (pipeline/seed_guard.py, MR !210).
 # 수집이 반쪽이었는데 DB 까지 가는 것을 막는 마지막 문이다.
 run "" "python scripts/build_news_seed.py --per-company $PER_COMPANY"
+
+fi   # SKIP_COLLECT
 
 if [ "$LOAD" = "1" ]; then
   echo "── 5. 적재 ($CA_ENV)"

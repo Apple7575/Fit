@@ -24,6 +24,13 @@ pipeline {
                description: 'KST 종료일, exclusive (비우면 오늘)')
         booleanParam(name: 'DRY_RUN', defaultValue: false,
                      description: '받지 않고 무엇을 할지만 찍는다')
+        // CA_ENV 는 적재 대상 DB 만 가른다. 그래서 dev 로 한 번 돌린 주에 prod 에도
+        // 넣으려면 수집 3.8시간을 통째로 다시 하게 되고, 그 사이 새 기사가 들어와
+        // **dev 와 prod 가 서로 다른 데이터를 갖는다.** 이 옵션이 그것을 막는다.
+        booleanParam(name: 'SKIP_COLLECT', defaultValue: false,
+                     description: '수집을 건너뛰고 서버에 있는 시드를 그대로 적재한다. ' +
+                                  'dev 로 만든 시드를 prod 에 넣을 때 쓴다 — 수 분이면 끝나고 ' +
+                                  '두 DB 가 같은 기사를 갖는다. 시드가 8일보다 오래면 거부한다')
     }
 
     options {
@@ -63,6 +70,7 @@ pipeline {
                         $SSH "$HOST" "CA_ENV=${CA_ENV} \
                             LOAD_NEWS_PROD=${LOAD_NEWS_PROD} \
                             DRY_RUN=$([ "$DRY_RUN" = true ] && echo 1 || echo 0) \
+                            SKIP_COLLECT=$([ "$SKIP_COLLECT" = true ] && echo 1 || echo 0) \
                             ${START:+START=${START}} ${END:+END=${END}} \
                             bash /home/ubuntu/newsdata/pkg/data/scripts/news_weekly.sh"
 

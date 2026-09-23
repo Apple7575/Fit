@@ -45532,12 +45532,6 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01770203,2025,-,segment_employee_count,479.0000
 01770203,2025,기타,segment_revenue,2474000000.0000
 01770203,2025,내화물제조업,segment_revenue,536485000000.0000
-01781847,2023,-,segment_employee_count,
-01781847,2023,관리 및 합병업무,segment_employee_count,2.0000
-01781847,2024,-,segment_employee_count,
-01781847,2024,관리 및 합병업무,segment_employee_count,2.0000
-01781847,2025,-,segment_employee_count,
-01781847,2025,관리 및 합병업무,segment_employee_count,2.0000
 01782004,2025,Imaging CRO 서비스,segment_revenue,699353000.0000
 01782004,2025,Neurophet AQUA,segment_revenue,557044000.0000
 01782004,2025,Neurophet AQUA AD,segment_revenue,370401000.0000
@@ -45557,7 +45551,6 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01784394,2025,아프리카,segment_revenue,3300537000.0000
 01784394,2025,유럽,segment_revenue,23797033000.0000
 01784394,2025,중동,segment_revenue,5923474000.0000
-01784677,2025,경영지원,segment_employee_count,1.0000
 01784914,2024,기술/연구직,segment_employee_count,95.0000
 01784914,2024,기타,segment_revenue,7721000000.0000
 01784914,2024,사무직,segment_employee_count,21.0000
@@ -45573,45 +45566,16 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01786958,2025,사무직,segment_employee_count,20.0000
 01786958,2025,연구직,segment_employee_count,42.0000
 01786958,2025,"제품 (생명과학기기, 의료기기,랩오토메이션 등)",segment_revenue,5820000000.0000
-01787072,2023,-,segment_employee_count,
-01787072,2023,"공시, 사무처리",segment_employee_count,3.0000
-01787072,2024,-,segment_employee_count,
-01787072,2024,"공시, 사무처리",segment_employee_count,3.0000
-01787072,2025,-,segment_employee_count,
 01787355,2025,기타,segment_revenue,7584000.0000
 01787355,2025,용역,segment_revenue,5823711000.0000
 01787355,2025,위성,segment_employee_count,80.0000
 01787355,2025,제품,segment_revenue,7405565000.0000
-01791561,2023,공시관리,segment_employee_count,1.0000
-01791561,2024,공시관리,segment_employee_count,1.0000
-01791561,2025,공시관리,segment_employee_count,1.0000
-01792791,2023,SPAC,segment_employee_count,1.0000
-01792791,2024,SPAC,segment_employee_count,1.0000
-01792791,2025,SPAC,segment_employee_count,1.0000
-01792825,2023,-,segment_employee_count,1.0000
-01792825,2024,-,segment_employee_count,1.0000
-01792825,2025,-,segment_employee_count,1.0000
-01796858,2023,-,segment_employee_count,
-01796858,2024,-,segment_employee_count,
-01796858,2025,-,segment_employee_count,
-01797440,2023,합병/공시,segment_employee_count,1.0000
-01797440,2024,합병/공시,segment_employee_count,1.0000
-01797440,2025,합병/공시,segment_employee_count,1.0000
-01798722,2024,합병/공시,segment_employee_count,1.0000
-01798722,2025,합병/공시,segment_employee_count,1.0000
-01798980,2023,-,segment_employee_count,
-01798980,2024,-,segment_employee_count,
-01798980,2025,-,segment_employee_count,
-01801822,2024,합병/공시,segment_employee_count,1.0000
-01801822,2025,합병/공시,segment_employee_count,1.0000
 01803635,2025,기타,segment_revenue,1082000000.0000
 01803635,2025,사무직,segment_employee_count,12.0000
 01803635,2025,서비스,segment_revenue,9006000000.0000
 01803635,2025,연구직,segment_employee_count,74.0000
 01803635,2025,영업직,segment_employee_count,19.0000
 01803927,2025,제품,segment_revenue,60009000000.0000
-01804476,2024,-,segment_employee_count,
-01804476,2025,-,segment_employee_count,
 01806951,2023,기타,segment_revenue,22000000.0000
 01806951,2023,상품,segment_revenue,1382000000.0000
 01806951,2023,제품,segment_revenue,1377000000.0000
@@ -45624,57 +45588,15 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01806951,2025,패션사업,segment_revenue,417808000000.0000
 01806951,2025,플랫폼사업,segment_revenue,2578000000.0000
 01806951,2025,화장품사업,segment_revenue,65183000000.0000
-01807729,2024,-,segment_employee_count,1.0000
-01807729,2025,-,segment_employee_count,1.0000
-01807738,2024,-,segment_employee_count,1.0000
-01807738,2025,-,segment_employee_count,1.0000
-01807747,2024,공시관리,segment_employee_count,1.0000
-01807747,2025,공시관리,segment_employee_count,1.0000
-01809569,2024,관리,segment_employee_count,1.0000
-01809569,2025,관리,segment_employee_count,1.0000
 01810477,2025,사무,segment_employee_count,23.0000
 01810477,2025,연구개발,segment_employee_count,80.0000
 01810477,2025,영업,segment_employee_count,28.0000
-01813377,2024,공시관리,segment_employee_count,2.0000
-01813377,2025,공시관리,segment_employee_count,2.0000
-01814233,2024,-,segment_employee_count,
-01814233,2025,-,segment_employee_count,
-01814589,2024,-,segment_employee_count,
-01814589,2025,-,segment_employee_count,
-01815764,2024,-,segment_employee_count,
-01815764,2025,-,segment_employee_count,
-01816268,2024,-,segment_employee_count,
-01816268,2025,-,segment_employee_count,
 01817081,2024,ESS사업,segment_revenue,27679000000.0000
 01817081,2024,신재생에너지사업,segment_revenue,304472000000.0000
 01817081,2024,신재생에너지사업 외,segment_employee_count,385.0000
 01817081,2025,ESS사업,segment_revenue,36781000000.0000
 01817081,2025,신재생에너지사업,segment_revenue,348860000000.0000
 01817081,2025,신재생에너지사업 외,segment_employee_count,410.0000
-01817249,2024,-,segment_employee_count,
-01817249,2025,-,segment_employee_count,
-01818682,2024,관리,segment_employee_count,1.0000
-01818682,2025,관리,segment_employee_count,1.0000
-01819867,2024,-,segment_employee_count,
-01819867,2025,-,segment_employee_count,
-01834194,2024,-,segment_employee_count,
-01834194,2025,-,segment_employee_count,
-01841635,2024,-,segment_employee_count,
-01841635,2025,-,segment_employee_count,
-01845534,2024,-,segment_employee_count,1.0000
-01845534,2025,-,segment_employee_count,1.0000
-01845701,2024,관리 및 합병업무,segment_employee_count,2.0000
-01845701,2025,관리 및 합병업무,segment_employee_count,2.0000
-01847550,2024,-,segment_employee_count,
-01847550,2025,-,segment_employee_count,
-01851650,2024,-,segment_employee_count,
-01851650,2025,-,segment_employee_count,
-01853214,2024,관리,segment_employee_count,1.0000
-01853214,2025,관리,segment_employee_count,1.0000
-01854392,2024,-,segment_employee_count,
-01854392,2025,-,segment_employee_count,
-01854408,2024,관리,segment_employee_count,1.0000
-01854408,2025,관리,segment_employee_count,
 01854763,2024,무역사업,segment_revenue,75037000000.0000
 01854763,2024,본사 등,segment_employee_count,110.0000
 01854763,2024,산업자재,segment_revenue,601170000000.0000
@@ -45686,18 +45608,10 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01854763,2025,수입차딜러,segment_revenue,22076000000.0000
 01854763,2025,운송주선사업,segment_revenue,415727000000.0000
 01854763,2025,지주사업,segment_revenue,23674000000.0000
-01857991,2024,-,segment_employee_count,
-01857991,2025,-,segment_employee_count,
 01859500,2025,사무,segment_employee_count,9.0000
 01859500,2025,연구개발,segment_employee_count,32.0000
 01860010,2024,회사전체,segment_employee_count,12.0000
 01860010,2025,회사전체,segment_employee_count,18.0000
-01866528,2024,-,segment_employee_count,
-01866528,2024,관리 및 합병업무,segment_employee_count,2.0000
-01866528,2025,-,segment_employee_count,
-01866528,2025,관리 및 합병업무,segment_employee_count,2.0000
-01866926,2024,-,segment_employee_count,
-01866926,2025,-,segment_employee_count,
 01867749,2023,본사,segment_employee_count,43.0000
 01867749,2024,전사,segment_employee_count,
 01867749,2025,전사,segment_employee_count,
@@ -45707,17 +45621,8 @@ corp_code,fiscal_year,segment_name,metric_code,metric_value
 01867758,2025,산업용장비,segment_revenue,455867000000.0000
 01867758,2025,시큐리티,segment_revenue,1335055000000.0000
 01867758,2025,시큐리티부문,segment_employee_count,1060.0000
-01872219,2024,-,segment_employee_count,
-01872219,2025,-,segment_employee_count,
 01872459,2024,전사,segment_employee_count,18.0000
 01872459,2025,전사,segment_employee_count,26.0000
-01873272,2024,-,segment_employee_count,
-01873272,2025,-,segment_employee_count,
-01875146,2025,관리,segment_employee_count,1.0000
-01877126,2024,-,segment_employee_count,
-01877126,2025,-,segment_employee_count,
-01881800,2024,관리,segment_employee_count,1.0000
-01881800,2025,관리,segment_employee_count,1.0000
 01882845,2024,객실수입,segment_revenue,14015888000.0000
 01882845,2024,기타수입,segment_revenue,2204285000.0000
 01882845,2024,본사,segment_employee_count,7.0000

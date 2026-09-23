@@ -209,7 +209,8 @@ function CompanyRow({
       <div className="min-w-0">
         <p className="truncate text-[17px] font-extrabold text-slate-950">{company ?? '모의 면접'}</p>
         <p className={`mt-0.5 flex flex-wrap items-center gap-1.5 ${T.caption}`}>
-          {position && <span>{position}</span>}
+          {/* 직무는 사용자가 친 글이다. 띄어쓰기 없이 길게 적으면 이 줄이 칸을 넘는다 */}
+          {position && <span className="min-w-0 break-keep wrap-anywhere">{position}</span>}
           <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[12px] font-semibold text-blue-700 ring-1 ring-blue-100">
             {typeLabel}
           </span>

@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { loginReason } from '../../features/auth/loginReason';
 
 const FIELD_CLASS =
-  'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
+  'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -22,6 +23,8 @@ export function LoginPage() {
   const reason = loginReason(redirectParam);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // 공용 PC 에서 저절로 켜지지 않도록 꺼진 쪽이 기본이다.
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -32,11 +35,11 @@ export function LoginPage() {
     setNeedsVerification(false);
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, rememberMe);
       navigate(redirectTo);
     } catch (caught) {
       if (caught instanceof ApiError) {
-        setError(caught.message);
+        setError(userMessage(caught, '로그인에 실패했습니다.'));
         setNeedsVerification(caught.code === 'EMAIL_NOT_VERIFIED');
       } else {
         setError('로그인에 실패했습니다.');
@@ -69,6 +72,8 @@ export function LoginPage() {
             autoComplete="email"
             className={FIELD_CLASS}
             id="login-email"
+            // 백엔드 @Size(max=255) 와 같은 값
+            maxLength={255}
             onChange={(event) => setEmail(event.target.value)}
             required
             type="email"
@@ -84,12 +89,24 @@ export function LoginPage() {
             autoComplete="current-password"
             className={FIELD_CLASS}
             id="login-password"
+            // 비밀번호는 64자까지다(SignupRequest 의 @Pattern). 더 받아 봐야 400 만 난다
+            maxLength={64}
             onChange={(event) => setPassword(event.target.value)}
             required
             type="password"
             value={password}
           />
         </div>
+
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-600 select-none">
+          <input
+            checked={rememberMe}
+            className="size-4 rounded border-slate-300 text-blue-600"
+            onChange={(event) => setRememberMe(event.target.checked)}
+            type="checkbox"
+          />
+          로그인 상태 유지
+        </label>
 
         {error && (
           <p

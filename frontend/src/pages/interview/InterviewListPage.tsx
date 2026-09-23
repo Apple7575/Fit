@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
+import { userMessage } from '../../api/errorMessage';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { CompanyLogo } from '../../features/company-summary/CompanyLogo';
 import { deleteInterview } from '../../features/interview/api';
-import { readDraft, relativeTime, type InterviewDraft } from '../../features/interview/draft';
+import {
+  isPromptMuted,
+  mutePrompt,
+  readDraft,
+  relativeTime,
+  type InterviewDraft,
+} from '../../features/interview/draft';
+import { ResumePrompt } from '../../features/interview/ResumePrompt';
 import { Icon } from '../../features/interview/icons';
 import { deleteByServerId, listServerIdsWithClips } from '../../features/interview/localVideo';
 import { useInterviews } from '../../features/interview/queries';
@@ -53,6 +61,14 @@ function ListBody() {
   const [localIds, setLocalIds] = useState<Set<number>>(new Set());
   // 도중에 끊긴 면접이 있으면 "이어서 진행"을 띄운다. 초안은 이 브라우저에만 유저별로 남는다.
   const [draft] = useState<InterviewDraft | null>(() => (user ? readDraft(user.id) : null));
+  /*
+   * 한 번 닫으면 이 화면에서는 다시 묻지 않는다(목록을 보러 온 사람을 계속 막아서는 안 된다).
+   * 다음에 들어오면 또 묻는데, 그 면접을 접어 둔 사람에게는 그게 성가시다. 그래서 창에
+   * "다시 묻지 않기"를 두고, 눌렀으면 처음부터 띄우지 않는다.
+   */
+  const [askedResume, setAskedResume] = useState(
+    () => !!user && !!draft && isPromptMuted(user.id, draft.localSessionId),
+  );
   // 영상 위에서는 헤더를 투명하게 띄우고, 첫 화면을 벗어나면 흰 유리로 되돌린다
   const [scrolled, setScrolled] = useState(false);
 
@@ -99,6 +115,21 @@ function ListBody() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
+      {draft && !askedResume && (
+        <ResumePrompt
+          answered={draft.items.filter((item) => item.transcript.trim() !== '').length}
+          company={draft.config.targetCompany}
+          onDismiss={() => setAskedResume(true)}
+          onMute={() => {
+            if (user) mutePrompt(user.id, draft.localSessionId);
+            setAskedResume(true);
+          }}
+          onResume={() => navigate('/interviews/new?resume=1')}
+          position={draft.config.targetPosition}
+          total={draft.questions.length || draft.items.length}
+          when={relativeTime(draft.updatedAt)}
+        />
+      )}
       <InterviewHeader floating scrolled={scrolled} />
 
       {/* 화면 전체가 면접장 영상. 빈 의자를 보여 줘서 "내가 저기 앉는다"로 시작한다 */}
@@ -130,40 +161,17 @@ function ListBody() {
         <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1100px] flex-col px-6 pt-24 pb-16">
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <h1 className="display-lg text-balance">면접관 앞에 앉아 보세요</h1>
-            {/* 문장 사이에서 줄을 나눈다. 그냥 두면 '녹화한' 이 첫 줄 끝에 매달린다 */}
             <p className="mt-3 max-w-[46ch] text-[15px] break-keep text-white/70">
               회사 자료로 만든 질문에 답하고, 말투와 자세까지 돌아봅니다.
-              <br />
-              녹화한 영상은 이 브라우저 밖으로 나가지 않습니다.
             </p>
-            {/* 도중에 끊긴 면접이 있으면, 새 면접보다 먼저 이어서 진행할 길을 내준다 */}
-            {draft && (
-              <div className="mt-8 w-full max-w-md rounded-2xl bg-white/10 px-4 py-3 text-left ring-1 ring-white/25 backdrop-blur">
-                <p className="text-[12px] font-semibold text-white/60">진행 중이던 면접</p>
-                <p className="mt-0.5 truncate text-[14px] font-bold text-white">
-                  {draft.config.targetCompany || '모의 면접'}
-                  {draft.config.targetPosition && (
-                    <span className="font-medium text-white/70"> · {draft.config.targetPosition}</span>
-                  )}
-                </p>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="text-[12px] text-white/50">{relativeTime(draft.updatedAt)} 중단</span>
-                  <button
-                    className="rounded-full bg-white px-4 py-1.5 text-[13px] font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
-                    onClick={() => navigate('/interviews/new?resume=1')}
-                    type="button"
-                  >
-                    이어서 진행하기
-                  </button>
-                </div>
-              </div>
-            )}
+
+            {/*
+              끊긴 면접은 첫 화면에 상자로 띄우지 않는다. 위아래가 모두 가운데 정렬인데
+              그 상자만 왼쪽 정렬이라 따로 놀았고, 상자 안의 흰 단추와 상자 밖 '새 면접
+              시작' 이 서로 눈에 띄려고 다퉜다. 대신 들어오는 순간 물어본다(ResumePrompt).
+            */}
             <button
-              className={`flex items-center gap-2 rounded-full px-7 py-3 text-sm font-bold transition hover:-translate-y-0.5 hover:shadow-lg ${
-                draft
-                  ? 'mt-3 bg-white/10 text-white ring-1 ring-white/25 backdrop-blur hover:bg-white/20'
-                  : 'mt-8 bg-white text-slate-950'
-              }`}
+              className="mt-8 flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-lg"
               onClick={() => navigate('/interviews/new')}
               type="button"
             >
@@ -190,6 +198,19 @@ function ListBody() {
                 )}
               </div>
               <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {/*
+                  창을 닫아도 하던 면접이 사라지지 않게 목록 맨 앞에 세운다. 끝난 기록과
+                  섞이면 안 되므로 테두리와 점으로 진행 중임을 먼저 말한다.
+                */}
+                {draft && (
+                  <li key="draft">
+                    <HeroDraftCard
+                      company={draft.config.targetCompany}
+                      onResume={() => navigate('/interviews/new?resume=1')}
+                      when={relativeTime(draft.updatedAt)}
+                    />
+                  </li>
+                )}
                 {onHero.map((interview) => (
                   <li key={interview.id}>
                     <HeroCard
@@ -234,11 +255,24 @@ function ListBody() {
           )}
 
           {state.status === 'error' && (
-            <InlineNotice onRetry={retry}>목록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
+            <InlineNotice onRetry={retry}>{userMessage(state.error, '목록을 불러오지 못했습니다.')}</InlineNotice>
           )}
 
           {state.status === 'success' && (
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {/* 끝난 기록보다 먼저. 아직 끝내지 않은 것이 할 일이다 */}
+              {draft && (
+                <li key="draft">
+                  <DraftCard
+                    answered={draft.items.filter((item) => item.transcript.trim() !== '').length}
+                    company={draft.config.targetCompany}
+                    onResume={() => navigate('/interviews/new?resume=1')}
+                    position={draft.config.targetPosition}
+                    total={draft.questions.length || draft.items.length}
+                    when={relativeTime(draft.updatedAt)}
+                  />
+                </li>
+              )}
               {all.map((interview) => (
                 <InterviewCard
                   confirming={confirmingId === interview.id}
@@ -411,5 +445,110 @@ function InterviewCard({
         </button>
       )}
     </li>
+  );
+}
+
+/**
+ * 첫 화면 목록의 "진행 중" 칸.
+ *
+ * <p>끝난 기록과 같은 줄에 서지만 같은 것으로 읽히면 안 된다. 유리 재질은 그대로 두고
+ * 테두리를 밝혀 한 칸만 떠오르게 하고, 깜박이는 점으로 아직 도는 중임을 말한다.
+ */
+function HeroDraftCard({
+  company,
+  when,
+  onResume,
+}: {
+  company: string | null;
+  /** 이 칸은 네 칸 중 하나라 좁다. 직무까지 넣으면 회사명이 잘린다 — 아래 큰 카드가 말한다 */
+  when: string;
+  onResume: () => void;
+}) {
+  return (
+    <button
+      className="flex w-full items-center gap-2.5 rounded-xl bg-white/20 px-3 py-2.5 text-left ring-2 ring-white/70 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-slate-950"
+      onClick={onResume}
+      type="button"
+    >
+      <span
+        aria-hidden="true"
+        className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/25"
+      >
+        <span className="size-2 animate-pulse rounded-full bg-white" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-bold">
+          {company || '모의 면접'}
+        </span>
+        <span className="mt-0.5 block truncate text-[11px] font-semibold opacity-80">
+          진행 중 · {when} 중단
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * 아래 목록의 "진행 중" 카드.
+ *
+ * <p>끝난 면접 카드는 점수와 날짜를 보여 주지만 이 카드는 아직 볼 것이 없다. 대신 어디까지
+ * 했는지와 이어서 할 길을 준다. 흰 카드들 사이에서 혼자 어둡게 서서 먼저 눈에 띈다.
+ */
+function DraftCard({
+  company,
+  position,
+  when,
+  answered,
+  total,
+  onResume,
+}: {
+  company: string | null;
+  position: string | null;
+  when: string;
+  answered: number;
+  total: number;
+  onResume: () => void;
+}) {
+  return (
+    <button
+      className="flex h-full w-full flex-col justify-between gap-4 rounded-2xl bg-slate-900 p-5 text-left text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-800"
+      onClick={onResume}
+      type="button"
+    >
+      <span>
+        <span className="flex items-center gap-1.5 text-[12px] font-bold text-white/70">
+          <span aria-hidden="true" className="size-1.5 animate-pulse rounded-full bg-white" />
+          진행 중인 면접
+        </span>
+        <span className="mt-2 block text-[17px] font-extrabold break-keep wrap-anywhere">
+          {company || '모의 면접'}
+        </span>
+        {position && (
+          <span className="mt-0.5 block text-[13px] font-semibold break-keep wrap-anywhere text-white/60">
+            {position}
+          </span>
+        )}
+      </span>
+
+      <span>
+        {/* 어디까지 왔는지를 막대로 먼저 보여 준다. 숫자만 적으면 눈으로 가늠이 안 된다 */}
+        {total > 0 && (
+          <span aria-hidden="true" className="block h-1 w-full overflow-hidden rounded-full bg-white/20">
+            <span
+              className="block h-full rounded-full bg-white transition-[width]"
+              style={{ width: `${Math.round((answered / total) * 100)}%` }}
+            />
+          </span>
+        )}
+        <span className="mt-2 flex items-center justify-between gap-2 text-[12px]">
+          <span className="text-white/60">
+            {total > 0 ? `${total}문항 중 ${answered}개 답함` : '아직 시작 전'} · {when} 중단
+          </span>
+          <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-slate-900">
+            이어서 하기
+          </span>
+        </span>
+      </span>
+    </button>
   );
 }

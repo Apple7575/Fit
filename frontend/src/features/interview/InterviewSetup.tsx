@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
+import { MAX_KEYWORD } from '../company-search/api';
 import { FEATURED_COMPANIES } from '../../pages/home/featuredCompanies';
 import { useCompanyDetail } from '../company-detail/useCompanyDetail';
+import { CompanyLogo } from '../company-summary/CompanyLogo';
 import { CompanyMedia } from '../company-summary/CompanyMedia';
 import { industryGroupOf } from '../company-summary/industryGroups';
 import { getRecentCompanies } from '../company-search/recent';
 import { useCoverLetters } from '../cover-letter/queries';
 import { GuideImage } from './GuideImage';
 import { InterviewCompanyField } from './InterviewCompanyField';
+import { BackButton, NextButton, StepCard, StepRail, STEP_ORDER, type SetupStep } from './SetupSteps';
 import { TYPE_OPTIONS } from './styles';
 import type { InterviewConfig, InterviewType } from './types';
 
@@ -63,10 +66,8 @@ function Chip({
   return (
     <button
       aria-pressed={on}
-      className={`rounded-full px-2.5 py-1 text-[12px] font-semibold transition ${
-        on
-          ? 'bg-blue-600 text-white'
-          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+      className={`rounded-full px-3 py-1.5 text-[13px] font-semibold transition ${
+        on ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
       }`}
       onClick={onClick}
       type="button"
@@ -77,18 +78,31 @@ function Chip({
 }
 
 /**
- * 면접 설정. 회사·직무·유형을 카드 세 장으로 고르고, 나머지(자소서·문항 수·꼬리질문)는 접어 둔다.
- * 기업 분석에서 넘어오면 ?corpCode=&company= 로 회사가 미리 채워진다. 질문은 미리 보여주지 않는다.
+ * 면접 설정. 회사 → 직무 → 유형 → 확인, 한 화면에 하나씩 묻는다.
+ *
+ * <p>전에는 카드 세 장을 나란히 두고 그 아래 세부 설정과 시작 바까지 한 화면에 얹었다.
+ * 고를 것이 다 보이니 빨라 보이지만, 어느 것부터 손대야 하는지가 없어서 화면 전체가 한
+ * 덩어리로 읽혔다. 회사를 안 고르면 시작 단추가 죽어 있는데 그 까닭은 화면 맨 아래
+ * 작은 글씨에만 있었다.
+ *
+ * <p>한 번에 하나만 물으면 큰 글씨가 곧 지금 할 일이 된다. 회사가 미리 정해져 들어오면
+ * (기업 분석에서 넘어온 경우) 그 단계는 건너뛴다. 질문은 여전히 미리 보여주지 않는다.
  */
 export function InterviewSetup({ loading, error = null, onStart }: InterviewSetupProps) {
   const [params] = useSearchParams();
-  const [corpCode, setCorpCode] = useState<string | null>(params.get('corpCode'));
-  const [company, setCompany] = useState(params.get('company') ?? '');
+  /*
+   * 주소로 들어오는 값은 아무 길이나 될 수 있다(/interviews/new?company=<수천 자>). 검색칸은
+   * maxLength 로 막혀 있지만 이 길은 막혀 있지 않아, 그대로 두면 회사명이 화면을 뚫고 나간다.
+   */
+  const [corpCode, setCorpCode] = useState<string | null>(params.get('corpCode')?.slice(0, MAX_KEYWORD) ?? null);
+  const [company, setCompany] = useState((params.get('company') ?? '').slice(0, MAX_KEYWORD));
   const [position, setPosition] = useState('');
   const [type, setType] = useState<InterviewType>('technical');
   const [coverLetterId, setCoverLetterId] = useState<number | null>(null);
   const [count, setCount] = useState(5);
   const [followup, setFollowup] = useState(true);
+  // 기업 분석에서 회사를 들고 왔으면 이미 답한 것을 또 묻지 않는다
+  const [step, setStep] = useState<SetupStep>(() => (params.get('company') ? 'position' : 'company'));
 
   const { state: letters } = useCoverLetters();
   const ready = company.trim().length > 0;
@@ -103,6 +117,13 @@ export function InterviewSetup({ loading, error = null, onStart }: InterviewSetu
     }));
     return [...recent, ...filler].slice(0, QUICK_COMPANIES);
   });
+
+  const go = (to: SetupStep) => {
+    setStep(to);
+    window.scrollTo({ top: 0 });
+  };
+  const next = () => go(STEP_ORDER[STEP_ORDER.indexOf(step) + 1] ?? 'confirm');
+  const back = () => go(STEP_ORDER[STEP_ORDER.indexOf(step) - 1] ?? 'company');
 
   const start = () =>
     onStart({
@@ -121,208 +142,303 @@ export function InterviewSetup({ loading, error = null, onStart }: InterviewSetu
       <CompanyBackdrop corpCode={corpCode} />
 
       {/* 헤더가 사진 위에 떠 있으므로 그만큼 위를 비운다 */}
-      <div className="relative mx-auto flex min-h-[100svh] w-full max-w-4xl flex-col px-6 pt-24 pb-16">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">무엇을 준비할까요?</h1>
-        <Link className="text-sm font-semibold text-white/60 transition hover:text-white" to="/interviews">
-          내 모의 면접 목록
-        </Link>
-      </div>
-      <p className="mt-1 text-sm break-keep text-white/70">
-        회사와 직무를 정하면 그 회사 데이터로 질문을 만듭니다. 실제 면접처럼 질문은 미리 보여주지 않습니다.
-      </p>
+      <div className="relative mx-auto flex min-h-[100svh] w-full max-w-2xl flex-col px-6 pt-24 pb-16">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <StepRail at={step} onJump={go} />
+          <Link className="text-sm font-semibold text-white/60 transition hover:text-white" to="/interviews">
+            내 모의 면접 목록
+          </Link>
+        </div>
 
-      {error && (
+        {error && (
+          <div className="mt-5">
+            <InlineNotice>{error}</InlineNotice>
+          </div>
+        )}
+
         <div className="mt-5">
-          <InlineNotice>{error}</InlineNotice>
-        </div>
-      )}
-
-      <ol className="mt-6 grid gap-4 md:grid-cols-3">
-        <Card step="01" title="어느 회사">
-          <InterviewCompanyField
-            name={company}
-            onChange={(code, name) => {
-              setCorpCode(code);
-              setCompany(name);
-            }}
-          />
-          {/*
-            검색해서 고르는 건 세 동작(치고·누르고·고르고)이다. 자주 가는 회사는 한 번에
-            끝낸다. 최근에 본 회사를 앞에 두고 모자라면 대표 기업으로 채운다.
-            고른 뒤에도 계속 띄운다 — 바꾸려고 "변경"부터 누르게 하지 않는다.
-          */}
-          {quickCompanies.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {quickCompanies.map((c) => (
-                <Chip
-                  key={c.corpCode}
-                  on={corpCode === c.corpCode}
-                  onClick={() => {
-                    setCorpCode(c.corpCode);
-                    setCompany(c.corpName);
-                  }}
-                >
-                  {c.corpName}
-                </Chip>
-              ))}
-            </div>
-          )}
-          <p className="mt-2 text-xs text-slate-400">
-            {corpCode
-              ? '이 회사의 공시·뉴스에서 질문을 만듭니다.'
-              : '목록에서 고르면 회사 데이터 기반 질문이 들어갑니다.'}
-          </p>
-
-        </Card>
-
-        <Card step="02" title="어떤 직무">
-          <input
-            className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            id="iv-position"
-            onChange={(e) => setPosition(e.target.value)}
-            placeholder="예: 백엔드 개발"
-            value={position}
-          />
-          {/* 한 번 더 누르면 지워진다 — 잘못 고르고 지우려고 글자를 다 지울 필요가 없다 */}
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {QUICK_ROLES.map((role) => (
-              <Chip
-                key={role}
-                on={position === role}
-                onClick={() => setPosition(position === role ? '' : role)}
-              >
-                {role}
-              </Chip>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-slate-400">비워 두면 직무를 가리지 않는 질문으로 나옵니다.</p>
-        </Card>
-
-        <Card step="03" title="어떤 면접">
-          {/* 세로로 쌓으면 이 카드만 두 배로 길어져 세 장의 줄이 맞지 않는다 */}
-          <div className="grid grid-cols-2 gap-2">
-            {TYPE_OPTIONS.map((option) => {
-              const on = type === option.value;
-              return (
-                <button
-                  className={`w-full overflow-hidden rounded-xl border text-left transition ${
-                    on
-                      ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-300'
-                      : 'border-slate-200 bg-white hover:bg-slate-50'
-                  }`}
-                  key={option.value}
-                  onClick={() => setType(option.value)}
-                  type="button"
-                >
-                  {/* 글자만 있으면 두 유형이 어떻게 다른지 와닿지 않는다. 고르지 않은 쪽은 눌러 둔다 */}
-                  <GuideImage
-                    alt=""
-                    className={`aspect-[16/10] w-full object-cover transition ${on ? '' : 'opacity-60 saturate-50'}`}
-                    name={TYPE_FIGURE[option.value]}
-                  />
-                  <span className="block p-2.5">
-                    <span className={`block text-[13px] font-bold ${on ? 'text-blue-700' : 'text-slate-800'}`}>
-                      {option.label}
-                    </span>
-                    <span className="mt-0.5 block text-[11px] leading-4 break-keep text-slate-500">
-                      {option.desc}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </Card>
-      </ol>
-
-      <details className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <summary className="cursor-pointer text-sm font-bold text-slate-700">
-          세부 설정 <span className="font-medium text-slate-400">문항 {count}개 · 꼬리질문 {followup ? '켬' : '끔'}</span>
-        </summary>
-
-        <div className="mt-4 space-y-5">
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="iv-cl">
-              자기소개서 연동 <span className="font-medium text-slate-400">(선택)</span>
-            </label>
-            <select
-              className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-              id="iv-cl"
-              onChange={(e) => setCoverLetterId(e.target.value ? Number(e.target.value) : null)}
-              value={coverLetterId ?? ''}
+          {step === 'company' && (
+            <StepCard
+              footer={
+                <>
+                  <BackButton onClick={back} show={false} />
+                  <NextButton disabled={!ready} onClick={next}>
+                    다음
+                  </NextButton>
+                </>
+              }
+              step="company"
             >
-              <option value="">연동 안 함 (회사·공통 질문만)</option>
-              {letters.status === 'success' &&
-                letters.data.map((letter) => (
-                  <option key={letter.id} value={letter.id}>
-                    {letter.title}
-                  </option>
-                ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-400">연동하면 자소서 내용을 바탕으로 한 경험 질문이 포함됩니다.</p>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="iv-count">
-              문항 수 · <span className="text-blue-600">{count}개</span>
-            </label>
-            <input
-              className="w-full accent-blue-600"
-              id="iv-count"
-              max={7}
-              min={3}
-              onChange={(e) => setCount(Number(e.target.value))}
-              type="range"
-              value={count}
-            />
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-            <div>
-              <div className="text-sm font-semibold text-slate-700">답변 기반 꼬리질문</div>
-              <div className="mt-0.5 text-xs text-slate-500">답변 내용에 따라 면접관이 즉석 추가 질문을 드립니다.</div>
-            </div>
-            <button
-              aria-checked={followup}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition ${followup ? 'bg-blue-600' : 'bg-slate-300'}`}
-              onClick={() => setFollowup((v) => !v)}
-              role="switch"
-              type="button"
-            >
-              <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                  followup ? 'left-[22px]' : 'left-0.5'
-                }`}
+              <InterviewCompanyField
+                name={company}
+                onChange={(code, name) => {
+                  setCorpCode(code);
+                  setCompany(name);
+                }}
               />
-            </button>
-          </div>
-        </div>
-      </details>
+              {/*
+                검색해서 고르는 건 세 동작(치고·누르고·고르고)이다. 자주 가는 회사는 한 번에
+                끝낸다. 최근에 본 회사를 앞에 두고 모자라면 대표 기업으로 채운다.
+              */}
+              {quickCompanies.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {quickCompanies.map((c) => (
+                    <Chip
+                      key={c.corpCode}
+                      on={corpCode === c.corpCode}
+                      onClick={() => {
+                        setCorpCode(c.corpCode);
+                        setCompany(c.corpName);
+                      }}
+                    >
+                      {c.corpName}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+              {!corpCode && ready && (
+                <p className="mt-3 text-[12px] text-slate-400">
+                  목록에서 고르면 그 회사의 공시·뉴스가 질문에 들어갑니다. 직접 적은 이름으로는 공통 질문만
+                  나옵니다.
+                </p>
+              )}
+            </StepCard>
+          )}
 
-      {/* 바탕이 이미 어두우므로 검은 바는 묻힌다. 헤더와 같은 유리로 띄운다 */}
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/10 px-6 py-5 text-white ring-1 ring-white/20 backdrop-blur">
-        <div>
-          <p className="text-sm font-bold">
-            {company || '회사'}
-            {position ? ` · ${position}` : ''} 면접
-          </p>
-          <p className="mt-0.5 text-xs text-white/60">
-            문항 {count}개 · 약 {count * MINUTES_PER_QUESTION}분 · 카메라와 마이크를 씁니다
-          </p>
+          {step === 'position' && (
+            <StepCard
+              footer={
+                <>
+                  <BackButton onClick={back} show />
+                  <NextButton onClick={next}>{position.trim() ? '다음' : '비워 두고 계속'}</NextButton>
+                </>
+              }
+              step="position"
+            >
+              <input
+                autoFocus
+                className="h-12 w-full rounded-xl border border-slate-200 px-4 text-[16px] text-slate-800 outline-none"
+                id="iv-position"
+                // 백엔드 @Size(max=120) 과 같은 값. 넘겨 보내면 저장·분석이 400 으로 막힌다
+                maxLength={120}
+                onChange={(e) => setPosition(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') next();
+                }}
+                placeholder="예: 백엔드 개발"
+                value={position}
+              />
+              {/* 한 번 더 누르면 지워진다 — 잘못 고르고 지우려고 글자를 다 지울 필요가 없다 */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {QUICK_ROLES.map((role) => (
+                  <Chip key={role} on={position === role} onClick={() => setPosition(position === role ? '' : role)}>
+                    {role}
+                  </Chip>
+                ))}
+              </div>
+            </StepCard>
+          )}
+
+          {step === 'type' && (
+            <StepCard
+              footer={
+                <>
+                  <BackButton onClick={back} show />
+                  <NextButton onClick={next}>다음</NextButton>
+                </>
+              }
+              step="type"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                {TYPE_OPTIONS.map((option) => {
+                  const on = type === option.value;
+                  return (
+                    <button
+                      className={`w-full overflow-hidden rounded-2xl border text-left transition ${
+                        on
+                          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-300'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                      key={option.value}
+                      onClick={() => setType(option.value)}
+                      type="button"
+                    >
+                      {/* 글자만 있으면 두 유형이 어떻게 다른지 와닿지 않는다. 고르지 않은 쪽은 눌러 둔다 */}
+                      <GuideImage
+                        alt=""
+                        className={`aspect-[16/10] w-full object-cover transition ${on ? '' : 'opacity-60 saturate-50'}`}
+                        name={TYPE_FIGURE[option.value]}
+                      />
+                      <span className="block p-4">
+                        <span className={`block text-[15px] font-extrabold ${on ? 'text-blue-700' : 'text-slate-900'}`}>
+                          {option.label}
+                        </span>
+                        <span className="mt-1 block text-[12px] leading-5 break-keep text-slate-500">
+                          {option.desc}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </StepCard>
+          )}
+
+          {step === 'confirm' && (
+            <StepCard
+              footer={
+                <>
+                  <BackButton onClick={back} show />
+                  <button
+                    className="rounded-full bg-blue-600 px-7 py-3 text-[14px] font-bold text-white transition hover:bg-blue-700 disabled:opacity-40"
+                    disabled={loading || !ready}
+                    onClick={start}
+                    type="button"
+                  >
+                    {loading ? '질문을 구성하는 중…' : '장비 점검하고 시작'}
+                  </button>
+                </>
+              }
+              step="confirm"
+            >
+              <Summary
+                company={company}
+                corpCode={corpCode}
+                count={count}
+                followup={followup}
+                onEdit={go}
+                position={position}
+                type={type}
+              />
+
+              <details className="mt-4 rounded-2xl border border-slate-200 p-4">
+                <summary className="cursor-pointer text-[13px] font-bold text-slate-700">
+                  세부 설정{' '}
+                  <span className="font-medium text-slate-400">
+                    문항 {count}개 · 꼬리질문 {followup ? '켬' : '끔'}
+                  </span>
+                </summary>
+
+                <div className="mt-4 space-y-5">
+                  <div>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700" htmlFor="iv-cl">
+                      자기소개서 연동 <span className="font-medium text-slate-400">(선택)</span>
+                    </label>
+                    <select
+                      className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 outline-none"
+                      id="iv-cl"
+                      onChange={(e) => setCoverLetterId(e.target.value ? Number(e.target.value) : null)}
+                      value={coverLetterId ?? ''}
+                    >
+                      <option value="">연동 안 함 (회사·공통 질문만)</option>
+                      {letters.status === 'success' &&
+                        letters.data.map((letter) => (
+                          <option key={letter.id} value={letter.id}>
+                            {letter.title}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="mt-1 text-xs text-slate-400">
+                      연동하면 자소서 내용을 바탕으로 한 경험 질문이 포함됩니다.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700" htmlFor="iv-count">
+                      문항 수 · <span className="text-blue-600">{count}개</span>
+                    </label>
+                    <input
+                      className="w-full accent-blue-600"
+                      id="iv-count"
+                      max={7}
+                      min={3}
+                      onChange={(e) => setCount(Number(e.target.value))}
+                      type="range"
+                      value={count}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                    <div>
+                      <div className="text-[13px] font-semibold text-slate-700">답변 기반 꼬리질문</div>
+                      <div className="mt-0.5 text-xs text-slate-500">
+                        답변 내용에 따라 면접관이 즉석 추가 질문을 드립니다.
+                      </div>
+                    </div>
+                    <button
+                      aria-checked={followup}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                        followup ? 'bg-blue-600' : 'bg-slate-300'
+                      }`}
+                      onClick={() => setFollowup((v) => !v)}
+                      role="switch"
+                      type="button"
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                          followup ? 'left-[22px]' : 'left-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </details>
+            </StepCard>
+          )}
         </div>
-        <button
-          className="rounded-full bg-white px-7 py-3 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
-          disabled={loading || !ready}
-          onClick={start}
-          type="button"
-        >
-          {loading ? '질문을 구성하는 중…' : '장비 점검하고 시작'}
-        </button>
-      </div>
-      {!ready && <p className="mt-2 text-right text-xs text-white/50">지원 회사를 먼저 골라 주세요.</p>}
       </div>
     </section>
+  );
+}
+
+/** 마지막 확인 줄. 고른 것을 한 자리에 모아 두고, 눌러서 그 단계로 되돌아간다 */
+function Summary({
+  company,
+  corpCode,
+  position,
+  type,
+  count,
+  followup,
+  onEdit,
+}: {
+  company: string;
+  corpCode: string | null;
+  position: string;
+  type: InterviewType;
+  count: number;
+  followup: boolean;
+  onEdit: (step: SetupStep) => void;
+}) {
+  const typeLabel = TYPE_OPTIONS.find((o) => o.value === type)?.label ?? '';
+  // 뒤에 깔린 사진이 이미 받아 둔 값이다. 로고를 띄우려고 다시 부르지 않는다
+  const { state } = useCompanyDetail(corpCode ?? '');
+  return (
+    <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4">
+      <CompanyLogo
+        className="shrink-0 rounded-xl"
+        corpCode={corpCode ?? company}
+        corpName={company}
+        homepageUrl={state.status === 'success' ? state.data.homepageUrl : null}
+        size={48}
+      />
+      <div className="min-w-0 flex-1">
+        {/* 직무는 사용자가 친 글이다. 띄어쓰기 없이 길게 적으면 이 줄이 칸을 넘는다 */}
+        <p className="text-[15px] font-extrabold break-keep wrap-anywhere text-slate-950">
+          {company}
+          {position && <span className="font-bold text-slate-500"> · {position}</span>}
+        </p>
+        <p className="mt-0.5 text-[12px] text-slate-500">
+          {typeLabel} · 문항 {count}개 · 약 {count * MINUTES_PER_QUESTION}분 · 꼬리질문 {followup ? '켬' : '끔'}
+        </p>
+      </div>
+      <button
+        className="shrink-0 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-slate-500 transition hover:bg-slate-200 hover:text-slate-900"
+        onClick={() => onEdit('company')}
+        type="button"
+      >
+        바꾸기
+      </button>
+    </div>
   );
 }
 
@@ -363,17 +479,5 @@ function CompanyBackdrop({ corpCode }: { corpCode: string | null }) {
       {/* 아래로 갈수록 어둡게. 화면이 사진으로 시작해 검정으로 끝난다 (흰색으로 끊지 않는다) */}
       <div className="absolute inset-x-0 bottom-0 h-52 bg-gradient-to-b from-transparent to-slate-950" />
     </div>
-  );
-}
-
-function Card({ step, title, children }: { step: string; title: string; children: React.ReactNode }) {
-  return (
-    // 세 카드는 한 줄이라 가장 긴 카드만큼 늘어난다. 그 남는 높이를 안쪽까지 흘려보내
-    // 사진 같은 것이 새 자리를 만들지 않고 이미 빈 곳을 채우게 한다
-    <li className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600">{step}</p>
-      <h2 className="mt-0.5 text-base font-extrabold text-slate-950">{title}</h2>
-      <div className="mt-3 flex min-h-0 flex-1 flex-col">{children}</div>
-    </li>
   );
 }

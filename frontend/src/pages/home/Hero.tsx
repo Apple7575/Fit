@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BRAND_TAGLINE } from '../../components/layout/brand';
 import { usePointerVars } from '../../hooks/usePointerVars';
 import { FEATURED_COMPANIES } from './featuredCompanies';
+import { useCoverLetterCta } from './coverLetterCta';
 
 interface HeroProps {
   /** 하단 "↓" 버튼 — 다음 섹션으로 스냅 */
@@ -45,6 +46,7 @@ const ENTRIES = [
  */
 export const Hero = forwardRef<HTMLElement, HeroProps>(function Hero({ onNext }, ref) {
   const [wordIndex, setWordIndex] = useState(0);
+  const coverLetterCta = useCoverLetterCta();
   const { ref: stageRef, onPointerMove, onPointerLeave } = usePointerVars<HTMLDivElement>();
 
   useEffect(() => {
@@ -103,9 +105,9 @@ export const Hero = forwardRef<HTMLElement, HeroProps>(function Hero({ onNext },
             </Link>
             <Link
               className="rounded-full bg-white px-7 py-3.5 text-base font-bold text-slate-700 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:bg-slate-50"
-              to="/cover-letters/new"
+              to={coverLetterCta.to}
             >
-              로그인 없이 자소서 써 보기
+              {coverLetterCta.label}
             </Link>
           </div>
 

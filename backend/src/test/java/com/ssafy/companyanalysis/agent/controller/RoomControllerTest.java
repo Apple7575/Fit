@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -52,6 +53,10 @@ class RoomControllerTest {
 
     @MockitoBean
     private RoomService roomService;
+
+    /** SecurityConfig 의 "로그인 유지" 서비스가 사용자 조회를 요구한다. 여기서는 쓰지 않는다. */
+    @MockitoBean
+    private UserDetailsService userDetailsService;
 
     /** 컨트롤러가 principal.getId() 를 읽으므로 인증 주체를 실어 준다. */
     private static UserPrincipal principal() {
@@ -106,14 +111,18 @@ class RoomControllerTest {
     @DisplayName("목록은 coverLetterId 를 그대로 서비스에 넘긴다")
     void listPassesCoverLetterFilter() throws Exception {
         given(roomService.list(any(), eq(12L))).willReturn(new RoomListResponse(
-                List.of(new RoomListResponse.Room(31L, "합동 검토", 3, null, null, false))));
+                List.of(new RoomListResponse.Room(31L, "합동 검토", 3, null, null, false,
+                        false, "지원 회사를 먼저 골라 주세요."))));
 
         mockMvc.perform(get("/api/rooms").with(user(principal())).param("coverLetterId", "12"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.rooms", hasSize(1)))
                 .andExpect(jsonPath("$.data.rooms[0].agentCount").value(3))
                 .andExpect(jsonPath("$.data.rooms[0].lastMessagePreview").doesNotExist())
-                .andExpect(jsonPath("$.data.rooms[0].running").value(false));
+                .andExpect(jsonPath("$.data.rooms[0].running").value(false))
+                // 화면이 칩을 흐리게 두고 무엇을 채우면 되는지 띄우는 데 쓴다
+                .andExpect(jsonPath("$.data.rooms[0].ready").value(false))
+                .andExpect(jsonPath("$.data.rooms[0].need").value("지원 회사를 먼저 골라 주세요."));
     }
 
     @Test

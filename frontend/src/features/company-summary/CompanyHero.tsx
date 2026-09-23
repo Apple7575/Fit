@@ -6,6 +6,7 @@ import { formatChangeRate } from '../../utils/formatChangeRate';
 import { formatMetricCompactValue, metricUnitLabel } from '../../utils/formatMetric';
 import type { CompanyDetail } from '../company-detail/api';
 import { CompanyLogo } from './CompanyLogo';
+import { displayName } from './companyName';
 import { CompanyMedia } from './CompanyMedia';
 import { industryGroupOf } from './industryGroups';
 
@@ -52,7 +53,8 @@ export function CompanyHero({ corpCode, detail, tagline, description, metrics }:
   // 검색해서 들어온 첫 화면에서 회사 소개까지 바로 읽힌다. 접는 건 사용자 선택
   const [open, setOpen] = useState(true);
   const group = industryGroupOf(detail?.industryCode);
-  const corpName = detail?.corpName ?? '기업 분석';
+  // 공시명이 한글 음차인 곳은 부르는 이름으로 보여 준다 ("삼성에스디에스" → 삼성SDS)
+const corpName = detail?.corpName ? displayName(detail.corpName) : '기업 분석';
   const byKey = new Map(metrics?.metrics.map((m) => [m.key, m]) ?? []);
   const numbers = HERO_KEYS.filter((k) => (byKey.get(k)?.value ?? null) !== null);
   // 숫자 넷이 다 올라온 다음 차례가 소개 버튼이다

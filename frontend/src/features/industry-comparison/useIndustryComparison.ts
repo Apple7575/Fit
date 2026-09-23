@@ -24,5 +24,9 @@ export function useIndustryComparison(
       }),
     [corpCode, peerKey],
   );
-  return useApiQuery(`industry-comparison|${corpCode}|${peerKey}`, fetcher, REUSE);
+  // 비교 기업만 바뀌는 동안에는 보던 표를 지운다. 다른 기업으로 옮기면 지키지 않는다
+  return useApiQuery(`industry-comparison|${corpCode}|${peerKey}`, fetcher, {
+    ...REUSE,
+    keepPreviousWhile: corpCode,
+  });
 }

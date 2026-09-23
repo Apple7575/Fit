@@ -62,7 +62,7 @@ export function CompanyTabNav() {
   );
 
   return (
-    <nav aria-label="기업 분석 구획">
+    <nav aria-label="기업 분석 메뉴">
       <ul className="flex flex-wrap gap-1">
         {TABS.map(({ label, to, no }) => (
           <li key={to}>
@@ -96,10 +96,15 @@ export function CompanyTabNav() {
   );
 }
 
-/** 요약 카드와 같은 번호. 읽어 주는 이름에는 들어가지 않는다 */
+/**
+ * 요약 카드와 같은 번호. 읽어 주는 이름에는 들어가지 않는다.
+ *
+ * <p>고르지 않은 탭의 번호가 slate-300 이라 흰 바탕에서 거의 보이지 않았다. 번호는
+ * 이름보다 물러나야 하지만 사라져서는 안 된다.
+ */
 function Num({ on, children }: { on: boolean; children: string }) {
   return (
-    <span aria-hidden="true" className={`mr-1.5 tabular-nums ${on ? 'text-white/50' : 'text-slate-300'}`}>
+    <span aria-hidden="true" className={`mr-1.5 tabular-nums ${on ? 'text-white/60' : 'text-slate-400'}`}>
       {children}
     </span>
   );

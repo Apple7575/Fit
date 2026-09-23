@@ -326,58 +326,106 @@ export function useSpeech() {
   const ctorRef = useRef<SpeechRecognitionCtor | null>(getRecognitionCtor());
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const activeRef = useRef(false);
+  /** 확정된 받아쓰기. 인식기가 끊겼다 다시 켜져도 여기 쌓인 글은 남는다 */
+  const finalRef = useRef('');
+  /** 받아쓴 글을 흘려보낼 곳. 인식기를 갈아 끼워도 같은 자리로 간다 */
+  const sinkRef = useRef<((text: string) => void) | null>(null);
   const [supported] = useState(() => getRecognitionCtor() !== null);
+  /** 인식이 멈췄다. 말해도 받아써지지 않는 상태라 화면이 알려 줘야 한다 */
+  const [lost, setLost] = useState(false);
 
-  const start = useCallback((onText: (text: string) => void) => {
+  /** 돌고 있는 인식기를 확실히 끊는다. 재시작 경로(onend)도 함께 막는다 */
+  const hardStop = useCallback(() => {
+    activeRef.current = false;
+    const rec = recRef.current;
+    recRef.current = null;
+    if (rec) {
+      rec.onresult = null;
+      rec.onend = null;
+      try {
+        rec.stop();
+      } catch {
+        /* 이미 끝난 경우 */
+      }
+    }
+  }, []);
+
+  /**
+   * 받아쓰기를 시작한다.
+   *
+   * @param seed 이미 적혀 있던 답변. 녹화 전에 직접 타이핑해 둘 수 있는데, 여기에 넣지
+   *   않으면 첫 마디가 들어오는 순간 그 글을 덮어써 버린다(말한 것만 남는다).
+   */
+  const start = useCallback((onText: (text: string) => void, seed = '') => {
     const Ctor = ctorRef.current;
     if (!Ctor) return;
+
+    /*
+     * 돌고 있는 것이 있으면 먼저 끈다. 예전에는 그냥 새로 만들어 recRef 에 덮어썼는데,
+     * 그러면 앞 인식기가 살아서 계속 결과를 내보내고 새 인식기는 빈 글에서 시작한다.
+     * 둘이 번갈아 같은 자리에 쓰므로 받아쓴 앞부분이 사라지고 뒷부분만 남는다.
+     */
+    hardStop();
+
     const rec = new Ctor();
     rec.lang = 'ko-KR';
     rec.continuous = true;
     rec.interimResults = true;
-    let finalText = '';
+
+    /*
+     * 확정된 글은 이 인식기 바깥에 쌓는다. 무음이 길면 브라우저가 인식을 끊고 onend 에서
+     * 다시 켜는데, 쌓는 자리가 인식기 안에 있으면 그때마다 처음부터 다시 쌓게 된다.
+     */
+    // 앞서 적어 둔 글 뒤에 이어 붙인다. 끝에 띄어쓰기를 하나 둬야 말이 붙지 않는다
+    finalRef.current = seed.trimEnd() ? `${seed.trimEnd()} ` : '';
+    sinkRef.current = onText;
+
     rec.onresult = (event) => {
       let interim = '';
       const results = event.results;
       for (let i = event.resultIndex; i < results.length; i++) {
         const segment = results[i];
-        if (segment.isFinal) finalText += segment[0].transcript;
+        if (segment.isFinal) finalRef.current += segment[0].transcript;
         else interim += segment[0].transcript;
       }
-      onText(finalText + interim);
+      setLost(false);
+      sinkRef.current?.(finalRef.current + interim);
     };
+
+    /*
+     * 끊기면 다시 켠다. 바로 켜면 아직 정리가 안 끝나 InvalidStateError 가 나므로 한 박자
+     * 쉬고 켜고, 그래도 안 되면 멈췄다고 알린다 — 예전에는 조용히 삼켜서, 말하는 사람은
+     * 계속 받아쓰이는 줄 알고 끝까지 말했다.
+     */
     rec.onend = () => {
-      if (activeRef.current) {
+      if (!activeRef.current || recRef.current !== rec) return;
+      window.setTimeout(() => {
+        if (!activeRef.current || recRef.current !== rec) return;
         try {
           rec.start();
         } catch {
-          /* 이미 시작됨 등은 무시 */
+          setLost(true);
         }
-      }
+      }, 250);
     };
+
     recRef.current = rec;
     activeRef.current = true;
+    setLost(false);
     try {
       rec.start();
     } catch {
-      /* noop */
+      setLost(true);
     }
-  }, []);
+  }, [hardStop]);
 
   const stop = useCallback(() => {
-    activeRef.current = false;
-    const rec = recRef.current;
-    recRef.current = null;
-    if (rec) {
-      try {
-        rec.stop();
-      } catch {
-        /* noop */
-      }
-    }
-  }, []);
+    hardStop();
+    sinkRef.current = null;
+    setLost(false);
+  }, [hardStop]);
 
-  useEffect(() => () => stop(), [stop]);
+  useEffect(() => () => hardStop(), [hardStop]);
 
-  return { supported, start, stop };
+  return { supported, start, stop, lost };
 }

@@ -8,7 +8,6 @@ import com.ssafy.companyanalysis.agent.domain.Message;
 import com.ssafy.companyanalysis.agent.domain.MessageRole;
 import com.ssafy.companyanalysis.agent.domain.MessageStatus;
 import com.ssafy.companyanalysis.agent.domain.Room;
-import com.ssafy.companyanalysis.agent.domain.RoomAgent;
 import com.ssafy.companyanalysis.agent.dto.MessageSendRequest;
 import com.ssafy.companyanalysis.agent.dto.TurnStartedResponse;
 import com.ssafy.companyanalysis.agent.dto.TurnStatusResponse;
@@ -102,12 +101,13 @@ public class TurnService {
 
         List<CoverLetterItem> items = targetItems(room, request.coverLetterItemId());
         String content = request.content().trim();
-        TurnContext context = contextOf(room, items, content);
+        TurnContext context = contextOf(room, items, content, request.writingReview());
 
-        List<String> agentKeys = participants(room, context);
+        AgentContexts.Request plan = AgentContexts.of(context);
+        List<String> agentKeys = participants(plan);
         if (agentKeys.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_PARAMETER,
-                    "검토할 자소서 답변이 없습니다. 문항을 먼저 작성해 주세요.");
+            // 무엇을 채우면 되는지 말한다. 담당마다 필요한 것이 달라 한 문장으로 덮을 수 없다.
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, plan.blockedReason());
         }
 
         OpenedTurn turn = openTurn(roomId, agentKeys, content);
@@ -157,7 +157,8 @@ public class TurnService {
             return;
         }
         TurnContext context = contextOf(room, items, AUTO_REVIEW_INSTRUCTION);
-        List<String> agentKeys = participants(room, context);
+        // 자동 검토는 사용자가 부른 것이 아니다. 돌 자리가 아니면 조용히 물러난다.
+        List<String> agentKeys = participants(AgentContexts.of(context));
         if (agentKeys.isEmpty()) {
             return;
         }
@@ -251,6 +252,12 @@ public class TurnService {
      * 없는 식별자를 AI 에 넘기면 채용공고·뉴스 담당이 404 로 떨어진다.
      */
     private TurnContext contextOf(Room room, List<CoverLetterItem> items, String content) {
+        return contextOf(room, items, content, false);
+    }
+
+    /** 글쓰기 검토 버튼은 방 설정과 무관하게 글쓰기 담당만 실행할 전용 컨텍스트를 만든다. */
+    private TurnContext contextOf(Room room, List<CoverLetterItem> items, String content,
+                                  boolean writingReview) {
         Optional<JobContext> jobContext = room.getJobContextId() == null
                 ? Optional.empty()
                 : jobContextRepository.findById(room.getJobContextId());
@@ -261,7 +268,7 @@ public class TurnService {
                 jobContext.map(JobContext::getContextId).orElse(null),
                 jobContext.map(JobContext::getPositionName).orElse(null),
                 conversationOf(room.getId()),
-                configsOf(room),
+                configsOf(room, writingReview),
                 AUTO_REVIEW_INSTRUCTION.equals(content));
     }
 
@@ -335,28 +342,17 @@ public class TurnService {
      * 이 턴에 자리를 만들 담당.
      *
      * <p>방에서 고른 담당 중 재료가 있는 담당만 자리를 만든다. 거르는 일은 {@link AgentContexts}
-     * 가 한다 — 여기서 한 번 더 거르면 두 곳이 어긋날 자리가 생긴다. 기업 RAG 담당만 아직
-     * 백엔드가 맡고 있어 따로 붙인다.
+     * 가 한다 — 여기서 한 번 더 거르면 두 곳이 어긋날 자리가 생긴다.
+     *
+     * <p>기업 담당도 예외가 아니다. 전에는 기업 코드가 없어도 자리를 만들어, 30초쯤 뒤 말풍선에
+     * "설정을 먼저 채워 주세요" 가 떴다. 자리가 없으면 왜 못 도는지 말할 곳이 없어 만든 우회로였는데,
+     * 이제 {@link AgentContexts.Request#blockedReason()} 이 보내기 전에 그 이유를 말한다.
      *
      * <p>총괄은 {@code room.agents} 에 없고 담당이 2명 이상일 때 붙는다 — 혼자 있는 방에는
      * 조정할 것이 없다.
      */
-    /**
-     * 이 턴에 자리를 만들 담당.
-     *
-     * <p>기업 담당은 {@link AgentContexts} 가 기업 코드를 찾았을 때만 넣는다. 방이 골랐는데
-     * 코드가 없으면 여기서 자리만 만들어 둔다 — 자리가 없으면 "설정을 먼저 채워 주세요" 를
-     * 띄울 곳이 없어 턴 자체가 열리지 않는다.
-     */
-    private List<String> participants(Room room, TurnContext context) {
-        List<String> keys = new ArrayList<>(AgentContexts.of(context).agentKeys());
-        boolean companyPicked = room.getAgents().stream()
-                .map(RoomAgent::agentKey)
-                .filter(properties::isAgentVisible)
-                .anyMatch(AgentType.COMPANY.key()::equals);
-        if (companyPicked && !keys.contains(AgentType.COMPANY.key())) {
-            keys.add(AgentType.COMPANY.key());
-        }
+    private List<String> participants(AgentContexts.Request plan) {
+        List<String> keys = new ArrayList<>(plan.agentKeys());
         if (keys.size() >= 2) {
             keys.add(AgentType.SUPERVISOR.key());
         }
@@ -371,7 +367,16 @@ public class TurnService {
      * 안 실린다 — 전에 만들어져 그 담당이 붙어 있는 방도 마찬가지다.
      */
     private Map<String, Map<String, Object>> configsOf(Room room) {
+        return configsOf(room, false);
+    }
+
+    private Map<String, Map<String, Object>> configsOf(Room room, boolean writingReview) {
         Map<String, Map<String, Object>> configs = new LinkedHashMap<>();
+        if (writingReview) {
+            // 버튼 요청은 다른 담당·총괄이 붙은 방에서도 글쓰기 담당만 실행한다.
+            configs.put(AgentType.WRITING.key(), Map.of());
+            return configs;
+        }
         room.getAgents().stream()
                 .filter(agent -> properties.isAgentVisible(agent.agentKey()))
                 .forEach(agent -> configs.put(agent.agentKey(), agent.config()));

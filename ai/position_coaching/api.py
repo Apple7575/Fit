@@ -106,7 +106,7 @@ def get_position_service() -> PositionAnalysisService:
         os.environ.get("POSITION_QWEN_ENV_FILE", str(AI_ROOT / ".env"))
     )
     try:
-        config = load_qwen_config(env_file)
+        config = load_qwen_config(env_file, prefix="POSITION")
     except ValueError as error:
         raise HTTPException(
             status_code=503,
@@ -121,7 +121,7 @@ def get_position_chat_service() -> PositionChatService:
         os.environ.get("POSITION_QWEN_ENV_FILE", str(AI_ROOT / ".env"))
     )
     try:
-        config = load_qwen_config(env_file)
+        config = load_qwen_config(env_file, prefix="POSITION")
     except ValueError as error:
         raise HTTPException(
             status_code=503,

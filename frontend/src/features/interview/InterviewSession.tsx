@@ -30,6 +30,27 @@ type FupStatus = 'idle' | 'loading' | 'result' | 'empty' | 'error';
 
 const PREP_SECONDS = 3;
 
+/**
+ * 답변 한 건이 서버에 들어갈 수 있는 한계. 백엔드 DTO 의 @Size(max=6000) 와 같은 값이다.
+ *
+ * <p>전에는 프론트에 상한이 없어서, 길게 말한 답변은 면접을 다 마치고 분석을 누른 뒤에야
+ * "요청 파라미터가 올바르지 않습니다" 로 막혔다. 되돌릴 수도 없는 시점이다. 그래서 쓰는
+ * 자리에서 남은 글자를 보여 주고, 넘으면 그 문항에서 바로 말한다.
+ */
+const MAX_TRANSCRIPT = 6000;
+
+/**
+ * 천장이 가까워졌다고 알리기 시작하는 지점.
+ *
+ * <p>상시 카운터는 두지 않는다. "0 / 6000자" 를 띄우면 6000자까지 말해도 되는 것으로
+ * 읽히는데, 이 앱이 권하는 답변은 150초(delivery.ts 의 LEN_MAX)이고 보통 말속도로 850자쯤
+ * 이다. 6000자는 그 일곱 배, 한 문항에 20분 분량이라 사용자가 관리할 숫자가 아니다.
+ *
+ * <p>다만 말하다 여기까지 왔다면 알려 줘야 한다. 끝낸 뒤에 "넘었으니 줄이세요" 를 보는 것은
+ * 20분을 말하고 나서 알게 되는 일이다.
+ */
+const TRANSCRIPT_WARN = 5000;
+
 /** 영상 면접 진행. 문항별 웹캠 녹화 + 실시간 STT. 답변 후 옵션으로 꼬리질문을 받는다. 영상은 이 브라우저에만 저장된다. */
 export function InterviewSession({
   config,
@@ -73,6 +94,10 @@ export function InterviewSession({
   const current = queue[idx];
   const isLast = idx + 1 >= queue.length;
   const badge = SOURCE_BADGE[current.sourceType];
+  // 서버가 받지 않는 길이. 확정을 막고 그 자리에서 알린다
+  const tooLong = current.transcript.length > MAX_TRANSCRIPT;
+  // 천장이 가까워졌다. 말하는 중에 한 줄만 띄운다
+  const nearLimit = current.transcript.length > TRANSCRIPT_WARN;
   // 이어서 진행하는 세션인지. 되살린 답변이 하나라도 있으면 점검 화면에 진행 상황을 알려 준다.
   const answeredCount = queue.filter((item) => item.transcript.trim().length > 0).length;
   const resuming = answeredCount > 0;
@@ -94,6 +119,24 @@ export function InterviewSession({
   }, [phase, prep]);
 
   useEffect(() => () => stopTimer(), []);
+
+  /*
+   * 점검 화면에 있는 동안 "이 사람이 카메라를 볼 때"의 자세를 재 둔다.
+   *
+   * <p>고개를 얼마나 숙였는지에는 만인 공통의 정답값이 없다. 앉은키도 다르고, 노트북
+   * 카메라가 눈높이보다 위면 똑바로 봐도 눈이 내려가 보인다. 예전에는 그 기준을 답변 첫
+   * 2초에서 잡아서, 처음부터 숙이고 있으면 그 자세가 정상으로 등록됐다 — 아무리 대본을
+   * 내려다봐도 "카메라 응시 100%" 가 나온 까닭이다.
+   *
+   * <p>점검 화면에서는 사람이 제 얼굴을 확인하느라 카메라 쪽을 본다. 재기에 맞는 자리다.
+   */
+  useEffect(() => {
+    if (checked || status !== 'live' || vision.status !== 'ready') return;
+    vision.calibrate();
+    return () => vision.endCalibrate();
+    // vision 은 훅이 만든 안정적인 객체라 status 만 본다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checked, status, vision.status]);
 
   // 점검 → 면접으로 넘어가면 <video> 가 새로 만들어진다. 그때마다 스트림을 다시 물려준다.
   useEffect(() => {
@@ -165,7 +208,8 @@ export function InterviewSession({
     setElapsed(0);
     setPhase('recording');
     timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
-    speech.start(setTranscript);
+    // 녹화 전에 직접 타이핑해 둔 글이 있으면 그 뒤에 이어 받아쓴다
+    speech.start(setTranscript, current.transcript);
     recorder.start();
     meter.start();
     vision.start();
@@ -218,6 +262,7 @@ export function InterviewSession({
    * 꼬리질문을 붙일 수 있는 문항이면 확정과 동시에 꼬리질문도 요청한다.
    */
   const confirmAnswer = () => {
+    if (tooLong) return;
     setConfirmed(true);
     if (canFollowup && current.transcript.trim().length > 0) void requestFollowupNow();
   };
@@ -486,8 +531,13 @@ export function InterviewSession({
           )}
         </div>
 
-        {/* 오른쪽: 질문과 답변 (흰 카드) */}
-        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        {/*
+          오른쪽: 질문과 답변 (흰 카드).
+
+          <p>min-w-0 이 없으면 그리드 칸의 최소 너비가 내용 너비가 된다. 띄어쓰기 없는 긴
+          질문이 오면 칸이 그만큼 벌어져 카드가 화면을 가로로 뚫고 나간다.
+        */}
+        <div className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           {/* 몇 번째 질문인지가 가장 먼저 읽혀야 한다. 출처·회사는 그다음이다 */}
           <p className="flex flex-wrap items-baseline gap-2 text-[11px] font-bold">
             <span className="text-[15px] font-extrabold text-slate-950">Q{idx + 1}</span>
@@ -495,9 +545,15 @@ export function InterviewSession({
               {idx + 1} / {queue.length}
             </span>
             <span className={`rounded-full px-2 py-0.5 ring-1 ${badge.className}`}>{badge.label}</span>
-            {config.targetCompany && <span className="text-slate-400">{config.targetCompany}</span>}
+            {/* 회사명은 사용자가 친 글이다. 띄어쓰기 없이 길게 적으면 이 줄이 칸을 넘는다 */}
+            {config.targetCompany && (
+              <span className="min-w-0 break-keep wrap-anywhere text-slate-400">{config.targetCompany}</span>
+            )}
           </p>
-          <p className="mt-3 text-[19px] font-extrabold leading-8 text-slate-950 break-keep">{current.question}</p>
+          {/* 질문 안에 회사명이 그대로 들어온다. 띄어쓰기가 없으면 카드를 가로로 뚫고 나간다 */}
+          <p className="mt-3 text-[19px] font-extrabold leading-8 break-keep wrap-anywhere text-slate-950">
+            {current.question}
+          </p>
           {current.isFollowup && (
             <p className="mt-1.5 text-xs text-slate-500">직전 답변을 듣고 면접관이 드리는 추가 질문입니다.</p>
           )}
@@ -508,15 +564,51 @@ export function InterviewSession({
               <span className="text-[11px] font-bold text-slate-400">
                 {phase === 'recording' ? '실시간 받아쓰기' : '내 답변'}
               </span>
-              {phase === 'reviewing' && <span className="text-[11px] text-slate-400">잘못 들린 부분은 고칠 수 있어요</span>}
+              {phase === 'reviewing' &&
+                (tooLong ? (
+                  /*
+                   * 숫자만 들이밀면 "왜 6000 인데" 로 남는다. 줄여야 하는 진짜 이유는 서버가
+                   * 아니라 면접이다 — 이 앱은 150초를 권한다(delivery.ts 의 LEN_MAX).
+                   */
+                  <span className="text-[11px] font-bold text-rose-500">
+                    실제 면접에서는 1~2분이 적당해요 —{' '}
+                    {(current.transcript.length - MAX_TRANSCRIPT).toLocaleString()}자를 줄여 주세요
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-slate-400">잘못 들린 부분은 고칠 수 있어요</span>
+                ))}
             </div>
             {phase === 'recording' ? (
-              <p className="mt-1.5 max-h-56 min-h-32 overflow-y-auto rounded-xl bg-slate-50 p-3 text-[14px] leading-6 text-slate-700 break-keep">
-                {current.transcript || <span className="text-slate-400">말씀하시면 여기에 바로 받아써집니다…</span>}
-              </p>
+              <>
+                <p className="mt-1.5 max-h-56 min-h-32 overflow-x-hidden overflow-y-auto rounded-xl bg-slate-50 p-3 text-[14px] leading-6 break-keep wrap-anywhere text-slate-700">
+                  {current.transcript || <span className="text-slate-400">말씀하시면 여기에 바로 받아써집니다…</span>}
+                </p>
+                {/*
+                  말하다 저장 한도에 닿으면 끝낸 뒤에야 알게 된다 — 20분을 말하고 나서
+                  줄이라는 말을 듣는 셈이다. 닿기 전에 한 줄로 알린다.
+                */}
+                {nearLimit && (
+                  <p
+                    className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700"
+                    role="status"
+                  >
+                    답변이 매우 깁니다. 실제 면접에서는 1~2분이 적당해요 — 곧 저장 한도(
+                    {MAX_TRANSCRIPT.toLocaleString()}자)에 닿습니다.
+                  </p>
+                )}
+                {/* 받아쓰기가 끊긴 채로 계속 말하면 그 말은 어디에도 남지 않는다 */}
+                {speech.lost && (
+                  <p
+                    className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700"
+                    role="alert"
+                  >
+                    받아쓰기가 멈췄어요. 답변을 끝내고 아래 칸에서 직접 고쳐 주세요.
+                  </p>
+                )}
+              </>
             ) : (
               <textarea
-                className="mt-1.5 h-32 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-[14px] leading-6 text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                className="mt-1.5 h-32 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-[14px] leading-6 text-slate-700 outline-none"
                 onChange={(e) => setTranscript(e.target.value)}
                 placeholder={phase === 'ready' ? '답변을 시작하면 여기에 받아써집니다.' : ''}
                 value={current.transcript}
@@ -542,28 +634,51 @@ export function InterviewSession({
           )}
           {phase === 'reviewing' && fup && (
             /*
+              추가 질문은 내 답변과 같은 회색 상자에 담겨 있었다. 배경·테두리·모서리·안쪽
+              여백이 전부 같고 라벨 글자만 달라서, 면접관이 되묻는 말이 내가 쓴 글과 한
+              덩어리로 읽혔다.
+              화자를 가르는 장치는 정렬·재질·이름 셋을 함께 써야 갈린다. 여기서는 답변이
+              입력칸이라 좌우로 가를 수 없으므로, 나머지 둘을 세게 쓰고 "답변에 달린 반응"
+              이라는 것을 꺾인 선으로 말한다 — 형제 상자로 두면 인과가 보이지 않는다.
               빨간 카드에 빨간 버튼이면 "누르면 안 되는 것"처럼 보인다. 꼬리질문은 사고가
-              아니라 기회이므로 중립 카드에 담고, 주 행동은 다른 버튼과 같은 검정으로 둔다.
+              아니라 기회이므로 경고색은 쓰지 않는다.
             */
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[11px] font-bold text-slate-500">면접관의 추가 질문</p>
-              <p className="mt-1 text-[14px] font-semibold leading-6 text-slate-800 break-keep">{fup.question}</p>
-              {fup.basis && <p className="mt-1 text-[11px] text-slate-400">{fup.basis}</p>}
-              <div className="mt-2 flex justify-end gap-2">
-                <button
-                  className="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-800"
-                  onClick={() => setFup(null)}
-                  type="button"
-                >
-                  건너뛰기
-                </button>
-                <button
-                  className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-700"
-                  onClick={askFollowup}
-                  type="button"
-                >
-                  이 질문에 답변하기
-                </button>
+            <div className="mt-2 flex gap-3">
+              {/* 답변에서 갈라져 나온 자리. 이 줄 하나가 형제 상자를 반응으로 바꾼다 */}
+              <span aria-hidden="true" className="relative w-4 shrink-0">
+                <span className="absolute top-0 left-2 h-5 w-px bg-slate-300" />
+                <span className="absolute top-5 left-2 h-px w-2 bg-slate-300" />
+              </span>
+
+              <div className="min-w-0 flex-1 rounded-xl bg-slate-900 p-4 text-white shadow-lg shadow-slate-900/10">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold text-white/60">
+                  <span aria-hidden="true" className="size-1.5 rounded-full bg-white/50" />
+                  면접관이 이어서 묻습니다
+                </p>
+                <p className="mt-1.5 text-[15px] font-bold leading-7 break-keep wrap-anywhere">
+                  {fup.question}
+                </p>
+                {fup.basis && (
+                  <p className="mt-2 border-t border-white/15 pt-2 text-[12px] leading-5 text-white/55 break-keep wrap-anywhere">
+                    {fup.basis}
+                  </p>
+                )}
+                <div className="mt-3 flex justify-end gap-2">
+                  <button
+                    className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white/60 transition hover:bg-white/10 hover:text-white"
+                    onClick={() => setFup(null)}
+                    type="button"
+                  >
+                    건너뛰기
+                  </button>
+                  <button
+                    className="rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100"
+                    onClick={askFollowup}
+                    type="button"
+                  >
+                    이 질문에 답변하기
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -597,6 +712,12 @@ export function InterviewSession({
                   onClick={() => {
                     cancelFollowup();
                     setConfirmed(false);
+                    /*
+                     * 여기서 비우지 않으면 앞 답변이 화면에 그대로 남아 있다가, 새로 말하기
+                     * 시작한 순간 첫 받아쓰기 결과로 통째로 덮인다 — "말을 해야 사라진다".
+                     * 게다가 이번에 한마디도 못 알아들으면 앞 답변이 남은 채로 확정된다.
+                     */
+                    setTranscript('');
                     setPhase('ready');
                   }}
                   type="button"
@@ -608,7 +729,7 @@ export function InterviewSession({
                 {!confirmed ? (
                   <button
                     className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
-                    disabled={fupStatus === 'loading'}
+                    disabled={fupStatus === 'loading' || tooLong}
                     onClick={confirmAnswer}
                     type="button"
                   >

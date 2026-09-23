@@ -47,7 +47,7 @@ describe('HomePage', () => {
     vi.stubGlobal('fetch', vi.fn());
     renderHome();
 
-    expect(screen.getByRole('heading', { name: /코치 다섯이 붙습니다/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /코치 5명이 함께 봅니다/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /묻고, 들어줍니다/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /궁금한 회사부터 시작해 보세요/ })).toBeInTheDocument();
 

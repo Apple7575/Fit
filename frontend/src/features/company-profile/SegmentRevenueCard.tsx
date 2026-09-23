@@ -22,7 +22,7 @@ export function SegmentRevenueCard({
   if (disclosed.length === 0) {
     return (
       <EmptyCard title="사업부 매출">
-        사업부별 매출을 공시하지 않는 기업이에요. 전체 매출은 성장 구획에서 볼 수 있습니다.
+        사업부별 매출을 공시하지 않는 기업이에요. 전체 매출은 성장 탭에서 볼 수 있습니다.
       </EmptyCard>
     );
   }

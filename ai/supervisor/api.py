@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from ai.company_analysis.api import get_company_chat_service
 from ai.jd_coaching.api import get_analysis_service, get_stateless_chat_service
 from ai.jd_coaching.baseline import load_qwen_config
+from ai.llm.contracts import LlmRateLimitedError
 from ai.news_intelligence.api import get_news_service
 from ai.position_coaching.api import get_position_chat_service, get_position_service
 from ai.supervisor.adapters import (
@@ -72,14 +73,16 @@ def get_supervisor_service() -> SupervisorService:
         os.environ.get("SUPERVISOR_QWEN_ENV_FILE", str(AI_ROOT / ".env"))
     )
     try:
-        config = load_qwen_config(env_file)
+        # 계획(담당 고르기)은 분류 한 번이라 가벼운 모델, 종합은 판단 품질이 중요해 다른 모델.
+        plan_config = load_qwen_config(env_file, prefix="SUPERVISOR_PLAN")
+        aggregate_config = load_qwen_config(env_file, prefix="SUPERVISOR_AGGREGATE")
     except ValueError as error:
         raise HTTPException(
             status_code=503,
             detail="supervisor Qwen configuration unavailable",
         ) from error
     return assemble_supervisor_service(
-        supervisor_model=QwenSupervisorModel(config),
+        supervisor_model=QwenSupervisorModel(plan_config, aggregate_config=aggregate_config),
         jd_provider=get_analysis_service,
         position_provider=get_position_service,
         writing_provider=get_writing_service,
@@ -124,7 +127,19 @@ def create_run(
             status_code=422,
             detail={"code": "NO_AVAILABLE_AGENT", "message": str(error)},
         ) from error
+    except LlmRateLimitedError as error:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "GMS_RATE_LIMITED"},
+        ) from error
     except AllAgentsFailedError as error:
+        if error.results and all(
+            item.error == "GMS_RATE_LIMITED" for item in error.results
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail={"code": "GMS_RATE_LIMITED"},
+            ) from error
         raise HTTPException(
             status_code=502,
             detail={

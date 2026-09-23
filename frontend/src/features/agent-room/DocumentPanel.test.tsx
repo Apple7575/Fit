@@ -18,7 +18,7 @@ const letter: CoverLetter = {
   targetPosition: 'SAP ERP',
   jobContextId: null,
   updatedAt: '2026-09-21',
-  items: [{ question: '지원 동기', answer: '앞 문장 바꿀 부분 뒤 문장', charLimit: 500 }],
+  items: [{ id: 101, question: '지원 동기', answer: '앞 문장 바꿀 부분 뒤 문장', charLimit: 500 }],
 };
 
 describe('DocumentPanel 선택 수정', () => {
@@ -27,7 +27,15 @@ describe('DocumentPanel 선택 수정', () => {
     const retry = vi.fn();
     render(
       <MemoryRouter>
-        <DocumentPanel state={{ status: 'success', data: letter }} retry={retry} />
+        <DocumentPanel
+          state={{ status: 'success', data: letter }}
+          retry={retry}
+          selectedItemId={letter.items[0].id}
+          onReviewItem={vi.fn()}
+          reviewingItemId={null}
+          reviewBusy={false}
+          reviewError={null}
+        />
       </MemoryRouter>,
     );
 
@@ -58,5 +66,62 @@ describe('DocumentPanel 선택 수정', () => {
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
     expect(mockUpdate.mock.calls[0][1].items[0].answer).toBe('앞 문장 고친 부분 뒤 문장');
     expect(retry).toHaveBeenCalled();
+  });
+
+  it('문항 버튼을 가로로 보여 주고 선택한 문항 하나만 펼친다', async () => {
+    const onReviewItem = vi.fn();
+    const multiple: CoverLetter = {
+      ...letter,
+      items: [
+        letter.items[0],
+        { id: 202, question: '입사 후 포부', answer: '성장하겠습니다.', charLimit: 500 },
+      ],
+    };
+
+    render(
+      <MemoryRouter>
+        <DocumentPanel
+          state={{ status: 'success', data: multiple }}
+          retry={vi.fn()}
+          selectedItemId={null}
+          onReviewItem={onReviewItem}
+          reviewingItemId={null}
+          reviewBusy={false}
+          reviewError={null}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: '문항 1' })).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByText('앞 문장 바꿀 부분 뒤 문장')).toBeInTheDocument();
+    expect(screen.queryByText('성장하겠습니다.')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '문항 2' }));
+
+    expect(screen.getByRole('button', { name: '문항 2' })).toHaveAttribute('aria-current', 'step');
+    expect(screen.queryByText('앞 문장 바꿀 부분 뒤 문장')).not.toBeInTheDocument();
+    expect(screen.getByText('성장하겠습니다.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '글쓰기 검토' }));
+
+    expect(onReviewItem).toHaveBeenCalledWith(202);
+  });
+
+  it('검토 요청 중에는 문항 버튼을 잠그고 상태를 표시한다', () => {
+    render(
+      <MemoryRouter>
+        <DocumentPanel
+          state={{ status: 'success', data: letter }}
+          retry={vi.fn()}
+          selectedItemId={101}
+          onReviewItem={vi.fn()}
+          reviewingItemId={101}
+          reviewBusy
+          reviewError={null}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: '검토 요청 중…' })).toBeDisabled();
   });
 });

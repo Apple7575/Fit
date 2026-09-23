@@ -16,5 +16,8 @@ export function useComparisonInsights(corpCode: string, peers: readonly string[]
       fetchComparisonInsights(corpCode, peerKey ? peerKey.split(',') : [], signal),
     [corpCode, peerKey],
   );
-  return useApiQuery(`comparison-insights|${corpCode}|${peerKey}`, fetcher, REUSE);
+  return useApiQuery(`comparison-insights|${corpCode}|${peerKey}`, fetcher, {
+    ...REUSE,
+    keepPreviousWhile: corpCode,
+  });
 }

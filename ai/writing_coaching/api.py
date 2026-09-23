@@ -24,7 +24,7 @@ def get_writing_service() -> WritingService:
         os.environ.get("WRITING_QWEN_ENV_FILE", str(AI_ROOT / ".env"))
     )
     try:
-        return WritingService(load_qwen_config(env_file))
+        return WritingService(load_qwen_config(env_file, prefix="WRITING"))
     except ValueError as error:
         raise HTTPException(
             status_code=503,

@@ -1,6 +1,7 @@
-import { useRef, useState, type FormEvent } from 'react';
-import { MAX_KEYWORD, searchCompanies } from '../company-search/api';
-import type { Company } from '../../types/company';
+import { useState } from 'react';
+import { MAX_KEYWORD } from '../company-search/api';
+import { useCompanyLookup } from '../company-search/useCompanyLookup';
+import { displayName } from '../company-summary/companyName';
 
 interface InterviewCompanyFieldProps {
   name: string;
@@ -8,39 +9,15 @@ interface InterviewCompanyFieldProps {
   onChange: (corpCode: string | null, name: string) => void;
 }
 
-type Status = 'idle' | 'loading' | 'success' | 'error';
-
 /** 지원 회사 선택. 검색해 고르면 corpCode 로 회사 데이터를 활용하고, 직접 입력도 된다. */
 export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldProps) {
   const [keyword, setKeyword] = useState('');
-  const [status, setStatus] = useState<Status>('idle');
-  const [results, setResults] = useState<Company[]>([]);
-  const inFlight = useRef<AbortController | null>(null);
+  // 기업 분석 검색칸과 같다 — 엔터를 치지 않아도 치는 대로 따라온다
+  const lookup = useCompanyLookup(keyword);
+  const status = lookup.status;
+  const results = lookup.items;
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const query = keyword.trim();
-    if (!query) return;
-    inFlight.current?.abort();
-    const controller = new AbortController();
-    inFlight.current = controller;
-    setStatus('loading');
-    try {
-      const { items } = await searchCompanies(query, controller.signal);
-      if (controller.signal.aborted) return;
-      setResults(items);
-      setStatus('success');
-    } catch {
-      if (controller.signal.aborted) return;
-      setResults([]);
-      setStatus('error');
-    }
-  };
-
-  const close = () => {
-    setStatus('idle');
-    setResults([]);
-  };
+  const close = () => lookup.reset();
   const select = (corpCode: string | null, picked: string) => {
     onChange(corpCode, picked.trim());
     setKeyword('');
@@ -49,8 +26,15 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
 
   if (name) {
     return (
-      <div className="flex h-[42px] items-center justify-between rounded-lg border border-slate-200 bg-white px-2.5">
-        <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-[13px] font-semibold text-blue-700">
+      <div className="flex h-[42px] items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5">
+        {/*
+          직접 입력한 이름은 띄어쓰기 없이 60자까지 올 수 있다. 이 줄은 높이가 고정이라
+          줄을 바꿔 피할 수 없으므로 한 줄로 잘라 두고, 전체는 툴팁으로 확인한다.
+        */}
+        <span
+          className="inline-flex min-w-0 items-center gap-1.5 truncate rounded-md bg-blue-50 px-2 py-1 text-[13px] font-semibold text-blue-700"
+          title={name}
+        >
           {name}
         </span>
         <button
@@ -72,8 +56,8 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
 
   return (
     <div className="relative">
-      <form onSubmit={submit} role="search">
-        <div className="flex h-[42px] items-center rounded-lg border border-slate-200 bg-white pr-1 pl-3 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+      <div role="search">
+        <div className="flex h-[42px] items-center rounded-lg border border-slate-200 bg-white pr-1 pl-3 transition">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="mr-2 size-4 text-slate-400">
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" strokeLinecap="round" />
@@ -87,15 +71,8 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
             placeholder="기업명 검색 또는 직접 입력"
             className="min-w-0 flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400"
           />
-          <button
-            type="submit"
-            disabled={query === ''}
-            className="rounded-md px-3 py-1.5 text-[13px] font-semibold text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300"
-          >
-            검색
-          </button>
         </div>
-      </form>
+      </div>
 
       {status !== 'idle' && (
         <div className="absolute top-full left-0 z-20 mt-1 w-full min-w-64 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
@@ -118,13 +95,15 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
                   {results.map((company) => (
                     <li key={company.corpCode}>
                       <button
-                        onClick={() => select(company.corpCode, company.corpName)}
+                        onClick={() => select(company.corpCode, displayName(company.corpName))}
                         className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition hover:bg-slate-50"
                         type="button"
                       >
-                        <span className="flex flex-col">
-                          <span className="text-[14px] font-semibold text-slate-800">{company.corpName}</span>
-                          <span className="text-[12px] text-slate-400">
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate text-[14px] font-semibold text-slate-800">
+                            {displayName(company.corpName)}
+                          </span>
+                          <span className="truncate text-[12px] text-slate-400">
                             {company.industryName ?? '업종 정보 없음'}
                           </span>
                         </span>
@@ -144,8 +123,8 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
                     className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-slate-600 transition hover:bg-slate-50"
                     type="button"
                   >
-                    <span className="text-slate-400">＋</span>
-                    <span>
+                    <span className="shrink-0 text-slate-400">＋</span>
+                    <span className="min-w-0 break-keep wrap-anywhere">
                       “<b className="font-semibold text-slate-800">{query}</b>” 직접 입력
                     </span>
                   </button>

@@ -2,7 +2,11 @@ package com.ssafy.companyanalysis.global.error;
 
 import com.ssafy.companyanalysis.global.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -10,12 +14,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -111,6 +118,29 @@ class GlobalExceptionHandlerTest {
         }
     }
 
+    @Test
+    @DisplayName("제약에 적어 둔 안내가 있으면 그 문구가 사용자에게 나간다")
+    void writtenMessageReachesUser() throws Exception {
+        mockMvc.perform(post("/test/form")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"\",\"kind\":\"technical\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_PARAMETER"))
+                .andExpect(jsonPath("$.error.message").value("제목을 입력해 주세요."));
+    }
+
+    @Test
+    @DisplayName("안내를 적어 두지 않은 제약은 규칙을 읽어 주지 않고 고정 문구로 나간다")
+    void defaultMessageNeverLeaks() throws Exception {
+        // 기본 문구("\"technical|behavioral\"와 일치해야 합니다")가 새어 나가면 이 테스트가 깨진다.
+        mockMvc.perform(post("/test/form")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목\",\"kind\":\"무엇이든\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_PARAMETER"))
+                .andExpect(jsonPath("$.error.message").value("요청 파라미터가 올바르지 않습니다."));
+    }
+
     @RestController
     static class TestController {
 
@@ -143,5 +173,16 @@ class GlobalExceptionHandlerTest {
         ApiResponse<Void> boom() {
             throw new IllegalStateException("jdbc:postgresql://internal-host:5432 접속 실패");
         }
+
+        @PostMapping("/test/form")
+        ApiResponse<Void> form(@Valid @RequestBody TestForm body) {
+            return ApiResponse.ok(null);
+        }
+    }
+
+    /** 한 번에 한 칸만 걸리게 해서 어느 문구가 나왔는지 분명히 본다. */
+    record TestForm(
+            @NotBlank(message = "제목을 입력해 주세요.") String title,
+            @Pattern(regexp = "technical|behavioral") String kind) {
     }
 }

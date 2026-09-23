@@ -221,7 +221,7 @@ describe('CompanyDetailPage', () => {
     renderAt('/companies/00126380/focus');
 
     expect(
-      await screen.findByRole('heading', { name: '어디에 힘을 싣나' }),
+      await screen.findByRole('heading', { name: '어디에 집중하나' }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole('heading', { name: '투자' }),

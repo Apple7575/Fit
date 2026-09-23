@@ -100,7 +100,9 @@ revision_strength는 LIGHT, BALANCED, REWRITE 중 하나이며, 요청한 강도
 최상위 키는 정확히 "status", "message", "revision" 세 개다. "revision"은 "revision_strength",
 "revised_text", "char_count", "changes", "warnings" 키만 가진 객체다(status가 REVISED가 아니면
 null). "char_count"는 "revised_text"의 글자 수다. 다른 키를 추가하지 않는다. "changes", "warnings",
-"applied_feedback_ids"는 항상 배열이다(비어 있으면 null이 아니라 []). 사용자 메시지에
+"applied_feedback_ids"는 항상 배열이다(비어 있으면 null이 아니라 []). "applied_feedback_ids"에는
+direction_only_feedback에 실제로 있는 feedback_id만 넣고, direction_only_feedback이 비어 있으면
+반드시 []로 둔다. 사용자 메시지에
 "response_schema"(JSON 스키마)와 "response_shape_example"이 들어 있으니 정확히 그 모양을 따른다.
 
 기업·산업·시장에 관한 사실은 신뢰할 수 있는 출처나 direction_only_feedback에서만 가져온다.

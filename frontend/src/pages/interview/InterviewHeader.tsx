@@ -10,10 +10,20 @@ export function InterviewHeader({
   breadcrumb,
   floating = false,
   scrolled = false,
+  subnav = false,
 }: {
   breadcrumb?: string | string[];
   floating?: boolean;
   scrolled?: boolean;
+  /** 리포트처럼 바로 아래 문항 탭 줄이 붙는 화면. 헤더 밑줄을 긋지 않는다 */
+  subnav?: boolean;
 }) {
-  return <SiteHeader breadcrumb={breadcrumb ?? '모의 면접'} floating={floating} scrolled={scrolled} />;
+  return (
+    <SiteHeader
+      breadcrumb={breadcrumb ?? '모의 면접'}
+      floating={floating}
+      scrolled={scrolled}
+      subnav={subnav}
+    />
+  );
 }

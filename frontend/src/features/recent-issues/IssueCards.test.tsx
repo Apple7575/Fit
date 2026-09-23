@@ -47,7 +47,11 @@ describe('NewsFeedCard', () => {
     const items = within(list).getAllByRole('listitem');
     expect(items).toHaveLength(2);
 
-    const link = within(items[0]).getByRole('link', { name: /뉴스 1/ });
+    // 칸 전체를 원문 링크 하나가 덮는다. 같은 곳으로 가는 링크가 둘이면 훑어 읽기가 번거로워진다.
+    const links = within(items[0]).getAllByRole('link');
+    expect(links).toHaveLength(1);
+    const link = links[0];
+    expect(link).toHaveAccessibleName(/뉴스 1/);
     expect(link).toHaveAttribute('href', 'https://news.example.com/1');
     expect(link).toHaveAttribute('target', '_blank');
     expect(within(items[0]).getByText('투자')).toBeInTheDocument();

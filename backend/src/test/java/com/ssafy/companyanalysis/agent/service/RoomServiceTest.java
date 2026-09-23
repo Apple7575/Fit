@@ -295,6 +295,34 @@ class RoomServiceTest {
     }
 
     @Test
+    @DisplayName("기업을 안 고른 기업 RAG 담당 방은 목록에서 못 답한다고 표시하고 사유를 함께 준다")
+    void listMarksARoomThatCannotAnswerYet() {
+        // 화면은 이 값으로 칩을 흐리게 두고 무엇을 채우면 되는지 띄운다. 좁은 채팅 패널에
+        // 안내 상자를 따로 두지 않기 위해서다.
+        Room room = Room.create(USER, LETTER, "기업 RAG 담당", List.of(new RoomAgent("company", Map.of())));
+        given(roomRepository.findAllForSidebar(USER)).willReturn(List.of(room));
+
+        assertThat(service().list(USER, null).rooms()).singleElement().satisfies(one -> {
+            assertThat(one.ready()).isFalse();
+            assertThat(one.need()).isEqualTo(AgentContexts.NEED_COMPANY);
+        });
+    }
+
+    @Test
+    @DisplayName("한 명이라도 답할 수 있으면 그 방은 쓸 수 있는 방이다")
+    void listKeepsARoomReadyWhenAnyAgentCanAnswer() {
+        Room room = Room.create(USER, LETTER, "합동", List.of(
+                new RoomAgent("writing", Map.of()),
+                new RoomAgent("company", Map.of())));
+        given(roomRepository.findAllForSidebar(USER)).willReturn(List.of(room));
+
+        assertThat(service().list(USER, null).rooms()).singleElement().satisfies(one -> {
+            assertThat(one.ready()).isTrue();
+            assertThat(one.need()).isNull();
+        });
+    }
+
+    @Test
     @DisplayName("방을 깔 때 자소서의 직무와 회사가 에이전트 설정에 그대로 들어간다")
     void defaultsCarryTheCoverLetterSettings() {
         givenCoverLetter("네이버", "서버 개발(Java/Spring)");

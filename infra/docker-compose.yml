@@ -68,14 +68,16 @@ services:
       - LLM_KEY=${LLM_KEY:-}
       # 모의 면접 LLM 시간당 호출 상한(질문생성+꼬리질문+분석 합산). 미설정이면 40. QA 반복 시 .env 에서 올린다.
       - APP_INTERVIEW_RATE_LIMIT_USER_LIMIT=${APP_INTERVIEW_RATE_LIMIT_USER_LIMIT:-40}
-      # 자소서 검토 방 발화 시간당 상한. 발화 한 번에 에이전트를 여럿 부르므로 기본값이 낮다.
-      # 미설정이면 20. QA 로 수십 턴을 돌릴 때는 .env 에서 올린다.
-      - APP_AGENT_RATE_LIMIT_USER_LIMIT=${APP_AGENT_RATE_LIMIT_USER_LIMIT:-20}
+      # 자소서 검토 방 테스트 기본값. 필요하면 .env에서 별도 값으로 덮어쓴다.
+      - APP_AGENT_RATE_LIMIT_USER_LIMIT=${APP_AGENT_RATE_LIMIT_USER_LIMIT:-1000}
       # 자소서 멀티에이전트. 고를 수 있게 열어 둘 직무(쉼표 구분). 적재하는 자료는 없다.
       # 비우면 모든 직무가 ready=false 로 나가 포지션 담당을 아예 못 쓴다.
       - APP_AGENT_READY_JOB_ROLES=${APP_AGENT_READY_JOB_ROLES:-}
       # Vector DB 가 만들어진 기업(corpCode). 비우면 기업 선택을 막지 않는다.
       - APP_AGENT_RAG_INDEXED_CORP_CODES=${APP_AGENT_RAG_INDEXED_CORP_CODES:-}
+      # 화면에서 감추고 실행도 막을 담당(쉼표 구분 agentKey). 뉴스 담당이 불안정해 QA 동안 기본으로 끈다.
+      # 콜론 없는 '-' 라 .env 에 빈 값(APP_AGENT_HIDDEN_AGENTS=)을 적으면 전부 다시 켜진다.
+      - APP_AGENT_HIDDEN_AGENTS=${APP_AGENT_HIDDEN_AGENTS-news}
       - TZ=${TZ:-Asia/Seoul}
       - AGENT_AI_BASE_URL=${AGENT_AI_BASE_URL:-http://ai:8000}
     # 배포에서 vLLM 은 호스트의 리버스터널 포트(host.docker.internal:18000)로 닿는다. infra/tunnel 참고.
@@ -124,12 +126,34 @@ services:
       - QWEN_BASE_URL=${VLLM_BASE_URL:-http://70.12.130.105:8000}/v1
       # 서빙 중인 모델 ID 는 main 하나다 (GET /v1/models 로 확인).
       - QWEN_MODEL=${QWEN_MODEL:-main}
-      # LLM 공급자. vllm(사내 GPU, 기본) | gms(SSAFY GMS 경유 Gemini).
-      # 담당 하나만 옮겨 보려면 <PREFIX>_LLM_PROVIDER 로 덮어쓴다 (예: COMPANY_ANALYSIS_LLM_PROVIDER).
+      # LLM 공급자. vllm(사내 GPU) | gms(GMS 경유 Gemini) | openai | anthropic (둘 다 GMS 경유, GMS_KEY).
+      # 담당별 기본 배정은 ai/llm/config.py 의 AGENT_DEFAULTS 에 있다(한 모델에 몰리지 않게 나눈 것).
+      # 아래 전역값은 기본 배정이 없는 호출부에만 적용된다. 담당 하나를 바꾸려면 <PREFIX>_LLM_PROVIDER /
+      # <PREFIX>_LLM_MODEL 로 덮어쓴다. PREFIX: JD | POSITION | WRITING | SUPERVISOR_PLAN |
+      # SUPERVISOR_AGGREGATE | COMPANY_ANALYSIS | NEWS. 문서: ai/docs/llm-model-assignment.md
       - LLM_PROVIDER=${LLM_PROVIDER:-vllm}
-      - COMPANY_ANALYSIS_LLM_PROVIDER=${COMPANY_ANALYSIS_LLM_PROVIDER:-}
       - GMS_MODEL=${GMS_MODEL:-}
+      - JD_LLM_PROVIDER=${JD_LLM_PROVIDER:-}
+      - JD_LLM_MODEL=${JD_LLM_MODEL:-}
+      - POSITION_LLM_PROVIDER=${POSITION_LLM_PROVIDER:-}
+      - POSITION_LLM_MODEL=${POSITION_LLM_MODEL:-}
+      - WRITING_LLM_PROVIDER=${WRITING_LLM_PROVIDER:-}
+      - WRITING_LLM_MODEL=${WRITING_LLM_MODEL:-}
+      - SUPERVISOR_PLAN_LLM_PROVIDER=${SUPERVISOR_PLAN_LLM_PROVIDER:-}
+      - SUPERVISOR_PLAN_LLM_MODEL=${SUPERVISOR_PLAN_LLM_MODEL:-}
+      - SUPERVISOR_AGGREGATE_LLM_PROVIDER=${SUPERVISOR_AGGREGATE_LLM_PROVIDER:-}
+      - SUPERVISOR_AGGREGATE_LLM_MODEL=${SUPERVISOR_AGGREGATE_LLM_MODEL:-}
+      - COMPANY_ANALYSIS_LLM_PROVIDER=${COMPANY_ANALYSIS_LLM_PROVIDER:-}
+      - COMPANY_ANALYSIS_LLM_MODEL=${COMPANY_ANALYSIS_LLM_MODEL:-}
       - QWEN_API_KEY=${LLM_KEY:-}
+      - GMS_MAX_CONCURRENT_REQUESTS=${GMS_MAX_CONCURRENT_REQUESTS:-1}
+      - GMS_MIN_INTERVAL_SECONDS=${GMS_MIN_INTERVAL_SECONDS:-1}
+      - GMS_QUEUE_TIMEOUT_SECONDS=${GMS_QUEUE_TIMEOUT_SECONDS:-45}
+      - GMS_RATE_LIMIT_COOLDOWN_SECONDS=${GMS_RATE_LIMIT_COOLDOWN_SECONDS:-10}
+      - GMS_RATE_LIMIT_RETRY_COUNT=${GMS_RATE_LIMIT_RETRY_COUNT:-1}
+      - GMS_MAX_QUEUED_REQUESTS=${GMS_MAX_QUEUED_REQUESTS:-40}
+      # 변환된 응답 스키마가 이 글자 수를 넘으면 enum 없이 보낸다(기업 리포트 SWOT 근거 ID enum 이 400 을 냈다). 0 이면 검사 안 함.
+      - GMS_MAX_SCHEMA_CHARS=${GMS_MAX_SCHEMA_CHARS:-30000}
       # 공고에서 회사명·직무명을 뽑는 보완 추출에만 쓴다. 비면 그 보완만 꺼지고 크롤링은 돈다.
       - GMS_KEY=${GMS_KEY:-}
       - TZ=${TZ:-Asia/Seoul}

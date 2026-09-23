@@ -21,6 +21,7 @@ from ai.news_intelligence.model import (
     NewsOutputError,
     QwenNewsModel,
 )
+from ai.llm.contracts import LlmRateLimitedError
 from ai.news_intelligence.repository import (
     CompanyNotFound,
     JobContextNotFound,
@@ -66,7 +67,7 @@ def _read_env_value(path: Path, key: str) -> str:
 @lru_cache(maxsize=1)
 def get_news_service() -> NewsIntelligenceService:
     try:
-        config = load_qwen_config(_news_env_file())
+        config = load_qwen_config(_news_env_file(), prefix="NEWS")
         database_url = _required_database_url()
     except (OSError, RuntimeError, ValueError) as error:
         raise HTTPException(
@@ -146,6 +147,11 @@ def create_analysis(
         raise HTTPException(
             status_code=503,
             detail={"code": "NEWS_SOURCE_UNAVAILABLE"},
+        ) from error
+    except LlmRateLimitedError as error:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "GMS_RATE_LIMITED"},
         ) from error
     except (NewsOutputError, NewsModelUnavailable) as error:
         raise HTTPException(

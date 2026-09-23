@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ApiError } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { useAuth } from '../../features/auth/AuthProvider';
 
 const FIELD_CLASS =
-  'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
+  'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition';
 
 // 비밀번호 규칙: 영문·숫자·특수문자를 모두 포함해 8~64자. 백엔드 SignupRequest 의 @Pattern 과 같은 규칙.
 const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,64}$/;
@@ -43,7 +43,7 @@ export function SignupPage() {
       await signup(trimmedEmail, password, nickname.trim());
       navigate('/verify-sent', { state: { email: trimmedEmail } });
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '회원가입에 실패했습니다.');
+      setError(userMessage(caught, '회원가입에 실패했습니다.'));
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +73,8 @@ export function SignupPage() {
             autoComplete="email"
             className={FIELD_CLASS}
             id="signup-email"
+            // 백엔드 @Size(max=255) 와 같은 값
+            maxLength={255}
             onChange={(event) => setEmail(event.target.value)}
             required
             type="email"
@@ -104,6 +106,7 @@ export function SignupPage() {
             autoComplete="new-password"
             className={`${FIELD_CLASS} ${passwordWeak ? 'border-red-400' : ''}`}
             id="signup-password"
+            maxLength={64}
             minLength={8}
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -124,6 +127,7 @@ export function SignupPage() {
             autoComplete="new-password"
             className={`${FIELD_CLASS} ${mismatch ? 'border-red-400' : ''}`}
             id="signup-password-confirm"
+            maxLength={64}
             minLength={8}
             onChange={(event) => setPasswordConfirm(event.target.value)}
             required

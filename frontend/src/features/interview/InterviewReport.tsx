@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { HEADER_LINE, HEADER_SURFACE } from '../../components/layout/SiteHeader';
 import {
   averageDelivery,
   describeDelivery,
@@ -8,17 +8,20 @@ import {
   type ClipEventKind,
   type DeliveryMetrics,
 } from './delivery';
-import { EvidenceCards } from './Evidence';
+import { Deck, DeckTabs, type DeckCard } from './Deck';
+import { metricCards } from './Evidence';
+import { GuideImage } from './GuideImage';
 import { Icon } from './icons';
 import { getClipsByLocalSession, getClipsByServerId } from './localVideo';
 import { NonverbalDetail } from './NonverbalOverview';
+import { warnCount } from './metricFocus';
 import { nonverbalGauges } from './nonverbalGauges';
 import { DeliveryDetail } from './ReportBody';
 import { TrackedClip } from './TrackedClip';
 import { ReportOverview, type OverviewRow } from './ReportOverview';
 import { buildAxes, buildHighlights } from './reportSummary';
-import { CARD, T } from './reportTokens';
-import { KIND_STYLE, SOURCE_BADGE, TYPE_LABEL } from './styles';
+import { CARD, T, TONE } from './reportTokens';
+import { SOURCE_BADGE, TYPE_LABEL } from './styles';
 import type { FeedbackPoint, InterviewType, QuestionSource } from './types';
 import { averageNonverbal, describeNonverbal, type NonverbalMetrics, type VisionSample } from './vision';
 
@@ -232,7 +235,7 @@ export function InterviewReport({
   return (
     <div>
       {/* 면접 제목은 전역 헤더의 브레드크럼이 맡는다. 여기는 문항 탭과 버튼 한 줄만 둔다 */}
-      <div className="sticky top-14 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+      <div className={`sticky top-14 z-20 ${HEADER_LINE} ${HEADER_SURFACE}`}>
         <div className="mx-auto flex max-w-[1320px] items-end gap-3 px-5 lg:px-8">
           {/* overflow-y-hidden: 탭의 -mb-px 때문에 세로 스크롤바가 생기는 걸 막는다 */}
           <div className="flex gap-1 overflow-x-auto overflow-y-hidden" role="tablist">
@@ -282,14 +285,7 @@ export function InterviewReport({
         />
       ) : (
         current && (
-          <QuestionPanel
-            company={company}
-            interviewType={interviewType}
-            item={current}
-            local={local.get(current.seq)}
-            position={position}
-            serverInterviewId={serverInterviewId ?? null}
-          />
+          <QuestionPanel item={current} key={current.seq} local={local.get(current.seq)} />
         )
       )}
       </div>
@@ -323,24 +319,8 @@ function TabButton({
   );
 }
 
-/** 문항 하나: 위쪽에 내 영상과 질문·답변, 아래에 지표별 근거 */
-function QuestionPanel({
-  item,
-  local,
-  company,
-  position,
-  interviewType,
-  serverInterviewId,
-}: {
-  item: ReportItem & { no: string };
-  local: LocalItem | undefined;
-  company: string | null;
-  position: string | null;
-  interviewType: InterviewType;
-  /** 저장된 면접일 때만 다시 연습할 수 있다 (돌아올 자리가 있어야 한다) */
-  serverInterviewId: number | null;
-}) {
-  const navigate = useNavigate();
+/** 문항 하나: 질문 한 줄, 왼쪽에 영상·답변, 오른쪽에 평가 */
+function QuestionPanel({ item, local }: { item: ReportItem & { no: string }; local: LocalItem | undefined }) {
   const badge = SOURCE_BADGE[item.sourceType];
   const improvements = item.points.filter((p) => p.kind === 'IMPROVEMENT');
   const strengths = item.points.filter((p) => p.kind === 'STRENGTH');
@@ -366,178 +346,275 @@ function QuestionPanel({
     ...(local?.nonverbal ? describeNonverbal(local.nonverbal) : []),
     ...(local?.metrics ? describeDelivery(local.metrics) : []),
   ];
-  // 총평 한 줄도 '고칠 점' 카드에서 함께 보여준다 (답변 옆 회색 박스와 겹쳐 보였다)
-  const hasFeedback = improvements.length > 0 || strengths.length > 0 || item.feedbackSummary.length > 0;
+  /*
+   * 고칠 점 쪽 덱. 총평 → 고칠 점 → 잘한 점 순서다. 총평은 답변 전체에 대한 이야기라
+   * 낱낱의 지적보다 먼저 읽는 게 맞고, 잘한 점은 읽고 나서 기분이 남게 뒤에 둔다.
+   */
+  const feedbackCards: DeckCard[] = [
+    ...(item.feedbackSummary
+      ? [{ key: '총평', tone: 'none' as const, node: <SummaryCard text={item.feedbackSummary} /> }]
+      : []),
+    ...improvements.map((point, i) => ({
+      key: `고칠 점 ${i + 1}`,
+      tone: 'warn' as const,
+      node: <PointCard kind="IMPROVEMENT" point={point} />,
+    })),
+    ...strengths.map((point, i) => ({
+      key: `잘한 점 ${i + 1}`,
+      tone: 'good' as const,
+      node: <PointCard kind="STRENGTH" point={point} />,
+    })),
+  ];
+  const metricDeck = metricCards(rows, local, seek);
+  // 고칠 점이 아예 없으면 처음부터 말투와 자세를 편다
+  const [deck, setDeck] = useState<'feedback' | 'manner'>(feedbackCards.length > 0 ? 'feedback' : 'manner');
+  // 왼쪽 칸: 영상과 내가 한 말 중 하나. 녹화가 없으면 글부터 편다
+  const [side, setSide] = useState<'clip' | 'said'>(local?.url ? 'clip' : 'said');
+  // 파일은 있는데 열리지 않는 녹화. 까만 상자 대신 까닭을 적는다
+  const [broken, setBroken] = useState(false);
 
   return (
+    /*
+     * 질문 → 평가 → 근거 차례로 읽는다.
+     *
+     * <p>전에는 내 영상이 맨 위 절반을 차지했다. 눈길은 가지만 이미 겪은 일이라 새로 알
+     * 것이 없고, 정작 보러 온 "어땠나"는 노트북 화면에서 스크롤을 내려야 나왔다. 영상은
+     * 주장이 아니라 근거라서 평가 다음에 둔다 — 지표 카드의 '그렇게 본 근거'도 여기로
+     * 데려온다.
+     */
     <div className="space-y-4" role="tabpanel">
       <section className={`${CARD} p-5`}>
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
-          {/* 내 영상: 가장 먼저 눈이 가는 자리 */}
-          <div>
-            {local?.url ? (
+        <p className="flex flex-wrap items-center gap-2">
+          <span className="text-[12px] font-extrabold text-slate-300">Q{item.no}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${badge.className}`}>
+            {badge.label}
+          </span>
+        </p>
+        <p className={`mt-2 ${T.hero}`}>{item.question}</p>
+      </section>
+      {/*
+        왼쪽에 영상, 오른쪽에 평가. 오른쪽에서 음량 막대나 구간을 누르면 왼쪽 영상이 그
+        자리에서 재생된다 — 전에는 영상이 아래에 있어 누를 때마다 화면이 뛰었다.
+        영상 칸은 sticky 라 카드를 넘겨도 자리를 지킨다.
+      */}
+      {/*
+        좌우 두 칸이 같은 높이를 쓴다. 한쪽만 길면 아래끝이 어긋나 화면이 기울어 보인다.
+
+        <p>높이는 두 칸에 직접 준다. 바깥 그리드에만 높이를 주고 안쪽을 h-full 로 두면,
+        행 크기가 auto 라 100% 가 내용 높이로 풀려 칸이 그대로 늘어난다.
+      */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+        {/*
+          왼쪽 칸도 한 번에 하나만 편다. 영상 아래에 겹쳐 보기 안내·구간 목록·내가 한 말이
+          줄줄이 붙어 있어, 정작 오른쪽 평가를 읽는 동안 왼쪽이 더 길었다.
+        */}
+        <section className={`${CARD} flex h-[33rem] flex-col p-4`}>
+          <DeckTabs
+            at={side}
+            onPick={setSide}
+            tabs={[
+              { key: 'clip' as const, icon: 'video' as const, label: '영상' },
+              { key: 'said' as const, icon: 'transcript' as const, label: '답변' },
+            ]}
+          />
+          {/*
+            글은 위에 붙이면 아래가 텅 빈다. 영상은 위에서부터, 글은 가운데에 둔다.
+
+            <p>가운데 정렬(items-center)과 스크롤을 한 칸에 걸면 넘치는 윗부분이 잘려 닿을 수
+            없게 된다. 그래서 바깥 칸은 넘침을 감추기만 하고, 스크롤은 글 자체가 맡는다
+            (max-h-full). 짧은 글은 가운데에 놓이고 긴 글은 칸을 채운 뒤 그 안에서 구른다.
+          */}
+          <div
+            className={`mt-3 min-h-0 flex-1 ${side === 'said' ? 'flex items-center overflow-hidden' : 'overflow-y-auto'}`}
+          >
+            {side === 'clip' ? (
               <>
-                {/* 말로 "시선이 흔들렸습니다"라고 하는 것보다 그때의 내 얼굴 위에 얹어 보여준다 */}
-                <TrackedClip
-                  onLoadedMetadata={fixWebmDuration}
-                  samples={local.samples}
-                  src={local.url}
-                  videoRef={videoRef}
-                />
-                {marks.length > 0 && (
-                  <div className="mt-2">
-                    <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                      {marks.map((e, i) => (
-                        <span
-                          className={`absolute top-0 h-full ${EVENT_META[e.kind].color}`}
-                          key={i}
-                          style={{
-                            left: `${Math.min(100, (e.startMs / local.durationMs) * 100)}%`,
-                            width: `${Math.max(1, Math.min(100, ((e.endMs - e.startMs) / local.durationMs) * 100))}%`,
-                          }}
-                        />
-                      ))}
+              {local?.url && !broken ? (
+                <>
+                  {/* 말로 "시선이 흔들렸습니다"라고 하는 것보다 그때의 내 얼굴 위에 얹어 보여준다 */}
+                  <TrackedClip
+                    onBroken={() => setBroken(true)}
+                    onLoadedMetadata={fixWebmDuration}
+                    samples={local.samples}
+                    src={local.url}
+                    videoRef={videoRef}
+                  />
+                  {marks.length > 0 && (
+                    <div className="mt-2">
+                      <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                        {marks.map((e, i) => (
+                          <span
+                            className={`absolute top-0 h-full ${EVENT_META[e.kind].color}`}
+                            key={i}
+                            style={{
+                              left: `${Math.min(100, (e.startMs / local.durationMs) * 100)}%`,
+                              width: `${Math.max(1, Math.min(100, ((e.endMs - e.startMs) / local.durationMs) * 100))}%`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      {/* 종류마다 한 줄. 구간이 많아지면 그 줄 안에서 옆으로 넘겨 보므로 카드 높이는 그대로다 */}
+                      <ul className="mt-2 space-y-1">
+                        {grouped.map(([kind, list]) => (
+                          <li className="flex items-center gap-2" key={kind}>
+                            <span className="flex w-28 shrink-0 items-center gap-1.5 text-[12px] font-semibold text-slate-600">
+                              <span className={`inline-block size-2 shrink-0 rounded-full ${EVENT_META[kind].color}`} />
+                              <span className="truncate">{EVENT_META[kind].label}</span>
+                            </span>
+                            <span className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+                              {list.map((e, i) => (
+                                <button
+                                  className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-100 hover:text-slate-800"
+                                  key={i}
+                                  onClick={() => seek(e.startMs)}
+                                  type="button"
+                                >
+                                  {(e.startMs / 1000).toFixed(1)}초
+                                </button>
+                              ))}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    {/* 종류마다 한 줄. 구간이 많아지면 그 줄 안에서 옆으로 넘겨 보므로 카드 높이는 그대로다 */}
-                    <ul className="mt-2 space-y-1">
-                      {grouped.map(([kind, list]) => (
-                        <li className="flex items-center gap-2" key={kind}>
-                          <span className="flex w-28 shrink-0 items-center gap-1.5 text-[12px] font-semibold text-slate-600">
-                            <span className={`inline-block size-2 shrink-0 rounded-full ${EVENT_META[kind].color}`} />
-                            <span className="truncate">{EVENT_META[kind].label}</span>
-                          </span>
-                          <span className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                            {list.map((e, i) => (
-                              <button
-                                className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-100 hover:text-slate-800"
-                                key={i}
-                                onClick={() => seek(e.startMs)}
-                                type="button"
-                              >
-                                {(e.startMs / 1000).toFixed(1)}초
-                              </button>
-                            ))}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <p className={`mt-2 flex items-center justify-between ${T.caption}`}>
-                  <span>이 브라우저에만 저장된 녹화</span>
-                  <a
-                    className="font-semibold text-slate-500 hover:text-slate-700"
-                    download={`모의면접_Q${item.no}.${extForMime(local.mime)}`}
-                    href={local.url}
-                  >
-                    영상 내려받기
-                  </a>
+                  )}
+                  <p className={`mt-2 flex items-center justify-between ${T.caption}`}>
+                    <span>이 브라우저에만 저장된 녹화</span>
+                    <a
+                      className="font-semibold text-slate-500 hover:text-slate-700"
+                      download={`모의면접_Q${item.no}.${extForMime(local.mime)}`}
+                      href={local.url}
+                    >
+                      영상 내려받기
+                    </a>
+                  </p>
+                </>
+              ) : (
+                <p className={`rounded-xl border border-dashed border-slate-300 p-5 ${T.body}`}>
+                  {broken
+                    ? '이 문항의 녹화가 열리지 않습니다. 답을 시작하기 전에 녹화가 끝나 화면이 한 장도 담기지 않았을 수 있어요. 아래 말투와 자세는 그대로 볼 수 있습니다.'
+                    : '이 문항의 녹화가 이 브라우저에 없습니다. 다른 기기에서 진행했거나 저장 공간이 부족했을 수 있어요.'}
                 </p>
+              )}
               </>
             ) : (
-              <p className={`rounded-xl border border-dashed border-slate-300 p-5 ${T.body}`}>
-                이 문항의 녹화가 이 브라우저에 없습니다. 다른 기기에서 진행했거나 저장 공간이 부족했을 수 있어요.
+              // 세로로만 구른다. overflow-y 만 auto 로 두면 브라우저가 overflow-x 도 auto 로
+              // 쳐서, 조금만 삐져나가도 가로 스크롤 막대가 생긴다. min-w-0 은 이 글이 flex
+              // 칸이라 붙인다 — 없으면 최소 너비가 내용 너비가 돼 칸이 줄어들지 못한다.
+              <p className="max-h-full w-full min-w-0 overflow-x-hidden overflow-y-auto text-[15px] leading-7 break-keep wrap-anywhere text-slate-700">
+                {item.transcript || <span className="text-slate-400">답변 없음</span>}
               </p>
             )}
           </div>
+        </section>
 
-          <div>
-            <p className="flex flex-wrap items-center gap-2">
-              <span className="text-[12px] font-extrabold text-slate-300">Q{item.no}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${badge.className}`}>
-                {badge.label}
-              </span>
-            </p>
-            <p className={`mt-2 ${T.section}`}>{item.question}</p>
-
-            <p className={`mt-4 ${T.label}`}>내 답변</p>
-            <p className={`mt-1.5 ${T.body}`}>
-              {item.transcript || <span className="text-slate-400">답변 없음</span>}
-            </p>
-
-            {/*
-              읽고 나면 할 일이 있어야 한다. 다섯 문항을 처음부터 다시 보는 건 부담이 크므로
-              걸린 문항 하나만 다시 답해 보게 한다. 질문을 그대로 들고 가므로 질문 생성도
-              하지 않는다 (2분이면 끝난다).
-            */}
-            {serverInterviewId !== null && (
-              <button
-                className="mt-4 flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-slate-700"
-                onClick={() =>
-                  navigate('/interviews/new', {
-                    state: {
-                      practice: {
-                        question: item.question,
-                        sourceType: item.sourceType,
-                        fromInterviewId: serverInterviewId,
-                        fromNo: item.no,
-                        targetCompany: company,
-                        targetPosition: position,
-                        interviewType,
-                      },
-                    },
-                  })
+        <section className={`${CARD} flex h-[33rem] flex-col p-5`}>
+          {/*
+            고칠 점 넷과 지표 열일곱 개를 나란히 두면 합쳐서 스무 덩이가 한 화면에 깔린다.
+            둘은 성격이 다른 이야기(무엇을 말했나 / 어떻게 보였나)라 한 번에 하나만 편다.
+          */}
+          <DeckTabs
+            at={deck}
+            onPick={setDeck}
+            tabs={[
+              { key: 'feedback' as const, icon: 'feedback' as const, label: '답변 피드백', count: improvements.length },
+              { key: 'manner' as const, icon: 'posture' as const, label: '말투와 자세', count: warnCount(rows) },
+            ]}
+          />
+          <div className="mt-4 min-h-0 flex-1">
+            {deck === 'feedback' ? (
+              <Deck
+                cards={feedbackCards}
+                empty={
+                  <EmptyCard figure="focus.png" title="이 답변에는 지적할 점이 없었어요">
+                    분석이 붙지 않은 문항이에요. 꼬리질문이거나, 저장할 때 분석을 건너뛴 경우입니다.
+                  </EmptyCard>
                 }
-                type="button"
-              >
-                <Icon className="size-4" name="redo" />이 문항만 다시 연습하기
-              </button>
+                label="답변 피드백"
+              />
+            ) : (
+              <Deck
+                cards={metricDeck}
+                empty={
+                  <EmptyCard figure="posture-good.png" title="이 문항은 재지 못했어요">
+                    카메라와 마이크를 켜고 보면 말 속도·시선·자세를 문항마다 재서, 흔들린 순간의 영상과 함께
+                    보여드려요.
+                  </EmptyCard>
+                }
+                label="말투와 자세"
+              />
             )}
           </div>
-        </div>
-      </section>
-
-      {/* 말할 내용(왼쪽)과 태도·전달(오른쪽)을 나란히 둔다. 한쪽만 있으면 한 칸을 다 쓴다 */}
-      <div className={`grid gap-4 lg:items-start ${hasFeedback && rows.length > 0 ? 'lg:grid-cols-2' : ''}`}>
-        {hasFeedback && (
-          <div className="space-y-4">
-            {(improvements.length > 0 || item.feedbackSummary) && (
-              <section className={`${CARD} p-5`}>
-                <p className={T.section}>이 답변에서 고칠 점</p>
-                {item.feedbackSummary && <p className={`mt-2 ${T.body}`}>{item.feedbackSummary}</p>}
-                <ul className="mt-3 space-y-2">
-                  {improvements.map((point, i) => (
-                    <li className="rounded-xl bg-red-50/60 p-3" key={i}>
-                      <p className="text-[12px] font-semibold text-red-600">{point.category}</p>
-                      <p className={`mt-1 ${T.body}`}>{point.message}</p>
-                      {point.suggestion && (
-                        <p className={`mt-2 border-l-2 border-red-300 pl-2.5 ${T.bodyStrong}`}>{point.suggestion}</p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {strengths.length > 0 && (
-              <section className={`${CARD} p-5`}>
-                <p className={T.section}>이 답변에서 잘한 점</p>
-                <ul className="mt-3 space-y-1.5">
-                  {strengths.map((point, i) => (
-                    <li className={T.body} key={i}>
-                      <span className={`mr-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold ${KIND_STYLE.STRENGTH.chip}`}>
-                        {point.category}
-                      </span>
-                      {point.message}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </div>
-        )}
-
-        {rows.length > 0 && (
-          <section className={`${CARD} p-5`}>
-            <p className={T.section}>말투와 자세</p>
-            <p className={`mt-1 ${T.caption}`}>
-              면접관 눈에 어떻게 보였는지입니다. 카드를 누르면 그렇게 본 근거를 보여드려요.
-            </p>
-            <div className="mt-3">
-              <EvidenceCards clip={local} onSeek={seek} rows={rows} />
-            </div>
-          </section>
-        )}
+        </section>
       </div>
+    </div>
+  );
+}
+
+/** 총평 한 장. 문항 하나를 통째로 본 이야기라 지적 하나하나보다 앞에 둔다 */
+function SummaryCard({ text }: { text: string }) {
+  return (
+    <div className="flex h-full flex-col justify-center">
+      <p className="text-[13px] font-bold text-slate-400">총평</p>
+      <p className="mt-4 max-w-[34ch] text-[22px] leading-9 font-extrabold break-keep wrap-anywhere text-slate-950">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * 고칠 점·잘한 점 한 장.
+ *
+ * <p>지적(message)이 제목 자리에 크게 오고, 어떻게 고치면 되는지(suggestion)가 그 아래
+ * 한 칸에 들어간다. 전에는 둘이 같은 크기로 붙어 있어 어디까지가 진단이고 어디부터가
+ * 할 일인지 구분되지 않았다.
+ */
+function PointCard({ point, kind }: { point: FeedbackPoint; kind: 'IMPROVEMENT' | 'STRENGTH' }) {
+  const fix = kind === 'IMPROVEMENT';
+  const tone = fix ? TONE.warn : TONE.good;
+  return (
+    <div className="flex h-full flex-col justify-center">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone.soft} ${tone.text}`}>
+          <Icon className="size-6" name={fix ? 'redo' : 'check'} />
+        </span>
+        <span className="text-[18px] font-extrabold text-slate-900">{fix ? '고칠 점' : '잘한 점'}</span>
+        <span className={`rounded-full px-3 py-1 text-[14px] font-bold ring-1 ${tone.chip}`}>{point.category}</span>
+      </div>
+
+      <p className="mt-5 max-w-[40ch] text-[22px] leading-9 font-extrabold break-keep wrap-anywhere text-slate-950">
+        {point.message}
+      </p>
+
+      {point.suggestion && (
+        <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+          <p className="text-[13px] font-bold text-slate-400">이렇게 해 보세요</p>
+          <p className="mt-2 max-w-[46ch] text-[16px] leading-7 font-semibold break-keep wrap-anywhere text-slate-700">
+            {point.suggestion}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 보여 줄 카드가 없을 때 그 자리를 채우는 한 장.
+ *
+ * <p>빈 칸을 그냥 두면 "왜 아무것도 없지"가 된다. 무엇이 없는지와 그 까닭을 적고, 그림이
+ * 있으면 같이 놓는다 (파일이 없으면 GuideImage 가 조용히 빠진다).
+ */
+function EmptyCard({ title, figure, children }: { title: string; figure: string; children: React.ReactNode }) {
+  return (
+    <div className="max-w-[36ch] text-center">
+      <GuideImage
+        alt=""
+        className="mx-auto mb-4 aspect-[4/3] w-40 rounded-xl object-contain opacity-80"
+        name={figure}
+      />
+      <p className={T.section}>{title}</p>
+      <p className={`mt-2 ${T.body}`}>{children}</p>
     </div>
   );
 }

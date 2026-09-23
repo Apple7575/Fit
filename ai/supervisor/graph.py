@@ -5,13 +5,14 @@ import logging
 import operator
 import os
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
 from ai.supervisor.adapters import AgentRegistry
+from ai.llm.contracts import LlmRateLimitedError
 from ai.supervisor.contracts import (
     AgentResult,
     NoAvailableAgentError,
@@ -31,6 +32,30 @@ from ai.supervisor.tools import tool_scope
 
 
 CLARIFICATION_HEADING = "덧붙여, 더 고치려면 이것을 알려 주세요"
+_AGENT_HEADINGS = {
+    "jd": "JD 검토",
+    "position": "직무 분석",
+    "writing": "글쓰기 첨삭",
+    "news": "뉴스 분석",
+    "company": "기업 분석",
+}
+_UNREADABLE_MESSAGE = "답변을 정리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+
+
+def _plain_message(result: Any) -> str | None:
+    """담당이 돌려준 dict 에서 사람이 읽을 문장만 꺼낸다.
+
+    종합이 실패했을 때 dict 를 통째로 json.dumps 해서 말풍선에 넣던 자리를 대신한다.
+    화면에 내부 구조(키 이름·식별자·usage)가 그대로 노출되는 것은 사용자에게도 무의미하고,
+    무엇이 새어 나온 것처럼 보인다.
+    """
+    if not isinstance(result, Mapping):
+        return None
+    for key in ("message", "answer", "summary", "text"):
+        value = result.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def _with_clarification(message: str, clarification: str) -> str:
@@ -49,6 +74,32 @@ def _with_clarification(message: str, clarification: str) -> str:
         # 종합 모델이 이미 같은 말을 적었다. 두 번 쓰지 않는다.
         return text
     return f"{text}\n\n{CLARIFICATION_HEADING}\n{tail}"
+
+
+def display_message(agent: str, result: dict[str, Any]) -> str:
+    """말풍선에 안전하게 표시할 담당 메시지 하나를 만든다."""
+    text = _plain_message(result)
+    if text is None:
+        return _UNREADABLE_MESSAGE
+    if text[:1] not in ("{", "["):
+        return text
+    try:
+        decoded = json.loads(text)
+    except json.JSONDecodeError:
+        return text
+    if isinstance(decoded, (dict, list)):
+        return _UNREADABLE_MESSAGE
+    return text
+
+
+def fallback_message(successes: Sequence[AgentResult]) -> str:
+    """총괄 모델이 실패해도 내부 JSON 대신 담당별 읽을 수 있는 요약을 남긴다."""
+    return "\n\n".join(
+        f"### {_AGENT_HEADINGS.get(item.agent, item.agent)}\n"
+        f"{display_message(item.agent, item.result)}"
+        for item in successes
+        if isinstance(item.result, dict)
+    )
 
 
 
@@ -298,6 +349,14 @@ def build_supervisor_graph(
                     prior_results=prior_results,
                 )
                 return success_result(agent, result, tool_calls, delegated_from)
+            except LlmRateLimitedError:
+                return AgentResult(
+                    agent=agent,
+                    status="FAILED",
+                    error="GMS_RATE_LIMITED",
+                    tool_calls=list(tool_calls),
+                    delegated_from=delegated_from,
+                )
             except Exception as error:
                 return AgentResult(
                     agent=agent,
@@ -354,6 +413,13 @@ def build_supervisor_graph(
                     prior_results=successful_results_except(state, "writing"),
                 )
                 return success_result("writing", result, tool_calls)
+            except LlmRateLimitedError:
+                return AgentResult(
+                    agent="writing",
+                    status="FAILED",
+                    error="GMS_RATE_LIMITED",
+                    tool_calls=list(tool_calls),
+                )
             except Exception as error:
                 # 응답에는 사유를 가리지만(사용자 문서 유출 방지) 운영 로그에는 원인을 남긴다.
                 LOGGER.warning(
@@ -465,7 +531,7 @@ def build_supervisor_graph(
             return ""
         message = lead_result.result.get("message")
         if isinstance(message, str) and message.strip():
-            return message
+            return display_message(lead, lead_result.result)
         try:
             return model.aggregate(
                 instruction=state["instruction"],
@@ -473,7 +539,9 @@ def build_supervisor_graph(
                 results=[lead_result],
             )
         except Exception:
-            return json.dumps(lead_result.result, ensure_ascii=False, sort_keys=True)
+            return fallback_message([lead_result]) or (
+                "의견을 정리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+            )
 
     def aggregate_results(state: SupervisorState) -> dict[str, Any]:
         started = time.monotonic()
@@ -510,8 +578,7 @@ def build_supervisor_graph(
         )
         clarification = ""
         if writing_result is not None:
-            writing_message = writing_result.result.get("message")
-            writing_text = writing_message if isinstance(writing_message, str) else ""
+            writing_text = display_message("writing", writing_result.result)
             if len(successes) == 1:
                 # 글쓰기만 단독으로 성공했으면 종합할 것이 없다. 되묻기(CLARIFICATION_REQUIRED)도
                 # 그대로 전달한다.
@@ -531,10 +598,8 @@ def build_supervisor_graph(
                 "_used_model": True,
             }
         except Exception:
-            message = "\n".join(
-                f"[{item.agent}] "
-                + json.dumps(item.result, ensure_ascii=False, sort_keys=True)
-                for item in successes
+            message = fallback_message(successes) or (
+                "코치들의 의견을 모으지 못했습니다. 잠시 후 다시 시도해 주세요."
             )
         return {"final_message": _with_clarification(message, clarification)}
 

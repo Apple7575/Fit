@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { ApiError } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { SiteHeader } from '../../components/layout/SiteHeader';
 import { useAuth } from '../../features/auth/AuthProvider';
@@ -34,7 +34,7 @@ export function MyPage() {
       window.alert('회원탈퇴가 완료되었습니다.');
       navigate('/', { replace: true });
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '회원탈퇴에 실패했습니다.');
+      setError(userMessage(caught, '회원탈퇴에 실패했습니다.'));
       setSubmitting(false);
     }
   };
@@ -54,7 +54,7 @@ export function MyPage() {
           <dl className="mt-6 divide-y divide-slate-100">
             <div className="grid gap-1 py-4 sm:grid-cols-[9rem_1fr] sm:items-center">
               <dt className="text-sm font-semibold text-slate-500">닉네임</dt>
-              <dd className="font-bold text-slate-900">{user.nickname}</dd>
+              <dd className="font-bold break-all text-slate-900">{user.nickname}</dd>
             </div>
             <div className="grid gap-1 py-4 sm:grid-cols-[9rem_1fr] sm:items-center">
               <dt className="text-sm font-semibold text-slate-500">이메일</dt>

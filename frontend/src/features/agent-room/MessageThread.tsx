@@ -111,7 +111,7 @@ function EvidenceList({ evidences }: { evidences: Evidence[] }) {
       {opened && (opened.snippet || opened.url) && (
         <div className="mt-1.5 rounded-xl border border-slate-200 bg-white p-2.5">
           {opened.snippet && (
-            <p className="text-[12px] leading-5 break-keep whitespace-pre-wrap text-slate-600">
+            <p className="text-[12px] leading-5 break-keep wrap-anywhere whitespace-pre-wrap text-slate-600">
               {opened.snippet}
             </p>
           )}
@@ -162,7 +162,7 @@ function UserRow({ message, ring }: { message: RoomMessage; ring: string }) {
         className={`relative max-w-[78%] rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 ${ring}`}
       >
         <Tail side="right" tint="#ffffff" line="#e2e8f0" />
-        <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
+        <p className="text-[13px] leading-relaxed break-keep wrap-anywhere whitespace-pre-wrap text-slate-800">
           {message.content}
         </p>
       </div>
@@ -248,7 +248,7 @@ function AgentRow({
                 {waitingText(message.status)}
               </p>
             ) : (
-              <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-slate-800">
+              <p className="text-[13px] leading-relaxed break-keep wrap-anywhere whitespace-pre-wrap text-slate-800">
                 {message.content}
               </p>
             )}
@@ -315,12 +315,22 @@ export function MessageThread({ messages, running, agentNames }: MessageThreadPr
   };
 
   const lookup = new Map(messages.map((message) => [message.messageId, message]));
-  const answered = new Set(
-    messages.filter((message) => message.role === 'agent').map((message) => message.agentKey),
+  /*
+   * 이번 턴에 이미 자리가 생긴 담당. 자리가 있으면 그 줄이 스스로 상태를 보여 주므로
+   * (AgentRow 가 PENDING·RUNNING 을 그린다) 대기 줄을 덧붙이지 않는다.
+   *
+   * <p>턴을 가리지 않고 모으면 지난 턴이나 자동 검토의 답변 때문에 모든 담당이 "답한 것" 이
+   * 되어, 정작 이번 턴의 대기 줄이 통째로 사라진다. 두 번째 말부터는 기다리는 동안 화면이
+   * 멈춘 것처럼 보였던 이유다.
+   */
+  const seatedThisTurn = new Set(
+    messages
+      .filter((message) => message.role === 'agent' && message.turnId === running?.turnId)
+      .map((message) => message.agentKey),
   );
   const waiting = (running?.agents ?? [])
     .concat(running?.supervisor ? [running.supervisor] : [])
-    .filter((agent) => !answered.has(agent.agentKey) && agent.status !== 'DONE');
+    .filter((agent) => !seatedThisTurn.has(agent.agentKey) && agent.status !== 'DONE');
 
   if (messages.length === 0 && waiting.length === 0) {
     return (
