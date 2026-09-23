@@ -66,8 +66,15 @@ class QwenSupervisorModel:
         self,
         config: Mapping[str, str],
         qwen_caller: Callable[..., dict[str, Any]] = call_qwen,
+        aggregate_config: Mapping[str, str] | None = None,
     ) -> None:
+        """
+        @param config           계획(담당 고르기)에 쓰는 모델 설정. 분류 한 번이라 가벼운 모델
+        @param aggregate_config 종합에 쓰는 모델 설정. 판단 품질이 중요해 다른 모델을 둘 수 있다.
+                                없으면 계획과 같은 모델을 쓴다
+        """
         self._config = dict(config)
+        self._aggregate_config = dict(aggregate_config) if aggregate_config is not None else self._config
         self._qwen_caller = qwen_caller
 
     def create_plan(
@@ -160,7 +167,7 @@ class QwenSupervisorModel:
                     "담당 결과들을 연결한 판단으로 쓴다."
                 )
             response = self._qwen_caller(
-                self._config,
+                self._aggregate_config,
                 [
                     {"role": "system", "content": with_common_rules(FORMAT_INSTRUCTION)},
                     {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},

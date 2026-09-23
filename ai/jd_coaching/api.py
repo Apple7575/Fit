@@ -264,7 +264,7 @@ def get_analysis_service() -> JdAnalysisService:
     env_file = Path(
         os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env"))
     )
-    config = load_qwen_config(env_file)
+    config = load_qwen_config(env_file, prefix="JD")
     policy = json.loads(
         (RESOURCE_ROOT / "connection-policy-v1.json").read_text(encoding="utf-8")
     )
@@ -294,7 +294,7 @@ def get_chat_service() -> ChatService:
         os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env"))
     )
     return ChatService(
-        config=load_qwen_config(env_file),
+        config=load_qwen_config(env_file, prefix="JD"),
         store=get_conversation_store(),
     )
 
@@ -302,7 +302,7 @@ def get_chat_service() -> ChatService:
 @lru_cache(maxsize=1)
 def get_stateless_chat_service() -> StatelessChatService:
     env_file = Path(os.environ.get("JD_QWEN_ENV_FILE", str(AI_ROOT / ".env")))
-    return StatelessChatService(config=load_qwen_config(env_file))
+    return StatelessChatService(config=load_qwen_config(env_file, prefix="JD"))
 
 
 def _required_database_url() -> str:

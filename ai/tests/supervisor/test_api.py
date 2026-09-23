@@ -548,10 +548,12 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_root = Path(temporary_directory)
             supervisor_env = temporary_root / "supervisor.env"
+            # 총괄의 계획·종합은 담당별 기본 배정(GMS 경유 OpenAI·Claude)을 따르므로 GMS_KEY 가 있어야 뜬다.
             supervisor_env.write_text(
                 "QWEN_BASE_URL=http://qwen.test\n"
                 "QWEN_MODEL=qwen-test\n"
-                "QWEN_API_KEY=test-key\n",
+                "QWEN_API_KEY=test-key\n"
+                "GMS_KEY=test-gms-key\n",
                 encoding="utf-8",
             )
             missing_writing_env = temporary_root / "missing-writing.env"

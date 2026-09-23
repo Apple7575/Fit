@@ -15,13 +15,17 @@ CONNECTION_LABELS = {
 }
 
 
-def load_qwen_config(path: Path) -> dict[str, str]:
-    """LLM 설정을 읽는다. 이름은 Qwen 이지만 `LLM_PROVIDER` 에 따라 GMS 설정이 올 수도 있다.
+def load_qwen_config(path: Path, *, prefix: str = "") -> dict[str, str]:
+    """LLM 설정을 읽는다. 이름은 Qwen 이지만 공급자·모델은 설정이 정한다.
+
+    `prefix` 는 담당 이름(JD·POSITION·WRITING·SUPERVISOR_PLAN·SUPERVISOR_AGGREGATE·NEWS).
+    담당별 기본 배정(`ai.llm.config.AGENT_DEFAULTS`)과 `<PREFIX>_LLM_*` 덮어쓰기가 여기서 적용된다.
+    비우면 전역 `LLM_PROVIDER` 를 따른다.
 
     이름을 그대로 둔 것은 담당 다섯이 이 함수를 부르고 있어서다. 공급자 전환을 이름 바꾸기와
     섞으면 무엇 때문에 깨졌는지 가려진다 — 이름 정리는 전환이 끝난 뒤에 한다.
     """
-    return load_llm_config(path).as_dict()
+    return load_llm_config(path, prefix=prefix).as_dict()
 
 
 def build_messages(

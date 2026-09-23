@@ -144,5 +144,31 @@ class GmsRequestGate:
         self._condition.notify_all()
 
 
+_REGISTRY_LOCK = threading.Lock()
+_GATES: dict[str, GmsRequestGate] = {}
+
+
+def gate_for(key: str) -> GmsRequestGate:
+    """`공급자:모델` 마다 게이트 하나. 한도는 모델별로 따로 잡히므로 줄도 따로 선다.
+
+    한 줄에 전부 세우면 flash-lite 가 429 를 받았을 때 GPT·Claude 호출까지 멈추고,
+    모델을 나눠도 처리량이 한 모델일 때와 같아진다. 설정값은 아직 모델 공통이다.
+    """
+    with _REGISTRY_LOCK:
+        gate = _GATES.get(key)
+        if gate is None:
+            import os
+
+            gate = GmsRequestGate(GmsGateSettings.from_env(os.environ))
+            _GATES[key] = gate
+        return gate
+
+
+def reset_gates() -> None:
+    """테스트가 설정을 바꾼 뒤 게이트를 새로 만들게 한다."""
+    with _REGISTRY_LOCK:
+        _GATES.clear()
+
+
 def _seconds(value: float) -> int:
     return max(1, round(value))

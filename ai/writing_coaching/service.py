@@ -57,7 +57,7 @@ class WritingService:
             except Exception as error:
                 raise WritingProviderError("writing provider request failed") from error
             try:
-                return validate_writing_output(_normalize_output(response["output"]), request)
+                return validate_writing_output(_normalize_output(response["output"], request), request)
             except (KeyError, TypeError, ValueError) as error:
                 validation_error = str(error)
                 if attempt == 1:
@@ -68,16 +68,28 @@ class WritingService:
         raise RuntimeError("writing response validation failed")
 
 
-def _normalize_output(output: object) -> object:
-    """모델이 빈 배열 자리에 null 을 넣는 흔한 실수를 검증 전에 바로잡는다."""
+def _normalize_output(output: object, request: WritingMessageRequest | None = None) -> object:
+    """모델의 흔한 형식 실수를 검증 전에 바로잡는다.
+
+    - 빈 배열 자리에 null 을 넣는다 → [] 로.
+    - 받은 피드백에 없는 feedback_id 를 applied_feedback_ids 에 지어 넣는다(특히 피드백이 하나도
+      없는 전담 방에서 gemini-2.5-flash 가 그랬다) → 아는 id 만 남긴다. 어떤 피드백을 반영했다는
+      표시일 뿐 문장 내용에는 영향이 없어, 거절해 턴 전체를 실패시키는 것보다 낫다.
+    """
     if not isinstance(output, dict):
         return output
+    known_ids = {item.feedback_id for item in request.feedback} if request is not None else None
     revision = output.get("revision")
     if isinstance(revision, dict):
         for key in ("changes", "warnings"):
             if revision.get(key) is None:
                 revision[key] = []
         for change in revision.get("changes") or []:
-            if isinstance(change, dict) and change.get("applied_feedback_ids") is None:
+            if not isinstance(change, dict):
+                continue
+            ids = change.get("applied_feedback_ids")
+            if ids is None:
                 change["applied_feedback_ids"] = []
+            elif known_ids is not None and isinstance(ids, list):
+                change["applied_feedback_ids"] = [item for item in ids if item in known_ids]
     return output

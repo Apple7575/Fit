@@ -3,11 +3,16 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from ai.llm import gms, vllm
-from ai.llm.config import DEFAULT_PROVIDER, GMS, PROVIDERS, VLLM
+from ai.llm import anthropic, gms, openai, vllm
+from ai.llm.config import ANTHROPIC, DEFAULT_PROVIDER, GMS, OPENAI, PROVIDERS, VLLM
 from ai.llm.contracts import StructuredCompletion
 
-_ADAPTERS = {VLLM: vllm.complete, GMS: gms.complete}
+_ADAPTERS = {
+    VLLM: vllm.complete,
+    GMS: gms.complete,
+    OPENAI: openai.complete,
+    ANTHROPIC: anthropic.complete,
+}
 
 
 def complete_structured(

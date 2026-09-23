@@ -61,6 +61,20 @@ class WritingServiceTest(unittest.TestCase):
         self.assertEqual(caller.calls[0]["schema_name"], "writing_message_v1")
         self.assertIsInstance(caller.calls[0]["schema"], dict)
 
+    def test_drops_made_up_feedback_ids_instead_of_failing(self):
+        """피드백이 하나도 없는 전담 방에서 모델이 feedback_id 를 지어 넣었다. 표시일 뿐이라 걸러 낸다."""
+        output = valid_revised_output()
+        output["revision"]["changes"] = [{
+            "type": "CLARITY", "before": "API를", "after": "API를",
+            "reason": "정리", "applied_feedback_ids": ["feedback-1", "ghost"],
+        }]
+        caller = FakeQwenCaller([output])
+
+        result = WritingService(CONFIG, qwen_caller=caller).respond(REQUEST)
+
+        self.assertEqual(len(caller.calls), 1)
+        self.assertEqual(result.revision.changes[0].applied_feedback_ids, [])
+
     def test_retries_one_validation_failure_with_error_context(self):
         caller = FakeQwenCaller([
             valid_revised_output(revised_text="원문에 없는 90% 성과"),
