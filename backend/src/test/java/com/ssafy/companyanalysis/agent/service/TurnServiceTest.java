@@ -9,6 +9,8 @@ import com.ssafy.companyanalysis.agent.domain.RoomAgent;
 import com.ssafy.companyanalysis.agent.dto.MessageSendRequest;
 import com.ssafy.companyanalysis.agent.dto.TurnStartedResponse;
 import com.ssafy.companyanalysis.agent.dto.TurnStatusResponse;
+import com.ssafy.companyanalysis.agent.policy.AgentInputPolicy;
+import com.ssafy.companyanalysis.agent.policy.PolicyTextNormalizer;
 import com.ssafy.companyanalysis.agent.repository.JobContextRepository;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
 import com.ssafy.companyanalysis.agent.repository.RoomRepository;
@@ -70,6 +72,7 @@ class TurnServiceTest {
                 itemRepository, turnExecutor,
                 new AnalysisRateLimiter(100, java.time.Duration.ofHours(1)),
                 new com.ssafy.companyanalysis.agent.config.AgentCatalogProperties(java.util.Set.of()),
+                new AgentInputPolicy(new PolicyTextNormalizer()),
                 noTransaction());
 
         AtomicLong seq = new AtomicLong(100);
@@ -124,6 +127,7 @@ class TurnServiceTest {
                 itemRepository, turnExecutor,
                 new AnalysisRateLimiter(limit, java.time.Duration.ofHours(1)),
                 new com.ssafy.companyanalysis.agent.config.AgentCatalogProperties(java.util.Set.of()),
+                new AgentInputPolicy(new PolicyTextNormalizer()),
                 noTransaction());
     }
 
@@ -181,6 +185,33 @@ class TurnServiceTest {
         ArgumentCaptor<Message> saved = ArgumentCaptor.forClass(Message.class);
         then(messageRepository).should(org.mockito.Mockito.times(2)).save(saved.capture());
         assertThat(saved.getAllValues().get(1).getContent()).isEqualTo(InputGuard.JAILBREAK_REPLY);
+    }
+
+    @Test
+    @DisplayName("무관한 질문은 방의 담당 종류와 관계없이 AI 호출 전에 같은 문장으로 거절한다")
+    void offTopicMessageIsRefusedBeforeEveryAgent() {
+        for (String agentKey : List.of("jd", "position", "company", "writing", "news", "supervisor")) {
+            Mockito.reset(roomRepository, messageRepository, turnExecutor);
+            AtomicLong seq = new AtomicLong(100);
+            given(messageRepository.save(any(Message.class)))
+                    .willAnswer(call -> withId(call.getArgument(0), seq.incrementAndGet()));
+            roomWith(agentKey);
+
+            TurnStartedResponse started = service.start(USER, ROOM,
+                    new MessageSendRequest("배가 고픈데 점심 추천 좀 해줘", null));
+
+            then(turnExecutor).shouldHaveNoInteractions();
+            assertThat(started.status()).as(agentKey).isEqualTo("DONE");
+            assertThat(started.agents()).as(agentKey).singleElement().satisfies(slot -> {
+                assertThat(slot.agentKey()).isEqualTo(agentKey);
+                assertThat(slot.status()).isEqualTo("DONE");
+            });
+            ArgumentCaptor<Message> saved = ArgumentCaptor.forClass(Message.class);
+            then(messageRepository).should(org.mockito.Mockito.times(2)).save(saved.capture());
+            assertThat(saved.getAllValues().get(1).getContent()).isEqualTo(
+                    "이 방에서는 자소서와 지원 준비에 관한 질문에만 답할 수 있습니다. "
+                            + "자소서나 지원 공고에 대해 물어봐 주세요.");
+        }
     }
 
     @Test
@@ -309,6 +340,7 @@ class TurnServiceTest {
                 new AnalysisRateLimiter(100, java.time.Duration.ofHours(1)),
                 new com.ssafy.companyanalysis.agent.config.AgentCatalogProperties(
                         java.util.Set.of(), java.util.Set.of(disabled)),
+                new AgentInputPolicy(new PolicyTextNormalizer()),
                 noTransaction());
     }
 

@@ -11,6 +11,9 @@ import com.ssafy.companyanalysis.agent.domain.Room;
 import com.ssafy.companyanalysis.agent.dto.MessageSendRequest;
 import com.ssafy.companyanalysis.agent.dto.TurnStartedResponse;
 import com.ssafy.companyanalysis.agent.dto.TurnStatusResponse;
+import com.ssafy.companyanalysis.agent.policy.AgentInputPolicy;
+import com.ssafy.companyanalysis.agent.policy.InputSource;
+import com.ssafy.companyanalysis.agent.policy.PolicyDecision;
 import com.ssafy.companyanalysis.agent.repository.JobContextRepository;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
 import com.ssafy.companyanalysis.agent.repository.RoomRepository;
@@ -65,6 +68,7 @@ public class TurnService {
     private final TurnExecutor turnExecutor;
     private final AnalysisRateLimiter rateLimiter;
     private final AgentCatalogProperties properties;
+    private final AgentInputPolicy inputPolicy;
     private final TransactionTemplate transactionTemplate;
 
     public TurnService(RoomRepository roomRepository,
@@ -74,6 +78,7 @@ public class TurnService {
                        TurnExecutor turnExecutor,
                        AnalysisRateLimiter rateLimiter,
                        AgentCatalogProperties properties,
+                       AgentInputPolicy inputPolicy,
                        PlatformTransactionManager transactionManager) {
         this.roomRepository = roomRepository;
         this.messageRepository = messageRepository;
@@ -82,6 +87,7 @@ public class TurnService {
         this.turnExecutor = turnExecutor;
         this.rateLimiter = rateLimiter;
         this.properties = properties;
+        this.inputPolicy = inputPolicy;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
@@ -99,8 +105,18 @@ public class TurnService {
         }
         rateLimiter.check(userId);
 
-        List<CoverLetterItem> items = targetItems(room, request.coverLetterItemId());
         String content = request.content().trim();
+        PolicyDecision policyDecision = inputPolicy.evaluate(content, InputSource.CHAT);
+        if (!policyDecision.allowsExecution()) {
+            List<String> agentKeys = refusalParticipants(room);
+            if (agentKeys.isEmpty()) {
+                throw new BusinessException(ErrorCode.INVALID_PARAMETER, "이 방에서 사용할 수 있는 담당이 없습니다.");
+            }
+            OpenedTurn refused = openRefusedTurn(roomId, agentKeys, content, policyDecision.reply());
+            return refusedResponse(refused);
+        }
+
+        List<CoverLetterItem> items = targetItems(room, request.coverLetterItemId());
         TurnContext context = contextOf(room, items, content, request.writingReview());
 
         AgentContexts.Request plan = AgentContexts.of(context);
@@ -114,14 +130,7 @@ public class TurnService {
         Optional<InputGuard.Verdict> blocked = InputGuard.screen(content);
         if (blocked.isPresent()) {
             OpenedTurn refused = openRefusedTurn(roomId, agentKeys, content, blocked.get().reply());
-            return new TurnStartedResponse(
-                    refused.rootId(),
-                    refused.rootId(),
-                    MessageStatus.DONE.name(),
-                    refused.slots().stream()
-                            .map(slot -> new TurnStartedResponse.AgentSlot(
-                                    slot.getAgentKey(), slot.getStatus().name()))
-                            .toList());
+            return refusedResponse(refused);
         }
 
         OpenedTurn turn = openTurn(roomId, agentKeys, content);
@@ -136,6 +145,28 @@ public class TurnService {
                         .map(slot -> new TurnStartedResponse.AgentSlot(
                                 slot.getAgentKey(), slot.getStatus().name()))
                         .toList());
+    }
+
+    private TurnStartedResponse refusedResponse(OpenedTurn refused) {
+        return new TurnStartedResponse(
+                refused.rootId(),
+                refused.rootId(),
+                MessageStatus.DONE.name(),
+                refused.slots().stream()
+                        .map(slot -> new TurnStartedResponse.AgentSlot(
+                                slot.getAgentKey(), slot.getStatus().name()))
+                        .toList());
+    }
+
+    private List<String> refusalParticipants(Room room) {
+        List<String> keys = new ArrayList<>(room.getAgents().stream()
+                .filter(agent -> properties.isAgentVisible(agent.agentKey()))
+                .map(agent -> agent.agentKey())
+                .toList());
+        if (keys.size() >= 2 && !keys.contains(AgentType.SUPERVISOR.key())) {
+            keys.add(AgentType.SUPERVISOR.key());
+        }
+        return keys;
     }
 
     /** 자동 검토 한 바퀴가 쓸 한도. 방마다가 아니라 바퀴마다 한 장이다. */
