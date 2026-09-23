@@ -102,7 +102,7 @@ class PositionAnalysisService:
 
 
 def build_model_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
-    """모델에게 보낼 스키마. 저장 스키마(position-analysis-v2.json)에서 세 가지를 뺀다.
+    """모델에게 보낼 스키마. 저장 스키마(position-analysis-v2.json)에서 코드 소유 필드를 뺀다.
 
     1. 빈 결과 탈출구. 문서가 있는데도 모델이 NO_EXPERIENCE_CLAIM + findings [] 라는 가장 짧은
        유효 출력으로 빠져나가는 일이 실측에서 매번 재현됐다(프롬프트 지시로는 막히지 않음).
@@ -110,6 +110,8 @@ def build_model_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
     2. rubric·model_metadata. 코드가 채우는 값이라 모델이 만들 이유가 없다.
     3. claim 의 start_offset·end_offset. 모델의 위치 계산은 자주 틀리고 검증도 결국
        text.find 로 다시 찾는다. quote 만 받고 위치는 코드가 잡는다.
+    4. missing_elements·verdict. present_elements 와 루브릭으로 값이 정해지므로 모델이 만들면
+       중복 요소나 누락 때문에 서로 모순될 수 있다. 코드는 근거 요소만 받아 두 값을 계산한다.
     """
     model_schema = copy.deepcopy(dict(schema))
     model_schema["required"] = ["analysis_status", "findings"]
@@ -124,6 +126,13 @@ def build_model_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
     claim["properties"].pop("start_offset", None)
     claim["properties"].pop("end_offset", None)
     claim["properties"]["quote"]["maxLength"] = MAX_CLAIM_QUOTE_CHARS
+    finding = findings["items"]
+    finding["required"] = [
+        field for field in finding["required"]
+        if field not in {"missing_elements", "verdict"}
+    ]
+    finding["properties"].pop("missing_elements", None)
+    finding["properties"].pop("verdict", None)
     element_quote = findings["items"]["properties"]["present_elements"]["items"]["properties"]["quote"]
     element_quote["maxLength"] = MAX_ELEMENT_QUOTE_CHARS
     return model_schema
@@ -134,10 +143,40 @@ def complete_model_output(
     documents: Sequence[Mapping[str, str]],
     rubric: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """모델이 빼고 낸 rubric 과 claim 위치를 채워 저장 스키마 모양으로 맞춘다."""
+    """모델 응답의 코드 소유 필드를 채워 저장 스키마 모양으로 맞춘다."""
     output.setdefault("rubric", {"id": rubric["rubric_id"], "version": rubric["version"]})
     texts = {document["document_id"]: document["text"] for document in documents}
+    required_by_claim_type = {
+        item["code"]: item["required_elements"] for item in rubric.get("claim_types", [])
+    }
     for finding in output.get("findings") or []:
+        required = required_by_claim_type.get(finding.get("claim_type"))
+        present_elements = finding.get("present_elements")
+        if required is not None and isinstance(present_elements, list):
+            normalized_present = []
+            seen = set()
+            for item in present_elements:
+                if not isinstance(item, Mapping):
+                    normalized_present.append(item)
+                    continue
+                element = item.get("element")
+                if element not in required or element in seen:
+                    continue
+                seen.add(element)
+                normalized_present.append(item)
+            finding["present_elements"] = normalized_present
+            finding["missing_elements"] = [
+                element for element in required if element not in seen
+            ]
+            finding["verdict"] = (
+                "SUFFICIENT"
+                if len(seen) == len(required)
+                else "PARTIAL"
+                if "ACTION" in seen
+                else "CLAIM_ONLY"
+            )
+            if finding["verdict"] == "SUFFICIENT":
+                finding["follow_up_questions"] = []
         claim = finding.get("claim")
         if not isinstance(claim, dict) or "start_offset" in claim:
             continue
