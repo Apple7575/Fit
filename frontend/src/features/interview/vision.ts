@@ -543,27 +543,27 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     rows.push(
       m.inFrameRatio >= FRAMING_OK
         ? row('얼굴 위치', pct(m.inFrameRatio), 'good')
-        : row('얼굴 위치', pct(m.inFrameRatio), 'warn', '화면을 조금 벗어난 편이에요. 가운데에 두면 좋아요'),
+        : row('얼굴 위치', pct(m.inFrameRatio), 'warn', '화면을 조금 벗어난 편이에요. 얼굴을 화면 가운데에 두세요'),
     );
     rows.push(
       m.frontalRatio >= FRONTAL_OK
         ? row('정면 유지', pct(m.frontalRatio), 'good')
-        : row('정면 유지', pct(m.frontalRatio), 'warn', '고개가 조금 돌아간 편이에요'),
+        : row('정면 유지', pct(m.frontalRatio), 'warn', '고개가 조금 돌아간 편이에요. 어깨와 고개를 카메라 쪽으로 맞춰 보세요'),
     );
     rows.push(
       m.gazeRatio >= GAZE_OK
         ? row('카메라 응시', pct(m.gazeRatio), 'good')
-        : row('카메라 응시', pct(m.gazeRatio), 'warn', '시선이 렌즈를 조금 비껴간 편이에요'),
+        : row('카메라 응시', pct(m.gazeRatio), 'warn', '시선이 렌즈를 조금 비껴간 편이에요. 화면 말고 렌즈를 보며 말해 보세요'),
     );
     rows.push(
       m.headMovement <= MOVEMENT_WARN
         ? row('고개 흔들림', '안정적', 'good')
-        : row('고개 흔들림', '조금 잦음', 'warn', '고개가 자주 움직인 편이에요'),
+        : row('고개 흔들림', '조금 잦음', 'warn', '고개가 자주 움직인 편이에요. 말할 때 턱을 한자리에 두어 보세요'),
     );
     rows.push(
       m.headDownRatio <= HEAD_DOWN_WARN
         ? row('고개 각도', '든 상태 유지', 'good')
-        : row('고개 각도', `숙임 ${pct(m.headDownRatio)}`, 'warn', '말할 때 고개가 내려가는 편이에요'),
+        : row('고개 각도', `숙임 ${pct(m.headDownRatio)}`, 'warn', '말할 때 고개가 내려가는 편이에요. 화면을 눈높이까지 올려 보세요'),
     );
   } else {
     // 인식 실패는 사용자가 고칠 점이 아니다. 고칠 것으로 세지 않고 안내만 한다
@@ -578,12 +578,12 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     rows.push(
       m.postureStable >= POSTURE_OK
         ? row('상체 안정', '안정적', 'good')
-        : row('상체 안정', '조금 흔들림', 'warn', '상체가 자주 움직인 편이에요'),
+        : row('상체 안정', '조금 흔들림', 'warn', '상체가 자주 움직인 편이에요. 등을 의자에 붙이고 앉아 보세요'),
     );
     rows.push(
       m.postureTiltDeg <= TILT_WARN
         ? row('어깨 수평', '반듯함', 'good')
-        : row('어깨 수평', `${m.postureTiltDeg}° 기울어짐`, 'warn', '한쪽으로 조금 기운 편이에요'),
+        : row('어깨 수평', `${m.postureTiltDeg}° 기울어짐`, 'warn', '한쪽으로 조금 기운 편이에요. 양쪽 팔을 같은 높이에 두어 보세요'),
     );
   }
 
@@ -592,7 +592,7 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     rows.push(
       m.headRollDeg <= ROLL_WARN
         ? row('고개 기울기', '반듯함', 'good')
-        : row('고개 기울기', `${m.headRollDeg}° 기울어짐`, 'warn', '고개가 한쪽으로 조금 기운 편이에요'),
+        : row('고개 기울기', `${m.headRollDeg}° 기울어짐`, 'warn', '고개가 한쪽으로 조금 기운 편이에요. 화면 속 내 모습으로 한 번 맞춰 보세요'),
     );
   }
 
@@ -604,7 +604,7 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     rows.push(
       m.expressionRange >= EXPRESSION_FLAT
         ? row('표정', `웃는 표정 ${pct(m.smileRatio)}`, 'good')
-        : row('표정', '거의 그대로', 'warn', '표정이 내내 굳어 있던 편이에요'),
+        : row('표정', '거의 그대로', 'warn', '표정이 내내 굳어 있던 편이에요. 첫 인사만이라도 입꼬리를 올려 보세요'),
     );
   } else {
     rows.push(row('표정', '재지 못함', 'none', '얼굴이 또렷하게 잡혀야 표정을 볼 수 있어요'));
@@ -615,7 +615,7 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     rows.push(
       m.gestureAmount <= GESTURE_BUSY
         ? row('손짓', '차분함', 'good')
-        : row('손짓', '조금 잦음', 'warn', '손이 자주 움직인 편이에요'),
+        : row('손짓', '조금 잦음', 'warn', '손이 자주 움직인 편이에요. 손은 책상 위에 가볍게 두어 보세요'),
     );
   } else if (m.hasPose) {
     rows.push(row('손짓', '재지 못함', 'none', '손이 화면에 거의 안 잡혔어요'));

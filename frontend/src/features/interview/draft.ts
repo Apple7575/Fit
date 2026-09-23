@@ -88,8 +88,38 @@ export function saveDraft(userId: number, draft: InterviewDraft): void {
 export function clearDraft(userId: number): void {
   try {
     localStorage.removeItem(key(userId));
+    localStorage.removeItem(mutedKey(userId));
   } catch {
     /* 무시 */
+  }
+}
+
+/**
+ * "이 면접은 다시 묻지 않기"를 누른 초안.
+ *
+ * <p>목록에 들어올 때마다 창이 뜨는 건 이어서 할 생각인 사람에게는 반가운 일이지만, 그
+ * 면접을 접어 둔 사람에게는 매번 치워야 하는 것이 된다. 그렇다고 한 번 닫았다고 영영
+ * 묻지 않으면 실수로 닫은 사람이 되살릴 길을 잃는다. 그래서 끄는 일은 사용자가 직접
+ * 고르게 한다.
+ *
+ * <p>끈 기록은 초안 하나(localSessionId)에만 걸어 둔다. 다음에 새 면접을 하다 중단하면
+ * 그건 다른 초안이므로 다시 물어본다.
+ */
+const mutedKey = (userId: number) => `interview:draft:muted:v1:${userId}`;
+
+export function isPromptMuted(userId: number, localSessionId: string): boolean {
+  try {
+    return localStorage.getItem(mutedKey(userId)) === localSessionId;
+  } catch {
+    return false;
+  }
+}
+
+export function mutePrompt(userId: number, localSessionId: string): void {
+  try {
+    localStorage.setItem(mutedKey(userId), localSessionId);
+  } catch {
+    /* 무시 — 못 껐으면 다음에 한 번 더 물어볼 뿐이다 */
   }
 }
 

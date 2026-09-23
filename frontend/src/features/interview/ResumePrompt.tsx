@@ -12,6 +12,8 @@ interface ResumePromptProps {
   total: number | null;
   onResume: () => void;
   onDismiss: () => void;
+  /** 이 면접에 대해 다시 묻지 않기 */
+  onMute: () => void;
 }
 
 /**
@@ -33,6 +35,7 @@ export function ResumePrompt({
   total,
   onResume,
   onDismiss,
+  onMute,
 }: ResumePromptProps) {
   const resumeRef = useRef<HTMLButtonElement>(null);
   // 창을 열기 전에 어디에 있었는지. 닫을 때 그 자리로 초점을 돌려준다
@@ -101,6 +104,18 @@ export function ResumePrompt({
             나중에 할게요
           </button>
         </div>
+
+        {/*
+          목록에 들어올 때마다 뜨는 창을 끌 길은 있어야 한다. 다만 끄더라도 아래 '내 모의
+          면접' 목록에는 그대로 남으므로, 마음이 바뀌면 거기서 이어서 할 수 있다.
+        */}
+        <button
+          className="mt-3 text-[12px] font-semibold text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline"
+          onClick={onMute}
+          type="button"
+        >
+          이 면접은 다시 묻지 않기
+        </button>
       </div>
     </div>
   );
