@@ -31,11 +31,22 @@ const EYE_R_INNER = 362;
 const EYE_R_OUTER = 263;
 const IRIS_L = 468;
 const IRIS_R = 473;
+/** 위·아래 눈꺼풀. 눈꺼풀 사이에서 홍채가 어느 높이에 있는지로 세로 시선을 본다 */
+const LID_L_UP = 159;
+const LID_L_DOWN = 145;
+const LID_R_UP = 386;
+const LID_R_DOWN = 374;
 // Pose(33) 어깨·팔
 const SHOULDER_L = 11;
 const SHOULDER_R = 12;
 const WRIST_L = 15;
 const WRIST_R = 16;
+/** 이만큼은 모여야 기준으로 쓴다 (0.1초에 한 장이므로 2초치) */
+const MIN_CALIB_FRAMES = 20;
+
+/** 눈꺼풀 간격이 이보다 좁으면 감은 것으로 보고 세로 시선을 재지 않는다 */
+const MIN_LID_OPEN = 0.008;
+
 /** 이 값 아래면 그 점은 화면에서 제대로 안 잡힌 것으로 본다 */
 const VISIBLE = 0.5;
 
@@ -108,7 +119,9 @@ interface FaceFrame {
   centerY: number;
   height: number;
   yawAsym: number; // 0 정면
-  gazeOffset: number; // |평균 홍채 오프셋 - 0.5|
+  gazeOffset: number; // |평균 홍채 오프셋 - 0.5| (가로)
+  /** 눈꺼풀 사이 홍채 높이 0~1 (아래일수록 큼). 눈을 감아 못 재면 null */
+  gazeY: number | null;
   /** 눈높이에서 코까지 거리 / 얼굴 높이. 고개를 숙일수록 작아진다 (행렬이 없을 때의 대비책) */
   pitch: number;
   /** 변환 행렬에서 낸 고개 각도. 모델이 행렬을 주지 않으면 null */
@@ -162,6 +175,25 @@ function extractFace(
   // 좌·우 눈은 inner/outer 방향이 반대라 (gl+gr)/2-0.5 로 합치면 수평 시선이 상쇄돼 항상 0에 가까워진다.
   // 눈별 중심(0.5) 편차의 절댓값을 먼저 낸 뒤 평균해야 시선 이탈 정도가 남는다.
   const gazeOffset = (Math.abs(gl - 0.5) + Math.abs(gr - 0.5)) / 2;
+
+  /*
+   * 세로 시선. 위·아래 눈꺼풀 사이에서 홍채가 어느 높이에 있는지를 본다(0 위, 1 아래).
+   *
+   * <p>가로만 재던 때에는 눈을 아래로 내려도 값이 그대로여서, 대본을 보고 있어도 "카메라를
+   * 보고 있다"고 나왔다. 여기에는 정답인 기준값이 없다 — 카메라가 눈높이보다 위에 있으면
+   * 똑바로 봐도 홍채가 내려가 보인다. 그래서 절대값으로 판정하지 않고, 점검 화면에서
+   * 카메라를 볼 때의 값을 기준으로 잡아 두고 그로부터 얼마나 내려갔는지만 본다.
+   *
+   * <p>눈을 감으면 눈꺼풀 간격이 0 에 가까워져 값이 튄다. 그때는 잴 수 없는 것으로 두고
+   * null 을 돌려준다(깜박임을 시선 이탈로 세지 않는다).
+   */
+  const lidRatio = (iris: NormalizedLandmark, up: NormalizedLandmark, down: NormalizedLandmark) => {
+    const open = down.y - up.y;
+    return open > MIN_LID_OPEN ? (iris.y - up.y) / open : null;
+  };
+  const vl = lidRatio(lm[IRIS_L], lm[LID_L_UP], lm[LID_L_DOWN]);
+  const vr = lidRatio(lm[IRIS_R], lm[LID_R_UP], lm[LID_R_DOWN]);
+  const gazeY = vl !== null && vr !== null ? (vl + vr) / 2 : null;
   // 고개를 숙이면 눈-코 간격이 짧아 보인다(원근 단축). 얼굴 높이로 나눠 거리에 영향받지 않게 한다.
   const eyeY = (lm[EYE_L_INNER].y + lm[EYE_L_OUTER].y + lm[EYE_R_INNER].y + lm[EYE_R_OUTER].y) / 4;
   const height = maxY - minY;
@@ -172,6 +204,7 @@ function extractFace(
     height,
     yawAsym,
     gazeOffset,
+    gazeY,
     pitch,
     angles: headAnglesFromMatrix(matrix),
     smile,
@@ -265,6 +298,12 @@ interface Accumulator {
   samples: VisionSample[];
 }
 
+/** 값들의 중앙값. 한두 프레임이 튀어도 흔들리지 않는다 */
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
 /** 답변 첫 2초(20프레임)의 중앙값을 그 사람의 기준 자세로 본다. 표본이 적으면 전체 중앙값. */
 function baseline(values: number[]): number {
   if (values.length === 0) return 0;
@@ -274,24 +313,73 @@ function baseline(values: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+/**
+ * 점검 화면에서 잡아 둔 "이 사람이 카메라를 볼 때"의 자세.
+ *
+ * <p>고개를 얼마나 숙였는지·눈을 얼마나 내렸는지에는 만인 공통의 정답값이 없다. 앉은키도
+ * 다르고, 노트북 카메라가 눈높이보다 위에 있으면 똑바로 봐도 눈이 내려가 보인다. 그래서
+ * 기준이 필요한데, 예전에는 그 기준을 답변 첫 2초에서 잡았다 — 처음부터 숙이고 있으면
+ * 그 자세가 정상으로 등록돼 아무리 아래를 봐도 잡히지 않았다.
+ *
+ * <p>점검 화면에서는 사람이 제 얼굴을 보느라 카메라 쪽을 본다. 거기서 재는 것이 맞다.
+ */
+/** isOnCamera 가 보는 값만 추린 것. 테스트에서 프레임 전체를 지어내지 않아도 되게 한다 */
+export interface GazeFrame {
+  gazeOffset: number;
+  gazeY: number | null;
+  angles: HeadAngles | null;
+}
+
+export interface GazeBaseline {
+  /** 카메라를 볼 때의 고개 각도(도). 행렬을 못 받으면 null */
+  pitchDeg: number | null;
+  /** 카메라를 볼 때의 눈꺼풀 사이 홍채 높이. 못 재면 null */
+  gazeY: number | null;
+}
+
+/** 기준보다 고개가 이만큼(도) 더 내려가면 아래를 보고 있다고 본다 */
+const DOWN_PITCH_DEG = 12;
+/** 기준보다 눈이 이만큼 더 내려가면 아래를 보고 있다고 본다 (눈꺼풀 간격 대비) */
+const DOWN_GAZE_Y = 0.18;
+
+/**
+ * 정면인지. 변환 행렬에서 낸 각도로 보고, 행렬을 못 받는 환경에서는 옛 근사로 떨어진다.
+ * 고개 숙임은 여기 넣지 않는다 — 그것은 기준선과 비교해야 해서 isOnCamera 가 맡는다.
+ */
+const isFrontal = (f: FaceFrame) => (f.angles ? offAxisDeg(f.angles) < FRONTAL_DEG : f.yawAsym < 0.2);
+
+/**
+ * 카메라를 보고 있는지. 가로(홍채)·고개·세로(눈)를 함께 본다.
+ *
+ * <p>기준을 못 잡았으면 그 항목은 빼고 판정한다. 모르는 것을 나쁘게 치지 않는다.
+ */
+export const isOnCamera = (f: GazeFrame, base: GazeBaseline | null) => {
+  if (f.gazeOffset >= 0.15) return false;
+  if (base?.pitchDeg != null && f.angles && f.angles.pitchDeg - base.pitchDeg > DOWN_PITCH_DEG) return false;
+  if (base?.gazeY != null && f.gazeY != null && f.gazeY - base.gazeY > DOWN_GAZE_Y) return false;
+  return true;
+};
+
 /** 기준선보다 이만큼 낮아지면 "고개를 숙였다"고 본다 (얼굴 높이 대비) */
 const PITCH_DROP = 0.03;
 /** 기준선 대비 목 길이가 이 비율 아래로 줄면 "구부정하다"고 본다 */
 const NECK_SHRINK = 0.85;
 
-function summarize(acc: Accumulator): NonverbalMetrics {
+function summarize(acc: Accumulator, base: GazeBaseline | null): NonverbalMetrics {
   const total = acc.total || 1;
   const face = acc.face;
   const faceRatio = face.length / total;
   const inFrameRatio = face.length ? face.filter(inFrame).length / face.length : 0;
-  /*
-   * 정면인지는 변환 행렬에서 낸 각도로 본다. 코와 양 볼 세 점으로 재던 예전 값(yawAsym)은
-   * 고개를 살짝 기울이기만 해도 흔들렸다. 행렬을 못 받는 환경에서는 그 근사로 떨어진다.
-   */
-  const isFrontal = (f: FaceFrame) =>
-    f.angles ? offAxisDeg(f.angles) < FRONTAL_DEG : f.yawAsym < 0.2;
   const frontalRatio = face.length ? face.filter(isFrontal).length / face.length : 0;
-  const gazeRatio = face.length ? face.filter((f) => isFrontal(f) && f.gazeOffset < 0.15).length / face.length : 0;
+  /*
+   * 예전에는 아래를 보는지 판정이 아예 없어서, 대본을 내려다보며 답해도 "카메라 응시 100%"
+   * 가 나왔다 — 가로 홍채 위치만 봤고(눈을 내려도 그대로), 정면 판정은 고개 숙임을 일부러
+   * 뺐고(offAxisDeg), 고개 숙임 지표의 기준선은 답변 첫 2초였다. 셋 다 통과해서, 틀린 값이
+   * 아니라 반드시 만점이 나오는 구조였다.
+   */
+  const gazeRatio = face.length
+    ? face.filter((f) => isFrontal(f) && isOnCamera(f, base)).length / face.length
+    : 0;
   const cx = face.map((f) => f.centerX);
   const cy = face.map((f) => f.centerY);
   const headMovement = clamp01((std(cx, mean(cx)) + std(cy, mean(cy))) * 15);
@@ -370,12 +458,17 @@ function boxOf(f: FaceFrame): { x: number; y: number; w: number; h: number } {
   };
 }
 
-function buildFaceEvents(face: FaceFrame[], t: number[]): ClipEvent[] {
+function buildFaceEvents(face: FaceFrame[], t: number[], base: GazeBaseline | null): ClipEvent[] {
   const pitchBase = baseline(face.map((f) => f.pitch));
+  /*
+   * 판정은 요약(summarize)과 같은 함수를 쓴다. 예전에는 여기만 옛 근사값(yawAsym)을 써서,
+   * 요약은 "시선 이탈 없음" 인데 타임라인에는 이탈 구간이 찍히는 일이 있었다. 주석에는
+   * 같은 기준이라고 적혀 있었지만 실제로는 달랐다.
+   */
   const conds: Array<{ kind: ClipEventKind; bad: (f: FaceFrame) => boolean }> = [
     { kind: 'offframe', bad: (f) => !inFrame(f) },
-    { kind: 'nonfrontal', bad: (f) => f.yawAsym >= 0.2 },
-    { kind: 'gaze', bad: (f) => f.yawAsym < 0.2 && f.gazeOffset >= 0.15 },
+    { kind: 'nonfrontal', bad: (f) => !isFrontal(f) },
+    { kind: 'gaze', bad: (f) => isFrontal(f) && !isOnCamera(f, base) },
     { kind: 'headdown', bad: (f) => f.pitch < pitchBase - PITCH_DROP },
   ];
   const events: ClipEvent[] = [];
@@ -582,6 +675,12 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
   const activeRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef(0);
+  /** 점검 화면에서 잡은 "카메라를 볼 때"의 자세. 문항이 바뀌어도 그대로 쓴다 */
+  const baseRef = useRef<GazeBaseline | null>(null);
+  /** 캘리브레이션 중 모은 표본. 끝낼 때 중앙값만 남기고 버린다 */
+  const calibRef = useRef<{ pitchDeg: number[]; gazeY: number[] }>({ pitchDeg: [], gazeY: [] });
+  /** 지금 도는 루프가 무엇을 하는 중인지 */
+  const modeRef = useRef<'off' | 'calib' | 'rec'>('off');
   const [status, setStatus] = useState<VisionStatus>(() =>
     typeof WebAssembly === 'undefined' ? 'unsupported' : 'loading',
   );
@@ -650,6 +749,8 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
     };
     lastRef.current = 0;
     activeRef.current = true;
+    // 기준(baseRef)은 그대로 둔다. 점검에서 한 번 잡고 문항 내내 쓴다
+    modeRef.current = 'rec';
 
     // 함수 선언(호이스팅)이라 자기 자신을 참조해 재귀 rAF 를 돌릴 수 있다.
     function tick() {
@@ -719,6 +820,65 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
     rafRef.current = requestAnimationFrame(tick);
   }, [status, videoRef]);
 
+  /**
+   * 점검 화면에서 "카메라를 볼 때"의 자세를 모으기 시작한다.
+   *
+   * <p>여기서는 사람이 제 얼굴을 보느라 카메라 쪽을 향한다. 그 자세를 기준으로 삼아야
+   * 답변 중에 얼마나 내려갔는지를 말할 수 있다 — 답변 첫 2초를 기준으로 삼던 예전 방식은
+   * 처음부터 숙이고 있는 사람에게는 그 숙인 자세를 정상으로 등록해 버렸다.
+   */
+  const calibrate = useCallback(() => {
+    if (status !== 'ready' || activeRef.current) return;
+    calibRef.current = { pitchDeg: [], gazeY: [] };
+    modeRef.current = 'calib';
+    activeRef.current = true;
+    lastRef.current = 0;
+
+    function look() {
+      if (!activeRef.current || modeRef.current !== 'calib') return;
+      const video = videoRef.current;
+      const face = faceRef.current;
+      const now = performance.now();
+      if (video && video.readyState >= 2 && face && now - lastRef.current >= DETECT_INTERVAL_MS) {
+        lastRef.current = now;
+        try {
+          const fr = face.detectForVideo(video, now);
+          if (fr.faceLandmarks.length > 0) {
+            const matrix = fr.facialTransformationMatrixes?.[0]?.data ?? null;
+            const f = extractFace(fr.faceLandmarks[0], matrix, null);
+            if (f.angles) calibRef.current.pitchDeg.push(f.angles.pitchDeg);
+            if (f.gazeY !== null) calibRef.current.gazeY.push(f.gazeY);
+          }
+        } catch {
+          /* 개별 프레임 분석 실패는 무시 */
+        }
+      }
+      rafRef.current = requestAnimationFrame(look);
+    }
+    rafRef.current = requestAnimationFrame(look);
+  }, [status, videoRef]);
+
+  /** 모은 표본의 중앙값을 기준으로 굳힌다. 표본이 모자라면 기준을 세우지 않는다 */
+  const endCalibrate = useCallback(() => {
+    if (modeRef.current !== 'calib') return;
+    activeRef.current = false;
+    modeRef.current = 'off';
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    const { pitchDeg, gazeY } = calibRef.current;
+    /*
+     * 잠깐 스쳐 본 몇 프레임으로 기준을 세우면 그 기준이 틀린다. 틀린 기준은 없느니만
+     * 못하므로(멀쩡히 보고 있는데 아래를 본다고 한다) 모자라면 null 로 둔다 — 그 항목은
+     * 판정에서 빠진다.
+     */
+    baseRef.current = {
+      pitchDeg: pitchDeg.length >= MIN_CALIB_FRAMES ? median(pitchDeg) : null,
+      gazeY: gazeY.length >= MIN_CALIB_FRAMES ? median(gazeY) : null,
+    };
+  }, []);
+
   const stop = useCallback((): {
     metrics: NonverbalMetrics;
     events: ClipEvent[];
@@ -732,13 +892,13 @@ export function useVision(videoRef: React.RefObject<HTMLVideoElement | null>) {
     const acc = accRef.current;
     if (acc.total === 0) return null;
     return {
-      metrics: summarize(acc),
-      events: [...buildFaceEvents(acc.face, acc.faceT), ...buildSlouchEvents(acc.neck, acc.neckT)].sort(
+      metrics: summarize(acc, baseRef.current),
+      events: [...buildFaceEvents(acc.face, acc.faceT, baseRef.current), ...buildSlouchEvents(acc.neck, acc.neckT)].sort(
         (a, b) => a.startMs - b.startMs,
       ),
       samples: acc.samples,
     };
   }, []);
 
-  return { status, start, stop };
+  return { status, start, stop, calibrate, endCalibrate };
 }

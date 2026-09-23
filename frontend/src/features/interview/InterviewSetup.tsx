@@ -180,6 +180,8 @@ export function InterviewSetup({ loading, error = null, onStart }: InterviewSetu
           <input
             className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             id="iv-position"
+            // 백엔드 @Size(max=120) 과 같은 값. 넘겨 보내면 저장·분석이 400 으로 막힌다
+            maxLength={120}
             onChange={(e) => setPosition(e.target.value)}
             placeholder="예: 백엔드 개발"
             value={position}
@@ -302,8 +304,12 @@ export function InterviewSetup({ loading, error = null, onStart }: InterviewSetu
 
       {/* 바탕이 이미 어두우므로 검은 바는 묻힌다. 헤더와 같은 유리로 띄운다 */}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/10 px-6 py-5 text-white ring-1 ring-white/20 backdrop-blur">
-        <div>
-          <p className="text-sm font-bold">
+        {/*
+          min-w-0 이 없으면 flex 칸의 최소 너비가 내용 너비가 된다. 직무를 띄어쓰기 없이 길게
+          적으면 그 글자 수만큼 칸이 계속 벌어져 화면이 옆으로 늘어난 것처럼 보였다.
+        */}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold break-keep wrap-anywhere">
             {company || '회사'}
             {position ? ` · ${position}` : ''} 면접
           </p>
