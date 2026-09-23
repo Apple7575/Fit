@@ -131,6 +131,21 @@ def all_contexts():
 
 
 class SupervisorGraphTest(unittest.TestCase):
+    def test_aggregate_fallback_never_exposes_worker_json(self):
+        result = invoke_graph(
+            FakeModel(
+                [SupervisorPlan(selected_agents=["jd"], reason="JD 검토")],
+                aggregate_error=RuntimeError("aggregate unavailable"),
+            ),
+            AgentRegistry([
+                RecordingAdapter("jd", result={"message": "요구 역량을 보강하세요.", "score": 72})
+            ]),
+            {"jd": {"job_context_id": "jctx"}},
+        )
+
+        self.assertEqual(result["final_message"], "### JD 검토\n요구 역량을 보강하세요.")
+        self.assertNotIn('"score"', result["final_message"])
+
     def test_marks_gms_rate_limit_with_stable_worker_error_code(self):
         result = invoke_graph(
             FakeModel([SupervisorPlan(selected_agents=["jd"], reason="JD 검토")]),
@@ -164,8 +179,11 @@ class SupervisorGraphTest(unittest.TestCase):
                 source = payload["analysis"]["signals"][0]["sources"][0]
                 self.assertEqual(source["published_at"], "2026-09-15T12:00:00Z")
                 self.assertEqual(source["url"], "https://example.test/stored/1")
-                self.assertTrue(output["final_message"].startswith("[news]") if fallback
-                                else output["final_message"].startswith("종합 결과"))
+                if fallback:
+                    self.assertTrue(output["final_message"].startswith("### 뉴스 분석\n"))
+                    self.assertNotIn('"analysis"', output["final_message"])
+                else:
+                    self.assertTrue(output["final_message"].startswith("종합 결과"))
 
     def test_dispatches_three_selected_workers_in_parallel(self):
         barrier = threading.Barrier(3, timeout=2)
@@ -733,7 +751,7 @@ class SupervisorGraphTest(unittest.TestCase):
 
         self.assertEqual(
             result["final_message"],
-            "[position] position 의견\n\n[jd] jd 의견",
+            "### 직무 분석\nposition 의견\n\n### JD 검토\njd 의견",
         )
         self.assertEqual(len(result["agent_results"]), 2)
 
