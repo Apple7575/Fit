@@ -31,16 +31,23 @@ export function DocumentPanel({
   state,
   retry,
   selectedItemId,
-  onSelectItem,
+  onReviewItem,
+  reviewingItemId,
+  reviewBusy,
+  reviewError,
 }: {
   state: QueryState<CoverLetter>;
   retry: () => void;
   selectedItemId: number | null;
-  onSelectItem: (itemId: number) => void;
+  onReviewItem: (itemId: number) => void;
+  reviewingItemId: number | null;
+  reviewBusy: boolean;
+  reviewError: string | null;
 }) {
   const [selection, setSelection] = useState<AnswerSelection | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [visibleItemId, setVisibleItemId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!selection) return;
@@ -70,6 +77,11 @@ export function DocumentPanel({
 
   const letter = state.data;
   const meta = [letter.targetCompany, letter.targetPosition].filter(Boolean).join(' · ');
+  const visibleItemIndex = Math.max(
+    0,
+    letter.items.findIndex((item) => item.id === visibleItemId),
+  );
+  const visibleItem = letter.items[visibleItemIndex];
 
   const captureSelection = () => {
     window.setTimeout(() => {
@@ -172,58 +184,88 @@ export function DocumentPanel({
         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-slate-500">
           {meta && <span>{meta}</span>}
         </p>
+        {reviewError && (
+          <p role="alert" className="mt-2 text-[12px] font-semibold text-red-600">
+            {reviewError}
+          </p>
+        )}
+        {letter.items.length > 0 && (
+          <nav aria-label="자소서 문항" className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {letter.items.map((item, index) => {
+              const current = item.id === visibleItem?.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-current={current ? 'step' : undefined}
+                  onClick={() => {
+                    setVisibleItemId(item.id);
+                    setSelection(null);
+                    setSaveError(null);
+                  }}
+                  className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-bold transition ${
+                    current
+                      ? 'bg-slate-900 text-white'
+                      : 'border border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800'
+                  }`}
+                >
+                  문항 {index + 1}
+                </button>
+              );
+            })}
+          </nav>
+        )}
       </header>
 
-      {letter.items.length === 0 ? (
+      {!visibleItem ? (
         <p className="px-4 py-6 text-[13px] text-slate-400">아직 작성한 문항이 없습니다.</p>
       ) : (
-        <ol className="flex-1 divide-y divide-slate-100">
-          {letter.items.map((item, i) => {
-            const selected = item.id === selectedItemId;
-            return (
-              <li
-                className={`px-4 py-5 transition ${selected ? 'bg-blue-50/60' : ''}`}
-                key={item.id}
-              >
-                <div className="flex items-start gap-2.5">
-                  <span className="mt-0.5 shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
-                    문항 {i + 1}
-                  </span>
-                  <h3 className="min-w-0 pt-0.5 text-[14px] font-bold leading-6 break-keep wrap-anywhere text-slate-900">
-                    {item.question}
-                  </h3>
-                  <button
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => onSelectItem(item.id)}
-                    className={`ml-auto shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition ${
-                      selected
-                        ? 'border-blue-600 bg-blue-600 text-white'
-                        : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:text-blue-700'
-                    }`}
-                  >
-                    {selected ? '검토 선택됨' : '이 문항 검토'}
-                  </button>
-                </div>
+        <section
+          className={`flex-1 px-4 py-5 transition ${visibleItem.id === selectedItemId ? 'bg-blue-50/60' : ''}`}
+        >
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
+              문항 {visibleItemIndex + 1}
+            </span>
+            <h3 className="min-w-0 pt-0.5 text-[14px] font-bold leading-6 break-keep wrap-anywhere text-slate-900">
+              {visibleItem.question}
+            </h3>
+            <button
+              type="button"
+              aria-pressed={visibleItem.id === selectedItemId}
+              disabled={reviewBusy}
+              onClick={() => onReviewItem(visibleItem.id)}
+              className={`ml-auto shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition ${
+                visibleItem.id === selectedItemId
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:text-blue-700'
+              } disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400`}
+            >
+              {reviewingItemId === visibleItem.id
+                ? '검토 요청 중…'
+                : reviewBusy && visibleItem.id === selectedItemId
+                  ? '검토 진행 중…'
+                  : visibleItem.id === selectedItemId
+                    ? '다시 검토'
+                    : '이 문항 검토'}
+            </button>
+          </div>
 
-                <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
-                  <p className="mb-1.5 text-[10px] font-bold tracking-wide text-slate-400">답변</p>
-                  <p
-                    className="cursor-text text-[13px] leading-6 break-keep wrap-anywhere whitespace-pre-wrap text-slate-600 selection:bg-blue-200 selection:text-slate-900"
-                    data-cover-letter-answer={i}
-                    title="문장을 드래그하면 선택한 부분만 수정할 수 있습니다"
-                  >
-                    {item.answer || <span className="text-slate-400">아직 비어 있어요</span>}
-                  </p>
-                  <p className="mt-2 text-right text-[11px] tabular-nums text-slate-400">
-                    {item.answer.length}
-                    {item.charLimit > 0 && ` / ${item.charLimit}`}자
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+          <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
+            <p className="mb-1.5 text-[10px] font-bold tracking-wide text-slate-400">답변</p>
+            <p
+              className="cursor-text text-[13px] leading-6 break-keep wrap-anywhere whitespace-pre-wrap text-slate-600 selection:bg-blue-200 selection:text-slate-900"
+              data-cover-letter-answer={visibleItemIndex}
+              title="문장을 드래그하면 선택한 부분만 수정할 수 있습니다"
+            >
+              {visibleItem.answer || <span className="text-slate-400">아직 비어 있어요</span>}
+            </p>
+            <p className="mt-2 text-right text-[11px] tabular-nums text-slate-400">
+              {visibleItem.answer.length}
+              {visibleItem.charLimit > 0 && ` / ${visibleItem.charLimit}`}자
+            </p>
+          </div>
+        </section>
       )}
     </article>
 

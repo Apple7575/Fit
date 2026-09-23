@@ -1,7 +1,8 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useRef, useState, type ReactNode, type UIEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { isNotFound } from '../../api/client';
+import { ApiError, isNotFound, isRateLimited } from '../../api/client';
+import { sendMessage } from './api';
 import { DocumentPanel } from './DocumentPanel';
 import { MessageComposer } from './MessageComposer';
 import { MessageThread } from './MessageThread';
@@ -117,6 +118,8 @@ function RoomBody({
   const [chatOpen, setChatOpen] = useState(true);
   const [closedAtMessageCount, setClosedAtMessageCount] = useState(0);
   const [selection, setSelection] = useState<{ coverLetterId: number; itemId: number } | null>(null);
+  const [reviewingItemId, setReviewingItemId] = useState<number | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   // 자소서 원문은 여기서 한 번만 부른다.
   const doc = useOptionalCoverLetter(data.coverLetter?.id ?? null);
   const agentNames = Object.fromEntries(data.agents.map((agent) => [agent.agentKey, agent.name]));
@@ -163,6 +166,39 @@ function RoomBody({
     onStarted(id);
   };
 
+  const reviewItem = async (itemId: number) => {
+    if (busy || reviewingItemId !== null || !data.coverLetter) return;
+
+    setSelection({ coverLetterId: data.coverLetter.id, itemId });
+    setChatOpen(true);
+    followLatestMessage.current = true;
+    setReviewingItemId(itemId);
+    setReviewError(null);
+    try {
+      const started = await sendMessage(
+        roomId,
+        '선택한 자기소개서 문항을 글쓰기 담당 관점에서 검토해 주세요.',
+        itemId,
+      );
+      handleStarted(started.turnId);
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.code === 'TURN_IN_PROGRESS') {
+        setReviewError('이미 검토가 진행 중입니다. 완료된 뒤 다시 요청해 주세요.');
+        reloadMessages();
+      } else if (caught instanceof ApiError && isRateLimited(caught)) {
+        setReviewError('요청이 많습니다. 잠시 후 다시 시도해 주세요.');
+      } else {
+        setReviewError(
+          caught instanceof ApiError
+            ? caught.message
+            : '검토를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        );
+      }
+    } finally {
+      setReviewingItemId(null);
+    }
+  };
+
   return (
     <div
       className={`min-w-0 transition-[padding] duration-300 ${
@@ -175,9 +211,10 @@ function RoomBody({
             retry={doc.retry}
             state={doc.state}
             selectedItemId={selectedItemId}
-            onSelectItem={(itemId) => {
-              if (data.coverLetter) setSelection({ coverLetterId: data.coverLetter.id, itemId });
-            }}
+            onReviewItem={(itemId) => void reviewItem(itemId)}
+            reviewingItemId={reviewingItemId}
+            reviewBusy={busy || reviewingItemId !== null}
+            reviewError={reviewError}
           />
         </section>
       )}
