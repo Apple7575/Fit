@@ -189,6 +189,7 @@ function RoomBody({
         roomId,
         '선택한 자기소개서 문항을 글쓰기 담당 관점에서 검토해 주세요.',
         itemId,
+        true,
       );
       handleStarted(started.turnId);
     } catch (caught) {

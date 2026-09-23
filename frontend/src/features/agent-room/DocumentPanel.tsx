@@ -247,7 +247,7 @@ export function DocumentPanel({
                   ? '검토 진행 중…'
                   : visibleItem.id === selectedItemId
                     ? '다시 검토'
-                    : '이 문항 검토'}
+                    : '글쓰기 검토'}
             </button>
           </div>
 
