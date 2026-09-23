@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoverLetterWorkspace } from './CoverLetterWorkspace';
@@ -481,7 +481,7 @@ describe('CoverLetterWorkspace', () => {
 
     finish({ companyName: '삼성전자', positions: ['백엔드 개발'], sourceUrl: 'https://jobs.example.com/1', sourceKey: 'k' });
     await screen.findByDisplayValue('삼성전자');
-    expect(screen.getByRole('button', { name: '문항 쓰러가기 →' })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole('button', { name: '문항 쓰러가기 →' })).toBeEnabled());
   });
 
   it('공고에서 찾은 직무는 둥근 목록에서 고른다', async () => {
