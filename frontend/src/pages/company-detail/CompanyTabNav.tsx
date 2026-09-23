@@ -62,7 +62,7 @@ export function CompanyTabNav() {
   );
 
   return (
-    <nav aria-label="기업 분석 구획">
+    <nav aria-label="기업 분석 메뉴">
       <ul className="flex flex-wrap gap-1">
         {TABS.map(({ label, to, no }) => (
           <li key={to}>

@@ -81,7 +81,7 @@ class SupervisorTurnRunnerTest {
 
         Message jd = slots.get("jd");
         assertThat(jd.getStatus()).isEqualTo(MessageStatus.DONE);
-        assertThat(jd.getContent()).contains("필요하지 않다고 보고 넘어갔습니다");
+        assertThat(jd.getContent()).contains("살펴볼 부분이 없어 건너뛰었습니다");
     }
 
     @Test
@@ -115,9 +115,9 @@ class SupervisorTurnRunnerTest {
         runner.run(TURN_ID, context());
 
         assertThat(slots.get("jd").getContent())
-                .isEqualTo("분석은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.");
+                .isEqualTo("답변을 정리하지 못했습니다. 다시 요청해 주세요.");
         assertThat(slots.get("supervisor").getContent())
-                .isEqualTo("종합은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.");
+                .isEqualTo("의견을 종합하지 못했습니다. 다시 요청해 주세요.");
     }
 
     @Test
@@ -141,10 +141,10 @@ class SupervisorTurnRunnerTest {
 
             for (String agent : agents) {
                 assertThat(slots.get(agent).getContent())
-                        .isEqualTo("분석은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.");
+                        .isEqualTo("답변을 정리하지 못했습니다. 다시 요청해 주세요.");
             }
             assertThat(slots.get("supervisor").getContent())
-                    .isEqualTo("종합은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.");
+                    .isEqualTo("의견을 종합하지 못했습니다. 다시 요청해 주세요.");
         }
     }
 

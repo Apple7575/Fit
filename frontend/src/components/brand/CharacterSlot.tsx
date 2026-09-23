@@ -93,17 +93,6 @@ const FACE: Record<
     pink: true,
     mouth: 0.14,
   },
-  lead: {
-    eye: 0.09,
-    gap: 0.36,
-    y: 0.35,
-    eyeH: 0.9,
-    brow: true,
-    cheek: 0.3,
-    cheekW: 0.15,
-    pink: false,
-    mouth: 0.16,
-  },
 };
 
 /**
