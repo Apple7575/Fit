@@ -78,19 +78,8 @@ export const FIX_FIGURE: Record<string, string> = {
   '상체 안정': 'fix-restless.png',
 };
 
-/** 먼저 보여 줄 개수. 세 개까지만 고른다. */
-export const FOCUS_LIMIT = 3;
-
-export interface Focus {
-  /** 먼저 고칠 것 (많아야 FOCUS_LIMIT 개) */
-  fixes: MetricRow[];
-  /** 적정으로 나온 항목 수 */
-  okCount: number;
-  /** 재지 못한 항목 수 */
-  noneCount: number;
-  /** 어긋났지만 위 세 개에 들지 못한 항목 수 */
-  restCount: number;
-}
+/** 지표 하나가 어느 자리에 설지. 살펴볼 것이 앞, 적정이 가운데, 재지 못한 것이 맨 뒤다. */
+const TONE_RANK: Record<MetricRow['tone'], number> = { warn: 0, good: 1, none: 2 };
 
 const rank = (key: string) => {
   const at = PRIORITY.indexOf(key);
@@ -98,17 +87,19 @@ const rank = (key: string) => {
 };
 
 /**
- * 지표 목록에서 먼저 볼 것 세 개를 고른다.
+ * 한 장씩 넘겨 볼 순서로 줄 세운다.
  *
- * <p>재지 못한 항목(tone 'none')은 고칠 것으로 세지 않는다. 마이크가 꺼져 있었던 건
- * 사용자가 잘못한 게 아니라서, 그걸 "고칠 것"에 넣으면 가만히 있어도 할 일이 생긴다.
+ * <p>열일곱 개를 다 담되 순서를 뒤집지 않는다. 그냥 두면 가장 먼저 볼 것이 나오고, 화살표를
+ * 누르는 만큼 덜 급한 것으로 간다. 재지 못한 항목은 맨 뒤로 보낸다 — 마이크가 꺼져 있던 건
+ * 사용자가 잘못한 게 아니라서 앞자리를 차지할 일이 아니다.
  */
-export function pickFocus(rows: MetricRow[], limit: number = FOCUS_LIMIT): Focus {
-  const warn = rows.filter((r) => r.tone === 'warn').sort((a, b) => rank(a.key) - rank(b.key));
-  return {
-    fixes: warn.slice(0, limit),
-    okCount: rows.filter((r) => r.tone === 'good').length,
-    noneCount: rows.filter((r) => r.tone === 'none').length,
-    restCount: Math.max(0, warn.length - limit),
-  };
+export function orderMetrics(rows: MetricRow[]): MetricRow[] {
+  return [...rows].sort(
+    (a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone] || rank(a.key) - rank(b.key),
+  );
+}
+
+/** 살펴볼 것이 몇 개인지. 탭 옆 숫자에 쓴다. */
+export function warnCount(rows: MetricRow[]): number {
+  return rows.filter((r) => r.tone === 'warn').length;
 }
