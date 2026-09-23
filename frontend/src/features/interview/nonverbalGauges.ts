@@ -4,12 +4,8 @@ import {
   GAZE_OK,
   HEAD_DOWN_WARN,
   MOVEMENT_WARN,
-  POSTURE_OK,
-  SLOUCH_WARN,
-  TILT_WARN,
   ROLL_WARN,
   EXPRESSION_FLAT,
-  GESTURE_BUSY,
   type NonverbalMetrics,
 } from './vision';
 
@@ -66,29 +62,10 @@ export function nonverbalGauges(m: NonverbalMetrics): Gauge[] {
       hint: '고개 움직임을 줄여 보세요',
     });
   }
-  if (m.hasPose) {
-    out.push({
-      label: '바른 상체',
-      value: pct(1 - (m.slouchRatio ?? 0)),
-      ok: (m.slouchRatio ?? 0) <= SLOUCH_WARN,
-      basis: `${pct(1 - SLOUCH_WARN)}% 이상`,
-      hint: '등을 펴고 어깨를 열어 앉아 보세요',
-    });
-    out.push({
-      label: '자세 안정',
-      value: pct(m.postureStable),
-      ok: m.postureStable >= POSTURE_OK,
-      basis: `${pct(POSTURE_OK)}% 이상`,
-      hint: '어깨를 고정하고 앉아 보세요',
-    });
-    out.push({
-      label: '어깨 수평',
-      value: Math.max(0, 100 - Math.round((Math.abs(m.postureTiltDeg) / TILT_WARN) * 100)),
-      ok: Math.abs(m.postureTiltDeg) <= TILT_WARN,
-      basis: `기울기 ${TILT_WARN}° 이하`,
-      hint: `한쪽으로 ${Math.abs(Math.round(m.postureTiltDeg))}° 기울어 있어요`,
-    });
-  }
+  /*
+   * 상체·어깨·손짓은 여기서도 빼 둔다. 화면에서 감추면서 점수에는 세면, 사용자는 까닭을
+   * 알 수 없는 "태도 3개 확인"을 보게 된다. 자세한 사정은 vision.describeNonverbal 에 적었다.
+   */
 
   // 아래 셋은 새로 재는 값이다. 옛 기록에는 없으므로 플래그가 선 기록에서만 넣는다
   if (m.hasFace && m.headRollDeg > 0) {
@@ -107,15 +84,6 @@ export function nonverbalGauges(m: NonverbalMetrics): Gauge[] {
       ok: m.expressionRange >= EXPRESSION_FLAT,
       basis: '내내 같은 표정이 아니면 적정',
       hint: '표정이 굳어 있으면 듣는 쪽도 긴장합니다',
-    });
-  }
-  if (m.hasHands) {
-    out.push({
-      label: '손짓',
-      value: Math.max(0, 100 - Math.round((m.gestureAmount / GESTURE_BUSY) * 100)),
-      ok: m.gestureAmount <= GESTURE_BUSY,
-      basis: `움직임 ${GESTURE_BUSY} 이하`,
-      hint: '손이 자주 움직이면 말에 집중하기 어려워집니다',
     });
   }
   return out;

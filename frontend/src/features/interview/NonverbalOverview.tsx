@@ -21,7 +21,7 @@ export function NonverbalDetail({
     return (
       <div className="space-y-4">
         <p className={T.body}>
-          카메라를 켜고 면접을 보면 얼굴 위치 · 시선 · 고개 · 상체 자세를 문항마다 재서, 흔들린 순간의 영상과 함께
+          카메라를 켜고 면접을 보면 얼굴 위치 · 시선 · 고개 · 표정을 문항마다 재서, 흔들린 순간의 영상과 함께
           보여줍니다.
         </p>
         <GuideStrip figures={POSTURE_FIGURES} title="이렇게 앉으면 됩니다" />

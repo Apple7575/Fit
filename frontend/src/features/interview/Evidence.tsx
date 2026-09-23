@@ -36,7 +36,6 @@ const EVENT_OF: Record<string, ClipEventKind> = {
   '정면 유지': 'nonfrontal',
   '카메라 응시': 'gaze',
   '고개 각도': 'headdown',
-  '상체 자세': 'slouch',
 };
 
 /** 음성 파형으로 근거를 보여줄 지표 */

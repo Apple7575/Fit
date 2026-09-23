@@ -325,7 +325,14 @@ function QuestionPanel({ item, local }: { item: ReportItem & { no: string }; loc
   const improvements = item.points.filter((p) => p.kind === 'IMPROVEMENT');
   const strengths = item.points.filter((p) => p.kind === 'STRENGTH');
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const marks = local && local.durationMs > 0 ? (local.events ?? []).filter((e) => EVENT_META[e.kind]) : [];
+  /*
+   * 영상 타임라인 마커. '구부정' 은 리포트에서 말하지 않기로 한 지표라 여기서도 감춘다
+   * (옛 기록에는 그 구간이 남아 있다). 까닭은 vision.describeNonverbal 에 적었다.
+   */
+  const marks =
+    local && local.durationMs > 0
+      ? (local.events ?? []).filter((e) => EVENT_META[e.kind] && e.kind !== 'slouch')
+      : [];
   // 종류별로 묶어서 줄을 나눈다. 구간 하나하나는 그대로 눌러서 그 시각으로 갈 수 있다.
   const grouped = [...marks.reduce((map, e) => {
     const list = map.get(e.kind);
@@ -537,7 +544,7 @@ function QuestionPanel({ item, local }: { item: ReportItem & { no: string }; loc
                 cards={metricDeck}
                 empty={
                   <EmptyCard figure="posture-good.png" title="이 문항은 재지 못했어요">
-                    카메라와 마이크를 켜고 보면 말 속도·시선·자세를 문항마다 재서, 흔들린 순간의 영상과 함께
+                    카메라와 마이크를 켜고 보면 말 속도·시선·표정을 문항마다 재서, 흔들린 순간의 영상과 함께
                     보여드려요.
                   </EmptyCard>
                 }
