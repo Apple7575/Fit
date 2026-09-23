@@ -689,10 +689,13 @@ class SupervisorGraphTest(unittest.TestCase):
             aggregate_error=RuntimeError("aggregate failed"),
         )
         barrier = threading.Barrier(2)
+        # 종합이 실패하면 담당들이 낸 문장을 대신 이어 붙인다. 예전에는 결과 dict 를 통째로
+        # json.dumps 해서 내부 구조가 화면에 드러났다. 여기서 보려는 것은 그 문장이 계획한
+        # 순서(position → jd)대로 붙는가이므로, 담당마다 읽을 수 있는 문장을 갖게 둔다.
         registry = AgentRegistry(
             [
-                RecordingAdapter("jd", barrier),
-                RecordingAdapter("position", barrier),
+                RecordingAdapter("jd", barrier, result={"message": "jd 의견"}),
+                RecordingAdapter("position", barrier, result={"message": "position 의견"}),
             ]
         )
 
@@ -713,9 +716,26 @@ class SupervisorGraphTest(unittest.TestCase):
 
         self.assertEqual(
             result["final_message"],
-            '[position] {"agent": "position"}\n[jd] {"agent": "jd"}',
+            "[position] position 의견\n\n[jd] jd 의견",
         )
         self.assertEqual(len(result["agent_results"]), 2)
+
+    def test_aggregate_failure_without_readable_text_does_not_leak_internals(self):
+        """읽을 문장이 없으면 결과 dict 를 화면에 쏟지 않는다.
+
+        예전에는 여기서 담당 결과를 통째로 json.dumps 해서 말풍선에 넣었다. 사용자에게
+        아무 뜻도 없는 데다, 내부 구조가 새어 나온 것처럼 보인다.
+        """
+        model = FakeModel(
+            [SupervisorPlan(selected_agents=["jd"], reason="검토")],
+            aggregate_error=RuntimeError("aggregate failed"),
+        )
+        registry = AgentRegistry([RecordingAdapter("jd", result={"internal_id": "x-1"})])
+
+        result = invoke_graph(model, registry, {"jd": {"job_context_id": "jctx"}})
+
+        self.assertNotIn("internal_id", result["final_message"])
+        self.assertIn("다시 시도", result["final_message"])
 
 
 if __name__ == "__main__":

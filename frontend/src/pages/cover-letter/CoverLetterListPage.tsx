@@ -299,9 +299,9 @@ function CoverLetterRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-bold text-white">{letter.title}</span>
           <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-white/45">
-            <span className="font-semibold text-blue-200/90">{letter.targetCompany || '회사 미정'}</span>
+            <span className="min-w-0 font-semibold break-keep wrap-anywhere text-blue-200/90">{letter.targetCompany || '회사 미정'}</span>
             <span aria-hidden="true" className="text-white/20">·</span>
-            <span>{letter.targetPosition || '직무 미정'}</span>
+            <span className="min-w-0 break-keep wrap-anywhere">{letter.targetPosition || '직무 미정'}</span>
             <span aria-hidden="true" className="text-white/20">·</span>
             <span>문항 {letter.itemCount}개</span>
           </span>

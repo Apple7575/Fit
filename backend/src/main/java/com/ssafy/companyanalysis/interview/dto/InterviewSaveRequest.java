@@ -16,7 +16,8 @@ public record InterviewSaveRequest(
         @NotBlank @Pattern(regexp = "technical|behavioral") String interviewType,
         Long coverLetterId,
         @Size(max = 2000) String overallSummary,
-        @NotEmpty @Valid List<Item> items) {
+        // AnalyzeRequest 와 같은 이유. 저장도 개수를 막아야 DB 가 부풀지 않는다
+        @NotEmpty @Size(max = 20) @Valid List<Item> items) {
 
     // 프론트가 보내는 부가 필드는 무시한다.
     @JsonIgnoreProperties(ignoreUnknown = true)

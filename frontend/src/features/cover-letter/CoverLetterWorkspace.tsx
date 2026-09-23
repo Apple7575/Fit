@@ -993,6 +993,8 @@ function JobPostingBar({
           </svg>
           <input
             id="cl-posting-url"
+            // 백엔드 JobPostingParseRequest 의 @Size(max=2000) 과 같은 값
+            maxLength={2000}
             value={url}
             onChange={(event) => {
               setUrl(event.target.value);

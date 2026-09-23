@@ -54,7 +54,7 @@ export function MyPage() {
           <dl className="mt-6 divide-y divide-slate-100">
             <div className="grid gap-1 py-4 sm:grid-cols-[9rem_1fr] sm:items-center">
               <dt className="text-sm font-semibold text-slate-500">닉네임</dt>
-              <dd className="font-bold text-slate-900">{user.nickname}</dd>
+              <dd className="font-bold break-all text-slate-900">{user.nickname}</dd>
             </div>
             <div className="grid gap-1 py-4 sm:grid-cols-[9rem_1fr] sm:items-center">
               <dt className="text-sm font-semibold text-slate-500">이메일</dt>

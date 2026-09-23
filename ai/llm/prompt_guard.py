@@ -23,15 +23,23 @@ from typing import Any
 
 
 _INJECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    # "지금까지·이제까지·그동안·방금" 이 빠져 있어 "지금까지 지시 무시하고" 가 그대로 통과했다.
+    # 가리키는 말은 여러 가지로 적히므로, 막으려는 동사(무시·잊·버리·취소) 쪽을 기준으로 넓게 잡는다.
     ("이전 지시 무시", re.compile(
-        r"(이전|앞의|위의|기존|모든)\s*(지시|명령|규칙|프롬프트|설정)[^\n]{0,12}(무시|잊|버리|취소)"
-        r"|ignore\s+(all\s+|the\s+)?(previous|prior|above)\s+(instructions?|rules?|prompts?)",
+        # 가리키는 말과 명사 사이에 낱말이 끼기도 한다("그동안 받은 명령")
+        r"(이전|이전의|앞의|위의|기존|기존의|모든|지금까지|이제까지|여태|그동안|방금|아까|처음|원래)"
+        r"[^\n]{0,10}(지시|명령|규칙|프롬프트|설정)[^\n]{0,12}(무시|잊|버리|취소|없던)"
+        r"|ignore\s+(all\s+|the\s+|any\s+)?(previous|prior|above|earlier|preceding)\s+"
+        r"(instructions?|rules?|prompts?|messages?)"
+        r"|disregard\s+(all\s+|the\s+)?(previous|prior|above)",
         re.IGNORECASE,
     )),
+    # "말한다·행동한다·대답한다" 처럼 서술어로 끝나는 역할 변경이 빠져 있었다
     ("역할 변경", re.compile(
-        r"(너는|당신은|넌)\s*(이제|지금부터|오늘부터)\s*[^\n]{0,20}(이다|야|이야|담당|역할|AI)"
-        r"|(지금부터|이제부터)\s*(너는|당신은|넌)"
-        r"|you\s+are\s+now\b|act\s+as\b|pretend\s+(to\s+be|you\s+are)",
+        r"(너는|당신은|넌|니가|네가)\s*(이제|지금부터|오늘부터|앞으로)\s*[^\n]{0,20}"
+        r"(이다|야|이야|담당|역할|AI|말한다|말해|행동|대답한다|답한다|굴어)"
+        r"|(지금부터|이제부터|앞으로는)\s*(너는|당신은|넌)"
+        r"|you\s+are\s+now\b|act\s+as\b|pretend\s+(to\s+be|you\s+are)|roleplay\s+as\b",
         re.IGNORECASE,
     )),
     ("시스템 프롬프트 요구", re.compile(

@@ -21,7 +21,8 @@ export function AuthButtons({ onDark = false }: AuthButtonsProps) {
     return (
       <div className="flex items-center gap-1 sm:gap-2">
         <Link
-          className={`${linkClass} ${onDark ? 'text-white' : 'text-slate-700'}`}
+          // 닉네임은 50자까지다. 띄어쓰기 없이 길게 지으면 헤더가 통째로 옆으로 밀린다
+          className={`${linkClass} max-w-[10rem] truncate ${onDark ? 'text-white' : 'text-slate-700'}`}
           to="/mypage"
         >
           {user.nickname}님
