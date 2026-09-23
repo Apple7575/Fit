@@ -530,8 +530,13 @@ export function InterviewSession({
           )}
         </div>
 
-        {/* 오른쪽: 질문과 답변 (흰 카드) */}
-        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        {/*
+          오른쪽: 질문과 답변 (흰 카드).
+
+          <p>min-w-0 이 없으면 그리드 칸의 최소 너비가 내용 너비가 된다. 띄어쓰기 없는 긴
+          질문이 오면 칸이 그만큼 벌어져 카드가 화면을 가로로 뚫고 나간다.
+        */}
+        <div className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           {/* 몇 번째 질문인지가 가장 먼저 읽혀야 한다. 출처·회사는 그다음이다 */}
           <p className="flex flex-wrap items-baseline gap-2 text-[11px] font-bold">
             <span className="text-[15px] font-extrabold text-slate-950">Q{idx + 1}</span>
@@ -539,9 +544,15 @@ export function InterviewSession({
               {idx + 1} / {queue.length}
             </span>
             <span className={`rounded-full px-2 py-0.5 ring-1 ${badge.className}`}>{badge.label}</span>
-            {config.targetCompany && <span className="text-slate-400">{config.targetCompany}</span>}
+            {/* 회사명은 사용자가 친 글이다. 띄어쓰기 없이 길게 적으면 이 줄이 칸을 넘는다 */}
+            {config.targetCompany && (
+              <span className="min-w-0 break-keep wrap-anywhere text-slate-400">{config.targetCompany}</span>
+            )}
           </p>
-          <p className="mt-3 text-[19px] font-extrabold leading-8 text-slate-950 break-keep">{current.question}</p>
+          {/* 질문 안에 회사명이 그대로 들어온다. 띄어쓰기가 없으면 카드를 가로로 뚫고 나간다 */}
+          <p className="mt-3 text-[19px] font-extrabold leading-8 break-keep wrap-anywhere text-slate-950">
+            {current.question}
+          </p>
           {current.isFollowup && (
             <p className="mt-1.5 text-xs text-slate-500">직전 답변을 듣고 면접관이 드리는 추가 질문입니다.</p>
           )}
@@ -568,7 +579,7 @@ export function InterviewSession({
             </div>
             {phase === 'recording' ? (
               <>
-                <p className="mt-1.5 max-h-56 min-h-32 overflow-y-auto rounded-xl bg-slate-50 p-3 text-[14px] leading-6 text-slate-700 break-keep">
+                <p className="mt-1.5 max-h-56 min-h-32 overflow-y-auto rounded-xl bg-slate-50 p-3 text-[14px] leading-6 break-keep wrap-anywhere text-slate-700">
                   {current.transcript || <span className="text-slate-400">말씀하시면 여기에 바로 받아써집니다…</span>}
                 </p>
                 {/*
