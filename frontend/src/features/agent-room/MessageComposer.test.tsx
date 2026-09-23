@@ -17,7 +17,6 @@ describe('MessageComposer 문항 선택', () => {
       <MessageComposer
         roomId={3}
         coverLetterItemId={202}
-        selectedItemNumber={2}
         needsItemSelection={false}
         busy={false}
         onStarted={onStarted}
@@ -29,6 +28,7 @@ describe('MessageComposer 문항 선택', () => {
 
     expect(mockSendMessage).toHaveBeenCalledWith(3, '문장을 봐 주세요', 202);
     expect(onStarted).toHaveBeenCalledWith(77);
+    expect(screen.queryByText(/중심으로 검토합니다/)).not.toBeInTheDocument();
   });
 
   it('여러 문항인데 선택하지 않으면 글쓰기 담당 안내를 보여 준다', () => {
@@ -36,7 +36,6 @@ describe('MessageComposer 문항 선택', () => {
       <MessageComposer
         roomId={3}
         coverLetterItemId={null}
-        selectedItemNumber={null}
         needsItemSelection
         busy={false}
         onStarted={vi.fn()}

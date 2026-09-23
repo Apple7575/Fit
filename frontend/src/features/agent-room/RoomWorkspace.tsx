@@ -132,8 +132,6 @@ function RoomBody({
       : selectedCandidateId !== null && items.some((item) => item.id === selectedCandidateId)
         ? selectedCandidateId
         : null;
-  const selectedItemNumber =
-    selectedItemId === null ? null : items.findIndex((item) => item.id === selectedItemId) + 1;
   const hasWritingAgent = data.agents.some((agent) => agent.agentKey === 'writing');
 
   // 서버는 최신순으로 주는데 화면은 위에서 아래로 읽는다.
@@ -270,7 +268,6 @@ function RoomBody({
             <MessageComposer
               roomId={roomId}
               coverLetterItemId={selectedItemId}
-              selectedItemNumber={selectedItemNumber}
               needsItemSelection={hasWritingAgent && items.length > 1 && selectedItemId === null}
               busy={busy}
               onStarted={handleStarted}

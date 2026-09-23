@@ -6,7 +6,6 @@ import { sendMessage } from './api';
 interface MessageComposerProps {
   roomId: number;
   coverLetterItemId: number | null;
-  selectedItemNumber: number | null;
   needsItemSelection: boolean;
   /** 턴이 도는 동안에는 새 발화를 막는다. 서버도 409 로 막는다. */
   busy: boolean;
@@ -23,7 +22,6 @@ interface MessageComposerProps {
 export function MessageComposer({
   roomId,
   coverLetterItemId,
-  selectedItemNumber,
   needsItemSelection,
   busy,
   onStarted,
@@ -68,11 +66,7 @@ export function MessageComposer({
 
   return (
     <div className="shrink-0 border-t border-slate-200 bg-white p-3">
-      {selectedItemNumber !== null ? (
-        <p className="mb-2 text-[11px] font-semibold text-blue-700">
-          문항 {selectedItemNumber}을 중심으로 검토합니다.
-        </p>
-      ) : needsItemSelection ? (
+      {needsItemSelection ? (
         <p className="mb-2 text-[11px] font-semibold text-amber-700">
           글쓰기 담당의 첨삭을 받으려면 왼쪽에서 문항 하나를 선택해 주세요.
         </p>
