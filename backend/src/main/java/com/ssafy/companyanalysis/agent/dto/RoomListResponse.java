@@ -12,12 +12,18 @@ import java.util.List;
  */
 public record RoomListResponse(List<Room> rooms) {
 
+    /**
+     * @param ready 이 방에서 지금 답할 수 있는 담당이 하나라도 있는지. 없으면 화면이 칩을 흐리게 둔다
+     * @param need  답할 수 있는 담당이 없을 때 무엇을 채우면 되는지 한 줄. 답할 수 있으면 null
+     */
     public record Room(
             Long roomId,
             String title,
             int agentCount,
             String lastMessagePreview,
             OffsetDateTime lastMessageAt,
-            boolean running) {
+            boolean running,
+            boolean ready,
+            String need) {
     }
 }

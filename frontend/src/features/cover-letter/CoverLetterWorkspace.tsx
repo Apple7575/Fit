@@ -381,7 +381,7 @@ export function CoverLetterWorkspace({
       });
       return { ...base, jobContextId: context.jobContextId };
     } catch (error) {
-      setPostingError(error instanceof ApiError ? error.message : '채용공고 분석에 실패했습니다. 다시 시도해 주세요.');
+      setPostingError(userMessage(error, '채용공고 분석에 실패했습니다. 다시 시도해 주세요.'));
       return null;
     } finally {
       setRegistering(false);
@@ -897,7 +897,7 @@ function JobPostingBar({
       setMessage('이미지 용량이 너무 큽니다. 장수를 줄이거나 화면을 나눠 캡처해 주세요.');
       return;
     }
-    setMessage(error instanceof ApiError ? error.message : fallback);
+    setMessage(userMessage(error, fallback));
   };
 
   const urlReady = url.trim() !== '' && url.trim() !== blockedUrl;

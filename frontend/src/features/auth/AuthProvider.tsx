@@ -15,7 +15,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   /** 첫 세션 복원이 끝나기 전까지 true */
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   signup: (email: string, password: string, nickname: string) => Promise<void>;
   logout: () => Promise<void>;
   withdraw: () => Promise<void>;
@@ -80,8 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setUser(await authApi.login(email, password));
+  const login = useCallback(async (email: string, password: string, rememberMe = false) => {
+    setUser(await authApi.login(email, password, rememberMe));
   }, []);
 
   // 가입은 인증 메일만 보낼 뿐 세션을 만들지 않는다. 이메일 인증 후에야 로그인된다.

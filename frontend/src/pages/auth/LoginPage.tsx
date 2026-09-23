@@ -23,6 +23,8 @@ export function LoginPage() {
   const reason = loginReason(redirectParam);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // 공용 PC 에서 저절로 켜지지 않도록 꺼진 쪽이 기본이다.
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -33,7 +35,7 @@ export function LoginPage() {
     setNeedsVerification(false);
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, rememberMe);
       navigate(redirectTo);
     } catch (caught) {
       if (caught instanceof ApiError) {
@@ -95,6 +97,16 @@ export function LoginPage() {
             value={password}
           />
         </div>
+
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-600 select-none">
+          <input
+            checked={rememberMe}
+            className="size-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200"
+            onChange={(event) => setRememberMe(event.target.checked)}
+            type="checkbox"
+          />
+          로그인 상태 유지
+        </label>
 
         {error && (
           <p

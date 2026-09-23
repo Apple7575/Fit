@@ -1,6 +1,7 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { userMessage } from '../../api/errorMessage';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { deleteCoverLetter } from '../../features/cover-letter/api';
 import { useCoverLetters } from '../../features/cover-letter/queries';
@@ -225,7 +226,7 @@ function MemberHome() {
             )}
 
             {state.status === 'error' && (
-              <InlineNotice onRetry={retry}>목록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
+              <InlineNotice onRetry={retry}>{userMessage(state.error, '목록을 불러오지 못했습니다.')}</InlineNotice>
             )}
 
             {state.status === 'success' && (

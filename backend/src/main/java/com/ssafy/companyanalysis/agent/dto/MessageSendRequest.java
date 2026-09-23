@@ -9,6 +9,8 @@ import jakarta.validation.constraints.Size;
  * @param coverLetterItemId 주면 그 문항만, 없으면 자소서 전체를 본다
  */
 public record MessageSendRequest(
-        @NotBlank @Size(max = 2000) String content,
+        @NotBlank(message = "보낼 말을 입력해 주세요.")
+        @Size(max = 2000, message = "한 번에 2000자까지 보낼 수 있습니다.")
+        String content,
         Long coverLetterItemId) {
 }

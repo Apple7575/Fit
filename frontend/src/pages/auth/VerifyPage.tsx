@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ApiError } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { verifyEmail } from '../../features/auth/api';
@@ -26,7 +26,7 @@ export function VerifyPage() {
       .catch((caught) => {
         if (!active) return;
         setStatus('error');
-        setMessage(caught instanceof ApiError ? caught.message : '인증에 실패했습니다.');
+        setMessage(userMessage(caught, '인증에 실패했습니다.'));
       });
     return () => {
       active = false;

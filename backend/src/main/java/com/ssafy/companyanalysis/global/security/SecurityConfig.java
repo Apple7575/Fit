@@ -1,5 +1,6 @@
 package com.ssafy.companyanalysis.global.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,9 +11,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.RememberMeServices;
+import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 import org.springframework.security.web.context.DelegatingSecurityContextRepository;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
@@ -20,6 +24,8 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+
+import java.time.Duration;
 
 /**
  * 세션 기반 인증 설정. 조회 API 는 공개, 인증 엔드포인트와 그 외는 인증을 요구한다.
@@ -33,8 +39,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http,
             SecurityContextRepository securityContextRepository,
             RestAuthenticationEntryPoint authenticationEntryPoint,
-            RestAccessDeniedHandler accessDeniedHandler) throws Exception {
+            RestAccessDeniedHandler accessDeniedHandler,
+            RememberMeServices rememberMeServices,
+            @Value("${app.remember-me.key}") String rememberMeKey) throws Exception {
         http
+                .rememberMe(remember -> remember
+                        .key(rememberMeKey)
+                        .rememberMeServices(rememberMeServices))
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
@@ -80,5 +91,29 @@ public class SecurityConfig {
         return new DelegatingSecurityContextRepository(
                 new RequestAttributeSecurityContextRepository(),
                 new HttpSessionSecurityContextRepository());
+    }
+
+    /**
+     * "로그인 유지" 쿠키.
+     *
+     * <p>DB 에 토큰을 두지 않는 방식이다. 쿠키 안에 이메일·만료시각과, 거기에 비밀번호 해시와
+     * 서버 key 를 섞어 만든 서명이 들어간다. 그래서 비밀번호를 바꾸거나 탈퇴하면 그때까지
+     * 나간 쿠키가 저절로 무효가 된다 — 따로 지울 곳이 없다.
+     *
+     * <p>{@code alwaysRemember} 를 켜 두지만 아무 로그인에나 쿠키가 붙지는 않는다.
+     * 폼 로그인을 꺼 두어 이 서비스를 부르는 곳이 로그인 API 하나뿐이고, 거기서 사용자가
+     * 체크했을 때만 부르기 때문이다. 이 값은 "부르면 두말 없이 발급하라"는 뜻이다.
+     */
+    @Bean
+    public RememberMeServices rememberMeServices(UserDetailsService userDetailsService,
+            @Value("${app.remember-me.key}") String key,
+            @Value("${app.remember-me.validity}") Duration validity,
+            @Value("${app.remember-me.secure}") boolean secureCookie) {
+        TokenBasedRememberMeServices services = new TokenBasedRememberMeServices(key, userDetailsService);
+        services.setTokenValiditySeconds((int) validity.toSeconds());
+        services.setAlwaysRemember(true);
+        // 세션 쿠키와 같은 기준. 로컬은 http 라 프로파일에서 끈다.
+        services.setUseSecureCookie(secureCookie);
+        return services;
     }
 }

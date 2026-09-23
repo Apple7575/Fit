@@ -22,6 +22,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.RememberMeServices;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -39,15 +41,18 @@ public class AuthController {
     private final EmailVerificationService emailVerificationService;
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
+    private final RememberMeServices rememberMeServices;
 
     public AuthController(AuthService authService,
             EmailVerificationService emailVerificationService,
             AuthenticationManager authenticationManager,
-            SecurityContextRepository securityContextRepository) {
+            SecurityContextRepository securityContextRepository,
+            RememberMeServices rememberMeServices) {
         this.authService = authService;
         this.emailVerificationService = emailVerificationService;
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
+        this.rememberMeServices = rememberMeServices;
     }
 
     @PostMapping("/signup")
@@ -76,13 +81,18 @@ public class AuthController {
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, httpRequest, httpResponse);
 
+        // 세션은 30분이면 끊기고 브라우저를 닫아도 사라진다. 켜 둔 사람에게만 오래 가는 쿠키를 준다.
+        if (request.rememberMe()) {
+            rememberMeServices.loginSuccess(httpRequest, httpResponse, authentication);
+        }
+
         return ApiResponse.ok(MeResponse.from(principal));
     }
 
     @PostMapping("/logout")
     public ApiResponse<Void> logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        new SecurityContextLogoutHandler().logout(httpRequest, httpResponse, authentication);
+        endSession(httpRequest, httpResponse, authentication);
         return ApiResponse.ok(null);
     }
 
@@ -96,8 +106,22 @@ public class AuthController {
             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         authService.withdraw(principal.getId());
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        new SecurityContextLogoutHandler().logout(httpRequest, httpResponse, authentication);
+        endSession(httpRequest, httpResponse, authentication);
         return ApiResponse.ok(null);
+    }
+
+    /**
+     * 세션과 "로그인 유지" 쿠키를 함께 걷는다.
+     *
+     * <p>세션만 지우면 다음 요청에서 유지 쿠키가 그대로 다시 로그인시킨다 — 로그아웃을 눌러도
+     * 로그아웃되지 않는 것처럼 보인다. 두 개는 늘 같이 사라져야 한다.
+     */
+    private void endSession(HttpServletRequest httpRequest, HttpServletResponse httpResponse,
+            Authentication authentication) {
+        new SecurityContextLogoutHandler().logout(httpRequest, httpResponse, authentication);
+        if (rememberMeServices instanceof LogoutHandler handler) {
+            handler.logout(httpRequest, httpResponse, authentication);
+        }
     }
 
     private Authentication authenticate(LoginRequest request) {
