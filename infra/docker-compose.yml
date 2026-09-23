@@ -76,6 +76,9 @@ services:
       - APP_AGENT_READY_JOB_ROLES=${APP_AGENT_READY_JOB_ROLES:-}
       # Vector DB 가 만들어진 기업(corpCode). 비우면 기업 선택을 막지 않는다.
       - APP_AGENT_RAG_INDEXED_CORP_CODES=${APP_AGENT_RAG_INDEXED_CORP_CODES:-}
+      # 화면에서 감추고 실행도 막을 담당(쉼표 구분 agentKey). 뉴스 담당이 불안정해 QA 동안 기본으로 끈다.
+      # 콜론 없는 '-' 라 .env 에 빈 값(APP_AGENT_HIDDEN_AGENTS=)을 적으면 전부 다시 켜진다.
+      - APP_AGENT_HIDDEN_AGENTS=${APP_AGENT_HIDDEN_AGENTS-news}
       - TZ=${TZ:-Asia/Seoul}
       - AGENT_AI_BASE_URL=${AGENT_AI_BASE_URL:-http://ai:8000}
     # 배포에서 vLLM 은 호스트의 리버스터널 포트(host.docker.internal:18000)로 닿는다. infra/tunnel 참고.
