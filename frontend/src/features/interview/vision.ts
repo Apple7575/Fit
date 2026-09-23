@@ -569,23 +569,17 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     // 인식 실패는 사용자가 고칠 점이 아니다. 고칠 것으로 세지 않고 안내만 한다
     rows.push(row('얼굴 인식', '재지 못함', 'none', '조명을 밝히고 카메라와의 거리를 맞춰 보세요'));
   }
-  if (m.hasPose) {
-    rows.push(
-      m.slouchRatio <= SLOUCH_WARN
-        ? row('상체 자세', '바르게 유지', 'good')
-        : row('상체 자세', `구부정 ${pct(m.slouchRatio)}`, 'warn', '등이 조금 굽은 편이에요. 어깨를 열어 앉아 보세요'),
-    );
-    rows.push(
-      m.postureStable >= POSTURE_OK
-        ? row('상체 안정', '안정적', 'good')
-        : row('상체 안정', '조금 흔들림', 'warn', '상체가 자주 움직인 편이에요. 등을 의자에 붙이고 앉아 보세요'),
-    );
-    rows.push(
-      m.postureTiltDeg <= TILT_WARN
-        ? row('어깨 수평', '반듯함', 'good')
-        : row('어깨 수평', `${m.postureTiltDeg}° 기울어짐`, 'warn', '한쪽으로 조금 기운 편이에요. 양쪽 팔을 같은 높이에 두어 보세요'),
-    );
-  }
+  /*
+   * 상체 자세·상체 안정·어깨 수평·손짓은 리포트에 내보내지 않는다.
+   *
+   * <p>넷 다 PoseLandmarker 가 잡은 어깨·손목 좌표로 잰다. 그런데 화상 면접 화면은 대개
+   * 노트북 뚜껑 위로 얼굴과 어깨선만 걸치는 구도라 어깨가 가려지거나 잘리고, 그러면 좌표가
+   * 프레임마다 튄다. 바르게 앉아 있어도 "구부정 34%"·"9.8° 기울어짐"이 나왔다.
+   *
+   * <p>못 재는 값을 고칠 점으로 내놓으면 사용자는 없는 버릇을 고치려 든다. 값 자체는
+   * 계속 계산해 두되(NonverbalMetrics 는 그대로다) 말해 주지 않는다. 카메라 구도를 붙잡을
+   * 방법이 생기면 그때 되살린다.
+   */
 
   // 고개 갸우뚱 (변환 행렬을 받은 기록에서만)
   if (m.hasFace && m.headRollDeg > 0) {
@@ -610,16 +604,6 @@ export function describeNonverbal(m: NonverbalMetrics): MetricRow[] {
     rows.push(row('표정', '재지 못함', 'none', '얼굴이 또렷하게 잡혀야 표정을 볼 수 있어요'));
   }
 
-  // 손짓. 화면에 손이 잡힌 기록에서만 말한다 (앉은 화면에서는 자주 잘린다)
-  if (m.hasHands) {
-    rows.push(
-      m.gestureAmount <= GESTURE_BUSY
-        ? row('손짓', '차분함', 'good')
-        : row('손짓', '조금 잦음', 'warn', '손이 자주 움직인 편이에요. 손은 책상 위에 가볍게 두어 보세요'),
-    );
-  } else if (m.hasPose) {
-    rows.push(row('손짓', '재지 못함', 'none', '손이 화면에 거의 안 잡혔어요'));
-  }
   return rows;
 }
 
