@@ -1,6 +1,7 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { userMessage } from '../../api/errorMessage';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { deleteCoverLetter } from '../../features/cover-letter/api';
 import { useCoverLetters } from '../../features/cover-letter/queries';
@@ -225,7 +226,7 @@ function MemberHome() {
             )}
 
             {state.status === 'error' && (
-              <InlineNotice onRetry={retry}>목록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
+              <InlineNotice onRetry={retry}>{userMessage(state.error, '목록을 불러오지 못했습니다.')}</InlineNotice>
             )}
 
             {state.status === 'success' && (
@@ -236,6 +237,7 @@ function MemberHome() {
                     letter={letter}
                     confirming={confirmingId === letter.id}
                     onOpen={() => navigate(`/cover-letters/${letter.id}`)}
+                    onReview={() => navigate(`/cover-letters/${letter.id}/review`)}
                     onAskDelete={() => setConfirmingId(letter.id)}
                     onCancelDelete={() => setConfirmingId(null)}
                     onConfirmDelete={() => remove(letter.id)}
@@ -264,6 +266,7 @@ function CoverLetterRow({
   letter,
   confirming,
   onOpen,
+  onReview,
   onAskDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -271,6 +274,8 @@ function CoverLetterRow({
   letter: CoverLetterSummary;
   confirming: boolean;
   onOpen: () => void;
+  /** 코치들에게 보이러 간다. 목록에서 갈래가 갈리지 않으면 검토는 여기서 보이지 않는다 */
+  onReview: () => void;
   onAskDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
@@ -295,9 +300,9 @@ function CoverLetterRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-bold text-white">{letter.title}</span>
           <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-white/45">
-            <span className="font-semibold text-blue-200/90">{letter.targetCompany || '회사 미정'}</span>
+            <span className="min-w-0 font-semibold break-keep wrap-anywhere text-blue-200/90">{letter.targetCompany || '회사 미정'}</span>
             <span aria-hidden="true" className="text-white/20">·</span>
-            <span>{letter.targetPosition || '직무 미정'}</span>
+            <span className="min-w-0 break-keep wrap-anywhere">{letter.targetPosition || '직무 미정'}</span>
             <span aria-hidden="true" className="text-white/20">·</span>
             <span>문항 {letter.itemCount}개</span>
           </span>
@@ -305,18 +310,27 @@ function CoverLetterRow({
 
         <span className="hidden shrink-0 items-center gap-3 sm:flex">
           <span className="text-[12px] text-white/35">{formatDateDots(letter.updatedAt)} 수정</span>
-          <svg
-            aria-hidden="true"
-            className="size-4 text-white/25 transition group-hover:translate-x-0.5 group-hover:text-blue-200"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-          >
-            <path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
         </span>
       </button>
+
+      {/*
+        줄 전체가 '고치러 가기' 하나였다. 그래서 검토는 목록에서 보이지 않았고, 자소서를 열고
+        들어가야 비로소 길이 있다는 것을 알았다. 자소서로 할 일은 둘뿐이므로 여기서 나눈다.
+      */}
+      {!confirming && (
+        <span className="flex shrink-0 items-center gap-1">
+          <RowAction label="고치기" onClick={onOpen} title={`${letter.title} 고치기`}>
+            <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" strokeLinecap="round" strokeLinejoin="round" />
+          </RowAction>
+          <RowAction label="검토" onClick={onReview} title={`${letter.title} 검토 받기`}>
+            <path
+              d="M21 11.5a8.4 8.4 0 0 1-9 8.4L7 21l1.1-3.3A8.4 8.4 0 1 1 21 11.5z"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </RowAction>
+        </span>
+      )}
 
       {confirming ? (
         <div className="flex shrink-0 items-center gap-1 rounded-lg bg-slate-900/95 p-1 shadow-sm ring-1 ring-white/15 backdrop-blur">
@@ -339,7 +353,8 @@ function CoverLetterRow({
         <button
           onClick={onAskDelete}
           aria-label={`${letter.title} 삭제`}
-          className="shrink-0 rounded-lg p-2 text-white/20 transition hover:bg-rose-400/10 hover:text-rose-300"
+          title={`${letter.title} 삭제`}
+          className="shrink-0 rounded-lg p-2 text-white/40 transition hover:bg-rose-400/15 hover:text-rose-300"
           type="button"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="size-4">
@@ -348,5 +363,36 @@ function CoverLetterRow({
         </button>
       )}
     </li>
+  );
+}
+
+/**
+ * 줄 끝의 갈래 단추 하나. 아이콘만 두면 무엇인지 몰라 누르지 않으므로 이름을 같이 적는다 —
+ * 좁은 화면에서는 이름을 접고 아이콘만 남긴다.
+ */
+function RowAction({
+  label,
+  title,
+  onClick,
+  children,
+}: {
+  label: string;
+  title: string;
+  onClick: () => void;
+  /** 24x24 뷰박스에 그리는 선 */
+  children: ReactNode;
+}) {
+  return (
+    <button
+      className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-[12px] font-bold text-white/55 transition hover:bg-white/10 hover:text-white"
+      onClick={onClick}
+      title={title}
+      type="button"
+    >
+      <svg aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+        {children}
+      </svg>
+      <span className="hidden lg:inline">{label}</span>
+    </button>
   );
 }

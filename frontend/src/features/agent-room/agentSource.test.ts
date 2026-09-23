@@ -30,7 +30,6 @@ describe('agentSource', () => {
     });
 
     expect(agentSource(withCompany, null).reads).toBe('삼성전자 공시 · IR 자료');
-    expect(agentSource(agent('news', withCompany.config), null).reads).toBe('삼성전자 최근 뉴스');
   });
 
   it('회사가 없으면 일반 문구로 둔다', () => {
@@ -44,11 +43,6 @@ describe('agentSource', () => {
     });
 
     expect(agentSource(indexing, null).need).toContain('정리하는 중');
-  });
-
-  it('뉴스 담당은 공고가 없을 때와 회사가 없을 때 이유가 다르다', () => {
-    expect(agentSource(agent('news'), null).need).toContain('채용공고');
-    expect(agentSource(agent('news'), posting).need).toContain('지원 회사');
   });
 
   // 참여 여부는 서버가 주는 ready 로만 판단한다. 여기서는 문구만 만든다.

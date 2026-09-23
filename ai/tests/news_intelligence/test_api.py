@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from ai.news_intelligence.api import app, get_news_service
 from ai.news_intelligence.contracts import NewsAnalysisResponse, NewsContext
 from ai.news_intelligence.model import NewsOutputError, QwenNewsModel
+from ai.llm.contracts import LlmRateLimitedError
 from ai.news_intelligence.repository import (
     CompanyNotFound,
     JobContextNotFound,
@@ -144,6 +145,15 @@ class NewsApiTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.json(), {"detail": {"code": "NEWS_MODEL_UNAVAILABLE"}})
+
+    def test_maps_gms_rate_limit_to_retryable_contract_code(self):
+        self.service.error = LlmRateLimitedError("GMS", 10)
+
+        response = self.client.post("/internal/analyses", json=VALID_REQUEST)
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json(), {"detail": {"code": "GMS_RATE_LIMITED"}})
+
 
     def test_maps_qwen_boundary_failures_to_safe_contract_code(self):
         for error in (

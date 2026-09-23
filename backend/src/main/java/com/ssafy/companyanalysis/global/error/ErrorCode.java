@@ -27,6 +27,7 @@ public enum ErrorCode {
     COVER_LETTER_NOT_FOUND(HttpStatus.NOT_FOUND, "자소서를 찾을 수 없습니다."),
     AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 AI 기능을 쓸 수 없습니다. 잠시 후 다시 시도해 주세요."),
     AI_FAILED(HttpStatus.BAD_GATEWAY, "AI 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    AI_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AI 요청이 몰려 답변을 준비하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     FEEDBACK_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 많습니다. 잠시 후 다시 시도해 주세요."),
     INTERVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "면접 기록을 찾을 수 없습니다."),
     INTERVIEW_AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "면접 AI를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."),

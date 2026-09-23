@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -252,17 +253,31 @@ public class RoomService {
                 ? roomRepository.findAllForSidebar(userId)
                 : roomRepository.findAllForSidebarByCoverLetter(userId, coverLetterId);
 
+        // 한 자소서의 방들은 대개 같은 공고를 본다. 방마다 다시 읽지 않는다.
+        Map<String, RoomResponse.JobContextRef> postings = new HashMap<>();
+
         // lastMessagePreview·running 은 대화 테이블(S15P21A504-130)이 오면 채운다.
         return new RoomListResponse(rooms.stream()
                 .map(room -> Map.entry(room, visibleAgents(room.getAgents())))
                 .filter(entry -> !entry.getValue().isEmpty())
-                .map(entry -> new RoomListResponse.Room(
-                        entry.getKey().getId(),
-                        entry.getKey().getTitle(),
-                        agentCountWithSupervisor(entry.getValue()),
-                        null,
-                        entry.getKey().getLastMessageAt(),
-                        false))
+                .map(entry -> {
+                    Room room = entry.getKey();
+                    List<RoomAgent> agents = entry.getValue();
+                    RoomResponse.JobContextRef posting = room.getJobContextId() == null
+                            ? null
+                            : postings.computeIfAbsent(room.getJobContextId(), this::jobContextRef);
+                    // 한 명이라도 답할 수 있으면 그 방은 쓸 수 있는 방이다.
+                    boolean ready = agents.stream().anyMatch(agent -> isReady(agent, posting));
+                    return new RoomListResponse.Room(
+                            room.getId(),
+                            room.getTitle(),
+                            agentCountWithSupervisor(agents),
+                            null,
+                            room.getLastMessageAt(),
+                            false,
+                            ready,
+                            ready ? null : needOf(agents, posting));
+                })
                 .toList());
     }
 
@@ -421,6 +436,35 @@ public class RoomService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.AGENT_NOT_SUPPORTED, agent.agentKey()));
 
         Map<String, Object> view = new LinkedHashMap<>(agent.config());
+
+        Object corpCodes = view.remove("corpCodes");
+        if (corpCodes instanceof Collection<?> codes) {
+            view.put("companies", codes.stream()
+                    .map(String::valueOf)
+                    .map(code -> {
+                        Map<String, Object> one = new LinkedHashMap<String, Object>();
+                        one.put("corpCode", code);
+                        one.put("name", names.get(code));
+                        one.put("ragReady", properties.isRagIndexed(code));
+                        return one;
+                    })
+                    .toList());
+        }
+
+        return new RoomResponse.Agent(type.key(), type.displayName(), auto,
+                isReady(agent, jobContext), view);
+    }
+
+    /**
+     * 그 담당이 지금 답할 수 있는지.
+     *
+     * <p>{@link AgentContexts} 가 실제로 그 담당을 돌리는 조건과 같아야 한다. 어긋나면 준비됐다고
+     * 적힌 담당이 막상 돌리면 빠져, 왜 아무도 답을 안 하는지 알 길이 없어진다.
+     */
+    private boolean isReady(RoomAgent agent, RoomResponse.JobContextRef jobContext) {
+        AgentType type = AgentType.from(agent.agentKey())
+                .orElseThrow(() -> new BusinessException(ErrorCode.AGENT_NOT_SUPPORTED, agent.agentKey()));
+
         boolean ready = switch (type) {
             // 채울 설정이 없는 담당이라 필수 항목만 보면 늘 준비됨이 된다. 실제로는 방에 붙은
             // 공고를 읽으므로 공고가 없으면 아무것도 못 본다.
@@ -432,24 +476,40 @@ public class RoomService {
             default -> type.isConfigured(agent.config());
         };
 
-        Object corpCodes = view.remove("corpCodes");
-        if (corpCodes instanceof Collection<?> codes) {
-            List<Map<String, Object>> companies = codes.stream()
-                    .map(String::valueOf)
-                    .map(code -> {
-                        Map<String, Object> one = new LinkedHashMap<String, Object>();
-                        one.put("corpCode", code);
-                        one.put("name", names.get(code));
-                        one.put("ragReady", properties.isRagIndexed(code));
-                        return one;
-                    })
-                    .toList();
-            view.put("companies", companies);
-            // 덮어쓰지 않고 겹친다. 기업이 하나도 없으면 allMatch 가 참이라 준비됨이 되어 버린다.
-            ready = ready && companies.stream().allMatch(one -> Boolean.TRUE.equals(one.get("ragReady")));
+        // 고른 기업의 자료가 아직 안 들어왔으면 답할 것이 없다. 겹쳐서 본다 — 기업이 하나도
+        // 없으면 allMatch 가 참이라, 이것만 보면 준비됨이 되어 버린다.
+        if (agent.config().get("corpCodes") instanceof Collection<?> codes) {
+            ready = ready && codes.stream().map(String::valueOf).allMatch(properties::isRagIndexed);
         }
+        return ready;
+    }
 
-        return new RoomResponse.Agent(type.key(), type.displayName(), auto, ready, view);
+    /**
+     * 그 방에서 아무도 답할 수 없을 때 무엇을 채우면 되는지. 답할 수 있으면 null.
+     *
+     * <p>문구는 {@link AgentContexts} 것을 그대로 쓴다. 보내기 전(칩)과 보낸 뒤(400)가 다른 말을
+     * 하면 사용자는 둘을 다른 문제로 읽는다.
+     */
+    private String needOf(List<RoomAgent> agents, RoomResponse.JobContextRef jobContext) {
+        return agents.stream()
+                .filter(agent -> !isReady(agent, jobContext))
+                .map(agent -> reasonOf(agent, jobContext))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String reasonOf(RoomAgent agent, RoomResponse.JobContextRef jobContext) {
+        AgentType type = AgentType.from(agent.agentKey()).orElse(null);
+        if (type == null) {
+            return AgentContexts.NEED_ANSWER;
+        }
+        return switch (type) {
+            case JD -> AgentContexts.NEED_POSTING;
+            case NEWS -> jobContext == null ? AgentContexts.NEED_POSTING : AgentContexts.NEED_COMPANY;
+            case POSITION -> AgentContexts.NEED_POSITION_NAME;
+            case COMPANY -> AgentContexts.NEED_COMPANY;
+            default -> AgentContexts.NEED_ANSWER;
+        };
     }
 
     private static boolean hasPositionName(RoomResponse.JobContextRef jobContext) {

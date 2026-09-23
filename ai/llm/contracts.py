@@ -26,6 +26,15 @@ class LlmHttpError(LlmError):
         self.detail = detail
 
 
+class LlmRateLimitedError(LlmError):
+    """공급자가 호출 한도를 넘겼거나 게이트 대기 시간이 만료됐다."""
+
+    def __init__(self, provider: str, retry_after_seconds: int | None = None) -> None:
+        super().__init__(f"{provider} rate limit exceeded")
+        self.provider = provider
+        self.retry_after_seconds = retry_after_seconds
+
+
 class LlmConnectionError(LlmError):
     """서버에 닿지 못했다. GPU 서버가 죽어 있을 때 주로 온다."""
 

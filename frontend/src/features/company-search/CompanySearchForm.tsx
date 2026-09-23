@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { MAX_KEYWORD, searchCompanies } from './api';
-import { qwertyToHangul } from './qwertyToHangul';
+import { displayName } from '../company-summary/companyName';
+import { MAX_KEYWORD } from './api';
+import { searchWithFallback } from './searchWithFallback';
 import type { Company } from '../../types/company';
 
 type CompanySearchFormProps = {
@@ -18,23 +19,23 @@ type CompanySearchFormProps = {
 const TYPING_PAUSE_MS = 200;
 
 /**
- * 칸 아래에 펼쳐 둘 최대 개수. 더 보려면 검색을 눌러 아래 목록에서 본다.
+ * 목록이 차지할 최대 높이.
  *
- * <p>다섯이면 창 높이 640px 짜리 노트북에서도 목록이 화면 안에 들어온다. 여섯이면 마지막
- * 줄이 접히는 곳에 걸린다.
- */
-const MAX_SUGGESTIONS = 5;
-
-/**
- * 친 글자로 시작하는 회사를 앞에 세운다.
+ * <p>예전에는 다섯 줄만 보여 주고 나머지는 "검색" 을 눌러 페이지 아래 목록에서 보게 했다.
+ * 그런데 찾는 사람은 칸에 치고 있는데 결과는 화면 아래 딴 곳에 생기니, 검색이 됐는지조차
+ * 알기 어려웠다. 결과는 친 자리 바로 아래에서 다 본다 — 넘치면 이 안에서 굴린다.
  *
- * <p>서버는 이름 어디에 있든 찾아 주므로 "삼" 을 치면 "삼성전자" 와 "한국삼공" 이 뒤섞인다.
- * 찾는 사람은 앞글자를 치고 있으니 그것부터 보여 준다.
+ * <p>창 높이에 맞춰 잡는다. 고정값이면 낮은 노트북에서 목록이 화면 밖으로 흘러내린다.
+ *
+ * <p>그래도 60svh 는 검색칸이 화면 가운데쯤 있으면 목록 끝이 첫 화면(영상) 아래로 빠져나갔다.
+ * 끝까지 굴리면 페이지가 따라 내려가 뒤의 흰 바탕이 드러났다. 그래서 목록이 열릴 때 검색칸
+ * 아래에 남은 높이를 재서 그 안에 가둔다(아래 여백 LIST_BOTTOM_GAP). 이 값은 윗한도로만 쓴다.
  */
-const startsWithFirst = (items: Company[], keyword: string) => [
-  ...items.filter((company) => company.corpName.startsWith(keyword)),
-  ...items.filter((company) => !company.corpName.startsWith(keyword)),
-];
+const LIST_MAX_HEIGHT = 'max-h-[min(60svh,26rem)]';
+/** 목록 끝과 화면 아래 사이에 남길 틈 */
+const LIST_BOTTOM_GAP = 24;
+/** 남은 자리가 아무리 좁아도 이만큼은 보인다(두세 줄) */
+const LIST_MIN_HEIGHT = 168;
 
 export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) {
   const [keyword, setKeyword] = useState('');
@@ -42,10 +43,18 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
   const [open, setOpen] = useState(false);
   /** 키보드로 짚고 있는 줄. -1 이면 아무것도 안 짚은 상태다 */
   const [active, setActive] = useState(-1);
-  /** 자판을 안 바꾸고 친 것으로 보여 한글로 되돌려 찾은 경우. 무엇을 무엇으로 바꿨는지 알린다 */
-  const [swap, setSwap] = useState<{ from: string; to: string } | null>(null);
+  /**
+   * 방금 찾아본 말. 지금 친 말과 같을 때만 결과가 이 말의 것이다.
+   *
+   * <p>"찾아봤는지" 를 따로 켜고 끄지 않는다. 글자가 바뀔 때마다 끄려면 효과 안에서 상태를
+   * 건드려야 하고, 그러면 한 번 더 그린다. 두 말을 견주면 그릴 때 알 수 있다.
+   */
+  const [searchedFor, setSearchedFor] = useState('');
   const listId = useId();
   const inFlight = useRef<AbortController | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  // 화면 아래까지 남은 높이. 목록이 열려 있는 동안 창 크기가 바뀌면 다시 잰다
+  const [fitHeight, setFitHeight] = useState<number | null>(null);
 
   const trimmedKeyword = keyword.trim();
   const canSearch = trimmedKeyword.length > 0;
@@ -54,7 +63,24 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
    * 것은, 칸이 비었다는 사실만으로 다시 그릴 일을 만들지 않기 위해서다.
    */
   const visible = trimmedKeyword === '' ? [] : suggestions;
-  const showList = open && visible.length > 0;
+  /*
+   * 찾은 것이 없어도 목록은 연다. 예전에는 조용히 접혀서, 친 이름이 없는 것인지 아직
+   * 찾는 중인지 알 수 없었다. 다만 이 말로 실제 찾아본 뒤에만 연다.
+   */
+  const searched = searchedFor !== '' && searchedFor === trimmedKeyword;
+  const showList = open && trimmedKeyword !== '' && (visible.length > 0 || searched);
+
+  useEffect(() => {
+    if (!showList) return;
+    const measure = () => {
+      const top = listRef.current?.getBoundingClientRect().top;
+      if (top === undefined) return;
+      setFitHeight(Math.max(LIST_MIN_HEIGHT, Math.floor(window.innerHeight - top - LIST_BOTTOM_GAP)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [showList]);
 
   useEffect(() => () => inFlight.current?.abort(), []);
 
@@ -70,38 +96,21 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
       inFlight.current = controller;
 
       const run = async () => {
-        let found = await searchCompanies(trimmedKeyword, controller.signal);
-        let matched = trimmedKeyword;
-        let swapped: { from: string; to: string } | null = null;
-
-        /*
-         * 빈손일 때만 자판을 안 바꾸고 친 것으로 보고 한 번 더 찾는다("tka" → "삼").
-         * 처음부터 바꿔 찾으면 치지도 않은 말을 찾아 주는 셈이 된다.
-         */
-        if (found.items.length === 0) {
-          const hangul = qwertyToHangul(trimmedKeyword);
-          if (hangul !== trimmedKeyword) {
-            const retry = await searchCompanies(hangul, controller.signal);
-            if (retry.items.length > 0) {
-              found = retry;
-              matched = hangul;
-              swapped = { from: trimmedKeyword, to: hangul };
-            }
-          }
-        }
+        // 친 그대로 못 찾으면 말을 바꿔 가며 한 번 더 찾는다 (자판·영문 약어)
+        const found = await searchWithFallback(trimmedKeyword, controller.signal);
 
         if (controller.signal.aborted) return;
-        setSuggestions(startsWithFirst(found.items, matched).slice(0, MAX_SUGGESTIONS));
-        setSwap(swapped);
+        setSuggestions(found.items);
+        setSearchedFor(trimmedKeyword);
         setActive(-1);
         setOpen(true);
       };
 
       run().catch(() => {
-        // 추천은 거들 뿐이다. 실패하면 조용히 접는다 — 검색 단추는 그대로 쓸 수 있다
+        // 실패했을 때는 빈손과 구분해 접어 둔다. 없는 것처럼 말하면 안 된다
         if (controller.signal.aborted) return;
         setSuggestions([]);
-        setSwap(null);
+        setSearchedFor('');
       });
     }, TYPING_PAUSE_MS);
 
@@ -123,14 +132,23 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
     onSearch?.(company.corpName);
   };
 
+  /*
+   * 결과는 칸 바로 아래 목록에 이미 떠 있다. 그래서 "검색" 은 따로 결과를 만드는 것이
+   * 아니라 가장 잘 맞는 곳으로 들어가는 단추다 — 짚어 둔 줄이 없으면 맨 윗줄로 간다.
+   *
+   * <p>찾은 것이 없으면 목록을 열어 둔 채로 둔다. 아무 일도 일어나지 않는 것처럼 보이지만
+   * 그 자리에 "찾지 못했어요" 가 떠 있다.
+   */
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canSearch) return;
 
-    if (!canSearch) {
+    if (visible.length > 0) {
+      pick(visible[active >= 0 ? active : 0]);
       return;
     }
 
-    close();
+    setOpen(true);
     onSearch?.(trimmedKeyword);
   };
 
@@ -178,7 +196,7 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
         <label className="sr-only" htmlFor="company-search-keyword">
           기업명
         </label>
-        <div className="flex items-center gap-2 rounded-full border border-slate-300 bg-white p-2 shadow-sm transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100 sm:gap-3">
+        <div className="flex items-center gap-2 rounded-full border border-slate-300 bg-white p-2 shadow-sm transition sm:gap-3">
           <svg
             aria-hidden="true"
             className="ml-2 size-5 shrink-0 text-slate-400 sm:ml-3"
@@ -219,17 +237,22 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
       </form>
 
       {showList && (
-        <ul
-          aria-label="기업 추천"
-          className="absolute top-full right-0 left-0 z-30 mt-2 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl"
-          id={listId}
-          role="listbox"
-        >
-          {/* 말없이 바꿔 찾으면 내가 안 친 말이 나온 것으로 보인다. 무엇을 바꿨는지 먼저 알린다 */}
-          {swap && (
-            <li className="px-3 pt-1 pb-2 text-[12px] text-slate-500" role="presentation">
-              한글로 바꿔 찾았어요 · <span className="font-semibold text-slate-700">{swap.from}</span>{' '}
-              → <span className="font-semibold text-slate-700">{swap.to}</span>
+        /*
+         * 둥근 모서리는 이 바깥 상자가 맡고, 굴리는 것은 안쪽 목록이 맡는다. 한 상자에
+         * 둘 다 맡기면 스크롤 막대가 모서리 안쪽에 그려져 오른쪽 두 귀퉁이만 각이 진다.
+         */
+        <div className="absolute top-full right-0 left-0 z-30 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+          <ul
+            aria-label="기업 검색 결과"
+            className={`overflow-y-auto overscroll-contain p-1.5 text-left ${LIST_MAX_HEIGHT}`}
+            id={listId}
+            ref={listRef}
+            style={fitHeight === null ? undefined : { maxHeight: `min(${fitHeight}px, min(60svh, 26rem))` }}
+            role="listbox"
+          >
+          {visible.length === 0 && (
+            <li className="px-3 py-6 text-center text-[13px] text-slate-500" role="presentation">
+              찾은 기업이 없어요.
             </li>
           )}
           {visible.map((company, index) => (
@@ -250,8 +273,9 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
               role="option"
             >
               <span className="flex min-w-0 flex-col">
+                {/* 공시명이 한글 음차라 아무도 그렇게 부르지 않는 곳이 있다("케이티" → KT) */}
                 <span className="truncate text-[15px] font-semibold text-slate-800">
-                  {company.corpName}
+                  {displayName(company.corpName)}
                 </span>
                 <span className="truncate text-[12px] text-slate-400">
                   {company.industryName ?? '업종 정보 없음'}
@@ -262,7 +286,8 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
               </span>
             </li>
           ))}
-        </ul>
+          </ul>
+        </div>
       )}
     </div>
   );

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ai.llm import LlmConnectionError, LlmHttpError, LlmResponseError, complete_structured
-from ai.llm.config import GMS, VLLM, load_llm_config
+from ai.llm.config import GMS_PROXIED, VLLM, load_llm_config
 
 
 class ModelTimeoutError(RuntimeError):
@@ -145,7 +145,7 @@ class GmsStructuredClient:
     def complete(self, messages: list[dict[str, str]], schema: dict[str, Any], *, max_tokens: int) -> dict[str, Any]:
         try:
             result = complete_structured(
-                self._config.__dict__ | {"provider": GMS},
+                self._config.__dict__,
                 messages,
                 schema=schema,
                 schema_name="company_analysis_output",
@@ -175,7 +175,8 @@ class GmsStructuredClient:
 
 def build_structured_client(config: QwenConfig) -> StructuredCompletionClient:
     """설정이 가리키는 공급자의 클라이언트를 만든다. 호출부는 어느 쪽인지 몰라도 된다."""
-    if config.provider == GMS:
+    # GMS 를 거치는 공급자(Gemini·OpenAI·Claude)는 모두 공통 라우터로 간다. 오류 변환은 같다.
+    if config.provider in GMS_PROXIED:
         return GmsStructuredClient(config)
     return QwenStructuredClient(config)
 

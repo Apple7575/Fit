@@ -5,11 +5,14 @@ import com.ssafy.companyanalysis.agent.ai.SupervisorClient;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
 import com.ssafy.companyanalysis.agent.domain.Message;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
+import com.ssafy.companyanalysis.global.error.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -31,8 +34,13 @@ public class SupervisorTurnRunner {
     private static final Logger log = LoggerFactory.getLogger(SupervisorTurnRunner.class);
 
     /** 총괄이 고르지 않은 담당의 자리에 남길 말. 실패가 아니라서 자리를 비워 두지 않는다. */
-    private static final String NOT_SELECTED = "이번 질문에는 이 관점이 필요하지 않다고 보고 넘어갔습니다.";
+    private static final String NOT_SELECTED = "이번 요청에서는 이 담당이 살펴볼 부분이 없어 건너뛰었습니다.";
+    private static final String UNREADABLE_AGENT_MESSAGE =
+            "답변을 정리하지 못했습니다. 다시 요청해 주세요.";
+    private static final String UNREADABLE_SUPERVISOR_MESSAGE =
+            "의견을 종합하지 못했습니다. 다시 요청해 주세요.";
     private static final int MAX_REASON = 200;
+    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private final MessageRepository messageRepository;
     private final SupervisorClient supervisorClient;
@@ -108,11 +116,12 @@ public class SupervisorTurnRunner {
                 // 자리를 안 만든 담당이 돌아왔다. 컨텍스트를 안 보냈으면 일어나지 않는다.
                 continue;
             }
-            if (result.succeeded() && !result.message().isBlank()) {
-                slot.succeed(result.message(), result.evidence(), List.of());
+            String message = safeMessage(result.message(), UNREADABLE_AGENT_MESSAGE);
+            if (result.succeeded() && message != null) {
+                slot.succeed(message, result.evidence(), List.of());
                 answered.add(slot.getId());
             } else {
-                slot.fail(result.error() == null ? "담당이 답을 만들지 못했습니다." : result.error());
+                slot.fail(failureMessage(result.error()));
             }
         }
         // 컨텍스트는 보냈지만 총괄이 고르지 않은 담당. 실패로 두면 사용자가 장애로 읽는다.
@@ -121,10 +130,11 @@ public class SupervisorTurnRunner {
         if (supervisorSlot == null) {
             return;
         }
-        if (run.message().isBlank()) {
+        String supervisorMessage = safeMessage(run.message(), UNREADABLE_SUPERVISOR_MESSAGE);
+        if (supervisorMessage == null) {
             supervisorSlot.fail("총괄이 종합 문구를 만들지 못했습니다.");
         } else {
-            supervisorSlot.succeed(run.message(), run.evidence(), answered);
+            supervisorSlot.succeed(supervisorMessage, run.evidence(), answered);
         }
     }
 
@@ -142,7 +152,8 @@ public class SupervisorTurnRunner {
                 String.valueOf(newsContext.get("job_context_id")),
                 String.valueOf(newsContext.get("corp_code")),
                 context.conversation());
-        newsSlot.succeed(analysis.message(), analysis.evidence(), List.of());
+        String message = safeMessage(analysis.message(), UNREADABLE_AGENT_MESSAGE);
+        newsSlot.succeed(message == null ? UNREADABLE_AGENT_MESSAGE : message, analysis.evidence(), List.of());
     }
 
     /** 화면에 그대로 뜨는 문구라 스택트레이스가 아니라 한 줄 사유만 남긴다. */
@@ -152,5 +163,31 @@ public class SupervisorTurnRunner {
             return "알 수 없는 이유로 실패했습니다.";
         }
         return message.length() > MAX_REASON ? message.substring(0, MAX_REASON) : message;
+    }
+
+    private static String safeMessage(String value, String jsonFallback) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String text = value.trim();
+        if (text.charAt(0) != '{' && text.charAt(0) != '[') {
+            return text;
+        }
+        try {
+            JsonNode parsed = JSON.readTree(text);
+            if (parsed.isObject() || parsed.isArray()) {
+                return jsonFallback;
+            }
+        } catch (Exception ignored) {
+            // JSON처럼 시작해도 문장이라면 원문을 보존한다.
+        }
+        return text;
+    }
+
+    private static String failureMessage(String error) {
+        if ("GMS_RATE_LIMITED".equals(error)) {
+            return ErrorCode.AI_RATE_LIMITED.getDefaultMessage();
+        }
+        return error == null ? "담당이 답을 만들지 못했습니다." : error;
     }
 }

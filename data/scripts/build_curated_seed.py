@@ -95,7 +95,7 @@ from pipeline.normalize.text import squash, to_num  # noqa: E402
 from pipeline.paths import (CONFIG, cache_dir, curated_seed_dir,  # noqa: E402
                             raw_api_dir, staged_dir)
 from pipeline.targets import by_corp_code, load_targets  # noqa: E402
-from pipeline.universe import LISTED_CLS  # noqa: E402
+from pipeline.universe import LISTED_CLS, is_excluded  # noqa: E402
 
 # 시드 계보. manifests/ 는 Git 추적한다 — 원본이 없어도 무엇으로 만들었는지 남아야 한다.
 SEED_MANIFEST_DIR = Path(__file__).resolve().parents[1] / "manifests" / "seed"
@@ -342,6 +342,11 @@ def build_company(industry_codes: set[str], *,
 
         if not include_unlisted and corp_cls not in LISTED_CLS:
             stats[f"제외: 정규 시장 아님(corp_cls {corp_cls or '(없음)'})"] += 1
+            continue
+
+        # 기업인수목적회사(스팩)는 사업이 없다. 근거는 pipeline/universe.py 주석.
+        if is_excluded(r.get("corp_name") or ""):
+            stats["제외: 기업인수목적회사(스팩)"] += 1
             continue
 
         why = None
@@ -834,6 +839,15 @@ def main() -> int:
             raise SystemExit(f"build_metric_seed.FIELDS 가 Flyway 와 다르다: "
                              f"{CM_FIELDS} != {header('company_metric')}")
         rows, st = build_company_metric_rows()
+        # **company 에 없는 기업은 넣지 않는다.** FK 위반이라 적재가 통째로 실패한다.
+        # 지표 빌더는 staged 재무만 보고 만들어서 모집단이 줄어든 것을 모른다 —
+        # segment_metric 은 이미 같은 규칙으로 거르고 있었고(`corp_codes` 대조),
+        # 이 자리만 경고만 찍고 그대로 썼다. 스팩 41곳을 모집단에서 뺀
+        # 2026-09-22 에 드러났다.
+        outside_codes = {r["corp_code"] for r in rows} - corp_codes
+        if outside_codes:
+            rows = [r for r in rows if r["corp_code"] in corp_codes]
+            st["company 에 없는 기업(건너뜀)"] = len(outside_codes)
         built["company_metric"] = rows
         _check_shrink("company_metric", rows, CM_FIELDS)
         dest = write_company_metric(rows)

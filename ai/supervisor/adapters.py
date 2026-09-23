@@ -2,6 +2,7 @@ import logging
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol
 
+from ai.llm.prompt_guard import looks_like_injection, refusal
 from ai.news_intelligence.contracts import NewsAnalysisRequest
 from ai.position_coaching.render import render_position_message
 from ai.supervisor.contracts import AgentResult
@@ -184,6 +185,14 @@ class WritingAgentAdapter:
         ]
         if len(self_intro_documents) != 1:
             raise ValueError("writing agent requires exactly one SELF_INTRO document")
+        # 채용공고·포지션·뉴스 담당에만 걸려 있던 가드를 여기에도 건다. 문구 규칙만으로는
+        # 이 모델이 마지막 지시를 그대로 따른다는 것이 팀 실측이다(prompt_guard 주석 참고).
+        if looks_like_injection(str(instruction or "")):
+            return {
+                "status": "ANSWERED",
+                "message": refusal("자기소개서 첨삭"),
+                "revision": None,
+            }
         request = WritingMessageRequest(
             message=instruction,
             question=context["question"],
@@ -240,6 +249,8 @@ class CompanyAgentAdapter:
             for item in conversation
             if isinstance(item, Mapping)
         ]
+        if looks_like_injection(str(instruction or "")):
+            return {"answer": refusal("기업 분석"), "citations": [], "model": None, "usage": {}}
         return self._service_provider().answer(
             corp_code=context["corp_code"],
             message=instruction,

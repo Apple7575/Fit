@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import type { DeckCard } from './Deck';
 import { EVENT_META, type ClipEvent, type ClipEventKind, type MetricRow } from './delivery';
 import { EvidenceClip } from './EvidenceClip';
 import { FaceCompare } from './FaceCompare';
+import { GuideImage } from './GuideImage';
 import { Icon } from './icons';
-import { groupMetrics, groupStatus, type MetricGroup } from './metricGroups';
+import { FIX_FIGURE, IMPACT, orderMetrics } from './metricFocus';
 import { METRIC_ICON } from './metricIcons';
 import { T, TONE } from './reportTokens';
 import type { VisionSample } from './vision';
@@ -52,190 +53,84 @@ interface Clip {
 }
 
 /**
- * 지표 묶음 카드. 카드마다 아이콘과 상태 한 줄이 있고, 누르면 그 묶음의 낱개 값과 근거를 팝업으로 연다.
- * 근거는 이 브라우저에 저장된 녹화에서 그 자리에서 뽑는다 (서버로 보내지 않는다).
+ * 말투와 자세를 한 장에 하나씩 볼 카드로 만든다.
+ *
+ * <p>살펴볼 것이 앞, 적정이 뒤, 재지 못한 것이 맨 뒤다(orderMetrics). 그냥 두면 가장 먼저
+ * 볼 것이 나오고, 화살표를 누르는 만큼 덜 급한 것으로 간다. 열일곱 개를 다 담되 한 번에
+ * 한 장만 보여 주므로 "뭘 봐야 하지"가 생기지 않는다.
  */
-export function EvidenceCards({
-  rows,
-  clip,
-  onSeek,
-}: {
-  rows: MetricRow[];
-  clip: Clip | undefined;
-  /** 근거 장면을 누르면 위쪽 영상도 그 지점으로 옮긴다 */
-  onSeek?: (ms: number) => void;
-}) {
-  const [open, setOpen] = useState<string | null>(null);
-  const groups = groupMetrics(rows);
-  const current = groups.find((g) => g.key === open) ?? null;
-  if (groups.length === 0) return null;
-
-  return (
-    <>
-      <ul className="grid gap-2 sm:grid-cols-2">
-        {groups.map((g) => {
-          const tone = g.warnCount > 0 ? TONE.warn : TONE.good;
-          return (
-            <li key={g.key}>
-              <button
-                className="flex h-full w-full items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
-                onClick={() => setOpen(g.key)}
-                type="button"
-              >
-                <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone.soft} ${tone.text}`}>
-                  <Icon className="size-5" name={g.icon} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className={`block ${T.label}`}>{g.title}</span>
-                  <span
-                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${tone.chip}`}
-                  >
-                    {/* 권장 범위를 벗어났다는 뜻이지 틀렸다는 뜻이 아니다. "고칠 것"이라고 단정하지 않는다 */}
-                    {g.warnCount > 0 ? `${g.warnCount}개 살펴보기` : '모두 좋아요'}
-                  </span>
-                  <span className={`mt-1 block ${T.caption}`}>{groupStatus(g)}</span>
-                </span>
-                <Icon className="mt-1 size-4 shrink-0 text-slate-300" name="next" />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      {current && <GroupModal clip={clip} group={current} onClose={() => setOpen(null)} onSeek={onSeek} />}
-    </>
-  );
+export function metricCards(rows: MetricRow[], clip: Clip | undefined, onSeek?: (ms: number) => void): DeckCard[] {
+  return orderMetrics(rows).map((row) => ({
+    key: row.key,
+    tone: row.tone,
+    node: <MetricCard clip={clip} onSeek={onSeek} row={row} />,
+  }));
 }
 
-/** 묶음 하나의 팝업. 위쪽 칩으로 낱개 지표를 고르고, 아래에 그 지표의 값·설명·근거를 보여준다. */
-function GroupModal({
-  group,
-  clip,
-  onClose,
-  onSeek,
-}: {
-  group: MetricGroup;
-  clip: Clip | undefined;
-  onClose: () => void;
-  onSeek?: (ms: number) => void;
-}) {
-  // 고칠 것이 있으면 그걸 먼저 펴 준다
-  const [pick, setPick] = useState(() => (group.rows.find((r) => r.tone === 'warn') ?? group.rows[0]).key);
-  const row = group.rows.find((r) => r.key === pick) ?? group.rows[0];
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    // 팝업이 떠 있는 동안 뒤 화면이 같이 스크롤되지 않게 한다
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
-
-  const groupTone = group.warnCount > 0 ? TONE.warn : TONE.good;
+/**
+ * 지표 한 장. 무엇이 → 왜 중요한지 → 그렇게 본 근거 차례로 내려간다.
+ *
+ * <p>근거가 없는 지표(어깨 수평처럼 짚을 구간이 없는 것)는 글이 위쪽에만 몰려 아래가 텅
+ * 빈다. 그럴 때는 내용을 칸 가운데에 놓고 그림을 크게 써서 빈자리를 메운다.
+ */
+function MetricCard({ row, clip, onSeek }: { row: MetricRow; clip: Clip | undefined; onSeek?: (ms: number) => void }) {
   const tone = TONE[row.tone];
+  const hasEvidence =
+    clip != null && (EVENT_OF[row.key] != null || row.key === '표정' || WAVE_METRICS.has(row.key));
 
   return (
-    <div
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
-      onClick={onClose}
-      role="dialog"
-    >
-      {/* 카드 안쪽 클릭으로 닫히지 않게 막는다 */}
-      <div
-        className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 border-b border-slate-100 bg-white p-5">
-          <div className="flex items-start gap-3">
+    <div className={`flex h-full flex-col ${hasEvidence ? '' : 'justify-center'}`}>
+      <div className="flex items-start gap-6">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone.soft} ${tone.text}`}>
+              <Icon className="size-6" name={METRIC_ICON[row.key] ?? 'scan'} />
+            </span>
+            <span className="text-[18px] font-extrabold text-slate-900">{row.key}</span>
+            {/* 어떻게 쟀는지는 화면을 채우는 대신 여기 숨겨 둔다. 궁금한 사람만 짚어 보면 된다 */}
             <span
-              className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${groupTone.soft} ${groupTone.text}`}
+              className={`rounded-full px-3 py-1 text-[14px] font-bold ring-1 ${tone.chip}`}
+              title={HOW[row.key]}
             >
-              <Icon className="size-6" name={group.icon} />
+              {row.value}
             </span>
-            <div className="min-w-0 flex-1">
-              <p className={T.section}>{group.title}</p>
-              <p className={`mt-0.5 ${T.caption}`}>{group.about}</p>
-            </div>
-            <button
-              aria-label="닫기"
-              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-              onClick={onClose}
-              type="button"
-            >
-              <Icon className="size-5" name="close" />
-            </button>
           </div>
 
-          <ul className="mt-3 flex flex-wrap gap-1.5">
-            {group.rows.map((r) => {
-              const on = r.key === row.key;
-              const rt = TONE[r.tone];
-              return (
-                <li key={r.key}>
-                  <button
-                    aria-pressed={on}
-                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold ring-1 transition ${
-                      on ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
-                    }`}
-                    onClick={() => setPick(r.key)}
-                    type="button"
-                  >
-                    <span aria-hidden="true" className={`size-1.5 rounded-full ${rt.dot}`} />
-                    {r.key}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div className="space-y-4 p-5">
-          <div className="flex items-center gap-2">
-            <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${tone.soft} ${tone.text}`}>
-              <Icon className="size-5" name={METRIC_ICON[row.key] ?? 'scan'} />
-            </span>
-            <span className={`rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${tone.chip}`}>{row.value}</span>
-          </div>
-
-          {row.hint && (
-            <p className={`rounded-xl p-3 ${tone.soft} text-[14px] font-semibold leading-6 ${tone.text} break-keep`}>
-              {row.hint}
+          {/*
+            어긋난 것에는 어떻게 보였고 뭘 하면 되는지가 적혀 있다(hint). 적정인 것에는 그런
+            글이 없는데, 빈자리로 두면 "좋다"는 말이 어디에도 없어진다. 한 줄로 대신한다.
+          */}
+          <p className="mt-5 max-w-[34ch] text-[22px] leading-9 font-extrabold break-keep wrap-anywhere text-slate-950">
+            {row.hint ?? (row.tone === 'good' ? '권장 범위 안이에요. 이대로 가면 됩니다.' : '이번에는 재지 못했어요.')}
+          </p>
+          {IMPACT[row.key] && (
+            <p className="mt-3 max-w-[42ch] text-[16px] leading-7 break-keep wrap-anywhere text-slate-500">
+              {IMPACT[row.key]}
             </p>
           )}
-
-          <div>
-            <p className={T.label}>어떻게 쟀나요</p>
-            <p className={`mt-1 ${T.body}`}>{HOW[row.key] ?? '이 브라우저에서 계산한 값이에요.'}</p>
-            {/*
-              기준을 숨기면 점수처럼 읽힌다. 일반적인 권장 범위일 뿐이라는 걸 값과 같은 자리에서 밝힌다
-              (임계값은 delivery.ts·vision.ts 에 초안으로 적혀 있다).
-            */}
-            <p className={`mt-2 ${T.caption}`}>
-              여기서 쓰는 기준은 일반적인 권장 범위예요. 회사와 직무, 질문에 따라 알맞은 값이 다를 수
-              있으니 참고로만 봐 주세요.
-            </p>
-          </div>
-
-          <Evidence
-            clip={clip}
-            onSeek={
-              onSeek &&
-              ((ms) => {
-                onSeek(ms);
-                onClose();
-              })
-            }
-            row={row}
-          />
         </div>
+
+        {/*
+          그림은 ✗ 와 ✓ 를 나란히 세운 한 장이다. 정사각으로 잘라내면(object-cover) 가운데
+          빈 곳만 남고 두 사람이 다 사라진다. 4:3 을 그대로 두고 안쪽에 맞춘다.
+          파일이 없으면 조용히 빠지고 글은 그대로 칸을 채운다.
+        */}
+        {FIX_FIGURE[row.key] && (
+          <GuideImage
+            alt=""
+            className={`hidden aspect-[4/3] shrink-0 rounded-2xl bg-slate-50 object-contain sm:block ${
+              hasEvidence ? 'w-48' : 'w-64'
+            }`}
+            name={FIX_FIGURE[row.key]}
+          />
+        )}
       </div>
+
+      {hasEvidence && (
+        <div className="mt-6 border-t border-slate-100 pt-5">
+          <Evidence clip={clip} onSeek={onSeek} row={row} />
+        </div>
+      )}
     </div>
   );
 }
@@ -292,27 +187,29 @@ function WaveStrip({ clip, onSeek }: { clip: Clip; onSeek?: (ms: number) => void
   return (
     <div>
       <p className={T.label}>음량 흐름 · 회색은 소리가 없던 구간</p>
-      <div className="relative mt-2 h-16 w-full">
-        <div className="flex h-full items-end gap-[2px]">
-          {wave.map((v, i) => {
-            const at = i * step;
-            const quiet = silences.some((s) => at >= s.startMs && at <= s.endMs);
-            return (
-              <button
-                className="min-w-0 flex-1"
-                key={i}
-                onClick={() => onSeek?.(at)}
-                title={`${(at / 1000).toFixed(1)}초`}
-                type="button"
-              >
-                <span
-                  className={`block w-full rounded-sm ${quiet ? 'bg-slate-300' : 'bg-blue-500'}`}
-                  style={{ height: `${Math.max(3, v * 100)}%` }}
-                />
-              </button>
-            );
-          })}
-        </div>
+      <div className="mt-2 flex h-20 w-full items-end gap-[2px]">
+        {wave.map((v, i) => {
+          const at = i * step;
+          const quiet = silences.some((s) => at >= s.startMs && at <= s.endMs);
+          return (
+            /*
+              막대 높이는 버튼 높이의 %다. 버튼이 h-full 없이 items-end 안에 있으면 높이가
+              내용에 맞춰 0 이 되고, 그 안의 % 높이도 같이 0 이 돼 파형이 통째로 사라진다.
+            */
+            <button
+              className="flex h-full min-w-0 flex-1 items-end"
+              key={i}
+              onClick={() => onSeek?.(at)}
+              title={`${(at / 1000).toFixed(1)}초`}
+              type="button"
+            >
+              <span
+                className={`block w-full rounded-sm ${quiet ? 'bg-slate-300' : 'bg-blue-500'}`}
+                style={{ height: `${Math.max(3, v * 100)}%` }}
+              />
+            </button>
+          );
+        })}
       </div>
       <p className={`mt-1 ${T.caption}`}>
         막대를 누르면 그 시점부터 재생돼요 · 0초 ~ {Math.round((wave.length * step) / 1000)}초

@@ -43,6 +43,7 @@ export function useLiveMessages(roomId: number) {
   const requestKey = `${roomId}#${attempt}`;
   const [settled, setSettled] = useState<{
     key: string;
+    roomId: number;
     state: Exclude<QueryState<MessagePage>, { status: 'loading' }>;
   } | null>(null);
 
@@ -58,7 +59,7 @@ export function useLiveMessages(roomId: number) {
         const page = await fetchMessages(roomId, null, controller.signal);
         if (stopped) return;
         errors = 0;
-        setSettled({ key: requestKey, state: { status: 'success', data: page } });
+        setSettled({ key: requestKey, roomId, state: { status: 'success', data: page } });
 
         if (unsettled(page.messages)) {
           emptyPolls = 0;
@@ -74,10 +75,11 @@ export function useLiveMessages(roomId: number) {
         errors += 1;
         // 이미 보여주고 있는 대화가 있으면 지우지 않는다. 잠깐 끊긴 것일 수 있다.
         setSettled((previous) =>
-          previous?.key === requestKey && previous.state.status === 'success'
+          previous?.roomId === roomId && previous.state.status === 'success'
             ? previous
             : {
                 key: requestKey,
+                roomId,
                 state: {
                   status: 'error',
                   error:
@@ -104,8 +106,21 @@ export function useLiveMessages(roomId: number) {
   /** 말을 건 직후처럼 바로 다시 읽어야 할 때. 폴링도 처음부터 다시 돈다. */
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
 
+  /*
+   * 다시 읽는 동안에도 보던 대화를 그대로 둔다.
+   *
+   * <p>말을 걸면 곧바로 다시 읽는데(RoomWorkspace), 그때마다 로딩으로 되돌리면 방금 쓴 말을
+   * 보여 주기는커녕 있던 대화까지 한 왕복 동안 사라진다. 비울 이유가 있는 것은 다른 방으로
+   * 옮겼을 때뿐이다 — 그때는 남은 대화가 남의 것이라 반드시 버려야 한다.
+   */
   const state: QueryState<MessagePage> =
-    settled?.key === requestKey ? settled.state : LOADING;
+    settled === null
+      ? LOADING
+      : settled.key === requestKey
+        ? settled.state
+        : settled.roomId === roomId && settled.state.status === 'success'
+          ? settled.state
+          : LOADING;
 
   return { state, reload };
 }

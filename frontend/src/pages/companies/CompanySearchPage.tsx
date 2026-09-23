@@ -1,21 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SiteHeader } from '../../components/layout/SiteHeader';
 import { CompanyLogo } from '../../features/company-summary/CompanyLogo';
-import { searchCompanies } from '../../features/company-search/api';
-import { qwertyToHangul } from '../../features/company-search/qwertyToHangul';
 import { CompanySearchForm } from '../../features/company-search/CompanySearchForm';
-import {
-  CompanySearchResults,
-  type CompanySearchStatus,
-} from '../../features/company-search/CompanySearchResults';
 import {
   addRecentCompany,
   clearRecentCompanies,
   getRecentCompanies,
   type RecentCompany,
 } from '../../features/company-search/recent';
-import type { Company } from '../../types/company';
 import { FEATURED_COMPANIES } from '../home/featuredCompanies';
 
 /** 첫 화면 배경. 기업 요약 화면처럼 영상 위에서 시작해 두 화면이 같은 인상을 갖게 한다 */
@@ -31,20 +24,9 @@ const HERO_POSTER = '/company-media/search-hero.jpg';
  */
 export function CompanySearchPage() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<CompanySearchStatus>('idle');
-  const [keyword, setKeyword] = useState('');
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [total, setTotal] = useState(0);
   const [recent, setRecent] = useState<RecentCompany[]>(() => getRecentCompanies());
-  /** 자판을 안 바꾸고 친 것으로 보여 한글로 되돌려 찾은 경우 */
-  const [swap, setSwap] = useState<{ from: string; to: string } | null>(null);
   // 영상 위에서는 헤더를 투명하게 띄우고, 첫 화면을 벗어나면 흰 유리로 되돌린다
   const [scrolled, setScrolled] = useState(false);
-  const inFlight = useRef<AbortController | null>(null);
-  // 결과는 영상 띠 아래에 붙는다. 검색하면 그 자리로 내려 준다 (안 그러면 아무 일도 없어 보인다)
-  const resultsRef = useRef<HTMLElement>(null);
-
-  useEffect(() => () => inFlight.current?.abort(), []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -52,48 +34,6 @@ export function CompanySearchPage() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  const runSearch = async (nextKeyword: string) => {
-    inFlight.current?.abort();
-    const controller = new AbortController();
-    inFlight.current = controller;
-    setKeyword(nextKeyword);
-    setStatus('loading');
-    resultsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-    try {
-      let found = await searchCompanies(nextKeyword, controller.signal);
-      let swapped: { from: string; to: string } | null = null;
-
-      /*
-       * 빈손일 때만 자판을 안 바꾸고 친 것으로 보고 한 번 더 찾는다("tka" → "삼").
-       * 바꿔서 찾았으면 무엇을 바꿨는지 결과 위에 적는다 — 말없이 바꾸면 치지도 않은 말의
-       * 결과가 나온 것으로 보인다.
-       */
-      if (found.items.length === 0) {
-        const hangul = qwertyToHangul(nextKeyword);
-        if (hangul !== nextKeyword) {
-          const retry = await searchCompanies(hangul, controller.signal);
-          if (retry.items.length > 0) {
-            found = retry;
-            swapped = { from: nextKeyword, to: hangul };
-            setKeyword(hangul);
-          }
-        }
-      }
-
-      if (controller.signal.aborted) return;
-      setSwap(swapped);
-      setCompanies(found.items);
-      setTotal(found.total);
-      setStatus('success');
-    } catch {
-      if (controller.signal.aborted) return;
-      setSwap(null);
-      setCompanies([]);
-      setTotal(0);
-      setStatus('error');
-    }
-  };
 
   const open = (company: RecentCompany) => {
     addRecentCompany(company);
@@ -137,7 +77,7 @@ export function CompanySearchPage() {
             </p>
 
             <div className="mx-auto mt-8 w-full max-w-2xl text-left text-slate-900">
-              <CompanySearchForm onPick={open} onSearch={runSearch} />
+              <CompanySearchForm onPick={open} />
             </div>
 
             {/* 다시 찾을 회사는 검색창 바로 아래에서 집게 한다. 처음 온 사람에게는 빈 줄을 보여 주지 않는다 */}
@@ -208,24 +148,6 @@ export function CompanySearchPage() {
         </div>
       </section>
 
-      {status !== 'idle' && (
-        <main className="mx-auto w-full max-w-[1100px] flex-1 scroll-mt-[72px] px-6 py-10" ref={resultsRef}>
-          {status === 'success' && swap && (
-            <p className="mb-3 text-[13px] text-slate-500">
-              한글로 바꿔 찾았어요 · <span className="font-semibold text-slate-700">{swap.from}</span>{' '}
-              → <span className="font-semibold text-slate-700">{swap.to}</span>
-            </p>
-          )}
-          <CompanySearchResults
-            companies={companies}
-            keyword={keyword}
-            onRetry={() => runSearch(keyword)}
-            onSelect={open}
-            status={status}
-            total={total}
-          />
-        </main>
-      )}
     </div>
   );
 }

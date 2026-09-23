@@ -41,10 +41,16 @@ export async function deleteRoom(roomId: number): Promise<void> {
  * 방에 말을 건다. 이것이 곧 분석 요청이다.
  * 결과가 아니라 접수증(turnId)이 돌아온다 — 에이전트가 다 답하려면 1분을 넘긴다.
  */
-export const sendMessage = (roomId: number, content: string, coverLetterItemId?: number) =>
+export const sendMessage = (
+  roomId: number,
+  content: string,
+  coverLetterItemId?: number,
+  writingReview = false,
+) =>
   apiSend<TurnStarted>('POST', `/api/rooms/${roomId}/messages`, {
     content,
     coverLetterItemId: coverLetterItemId ?? null,
+    writingReview,
   });
 
 export const fetchTurnStatus = (roomId: number, turnId: number, signal?: AbortSignal) =>

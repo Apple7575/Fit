@@ -17,6 +17,6 @@ public record CoverLetterResponse(
         String updatedAt,
         List<Item> items) {
 
-    public record Item(String question, String answer, int charLimit) {
+    public record Item(Long id, String question, String answer, int charLimit) {
     }
 }

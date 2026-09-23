@@ -23,6 +23,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -36,6 +37,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -57,6 +59,10 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthenticationManager authenticationManager;
+
+    /** SecurityConfig 의 "로그인 유지" 서비스가 사용자 조회를 요구한다. */
+    @MockitoBean
+    private UserDetailsService userDetailsService;
 
     private static UserPrincipal principal(User user) {
         return new UserPrincipal(user);
@@ -146,10 +152,30 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new LoginRequest("user@example.com", "password123"))))
+                                new LoginRequest("user@example.com", "password123", false))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.email").value("user@example.com"))
-                .andExpect(jsonPath("$.data.nickname").value("민재"));
+                .andExpect(jsonPath("$.data.nickname").value("민재"))
+                // 켜지 않았으면 유지 쿠키를 주지 않는다. 공용 PC 에서 남으면 안 된다.
+                .andExpect(cookie().doesNotExist("remember-me"));
+    }
+
+    @Test
+    @DisplayName("로그인 유지를 켜면 세션과 별개로 오래 가는 쿠키를 함께 준다")
+    void loginWithRememberMeSetsCookie() throws Exception {
+        User user = User.create("user@example.com", "hash", "민재");
+        user.activate();
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                principal(user), null, principal(user).getAuthorities());
+        given(authenticationManager.authenticate(any())).willReturn(authentication);
+
+        mockMvc.perform(post("/api/auth/login").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new LoginRequest("user@example.com", "password123", true))))
+                .andExpect(status().isOk())
+                .andExpect(cookie().exists("remember-me"))
+                .andExpect(cookie().httpOnly("remember-me", true));
     }
 
     @Test
@@ -163,7 +189,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new LoginRequest("user@example.com", "password123"))))
+                                new LoginRequest("user@example.com", "password123", false))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("EMAIL_NOT_VERIFIED"));
     }
@@ -176,7 +202,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new LoginRequest("user@example.com", "wrong-password"))))
+                                new LoginRequest("user@example.com", "wrong-password", false))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
     }

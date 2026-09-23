@@ -1,6 +1,7 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { userMessage } from '../../api/errorMessage';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import {
@@ -10,7 +11,7 @@ import {
 import { UNTITLED_COVER_LETTER } from '../../features/cover-letter/api';
 import { CoverLetterWorkspace } from '../../features/cover-letter/CoverLetterWorkspace';
 import { useCoverLetter } from '../../features/cover-letter/queries';
-import type { CoverLetterInput, PendingJobPosting } from '../../features/cover-letter/types';
+import type { CoverLetter, CoverLetterInput, PendingJobPosting } from '../../features/cover-letter/types';
 import { CoverLetterHeader } from './CoverLetterHeader';
 
 const STASH_KEY = 'cover-letter:draft';
@@ -94,9 +95,15 @@ function NewWorkspace() {
     }
     const saved = await createCoverLetter(input);
     clearStash();
-    // 목록으로 보내지 않고 방금 저장한 자소서에 그대로 머문다. 주소만 /new 에서 그 자소서로
-    // 바꾼다 — 그러지 않으면 한 번 더 저장할 때 같은 자소서가 또 만들어진다.
-    navigate(`/cover-letters/${saved.id}`, { replace: true, state: { justSaved: true } });
+    /*
+     * 목록으로 보내지 않고 방금 저장한 자소서에 그대로 머문다. 주소만 /new 에서 그 자소서로
+     * 바꾼다 — 그러지 않으면 한 번 더 저장할 때 같은 자소서가 또 만들어진다.
+     *
+     * 저장한 자소서를 그대로 들려 보낸다. 주소가 갈리면서 화면이 새로 마운트되는데,
+     * 빈손으로 보내면 방금 저장한 것을 서버에 다시 물어보는 동안 화면이 통째로 비었다 —
+     * 어두운 껍데기만 남아 검게 깜빡이는 것으로 보였다.
+     */
+    navigate(`/cover-letters/${saved.id}`, { replace: true, state: { justSaved: true, saved } });
   };
 
   // 검토 방은 저장된 자소서에 붙으므로 먼저 저장하고 넘어간다.
@@ -109,7 +116,8 @@ function NewWorkspace() {
     }
     const saved = await createCoverLetter(input);
     clearStash();
-    navigate(`/agent-rooms?coverLetterId=${saved.id}`);
+    // 봐 달라고 하고 넘어온 길이므로 코치 고르는 화면을 한 번 더 묻지 않는다
+    navigate(`/cover-letters/${saved.id}/review`);
   };
 
   return (
@@ -120,7 +128,8 @@ function NewWorkspace() {
         isLoggedIn={!!user}
         onSave={onSave}
         onReview={onReview}
-        onBack={user ? () => navigate(COVER_LETTER_LIST_URL) : undefined}
+        // 게스트도 돌아갈 곳이 있다 — 같은 주소가 게스트에게는 자소서 첫 화면(GuestHome)이다
+        onBack={() => navigate(COVER_LETTER_LIST_URL)}
       />
     </WorkspaceShell>
   );
@@ -130,7 +139,7 @@ function NewWorkspace() {
  * 쓰는 화면의 껍데기. 첫 화면을 영상에 내주므로 헤더와 서브바를 위로 치워 두고,
  * 조금이라도 내리면 반투명 유리로 내려온다 — 기업 검색·자소서 첫 화면과 같다.
  */
-function WorkspaceShell({ children }: { children: ReactNode }) {
+function WorkspaceShell({ letter, children }: { letter?: { id: number; title: string } | null; children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -142,7 +151,8 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <CoverLetterHeader floating scrolled={scrolled} />
+      {/* 쓰는 화면은 처음부터 끝까지 영상 위다. 스크롤해도 흰 띠로 바꾸지 않는다 */}
+      <CoverLetterHeader dark floating letter={letter} scrolled={scrolled} />
       {children}
     </div>
   );
@@ -168,8 +178,15 @@ function ExistingLoaded({ id }: { id: number }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { state, retry } = useCoverLetter(id);
+  const handed = location.state as { justSaved?: boolean; saved?: CoverLetter } | null;
   // 새 자소서를 저장한 직후 이 주소로 바뀐 경우. 화면이 갈려도 저장했다는 말은 이어서 보여준다.
-  const justSaved = (location.state as { justSaved?: boolean } | null)?.justSaved === true;
+  const justSaved = handed?.justSaved === true;
+  /*
+   * 방금 저장하면서 들고 온 자소서. 서버에 다시 물어보는 동안 이것으로 화면을 세운다 —
+   * 기다리는 자리에 로딩 화면을 두면 쓰던 글이 사라졌다 돌아오는 것처럼 보인다.
+   */
+  const seeded = handed?.saved?.id === id ? handed.saved : null;
+  const data = state.status === 'success' ? state.data : seeded;
 
   // 저장하고 화면을 떠나지 않는다. 고치던 자리에 그대로 두고 저장했다는 것만 알린다.
   const onSave = async (input: CoverLetterInput) => {
@@ -179,7 +196,7 @@ function ExistingLoaded({ id }: { id: number }) {
   // 고친 내용을 에이전트가 보도록 저장부터 하고 넘어간다.
   const onReview = async (input: CoverLetterInput) => {
     await updateCoverLetter(id, input);
-    navigate(`/agent-rooms?coverLetterId=${id}`);
+    navigate(`/cover-letters/${id}/review`);
   };
 
   const notFound =
@@ -187,11 +204,12 @@ function ExistingLoaded({ id }: { id: number }) {
     (state.error.status === 404 || state.error.code === 'COVER_LETTER_NOT_FOUND');
 
   return (
-    <WorkspaceShell>
-      {state.status === 'loading' && <LoadingScreen />}
+    // 저장된 자소서라야 검토로 갈 수 있다. 아직 못 불러왔으면 이름표도 탭도 세우지 않는다
+    <WorkspaceShell letter={data ? { id, title: data.title } : null}>
+      {state.status === 'loading' && !data && <LoadingScreen />}
 
       {/* 못 불러온 경우에는 영상을 깔지 않는다. 읽을 것이 안내 한 줄뿐이다 */}
-      {state.status === 'error' && (
+      {state.status === 'error' && !data && (
         <div className="mx-auto max-w-6xl px-6 pt-28 pb-8">
           {notFound ? (
             <InlineNotice>
@@ -201,15 +219,15 @@ function ExistingLoaded({ id }: { id: number }) {
               </button>
             </InlineNotice>
           ) : (
-            <InlineNotice onRetry={retry}>자소서를 불러오지 못했습니다. {state.error.message}</InlineNotice>
+            <InlineNotice onRetry={retry}>{userMessage(state.error, '자소서를 불러오지 못했습니다.')}</InlineNotice>
           )}
         </div>
       )}
 
-      {state.status === 'success' && (
+      {data && (
         <CoverLetterWorkspace
           key={id}
-          initial={state.data}
+          initial={data}
           isLoggedIn
           alreadySaved
           justSaved={justSaved}

@@ -27,5 +27,12 @@ export function useComparisonTrends(companies: IndustryCompany[]) {
       ),
     [key],
   );
-  return useApiQuery(`comparison-trends|${key}`, fetcher, REUSE);
+  /*
+   * 맨 앞은 늘 조회 기업이고 그 뒤가 비교 기업이다. 비교 기업만 바뀌는 동안에는 보던
+   * 그래프를 지운다 — 다른 기업으로 옮기면 맨 앞이 바뀌므로 저절로 버려진다.
+   */
+  return useApiQuery(`comparison-trends|${key}`, fetcher, {
+    ...REUSE,
+    keepPreviousWhile: companies[0]?.corpCode,
+  });
 }

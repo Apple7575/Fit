@@ -81,7 +81,7 @@ class SupervisorTurnRunnerTest {
 
         Message jd = slots.get("jd");
         assertThat(jd.getStatus()).isEqualTo(MessageStatus.DONE);
-        assertThat(jd.getContent()).contains("필요하지 않다고 보고 넘어갔습니다");
+        assertThat(jd.getContent()).contains("살펴볼 부분이 없어 건너뛰었습니다");
     }
 
     @Test
@@ -102,6 +102,68 @@ class SupervisorTurnRunnerTest {
         assertThat(slots.get("supervisor").getStatus()).isEqualTo(MessageStatus.DONE);
         assertThat(slots.get("supervisor").getBasedOn())
                 .containsExactly(slots.get("writing").getId());
+    }
+
+    @Test
+    @DisplayName("어느 담당이든 JSON 문자열을 보내면 말풍선에는 안전한 안내만 남긴다")
+    void jsonMessagesNeverReachAgentBubbles() {
+        Map<String, Message> slots = slots("jd", "supervisor");
+        given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
+                .willReturn(new SupervisorClient.Run("SUCCESS", "{\"internal\":true}", null,
+                        List.of(success("jd", "{\"score\":72}")), List.of()));
+
+        runner.run(TURN_ID, context());
+
+        assertThat(slots.get("jd").getContent())
+                .isEqualTo("답변을 정리하지 못했습니다. 다시 요청해 주세요.");
+        assertThat(slots.get("supervisor").getContent())
+                .isEqualTo("의견을 종합하지 못했습니다. 다시 요청해 주세요.");
+    }
+
+    @Test
+    @DisplayName("30턴 동안 모든 담당의 JSON 원문은 어떤 말풍선에도 저장되지 않는다")
+    void thirtyTurnsNeverPersistRawJsonFromAnyAgent() {
+        List<String> agents = List.of("jd", "position", "writing", "news", "company");
+
+        for (int turn = 1; turn <= 30; turn++) {
+            int currentTurn = turn;
+            Map<String, Message> slots = slots("jd", "position", "writing", "news", "company", "supervisor");
+            given(messageRepository.findByParentMessageIdOrderByIdAsc(TURN_ID + currentTurn))
+                    .willReturn(new ArrayList<>(slots.values()));
+            List<SupervisorClient.AgentResult> results = agents.stream()
+                    .map(agent -> success(agent, "{\"agent\":\"" + agent + "\",\"turn\":" + currentTurn + "}"))
+                    .toList();
+            given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
+                    .willReturn(new SupervisorClient.Run("SUCCESS", "{\"turn\":" + currentTurn + "}", null,
+                            results, List.of()));
+
+            runner.run(TURN_ID + currentTurn, context());
+
+            for (String agent : agents) {
+                assertThat(slots.get(agent).getContent())
+                        .isEqualTo("답변을 정리하지 못했습니다. 다시 요청해 주세요.");
+            }
+            assertThat(slots.get("supervisor").getContent())
+                    .isEqualTo("의견을 종합하지 못했습니다. 다시 요청해 주세요.");
+        }
+    }
+
+    @Test
+    @DisplayName("GMS 제한 초과 담당은 내부 코드 대신 재시도 안내를 남긴다")
+    void rateLimitedAgentGetsRetryMessage() {
+        Map<String, Message> slots = slots("news", "writing", "supervisor");
+        given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
+                .willReturn(new SupervisorClient.Run("PARTIAL", "문장 검토는 완료했습니다.", null,
+                        List.of(new SupervisorClient.AgentResult("news", "FAILED", "",
+                                        "GMS_RATE_LIMITED", List.of()),
+                                success("writing", "첫 문장을 앞으로 올렸습니다.")),
+                        List.of()));
+
+        runner.run(TURN_ID, context());
+
+        assertThat(slots.get("news").getStatus()).isEqualTo(MessageStatus.FAILED);
+        assertThat(slots.get("news").getError())
+                .isEqualTo(ErrorCode.AI_RATE_LIMITED.getDefaultMessage());
     }
 
     @Test

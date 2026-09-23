@@ -42,12 +42,15 @@ export function TrackedClip({
   samples,
   onLoadedMetadata,
   videoRef,
+  onBroken,
 }: {
   src: string;
   samples: VisionSample[] | null;
   onLoadedMetadata?: (e: SyntheticEvent<HTMLVideoElement>) => void;
   /** 타임라인 칩이 이 영상을 특정 시각으로 옮길 수 있게 바깥과 공유한다 */
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  /** 이 파일로는 재생할 수 없을 때. 바깥에서 대신 안내를 띄운다 */
+  onBroken?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [now, setNow] = useState<VisionSample | null>(null);
@@ -89,9 +92,14 @@ export function TrackedClip({
   return (
     <div>
       <div className="relative overflow-hidden rounded-xl bg-slate-900">
+        {/*
+          녹화가 몇 백 바이트짜리로 끝나는 일이 있다(머리말만 쓰이고 프레임이 한 장도 안 들어간
+          경우). 그대로 두면 까만 상자에 0:00 만 뜬 채 아무 설명이 없어 고장으로 읽힌다.
+        */}
         <video
           className="w-full"
           controls
+          onError={onBroken}
           onLoadedMetadata={onLoadedMetadata}
           playsInline
           ref={videoRef}

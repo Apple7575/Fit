@@ -66,6 +66,7 @@ final class AgentAiCall {
     private static BusinessException translate(RestClientResponseException e, String agentName) {
         int status = e.getStatusCode().value();
         return switch (status) {
+            case 429 -> new BusinessException(ErrorCode.AI_RATE_LIMITED);
             case 503 -> new BusinessException(ErrorCode.AI_UNAVAILABLE,
                     agentName + " AI 서버가 아직 모델에 연결되지 않았습니다.");
             case 502 -> new BusinessException(ErrorCode.AI_FAILED,

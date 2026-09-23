@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from ai.serve import build_app
 from ai.position_coaching.render import NO_EXPERIENCE_CLAIM_MESSAGE
+from ai.llm.contracts import LlmRateLimitedError
 from ai.supervisor.api import (
     assemble_supervisor_service,
     app,
@@ -143,6 +144,27 @@ class SupervisorApiTest(unittest.TestCase):
         detail = response.json()["detail"]
         self.assertEqual(detail["code"], "ALL_AGENTS_FAILED")
         self.assertEqual(detail["agent_results"][0]["agent"], "jd")
+
+    def test_maps_all_gms_rate_limited_workers_to_429(self):
+        error = AllAgentsFailedError(
+            [AgentResult(agent="jd", status="FAILED", error="GMS_RATE_LIMITED")]
+        )
+        service = FakeService(error=error)
+        app.dependency_overrides[get_supervisor_service_provider] = lambda: lambda: service
+
+        response = TestClient(app).post("/internal/runs", json=VALID_REQUEST)
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["detail"], {"code": "GMS_RATE_LIMITED"})
+
+    def test_maps_gms_rate_limit_to_sanitized_429(self):
+        service = FakeService(error=LlmRateLimitedError("GMS", 10))
+        app.dependency_overrides[get_supervisor_service_provider] = lambda: lambda: service
+
+        response = TestClient(app, raise_server_exceptions=False).post("/internal/runs", json=VALID_REQUEST)
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["detail"], {"code": "GMS_RATE_LIMITED"})
 
     def test_maps_unexpected_domain_error_to_502_not_configuration_503(self):
         service = FakeService(error=ValueError("bad graph output: SECRET"))
@@ -526,10 +548,12 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_root = Path(temporary_directory)
             supervisor_env = temporary_root / "supervisor.env"
+            # 총괄의 계획·종합은 담당별 기본 배정(GMS 경유 OpenAI·Claude)을 따르므로 GMS_KEY 가 있어야 뜬다.
             supervisor_env.write_text(
                 "QWEN_BASE_URL=http://qwen.test\n"
                 "QWEN_MODEL=qwen-test\n"
-                "QWEN_API_KEY=test-key\n",
+                "QWEN_API_KEY=test-key\n"
+                "GMS_KEY=test-gms-key\n",
                 encoding="utf-8",
             )
             missing_writing_env = temporary_root / "missing-writing.env"

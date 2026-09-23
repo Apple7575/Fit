@@ -4,6 +4,7 @@
 !.env.example
 # 비밀값이 아니라 mock 스위치라 커밋한다.
 !frontend/.env.api
+!frontend/.env.production
 **/*.pem
 **/*.key
 *.p12

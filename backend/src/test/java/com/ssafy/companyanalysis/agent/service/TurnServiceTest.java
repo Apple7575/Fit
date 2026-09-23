@@ -243,8 +243,23 @@ class TurnServiceTest {
 
         TurnStartedResponse response = service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
 
+        // 기업을 고르지 않은 방이라 기업·뉴스 담당은 빠진다. 재료가 있는 담당만 자리를 받는다.
         assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
-                .containsExactly("jd", "position", "writing", "company", "supervisor");
+                .containsExactly("jd", "position", "writing", "supervisor");
+    }
+
+    @Test
+    @DisplayName("글쓰기 검토 버튼은 다른 담당을 고른 방에서도 글쓰기 자리만 만든다")
+    void writingReviewButtonOnlyRunsWritingAgent() {
+        roomWithJobContext("ctx-1", "jd", "company", "position", "news", "writing");
+        JobContext context = jobContext("ctx-1", "백엔드");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+
+        TurnStartedResponse response = service.start(
+                USER, ROOM, new MessageSendRequest("글쓰기 검토", 500L, true));
+
+        assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
+                .containsExactly("writing");
     }
 
     @Test
@@ -279,14 +294,31 @@ class TurnServiceTest {
     }
 
     @Test
-    @DisplayName("기업 RAG 담당 전담 방은 그 자리 하나뿐이다 — 아직 백엔드가 맡고 있다")
+    @DisplayName("기업을 고른 기업 RAG 담당 전담 방은 그 자리 하나뿐이다")
     void companyAgentStillFollowsTheRoomSelection() {
-        roomWith("company");
+        Room room = Room.create(USER, 12L, "검토 방",
+                List.of(new RoomAgent("company", Map.of("corpCodes", List.of("00126380")))));
+        given(roomRepository.findByIdAndUserId(ROOM, USER)).willReturn(Optional.of(room));
 
         TurnStartedResponse response = service.start(USER, ROOM, new MessageSendRequest("봐줘", null));
 
         assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
                 .containsExactly("company");
+    }
+
+    @Test
+    @DisplayName("기업을 안 고른 기업 RAG 담당 방은 자리를 만들지 않고 무엇을 고르라고 한다")
+    void aCompanyRoomWithoutACompanyIsRejectedBeforeItRuns() {
+        /*
+         * 전에는 기업 코드가 없어도 자리를 만들어 두고, 30초쯤 뒤 말풍선에서 "설정을 먼저 채워
+         * 주세요" 가 떴다. 보내기 전에 무엇을 고르면 되는지 말해야 한다.
+         */
+        roomWith("company");
+
+        assertThatThrownBy(() -> service.start(USER, ROOM, new MessageSendRequest("봐줘", null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("지원 회사를 먼저 골라 주세요.");
+        then(turnExecutor).shouldHaveNoInteractions();
     }
 
     @Test

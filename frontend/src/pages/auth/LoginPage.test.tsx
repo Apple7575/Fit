@@ -31,7 +31,21 @@ describe('LoginPage', () => {
     await userEvent.type(screen.getByLabelText('비밀번호'), 'secret12');
     await userEvent.click(screen.getByRole('button', { name: '로그인' }));
 
-    expect(login).toHaveBeenCalledWith('a@b.com', 'secret12');
+    // 로그인 유지는 켜지 않은 채로 보낸다 — 공용 PC 를 기본으로 본다
+    expect(login).toHaveBeenCalledWith('a@b.com', 'secret12', false);
+  });
+
+  it('keeps the session when 로그인 상태 유지 is checked', async () => {
+    const login = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useAuth).mockReturnValue({ login } as never);
+
+    renderPage();
+    await userEvent.type(screen.getByLabelText('이메일'), 'a@b.com');
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'secret12');
+    await userEvent.click(screen.getByLabelText('로그인 상태 유지'));
+    await userEvent.click(screen.getByRole('button', { name: '로그인' }));
+
+    expect(login).toHaveBeenCalledWith('a@b.com', 'secret12', true);
   });
 
   it('shows the server message when login fails', async () => {

@@ -53,6 +53,10 @@ export interface RoomSummary {
   lastMessagePreview: string | null;
   lastMessageAt: string | null;
   running: boolean;
+  /** 이 방에서 지금 답할 수 있는 담당이 하나라도 있는지. */
+  ready: boolean;
+  /** 아무도 못 답할 때 무엇을 채우면 되는지 한 줄. 답할 수 있으면 null */
+  need: string | null;
 }
 
 /** 방을 만들 때 보내는 에이전트 한 명. 총괄은 보내지 않는다. */

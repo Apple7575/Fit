@@ -56,7 +56,7 @@ export function buildFitPoints(input: FitInputs): FitPoint[] {
     out.push({
       key: 'direction',
       coach: 'owl',
-      fact: kw && ratio ? `${kw}, 그리고 ${ratio}` : kw ? `힘을 싣는 키워드는 ${kw}` : ratio,
+      fact: kw && ratio ? `${kw}, 그리고 ${ratio}` : kw ? `집중하는 키워드는 ${kw}` : ratio,
       action: kw
         ? '지원동기에 이 키워드 중 하나로 관심을 증명하세요. 회사 말로 쓰면 눈에 띄어요.'
         : '연구·개발 비중이 큰 회사예요. 배우려는 태도보다 만들어 본 경험을 앞세우세요.',
