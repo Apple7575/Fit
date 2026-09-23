@@ -121,6 +121,20 @@ class SupervisorTurnRunnerTest {
     }
 
     @Test
+    @DisplayName("담당과 총괄이 마크다운을 써도 말풍선에는 평문으로 남긴다 — 화면이 기호를 그리지 않는다")
+    void markdownIsStoredAsPlainText() {
+        Map<String, Message> slots = slots("jd", "supervisor");
+        given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
+                .willReturn(new SupervisorClient.Run("SUCCESS", "## 종합\n**먼저** 고칠 것", null,
+                        List.of(success("jd", "- **자격요건** 누락")), List.of()));
+
+        runner.run(TURN_ID, context());
+
+        assertThat(slots.get("jd").getContent()).isEqualTo("• 자격요건 누락");
+        assertThat(slots.get("supervisor").getContent()).isEqualTo("종합\n먼저 고칠 것");
+    }
+
+    @Test
     @DisplayName("30턴 동안 모든 담당의 JSON 원문은 어떤 말풍선에도 저장되지 않는다")
     void thirtyTurnsNeverPersistRawJsonFromAnyAgent() {
         List<String> agents = List.of("jd", "position", "writing", "news", "company");

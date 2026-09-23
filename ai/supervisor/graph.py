@@ -95,7 +95,8 @@ def display_message(agent: str, result: dict[str, Any]) -> str:
 def fallback_message(successes: Sequence[AgentResult]) -> str:
     """총괄 모델이 실패해도 내부 JSON 대신 담당별 읽을 수 있는 요약을 남긴다."""
     return "\n\n".join(
-        f"### {_AGENT_HEADINGS.get(item.agent, item.agent)}\n"
+        # 화면이 마크다운을 그리지 않아 "###" 대신 글자 머리표를 쓴다.
+        f"■ {_AGENT_HEADINGS.get(item.agent, item.agent)}\n"
         f"{display_message(item.agent, item.result)}"
         for item in successes
         if isinstance(item.result, dict)

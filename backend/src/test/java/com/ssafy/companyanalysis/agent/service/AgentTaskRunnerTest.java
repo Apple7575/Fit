@@ -65,7 +65,8 @@ class AgentTaskRunnerTest {
         runner.run(MESSAGE_ID, contextOf(AgentType.COMPANY, Map.of("corpCodes", List.of("00126380")), true));
 
         assertThat(message.getStatus()).isEqualTo(MessageStatus.DONE);
-        assertThat(message.getContent()).isEqualTo("## 삼성전자 기업 분석");
+        // 마크다운이 섞여 와도 평문으로 남는다. 화면이 기호를 그리지 않는다.
+        assertThat(message.getContent()).isEqualTo("삼성전자 기업 분석");
         Mockito.verify(companyAnalysisClient, Mockito.never())
                 .answer(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyList());
     }
