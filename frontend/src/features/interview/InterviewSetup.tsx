@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { InlineNotice } from '../../components/common/InlineNotice';
+import { MAX_KEYWORD } from '../company-search/api';
 import { FEATURED_COMPANIES } from '../../pages/home/featuredCompanies';
 import { useCompanyDetail } from '../company-detail/useCompanyDetail';
 import { CompanyLogo } from '../company-summary/CompanyLogo';
@@ -89,8 +90,12 @@ function Chip({
  */
 export function InterviewSetup({ loading, error = null, onStart }: InterviewSetupProps) {
   const [params] = useSearchParams();
-  const [corpCode, setCorpCode] = useState<string | null>(params.get('corpCode'));
-  const [company, setCompany] = useState(params.get('company') ?? '');
+  /*
+   * 주소로 들어오는 값은 아무 길이나 될 수 있다(/interviews/new?company=<수천 자>). 검색칸은
+   * maxLength 로 막혀 있지만 이 길은 막혀 있지 않아, 그대로 두면 회사명이 화면을 뚫고 나간다.
+   */
+  const [corpCode, setCorpCode] = useState<string | null>(params.get('corpCode')?.slice(0, MAX_KEYWORD) ?? null);
+  const [company, setCompany] = useState((params.get('company') ?? '').slice(0, MAX_KEYWORD));
   const [position, setPosition] = useState('');
   const [type, setType] = useState<InterviewType>('technical');
   const [coverLetterId, setCoverLetterId] = useState<number | null>(null);

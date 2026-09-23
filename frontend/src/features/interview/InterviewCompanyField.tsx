@@ -26,8 +26,15 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
 
   if (name) {
     return (
-      <div className="flex h-[42px] items-center justify-between rounded-lg border border-slate-200 bg-white px-2.5">
-        <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-[13px] font-semibold text-blue-700">
+      <div className="flex h-[42px] items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5">
+        {/*
+          직접 입력한 이름은 띄어쓰기 없이 60자까지 올 수 있다. 이 줄은 높이가 고정이라
+          줄을 바꿔 피할 수 없으므로 한 줄로 잘라 두고, 전체는 툴팁으로 확인한다.
+        */}
+        <span
+          className="inline-flex min-w-0 items-center gap-1.5 truncate rounded-md bg-blue-50 px-2 py-1 text-[13px] font-semibold text-blue-700"
+          title={name}
+        >
           {name}
         </span>
         <button
@@ -92,9 +99,11 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
                         className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition hover:bg-slate-50"
                         type="button"
                       >
-                        <span className="flex flex-col">
-                          <span className="text-[14px] font-semibold text-slate-800">{displayName(company.corpName)}</span>
-                          <span className="text-[12px] text-slate-400">
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate text-[14px] font-semibold text-slate-800">
+                            {displayName(company.corpName)}
+                          </span>
+                          <span className="truncate text-[12px] text-slate-400">
                             {company.industryName ?? '업종 정보 없음'}
                           </span>
                         </span>
@@ -114,8 +123,8 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
                     className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-slate-600 transition hover:bg-slate-50"
                     type="button"
                   >
-                    <span className="text-slate-400">＋</span>
-                    <span>
+                    <span className="shrink-0 text-slate-400">＋</span>
+                    <span className="min-w-0 break-keep wrap-anywhere">
                       “<b className="font-semibold text-slate-800">{query}</b>” 직접 입력
                     </span>
                   </button>
