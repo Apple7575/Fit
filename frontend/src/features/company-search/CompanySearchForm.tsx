@@ -26,8 +26,16 @@ const TYPING_PAUSE_MS = 200;
  * 알기 어려웠다. 결과는 친 자리 바로 아래에서 다 본다 — 넘치면 이 안에서 굴린다.
  *
  * <p>창 높이에 맞춰 잡는다. 고정값이면 낮은 노트북에서 목록이 화면 밖으로 흘러내린다.
+ *
+ * <p>그래도 60svh 는 검색칸이 화면 가운데쯤 있으면 목록 끝이 첫 화면(영상) 아래로 빠져나갔다.
+ * 끝까지 굴리면 페이지가 따라 내려가 뒤의 흰 바탕이 드러났다. 그래서 목록이 열릴 때 검색칸
+ * 아래에 남은 높이를 재서 그 안에 가둔다(아래 여백 LIST_BOTTOM_GAP). 이 값은 윗한도로만 쓴다.
  */
 const LIST_MAX_HEIGHT = 'max-h-[min(60svh,26rem)]';
+/** 목록 끝과 화면 아래 사이에 남길 틈 */
+const LIST_BOTTOM_GAP = 24;
+/** 남은 자리가 아무리 좁아도 이만큼은 보인다(두세 줄) */
+const LIST_MIN_HEIGHT = 168;
 
 export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) {
   const [keyword, setKeyword] = useState('');
@@ -44,6 +52,9 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
   const [searchedFor, setSearchedFor] = useState('');
   const listId = useId();
   const inFlight = useRef<AbortController | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  // 화면 아래까지 남은 높이. 목록이 열려 있는 동안 창 크기가 바뀌면 다시 잰다
+  const [fitHeight, setFitHeight] = useState<number | null>(null);
 
   const trimmedKeyword = keyword.trim();
   const canSearch = trimmedKeyword.length > 0;
@@ -58,6 +69,18 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
    */
   const searched = searchedFor !== '' && searchedFor === trimmedKeyword;
   const showList = open && trimmedKeyword !== '' && (visible.length > 0 || searched);
+
+  useEffect(() => {
+    if (!showList) return;
+    const measure = () => {
+      const top = listRef.current?.getBoundingClientRect().top;
+      if (top === undefined) return;
+      setFitHeight(Math.max(LIST_MIN_HEIGHT, Math.floor(window.innerHeight - top - LIST_BOTTOM_GAP)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [showList]);
 
   useEffect(() => () => inFlight.current?.abort(), []);
 
@@ -223,6 +246,8 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
             aria-label="기업 검색 결과"
             className={`overflow-y-auto overscroll-contain p-1.5 text-left ${LIST_MAX_HEIGHT}`}
             id={listId}
+            ref={listRef}
+            style={fitHeight === null ? undefined : { maxHeight: `min(${fitHeight}px, min(60svh, 26rem))` }}
             role="listbox"
           >
           {visible.length === 0 && (
