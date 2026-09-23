@@ -16,7 +16,13 @@ vi.mock('./CompanyPicker', () => ({
   ),
 }));
 
+// 공고의 회사는 DB 에서 찾아본 뒤에 받는다. 기본은 그대로 있는 회사로 둔다
+vi.mock('./resolveCompany', () => ({
+  resolveCompany: vi.fn(async (name: string) => ({ status: 'found', name })),
+}));
+
 const { parseJobPosting, parseJobPostingImages, registerJobPosting } = await import('./api');
+const { resolveCompany } = await import('./resolveCompany');
 
 const initial: CoverLetterInput = {
   title: '2026 상반기 백엔드',
@@ -437,5 +443,67 @@ describe('CoverLetterWorkspace', () => {
     await user.upload(picker, big);
     expect(screen.queryByLabelText('8번 이미지 빼기')).not.toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('최대 50MB');
+  });
+
+  it('DB 에 없는 회사의 공고는 받지 않고 안내 창을 띄운다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(parseJobPosting).mockResolvedValue({
+      companyName: '에스케이쉴더스(주)',
+      positions: ['보안관제', '앱기획'],
+      sourceUrl: 'https://jobs.example.com/9',
+      sourceKey: 'key-9',
+    });
+    vi.mocked(resolveCompany).mockResolvedValueOnce({ status: 'missing' });
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('채용공고 URL (선택)'), 'https://jobs.example.com/9');
+    await user.click(screen.getByRole('button', { name: '공고 불러오기' }));
+
+    const notice = await screen.findByRole('alertdialog', { name: '아직 등록되지 않은 기업이에요' });
+    expect(notice).toHaveTextContent('에스케이쉴더스(주)');
+    // 회사도 직무도 채우지 않는다
+    expect(screen.getByLabelText('지원 회사')).toHaveValue('');
+    expect(screen.queryByText(/직무 2개를 찾았어요/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '확인' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('공고를 읽는 동안에는 문항으로 넘어가지 못한다', async () => {
+    const user = userEvent.setup();
+    let finish = (_value: Awaited<ReturnType<typeof parseJobPosting>>) => {};
+    vi.mocked(parseJobPosting).mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('채용공고 URL (선택)'), 'https://jobs.example.com/1');
+    await user.click(screen.getByRole('button', { name: '공고 불러오기' }));
+    expect(screen.getByRole('button', { name: '문항 쓰러가기 →' })).toBeDisabled();
+
+    finish({ companyName: '삼성전자', positions: ['백엔드 개발'], sourceUrl: 'https://jobs.example.com/1', sourceKey: 'k' });
+    await screen.findByDisplayValue('삼성전자');
+    expect(screen.getByRole('button', { name: '문항 쓰러가기 →' })).toBeEnabled();
+  });
+
+  it('공고에서 찾은 직무는 둥근 목록에서 고른다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(parseJobPosting).mockResolvedValue({
+      companyName: '삼성전자',
+      positions: ['보안관제', 'IT컨설팅'],
+      sourceUrl: 'https://jobs.example.com/1',
+      sourceKey: 'key-1',
+    });
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />);
+    await user.type(screen.getByLabelText('채용공고 URL (선택)'), 'https://jobs.example.com/1');
+    await user.click(screen.getByRole('button', { name: '공고 불러오기' }));
+
+    await user.click(await screen.findByRole('button', { name: /지원 직무/ }));
+    await user.click(screen.getByRole('option', { name: 'IT컨설팅' }));
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /지원 직무/ })).toHaveTextContent('IT컨설팅');
+
+    // 목록 끝의 '직접 입력' 을 고르면 글자 칸으로 바뀐다
+    await user.click(screen.getByRole('button', { name: /지원 직무/ }));
+    await user.click(screen.getByRole('option', { name: '+ 직접 입력' }));
+    expect(screen.getByRole('textbox', { name: /지원 직무/ })).toHaveValue('');
   });
 });
