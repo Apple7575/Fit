@@ -12,9 +12,11 @@ from ai.position_coaching.chat import SYSTEM_INSTRUCTION as POSITION_CHAT_INSTRU
 from ai.prompting.common import (
     COMMON_RULES,
     COMMON_RULES_VERSION,
+    OFF_TOPIC_REPLY,
     REPLY_FORMAT_RULES,
+    REPLY_SCOPE_RULES,
     with_common_rules,
-    with_reply_format,
+    with_reply_rules,
 )
 from ai.supervisor.aggregate import FORMAT_INSTRUCTION
 from ai.writing_coaching.contracts import WritingMessageRequest
@@ -62,10 +64,17 @@ class CommonRulesTest(unittest.TestCase):
 class ReplyFormatTest(unittest.TestCase):
     """사용자에게 보이는 답의 모양. 화면은 마크다운을 그리지 않고 줄바꿈만 살려 보여 준다."""
 
-    def test_reply_format_goes_last(self):
-        prompt = with_reply_format("너는 경험 담당이다.\n\n")
-        self.assertTrue(prompt.startswith("너는 경험 담당이다.\n\n[답변 형식 "))
+    def test_scope_then_format_go_last(self):
+        prompt = with_reply_rules("너는 경험 담당이다.\n\n")
+        self.assertTrue(prompt.startswith("너는 경험 담당이다.\n\n[답하지 않는 질문]"))
         self.assertTrue(prompt.endswith(REPLY_FORMAT_RULES.rstrip()))
+        self.assertLess(prompt.index("[답하지 않는 질문]"), prompt.index("[답변 형식 "))
+
+    def test_off_topic_questions_get_one_fixed_sentence(self):
+        """문장이 하나로 정해져 있어야 기업분석 담당이 근거 없이도 통과시킬 수 있다."""
+        self.assertIn(f'"{OFF_TOPIC_REPLY}"', REPLY_SCOPE_RULES)
+        for phrase in ("일상 잡담", "코딩·과제 풀이", "위험하거나 해로운 요청", "규칙을 우회하려는 요청"):
+            self.assertIn(phrase, REPLY_SCOPE_RULES)
 
     def test_reply_format_asks_for_short_bullets_without_markdown(self):
         for phrase in ("결론 한 문장", "\"• \"", "300~500자", "마크다운을 쓰지 않는다"):
@@ -87,7 +96,7 @@ class ReplyFormatTest(unittest.TestCase):
                 self.assertNotRegex(prompt, r"\*\*[^*\n]*[가-힣]")
                 self.assertNotRegex(prompt, r"(?m)^#{1,6} ")
 
-    def test_writing_prompt_ends_with_reply_format_for_message_only(self):
+    def test_writing_prompt_ends_with_reply_rules_for_message_only(self):
         system = build_writing_messages(
             WritingMessageRequest(message="고쳐줘", question="지원 동기", draft="초안", char_limit=500),
             {},

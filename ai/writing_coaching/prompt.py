@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, Mapping
-from ai.prompting.common import with_common_rules, with_reply_format
+from ai.prompting.common import with_common_rules, with_reply_rules
 
 from .contracts import WritingMessageRequest
 
@@ -151,7 +151,7 @@ def build_writing_messages(
         )
 
     return [
-        {"role": "system", "content": with_common_rules(with_reply_format(WRITING_SYSTEM_INSTRUCTION))},
+        {"role": "system", "content": with_common_rules(with_reply_rules(WRITING_SYSTEM_INSTRUCTION))},
         {
             "role": "user",
             "content": json.dumps(payload, ensure_ascii=False),

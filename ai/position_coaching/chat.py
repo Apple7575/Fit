@@ -19,7 +19,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from ai.jd_coaching.baseline import call_qwen
-from ai.prompting.common import with_reply_format
+from ai.prompting.common import with_reply_rules
 from ai.llm.prompt_guard import (
     frame_question,
     looks_like_injection,
@@ -164,7 +164,7 @@ class PositionChatService:
             },
         }
         base = [
-            {"role": "system", "content": with_reply_format(SYSTEM_INSTRUCTION)},
+            {"role": "system", "content": with_reply_rules(SYSTEM_INSTRUCTION)},
             {
                 "role": "user",
                 "content": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),

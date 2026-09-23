@@ -110,6 +110,20 @@ public class TurnService {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, plan.blockedReason());
         }
 
+        // 위험하거나 규칙을 뚫으려는 발화는 AI 를 부르지 않고 바로 거절한다.
+        Optional<InputGuard.Verdict> blocked = InputGuard.screen(content);
+        if (blocked.isPresent()) {
+            OpenedTurn refused = openRefusedTurn(roomId, agentKeys, content, blocked.get().reply());
+            return new TurnStartedResponse(
+                    refused.rootId(),
+                    refused.rootId(),
+                    MessageStatus.DONE.name(),
+                    refused.slots().stream()
+                            .map(slot -> new TurnStartedResponse.AgentSlot(
+                                    slot.getAgentKey(), slot.getStatus().name()))
+                            .toList());
+        }
+
         OpenedTurn turn = openTurn(roomId, agentKeys, content);
 
         turnExecutor.runTurn(turn.rootId(), context);
@@ -242,6 +256,25 @@ public class TurnService {
                     .toList();
             messageRepository.saveAll(slots);
             return new OpenedTurn(root.getId(), slots);
+        });
+    }
+
+    /**
+     * 막은 발화에 답할 자리 하나만 만들고 거절 문구로 바로 닫는다.
+     *
+     * <p>담당마다 같은 거절을 되풀이하면 말풍선만 늘어난다. 총괄이 있는 방은 총괄이, 전담 방은 그
+     * 담당이 한 번 답한다. 턴이 만들어지는 즉시 끝나므로 화면은 기다리지 않는다.
+     */
+    private OpenedTurn openRefusedTurn(Long roomId, List<String> agentKeys, String content, String reply) {
+        String responder = agentKeys.contains(AgentType.SUPERVISOR.key())
+                ? AgentType.SUPERVISOR.key()
+                : agentKeys.get(0);
+        return transactionTemplate.execute(status -> {
+            Message root = messageRepository.save(Message.fromUser(roomId, content));
+            Message slot = Message.pendingAgent(roomId, root.getId(), responder);
+            slot.succeed(reply, List.of(), List.of());
+            messageRepository.save(slot);
+            return new OpenedTurn(root.getId(), List.of(slot));
         });
     }
 

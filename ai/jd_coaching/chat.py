@@ -7,7 +7,7 @@ from typing import Any
 from uuid import uuid4
 
 from ai.jd_coaching.baseline import call_qwen
-from ai.prompting.common import with_common_rules, with_reply_format
+from ai.prompting.common import with_common_rules, with_reply_rules
 from ai.llm.prompt_guard import (
     frame_question,
     looks_like_injection,
@@ -237,7 +237,7 @@ class StatelessChatService:
         base = [
             {
                 "role": "system",
-                "content": with_common_rules(with_reply_format(CHAT_RULES))
+                "content": with_common_rules(with_reply_rules(CHAT_RULES))
                 + "\n"
                 + json.dumps(system, ensure_ascii=False),
             },
@@ -287,7 +287,7 @@ def _build_messages(
     messages = [
         {
             "role": "system",
-            "content": with_common_rules(with_reply_format(CHAT_RULES))
+            "content": with_common_rules(with_reply_rules(CHAT_RULES))
             + "\n"
             + json.dumps(system, ensure_ascii=False),
         }

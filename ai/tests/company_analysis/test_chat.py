@@ -119,6 +119,19 @@ class ChatServiceTest(unittest.TestCase):
         self.assertEqual(payload["company"]["name"], "SK하이닉스")
         self.assertEqual(payload["history"], [])
 
+    def test_off_topic_refusal_passes_without_citations(self):
+        """근거 없는 답은 버리지만, 관련 없는 질문을 거절한 정해진 문장은 근거가 없는 것이 맞다."""
+        from ai.prompting.common import OFF_TOPIC_REPLY
+
+        service, client, _ = _service([
+            {"answer": OFF_TOPIC_REPLY, "citation_ids": [], "needs_news": False, "needs_reason": "",
+             "follow_up_questions": []},
+        ])
+        response = service.respond(ChatRequest(corp_code="00164779", message="오늘 저녁 메뉴 추천해 줘"))
+        self.assertEqual(len(client.calls), 1)
+        self.assertEqual(response.assistant_message.content, OFF_TOPIC_REPLY)
+        self.assertEqual(response.assistant_message.citations, [])
+
     def test_history_is_passed_on_second_turn(self):
         service, client, _ = _service([
             {"answer": "첫 답입니다.", "citation_ids": ["report:intro"], "needs_news": False, "needs_reason": "", "follow_up_questions": []},
