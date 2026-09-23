@@ -1,7 +1,12 @@
-export interface CoverLetterItem {
+export interface CoverLetterItemInput {
   question: string;
   answer: string;
   charLimit: number;
+}
+
+/** 저장된 문항. 검토 요청에서 id 로 어느 문항을 볼지 지정한다. */
+export interface CoverLetterItem extends CoverLetterItemInput {
+  id: number;
 }
 
 /** 저장 요청 본문(신규·수정 공통) 겸 작성 초안. */
@@ -11,13 +16,14 @@ export interface CoverLetterInput {
   targetPosition?: string | null;
   /** 등록된 채용공고 분석. 공고를 넣지 않았으면 null. 검토 방이 이 값을 물려받는다. */
   jobContextId?: string | null;
-  items: CoverLetterItem[];
+  items: CoverLetterItemInput[];
 }
 
 /** 저장된 자소서(상세). */
-export interface CoverLetter extends CoverLetterInput {
+export interface CoverLetter extends Omit<CoverLetterInput, 'items'> {
   id: number;
   updatedAt: string;
+  items: CoverLetterItem[];
 }
 
 /** 목록 한 건. */

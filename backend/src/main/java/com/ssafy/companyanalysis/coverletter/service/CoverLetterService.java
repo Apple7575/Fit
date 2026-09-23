@@ -91,7 +91,8 @@ public class CoverLetterService {
     private CoverLetterResponse toResponse(CoverLetter letter) {
         List<CoverLetterResponse.Item> itemResponses = itemRepository
                 .findByCoverLetterIdOrderBySeqAsc(letter.getId()).stream()
-                .map(item -> new CoverLetterResponse.Item(item.getQuestion(), item.getAnswer(), item.getCharLimit()))
+                .map(item -> new CoverLetterResponse.Item(
+                        item.getId(), item.getQuestion(), item.getAnswer(), item.getCharLimit()))
                 .toList();
 
         return new CoverLetterResponse(letter.getId(), letter.getTitle(),
