@@ -37,7 +37,7 @@ public class CompanyAnalysisClient {
     /** 서술 블록이 아직 안 붙은 리포트로 답한 경우. 실패가 아니라서 화면에 그대로 알린다. */
     private static final String DETERMINISTIC = "DETERMINISTIC";
     private static final String ENRICHING_NOTICE =
-            "\n\n(아직 이 기업의 서술 분석을 만드는 중입니다. 잠시 뒤 다시 물어보면 더 자세히 답할 수 있습니다.)";
+            "\n\n(이 기업의 상세 분석은 아직 준비 중입니다. 잠시 후 다시 물어보면 더 자세히 답할 수 있습니다.)";
 
     private final RestClient supervisorAiRestClient;
     private final AgentAiProperties properties;

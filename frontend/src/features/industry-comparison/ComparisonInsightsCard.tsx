@@ -24,7 +24,7 @@ export function ComparisonInsightsCard({ state }: ComparisonInsightsCardProps) {
   if (state.status === 'error' || state.data.length === 0) {
     return (
       <EmptyCard title="핵심 인사이트">
-        비교 인사이트는 아직 준비 중이에요. 아래 표와 그래프로 직접 견주어 볼 수 있습니다.
+        비교 인사이트는 아직 준비 중이에요. 아래 표와 그래프에서 직접 비교해 볼 수 있습니다.
       </EmptyCard>
     );
   }
@@ -55,7 +55,7 @@ export function ComparisonInsightsCard({ state }: ComparisonInsightsCardProps) {
         ))}
       </ul>
       <p className="mt-3 text-[11px] text-slate-400">
-        * 선택한 비교 기업의 지표에서 규칙으로 뽑은 문장입니다
+        * 선택한 비교 기업들의 수치를 바탕으로 작성한 문장입니다
       </p>
     </section>
   );

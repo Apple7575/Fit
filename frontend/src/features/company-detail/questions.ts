@@ -37,7 +37,7 @@ export const COMPANY_QUESTIONS: readonly CompanyQuestion[] = [
   {
     tab: 'focus',
     short: '집중 분야',
-    title: '어디에 힘을 싣나',
+    title: '어디에 집중하나',
     body: 'AI 키워드 · R&D · 투자 · 인력 변화',
     coach: 'owl',
   },

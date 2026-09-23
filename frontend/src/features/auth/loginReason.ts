@@ -43,7 +43,7 @@ const BY_PATH: Array<{ prefix: string; suffix?: string } & LoginReason> = [
     headline: '검토 방, 로그인하고 열어요',
     note: '코치들이 자소서를 읽으려면 내 계정에 연결돼 있어야 해요.',
     lines: ['다들 의견 모아서 정리할게요'],
-    character: 'lead',
+    character: 'fox',
   },
   {
     prefix: '/cover-letters',
@@ -57,7 +57,7 @@ const BY_PATH: Array<{ prefix: string; suffix?: string } & LoginReason> = [
     headline: '검토 방, 로그인하고 열어요',
     note: '코치들이 자소서를 읽으려면 내 계정에 연결돼 있어야 해요.',
     lines: ['다들 의견 모아서 정리할게요'],
-    character: 'lead',
+    character: 'fox',
   },
 ];
 

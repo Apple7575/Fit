@@ -39,7 +39,7 @@ _AGENT_HEADINGS = {
     "news": "뉴스 분석",
     "company": "기업 분석",
 }
-_UNREADABLE_MESSAGE = "분석은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 잠시 후 다시 시도해 주세요."
+_UNREADABLE_MESSAGE = "답변을 정리하지 못했습니다. 잠시 후 다시 시도해 주세요."
 
 
 def _plain_message(result: Any) -> str | None:

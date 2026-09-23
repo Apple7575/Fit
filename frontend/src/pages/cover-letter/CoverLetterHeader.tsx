@@ -51,7 +51,7 @@ export function CoverLetterHeader({
     <SiteHeader
       aside={
         letter ? (
-          <nav aria-label="자소서 구획" className="min-w-0">
+          <nav aria-label="자소서 메뉴" className="min-w-0">
             <ul className="flex flex-wrap items-center gap-1">
               {MODES.map(({ path, label }) => (
                 <li key={label}>

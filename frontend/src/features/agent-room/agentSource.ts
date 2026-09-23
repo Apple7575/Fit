@@ -38,14 +38,6 @@ export function agentSource(agent: RoomAgent, jobContext: RoomJobContext | null)
           ? `${names} 자료를 정리하는 중이에요. 준비되면 바로 참여해요`
           : '지원 회사가 정해지면 참여해요',
       };
-    case 'news':
-      return {
-        reads: names ? `${names} 최근 뉴스` : '지원 회사의 최근 뉴스',
-        // 서버는 공고와 회사가 둘 다 있어야 뉴스 담당을 돌린다
-        need: !jobContext
-          ? '채용공고가 있어야 뉴스를 견줘 볼 수 있어요'
-          : '지원 회사가 정해지면 참여해요',
-      };
     case 'jd':
       return {
         reads: jobContext
@@ -61,7 +53,7 @@ export function agentSource(agent: RoomAgent, jobContext: RoomJobContext | null)
     case 'writing':
       return { reads: '자소서 글 자체', need: '지금은 참여할 수 없어요' };
     case 'supervisor':
-      return { reads: '다른 담당의 의견', need: '다른 담당의 의견이 모이면 나서요' };
+      return { reads: '다른 담당의 의견', need: '다른 담당의 의견이 모이면 정리를 시작해요' };
     default:
       return { reads: '자소서', need: '지금은 참여할 수 없어요' };
   }

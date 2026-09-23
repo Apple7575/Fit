@@ -35,11 +35,11 @@ public class SupervisorTurnRunner {
     private static final Logger log = LoggerFactory.getLogger(SupervisorTurnRunner.class);
 
     /** 총괄이 고르지 않은 담당의 자리에 남길 말. 실패가 아니라서 자리를 비워 두지 않는다. */
-    private static final String NOT_SELECTED = "이번 질문에는 이 관점이 필요하지 않다고 보고 넘어갔습니다.";
+    private static final String NOT_SELECTED = "이번 요청에서는 이 담당이 살펴볼 부분이 없어 건너뛰었습니다.";
     private static final String UNREADABLE_AGENT_MESSAGE =
-            "분석은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.";
+            "답변을 정리하지 못했습니다. 다시 요청해 주세요.";
     private static final String UNREADABLE_SUPERVISOR_MESSAGE =
-            "종합은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.";
+            "의견을 종합하지 못했습니다. 다시 요청해 주세요.";
     private static final int MAX_REASON = 200;
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
