@@ -5,7 +5,13 @@ import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { CompanyLogo } from '../../features/company-summary/CompanyLogo';
 import { deleteInterview } from '../../features/interview/api';
-import { readDraft, relativeTime, type InterviewDraft } from '../../features/interview/draft';
+import {
+  isPromptMuted,
+  mutePrompt,
+  readDraft,
+  relativeTime,
+  type InterviewDraft,
+} from '../../features/interview/draft';
 import { ResumePrompt } from '../../features/interview/ResumePrompt';
 import { Icon } from '../../features/interview/icons';
 import { deleteByServerId, listServerIdsWithClips } from '../../features/interview/localVideo';
@@ -54,8 +60,14 @@ function ListBody() {
   const [localIds, setLocalIds] = useState<Set<number>>(new Set());
   // 도중에 끊긴 면접이 있으면 "이어서 진행"을 띄운다. 초안은 이 브라우저에만 유저별로 남는다.
   const [draft] = useState<InterviewDraft | null>(() => (user ? readDraft(user.id) : null));
-  // 한 번 닫으면 이 화면에서는 다시 묻지 않는다. 목록을 보러 온 사람을 계속 막아서는 안 된다
-  const [askedResume, setAskedResume] = useState(false);
+  /*
+   * 한 번 닫으면 이 화면에서는 다시 묻지 않는다(목록을 보러 온 사람을 계속 막아서는 안 된다).
+   * 다음에 들어오면 또 묻는데, 그 면접을 접어 둔 사람에게는 그게 성가시다. 그래서 창에
+   * "다시 묻지 않기"를 두고, 눌렀으면 처음부터 띄우지 않는다.
+   */
+  const [askedResume, setAskedResume] = useState(
+    () => !!user && !!draft && isPromptMuted(user.id, draft.localSessionId),
+  );
   // 영상 위에서는 헤더를 투명하게 띄우고, 첫 화면을 벗어나면 흰 유리로 되돌린다
   const [scrolled, setScrolled] = useState(false);
 
@@ -107,6 +119,10 @@ function ListBody() {
           answered={draft.items.filter((item) => item.transcript.trim() !== '').length}
           company={draft.config.targetCompany}
           onDismiss={() => setAskedResume(true)}
+          onMute={() => {
+            if (user) mutePrompt(user.id, draft.localSessionId);
+            setAskedResume(true);
+          }}
           onResume={() => navigate('/interviews/new?resume=1')}
           position={draft.config.targetPosition}
           total={draft.questions.length || draft.items.length}

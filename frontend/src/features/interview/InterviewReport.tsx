@@ -9,7 +9,7 @@ import {
   type ClipEventKind,
   type DeliveryMetrics,
 } from './delivery';
-import { EvidenceCards } from './Evidence';
+import { MetricFocus } from './Evidence';
 import { Icon } from './icons';
 import { getClipsByLocalSession, getClipsByServerId } from './localVideo';
 import { NonverbalDetail } from './NonverbalOverview';
@@ -530,11 +530,9 @@ function QuestionPanel({
         {rows.length > 0 && (
           <section className={`${CARD} p-5`}>
             <p className={T.section}>말투와 자세</p>
-            <p className={`mt-1 ${T.caption}`}>
-              면접관 눈에 어떻게 보였는지입니다. 카드를 누르면 그렇게 본 근거를 보여드려요.
-            </p>
+            <p className={`mt-1 ${T.caption}`}>면접관 눈에 어떻게 보였는지입니다. 먼저 볼 것부터 놓았어요.</p>
             <div className="mt-3">
-              <EvidenceCards clip={local} onSeek={seek} rows={rows} />
+              <MetricFocus clip={local} onSeek={seek} rows={rows} />
             </div>
           </section>
         )}
