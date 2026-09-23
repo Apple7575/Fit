@@ -3,9 +3,10 @@ import { formatMetricCompact } from '../../utils/formatMetric';
 import { withInstrumental, withObject } from '../../utils/koreanParticle';
 import type { CompanyProfile } from '../company-profile/types';
 import type { CompanyFocus } from '../focus-areas/types';
+import { TAGLINE_OVERRIDE } from './taglineOverride';
 
 /**
- * 첫 화면의 한 줄. "TV · 가전 · 스마트폰으로 333.6조 원을 버는 회사".
+ * 첫 화면의 한 줄. "반도체 · 스마트폰 · 가전으로 333.6조 원을 버는 회사".
  * 무엇으로(키워드 → 사업부 → 제품 순으로 찾는다) + 얼마나(매출). 둘 다 없으면 null.
  * 판정 없이 데이터에 있는 말만 조합한다.
  *
@@ -17,8 +18,10 @@ export function buildTagline(
   metrics: KeyMetricsData | null,
   /** 회사 이름. 같은 말이 키워드에 들어 있으면 빼기 위해 쓴다 ("네이버 · 광고 · 커머스") */
   corpName?: string | null,
+  /** DART 고유번호. 손으로 정해 둔 낱말이 있는 회사인지 가리는 데 쓴다 */
+  corpCode?: string | null,
 ): string | null {
-  const what = pickWhat(profile, focus, corpName);
+  const what = pickWhat(profile, focus, corpName, corpCode);
   const revenue = metrics?.metrics.find((m) => m.key === 'revenue')?.value ?? null;
 
   if (what.length > 0 && revenue !== null) {
@@ -48,7 +51,11 @@ function pickWhat(
   profile: CompanyProfile | null,
   focus: CompanyFocus | null,
   corpName?: string | null,
+  corpCode?: string | null,
 ): string[] {
+  // 손으로 정해 둔 회사는 그 낱말을 그대로 쓴다. 한 줄 설명에만 쓰이는 표다
+  const fixed = corpCode ? TAGLINE_OVERRIDE[corpCode] : undefined;
+  if (fixed && fixed.length > 0) return fixed;
   const keywords = (focus?.direction?.keywords ?? []).filter((k) => !sameAsName(k, corpName));
   if (keywords.length > 0) return keywords.slice(0, 3);
   const segments = (profile?.segments ?? [])

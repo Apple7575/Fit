@@ -3,6 +3,7 @@ import type { KeyMetricsData } from '../../types/metrics';
 import type { CompanyProfile } from '../company-profile/types';
 import type { CompanyFocus } from '../focus-areas/types';
 import { buildTagline } from './tagline';
+import { TAGLINE_OVERRIDE } from './taglineOverride';
 
 const focusWith = (keywords: string[]) => ({ direction: { keywords } }) as unknown as CompanyFocus;
 const profileWith = (partial: Partial<CompanyProfile>) => partial as CompanyProfile;
@@ -48,5 +49,55 @@ describe('buildTagline', () => {
 
   it('무엇도 매출도 없으면 만들지 않는다', () => {
     expect(buildTagline(null, null, null)).toBeNull();
+  });
+
+  it('손으로 정해 둔 회사는 키워드 대신 그 낱말을 쓴다', () => {
+    // 삼성전자 키워드는 TV·가전·스마트폰 으로 와서 반도체가 빠져 있었다
+    const line = buildTagline(
+      null,
+      focusWith(['TV', '가전', '스마트폰']),
+      null,
+      '삼성전자',
+      '00126380',
+    );
+    expect(line).toBe('반도체 · 스마트폰 · 가전을 하는 회사');
+  });
+
+  it('표에 없는 회사는 지금처럼 키워드로 만든다', () => {
+    const line = buildTagline(null, focusWith(['철강', '무역']), null, '어떤회사', '99999999');
+    expect(line).toBe('철강 · 무역을 하는 회사');
+  });
+
+  it('고유번호를 안 넘기면 표를 쓰지 않는다', () => {
+    const line = buildTagline(null, focusWith(['TV', '가전']), null, '삼성전자');
+    expect(line).toBe('TV · 가전을 하는 회사');
+  });
+});
+
+describe('TAGLINE_OVERRIDE', () => {
+  it('고유번호는 여덟 자리 숫자다', () => {
+    const bad = Object.keys(TAGLINE_OVERRIDE).filter((code) => !/^\d{8}$/.test(code));
+    expect(bad).toEqual([]);
+  });
+
+  it('낱말은 하나 이상 셋 이하로 적는다', () => {
+    const bad = Object.entries(TAGLINE_OVERRIDE).filter(
+      ([, words]) => words.length === 0 || words.length > 3,
+    );
+    expect(bad).toEqual([]);
+  });
+
+  it('빈 낱말이나 앞뒤 공백을 남기지 않는다', () => {
+    const bad = Object.entries(TAGLINE_OVERRIDE).filter(([, words]) =>
+      words.some((w) => w.trim() === '' || w !== w.trim()),
+    );
+    expect(bad).toEqual([]);
+  });
+
+  it('한 회사 안에서 같은 낱말을 되풀이하지 않는다', () => {
+    const bad = Object.entries(TAGLINE_OVERRIDE).filter(
+      ([, words]) => new Set(words).size !== words.length,
+    );
+    expect(bad).toEqual([]);
   });
 });
