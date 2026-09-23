@@ -1,6 +1,9 @@
+/// <reference types="node" />
 import { describe, expect, it } from 'vitest';
 import type { MetricRow, Tone } from './delivery';
-import { IMPACT, orderMetrics, warnCount } from './metricFocus';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { FIX_FIGURE, IMPACT, orderMetrics, warnCount } from './metricFocus';
 
 const row = (key: string, tone: Tone = 'warn'): MetricRow => ({ key, value: '-', tone });
 const keys = (rows: MetricRow[]) => rows.map((r) => r.key);
@@ -41,6 +44,48 @@ describe('warnCount', () => {
 
   it('어긋난 것만 센다', () => {
     expect(warnCount([row('말 속도'), row('표정'), row('어깨 수평', 'good')])).toBe(2);
+  });
+});
+
+/** 리포트에 나올 수 있는 지표 전부. 새 지표를 만들면 여기에도 적는다 */
+const SHOWN = [
+  '말 속도',
+  '습관어(음·어)',
+  '답변 길이',
+  '말이 멈춘 시간',
+  '목소리 크기',
+  '얼굴 위치',
+  '정면 유지',
+  '카메라 응시',
+  '고개 흔들림',
+  '고개 각도',
+  '고개 기울기',
+  '상체 자세',
+  '상체 안정',
+  '어깨 수평',
+  '표정',
+  '손짓',
+  '얼굴 인식',
+];
+
+describe('FIX_FIGURE', () => {
+  it('모든 지표에 안내 그림이 붙어 있다', () => {
+    // 몇 개만 있으면 있는 카드와 없는 카드의 생김새가 달라 빠진 쪽이 덜 만든 것처럼 보인다
+    expect(SHOWN.filter((key) => !FIX_FIGURE[key])).toEqual([]);
+  });
+
+  it('가리키는 파일이 실제로 있다', () => {
+    // vitest 는 frontend/ 에서 돈다
+    const missing = [...new Set(Object.values(FIX_FIGURE))].filter(
+      (name) => !existsSync(resolve(process.cwd(), 'public/interview-guide', name)),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it('머리와 몸통이 어긋난 그림을 섞어 쓰지 않는다', () => {
+    // 고개 기울기/어깨 수평, 고개 흔들림/상체 안정은 한 장을 돌려쓰면 구분이 안 된다
+    expect(FIX_FIGURE['고개 기울기']).not.toBe(FIX_FIGURE['어깨 수평']);
+    expect(FIX_FIGURE['고개 흔들림']).not.toBe(FIX_FIGURE['상체 안정']);
   });
 });
 

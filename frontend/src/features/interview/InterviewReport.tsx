@@ -501,7 +501,7 @@ function QuestionPanel({ item, local }: { item: ReportItem & { no: string }; loc
               // 세로로만 구른다. overflow-y 만 auto 로 두면 브라우저가 overflow-x 도 auto 로
               // 쳐서, 조금만 삐져나가도 가로 스크롤 막대가 생긴다. min-w-0 은 이 글이 flex
               // 칸이라 붙인다 — 없으면 최소 너비가 내용 너비가 돼 칸이 줄어들지 못한다.
-              <p className={`max-h-full w-full min-w-0 overflow-x-hidden overflow-y-auto ${T.body}`}>
+              <p className="max-h-full w-full min-w-0 overflow-x-hidden overflow-y-auto text-[15px] leading-7 break-keep wrap-anywhere text-slate-700">
                 {item.transcript || <span className="text-slate-400">답변 없음</span>}
               </p>
             )}
@@ -554,9 +554,11 @@ function QuestionPanel({ item, local }: { item: ReportItem & { no: string }; loc
 /** 총평 한 장. 문항 하나를 통째로 본 이야기라 지적 하나하나보다 앞에 둔다 */
 function SummaryCard({ text }: { text: string }) {
   return (
-    <div>
-      <p className={T.label}>총평</p>
-      <p className={`mt-3 max-w-[52ch] ${T.hero}`}>{text}</p>
+    <div className="flex h-full flex-col justify-center">
+      <p className="text-[13px] font-bold text-slate-400">총평</p>
+      <p className="mt-4 max-w-[34ch] text-[22px] leading-9 font-extrabold break-keep wrap-anywhere text-slate-950">
+        {text}
+      </p>
     </div>
   );
 }
@@ -572,21 +574,25 @@ function PointCard({ point, kind }: { point: FeedbackPoint; kind: 'IMPROVEMENT' 
   const fix = kind === 'IMPROVEMENT';
   const tone = fix ? TONE.warn : TONE.good;
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${tone.soft} ${tone.text}`}>
-          <Icon className="size-5" name={fix ? 'redo' : 'check'} />
+    <div className="flex h-full flex-col justify-center">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone.soft} ${tone.text}`}>
+          <Icon className="size-6" name={fix ? 'redo' : 'check'} />
         </span>
-        <span className={T.section}>{fix ? '고칠 점' : '잘한 점'}</span>
-        <span className={`rounded-full px-2.5 py-1 text-[13px] font-bold ring-1 ${tone.chip}`}>{point.category}</span>
+        <span className="text-[18px] font-extrabold text-slate-900">{fix ? '고칠 점' : '잘한 점'}</span>
+        <span className={`rounded-full px-3 py-1 text-[14px] font-bold ring-1 ${tone.chip}`}>{point.category}</span>
       </div>
 
-      <p className={`mt-4 max-w-[52ch] ${T.hero}`}>{point.message}</p>
+      <p className="mt-5 max-w-[40ch] text-[22px] leading-9 font-extrabold break-keep wrap-anywhere text-slate-950">
+        {point.message}
+      </p>
 
       {point.suggestion && (
-        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-          <p className={T.label}>이렇게 해 보세요</p>
-          <p className={`mt-1.5 max-w-[52ch] ${T.bodyStrong}`}>{point.suggestion}</p>
+        <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+          <p className="text-[13px] font-bold text-slate-400">이렇게 해 보세요</p>
+          <p className="mt-2 max-w-[46ch] text-[16px] leading-7 font-semibold break-keep wrap-anywhere text-slate-700">
+            {point.suggestion}
+          </p>
         </div>
       )}
     </div>

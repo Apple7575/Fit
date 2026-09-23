@@ -59,23 +59,35 @@ export const IMPACT: Record<string, string> = {
 /**
  * 지표 → 「이렇게 하면 됩니다」 그림 파일 (public/interview-guide/).
  *
- * <p>눈으로 보면 한 번에 아는 것만 그림을 붙인다. "1분에 262자"는 그림으로 그릴 수 없고
- * 글이 더 정확하지만, 고개가 얼마나 숙여진 것을 말하는지는 글보다 그림이 빠르다.
+ * <p>✗ 와 ✓ 를 나란히 세운 한 장씩이다. 지표 열일곱 개가 모두 자기 그림을 갖는다 — 몇 개만
+ * 있으면 있는 카드와 없는 카드의 생김새가 달라 빠진 쪽이 덜 만든 것처럼 보인다.
+ *
+ * <p>고개 기울기와 어깨 수평, 고개 흔들림과 상체 안정은 헷갈리기 쉬워 그림을 따로 둔다.
+ * 앞의 둘은 머리가, 뒤의 둘은 몸통이 어긋난 그림이다.
  *
  * <p>파일이 없으면 GuideImage 가 조용히 빠지므로, 그림이 준비되기 전에도 카드는 그대로다.
  */
 export const FIX_FIGURE: Record<string, string> = {
-  '얼굴 위치': 'posture-offframe.png',
-  '고개 각도': 'posture-headdown.png',
-  '상체 자세': 'posture-slouch.png',
+  // 말하기
+  '말 속도': 'fix-pace.png',
+  '습관어(음·어)': 'fix-filler.png',
+  '답변 길이': 'fix-length.png',
+  '말이 멈춘 시간': 'fix-pause.png',
+  '목소리 크기': 'fix-volume.png',
+  // 시선과 표정
   '카메라 응시': 'fix-gaze.png',
+  '얼굴 위치': 'fix-framing.png',
   '정면 유지': 'fix-frontal.png',
-  '고개 기울기': 'fix-tilt.png',
-  '어깨 수평': 'fix-tilt.png',
   '표정': 'fix-expression.png',
-  '손짓': 'fix-gesture.png',
+  '얼굴 인식': 'fix-detect.png',
+  // 자세
+  '고개 각도': 'fix-headdown.png',
+  '고개 기울기': 'fix-tilt.png',
   '고개 흔들림': 'fix-restless.png',
-  '상체 안정': 'fix-restless.png',
+  '상체 자세': 'fix-slouch.png',
+  '상체 안정': 'fix-steady.png',
+  '어깨 수평': 'fix-shoulder.png',
+  '손짓': 'fix-gesture.png',
 };
 
 /** 지표 하나가 어느 자리에 설지. 살펴볼 것이 앞, 적정이 가운데, 재지 못한 것이 맨 뒤다. */
