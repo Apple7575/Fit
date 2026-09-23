@@ -5,6 +5,9 @@ import { sendMessage } from './api';
 
 interface MessageComposerProps {
   roomId: number;
+  coverLetterItemId: number | null;
+  selectedItemNumber: number | null;
+  needsItemSelection: boolean;
   /** 턴이 도는 동안에는 새 발화를 막는다. 서버도 409 로 막는다. */
   busy: boolean;
   onStarted: (turnId: number) => void;
@@ -15,10 +18,17 @@ interface MessageComposerProps {
 /**
  * 방에 말을 건다. 이 한 번이 곧 분석 요청이다.
  *
- * <p>지금은 자소서 전체만 본다. 서버는 문항 하나만 보는 것도 받지만
- * (coverLetterItemId), 자소서 상세 응답이 문항 id 를 내려주지 않아 화면이 가리킬 수가 없다.
+ * <p>문항을 고른 경우에는 그 id 를 함께 보내 글쓰기 담당이 해당 답변 하나만 첨삭하게 한다.
  */
-export function MessageComposer({ roomId, busy, onStarted, onConflict }: MessageComposerProps) {
+export function MessageComposer({
+  roomId,
+  coverLetterItemId,
+  selectedItemNumber,
+  needsItemSelection,
+  busy,
+  onStarted,
+  onConflict,
+}: MessageComposerProps) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +42,7 @@ export function MessageComposer({ roomId, busy, onStarted, onConflict }: Message
     setSending(true);
     setError(null);
     try {
-      const started = await sendMessage(roomId, text);
+      const started = await sendMessage(roomId, text, coverLetterItemId ?? undefined);
       setContent('');
       onStarted(started.turnId);
     } catch (caught) {
@@ -58,6 +68,15 @@ export function MessageComposer({ roomId, busy, onStarted, onConflict }: Message
 
   return (
     <div className="shrink-0 border-t border-slate-200 bg-white p-3">
+      {selectedItemNumber !== null ? (
+        <p className="mb-2 text-[11px] font-semibold text-blue-700">
+          문항 {selectedItemNumber}을 중심으로 검토합니다.
+        </p>
+      ) : needsItemSelection ? (
+        <p className="mb-2 text-[11px] font-semibold text-amber-700">
+          글쓰기 담당의 첨삭을 받으려면 왼쪽에서 문항 하나를 선택해 주세요.
+        </p>
+      ) : null}
       {/*
         글자 수와 보내기를 칸 위에 얹어 두었더니, 라벨이 "보내기"(3자) 에서 "전송 중…"
         으로 넓어지는데 얹힌 자리는 76px 로 고정이라 단추가 칸 밖으로 비어져 나왔다.

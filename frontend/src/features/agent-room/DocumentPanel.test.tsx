@@ -18,7 +18,7 @@ const letter: CoverLetter = {
   targetPosition: 'SAP ERP',
   jobContextId: null,
   updatedAt: '2026-09-21',
-  items: [{ question: '지원 동기', answer: '앞 문장 바꿀 부분 뒤 문장', charLimit: 500 }],
+  items: [{ id: 101, question: '지원 동기', answer: '앞 문장 바꿀 부분 뒤 문장', charLimit: 500 }],
 };
 
 describe('DocumentPanel 선택 수정', () => {
@@ -27,7 +27,12 @@ describe('DocumentPanel 선택 수정', () => {
     const retry = vi.fn();
     render(
       <MemoryRouter>
-        <DocumentPanel state={{ status: 'success', data: letter }} retry={retry} />
+        <DocumentPanel
+          state={{ status: 'success', data: letter }}
+          retry={retry}
+          selectedItemId={letter.items[0].id}
+          onSelectItem={vi.fn()}
+        />
       </MemoryRouter>,
     );
 
@@ -58,5 +63,32 @@ describe('DocumentPanel 선택 수정', () => {
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
     expect(mockUpdate.mock.calls[0][1].items[0].answer).toBe('앞 문장 고친 부분 뒤 문장');
     expect(retry).toHaveBeenCalled();
+  });
+
+  it('여러 문항 중 검토할 문항을 선택한다', async () => {
+    const onSelectItem = vi.fn();
+    const multiple: CoverLetter = {
+      ...letter,
+      items: [
+        letter.items[0],
+        { id: 202, question: '입사 후 포부', answer: '성장하겠습니다.', charLimit: 500 },
+      ],
+    };
+
+    render(
+      <MemoryRouter>
+        <DocumentPanel
+          state={{ status: 'success', data: multiple }}
+          retry={vi.fn()}
+          selectedItemId={null}
+          onSelectItem={onSelectItem}
+        />
+      </MemoryRouter>,
+    );
+
+    const buttons = screen.getAllByRole('button', { name: '이 문항 검토' });
+    await userEvent.click(buttons[1]);
+
+    expect(onSelectItem).toHaveBeenCalledWith(202);
   });
 });

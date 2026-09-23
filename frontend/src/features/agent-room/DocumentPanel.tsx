@@ -30,9 +30,13 @@ const selectionElement = (node: Node) =>
 export function DocumentPanel({
   state,
   retry,
+  selectedItemId,
+  onSelectItem,
 }: {
   state: QueryState<CoverLetter>;
   retry: () => void;
+  selectedItemId: number | null;
+  onSelectItem: (itemId: number) => void;
 }) {
   const [selection, setSelection] = useState<AnswerSelection | null>(null);
   const [saving, setSaving] = useState(false);
@@ -133,9 +137,11 @@ export function DocumentPanel({
       targetCompany: letter.targetCompany,
       targetPosition: letter.targetPosition,
       jobContextId: letter.jobContextId,
-      items: letter.items.map((item, index) =>
-        index === selection.itemIndex ? { ...item, answer: nextAnswer } : item,
-      ),
+      items: letter.items.map((item, index) => ({
+        question: item.question,
+        answer: index === selection.itemIndex ? nextAnswer : item.answer,
+        charLimit: item.charLimit,
+      })),
     };
 
     setSaving(true);
@@ -172,33 +178,51 @@ export function DocumentPanel({
         <p className="px-4 py-6 text-[13px] text-slate-400">아직 작성한 문항이 없습니다.</p>
       ) : (
         <ol className="flex-1 divide-y divide-slate-100">
-          {letter.items.map((item, i) => (
-            <li className="px-4 py-5" key={i}>
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
-                  문항 {i + 1}
-                </span>
-                <h3 className="min-w-0 pt-0.5 text-[14px] font-bold leading-6 break-keep wrap-anywhere text-slate-900">
-                  {item.question}
-                </h3>
-              </div>
+          {letter.items.map((item, i) => {
+            const selected = item.id === selectedItemId;
+            return (
+              <li
+                className={`px-4 py-5 transition ${selected ? 'bg-blue-50/60' : ''}`}
+                key={item.id}
+              >
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5 shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
+                    문항 {i + 1}
+                  </span>
+                  <h3 className="min-w-0 pt-0.5 text-[14px] font-bold leading-6 break-keep wrap-anywhere text-slate-900">
+                    {item.question}
+                  </h3>
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => onSelectItem(item.id)}
+                    className={`ml-auto shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition ${
+                      selected
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:text-blue-700'
+                    }`}
+                  >
+                    {selected ? '검토 선택됨' : '이 문항 검토'}
+                  </button>
+                </div>
 
-              <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
-                <p className="mb-1.5 text-[10px] font-bold tracking-wide text-slate-400">답변</p>
-                <p
-                  className="cursor-text text-[13px] leading-6 break-keep wrap-anywhere whitespace-pre-wrap text-slate-600 selection:bg-blue-200 selection:text-slate-900"
-                  data-cover-letter-answer={i}
-                  title="문장을 드래그하면 선택한 부분만 수정할 수 있습니다"
-                >
-                  {item.answer || <span className="text-slate-400">아직 비어 있어요</span>}
-                </p>
-                <p className="mt-2 text-right text-[11px] tabular-nums text-slate-400">
-                  {item.answer.length}
-                  {item.charLimit > 0 && ` / ${item.charLimit}`}자
-                </p>
-              </div>
-            </li>
-          ))}
+                <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
+                  <p className="mb-1.5 text-[10px] font-bold tracking-wide text-slate-400">답변</p>
+                  <p
+                    className="cursor-text text-[13px] leading-6 break-keep wrap-anywhere whitespace-pre-wrap text-slate-600 selection:bg-blue-200 selection:text-slate-900"
+                    data-cover-letter-answer={i}
+                    title="문장을 드래그하면 선택한 부분만 수정할 수 있습니다"
+                  >
+                    {item.answer || <span className="text-slate-400">아직 비어 있어요</span>}
+                  </p>
+                  <p className="mt-2 text-right text-[11px] tabular-nums text-slate-400">
+                    {item.answer.length}
+                    {item.charLimit > 0 && ` / ${item.charLimit}`}자
+                  </p>
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
     </article>

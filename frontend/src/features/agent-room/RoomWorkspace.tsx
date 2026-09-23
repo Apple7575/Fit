@@ -116,9 +116,22 @@ function RoomBody({
   const followLatestMessage = useRef(true);
   const [chatOpen, setChatOpen] = useState(true);
   const [closedAtMessageCount, setClosedAtMessageCount] = useState(0);
+  const [selection, setSelection] = useState<{ coverLetterId: number; itemId: number } | null>(null);
   // 자소서 원문은 여기서 한 번만 부른다.
   const doc = useOptionalCoverLetter(data.coverLetter?.id ?? null);
   const agentNames = Object.fromEntries(data.agents.map((agent) => [agent.agentKey, agent.name]));
+  const items = doc.state.status === 'success' ? doc.state.data.items : [];
+  const selectedCandidateId =
+    selection && selection.coverLetterId === data.coverLetter?.id ? selection.itemId : null;
+  const selectedItemId =
+    items.length === 1
+      ? items[0].id
+      : selectedCandidateId !== null && items.some((item) => item.id === selectedCandidateId)
+        ? selectedCandidateId
+        : null;
+  const selectedItemNumber =
+    selectedItemId === null ? null : items.findIndex((item) => item.id === selectedItemId) + 1;
+  const hasWritingAgent = data.agents.some((agent) => agent.agentKey === 'writing');
 
   // 서버는 최신순으로 주는데 화면은 위에서 아래로 읽는다.
   const thread = messages.status === 'success' ? [...messages.data.messages].reverse() : [];
@@ -158,7 +171,14 @@ function RoomBody({
     >
       {data.coverLetter && (
         <section className="min-w-0" aria-label="검토 중인 자소서">
-          <DocumentPanel retry={doc.retry} state={doc.state} />
+          <DocumentPanel
+            retry={doc.retry}
+            state={doc.state}
+            selectedItemId={selectedItemId}
+            onSelectItem={(itemId) => {
+              if (data.coverLetter) setSelection({ coverLetterId: data.coverLetter.id, itemId });
+            }}
+          />
         </section>
       )}
 
@@ -212,6 +232,9 @@ function RoomBody({
 
             <MessageComposer
               roomId={roomId}
+              coverLetterItemId={selectedItemId}
+              selectedItemNumber={selectedItemNumber}
+              needsItemSelection={hasWritingAgent && items.length > 1 && selectedItemId === null}
               busy={busy}
               onStarted={handleStarted}
               onConflict={reloadMessages}
