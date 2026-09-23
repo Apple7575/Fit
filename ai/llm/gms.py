@@ -11,10 +11,16 @@ vLLM 과 주고받는 모양이 전부 다르다. 그 차이를 여기서 흡수
 
 스키마도 그대로 넘기지 못한다. Gemini 는 타입을 대문자로 쓰고 `additionalProperties` 같은
 JSON Schema 키워드를 모른다 — 그대로 보내면 400 이 온다. `to_gemini_schema` 가 옮긴다.
+
+스키마가 크거나 제약이 복잡하면 Gemini 는 400(too many states)이나 500 으로 거절한다. 기업 리포트
+SWOT 처럼 근거 ID 수십 개짜리 enum 이 여덟 자리에 반복되는 스키마가 그렇다(2026-09-23 dev 실측).
+`complete` 는 (길이 제약, enum) 을 켠 채 → 길이 제약 제거 → enum 제거 순으로 완화해 다시 보내고,
+변환된 스키마가 상한을 넘으면 처음부터 enum 없이 보낸다. 값 검증은 담당이 자기 규격으로 한다.
 """
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -33,6 +39,10 @@ from ai.llm.gms_gate import GmsGateSettings, GmsRateLimitSignal, GmsRequestGate
 
 NAME = "gms"
 _LABEL = "GMS"
+LOGGER = logging.getLogger("ai.llm.gms")
+# 변환된 스키마가 이보다 크면 처음부터 enum 을 빼고 보낸다. 큰 enum 은 400 두 번을 거친 뒤에야 통하거나
+# (근거 60개 SWOT) 아예 500 으로 떨어진다(근거 400개·80자 SWOT 27만 자). 왕복을 아끼고 500 을 피한다.
+_DEFAULT_MAX_SCHEMA_CHARS = 30_000
 
 # Gemini responseSchema 가 아는 키만 남긴다. 나머지는 보내면 400 이다.
 _KEPT_KEYS = frozenset({
@@ -61,6 +71,15 @@ class _NoRedirectOpener(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def _max_schema_chars() -> int:
+    """이 크기를 넘는 스키마는 enum 없이 보낸다. 0 이하면 검사하지 않는다."""
+    raw = os.environ.get("GMS_MAX_SCHEMA_CHARS", "").strip()
+    try:
+        return int(raw) if raw else _DEFAULT_MAX_SCHEMA_CHARS
+    except ValueError:
+        return _DEFAULT_MAX_SCHEMA_CHARS
+
+
 @lru_cache(maxsize=1)
 def _get_gate() -> GmsRequestGate:
     return GmsRequestGate(GmsGateSettings.from_env(os.environ))
@@ -82,7 +101,7 @@ def _retry_after_seconds(headers: Any) -> float | None:
         return max(0.0, (retry_at - datetime.now(timezone.utc)).total_seconds())
 
 
-def to_gemini_schema(schema: Any, *, with_bounds: bool = True) -> Any:
+def to_gemini_schema(schema: Any, *, with_bounds: bool = True, with_enums: bool = True) -> Any:
     """JSON Schema → Gemini responseSchema.
 
     타입을 대문자로 올리고, Gemini 가 모르는 키워드를 떨군다. `["string", "null"]` 처럼 타입을
@@ -90,9 +109,13 @@ def to_gemini_schema(schema: Any, *, with_bounds: bool = True) -> Any:
 
     `with_bounds=False` 면 배열 길이 제약을 뺀다. 중첩된 배열에 길이가 붙으면 Gemini 가
     "too many states" 로 거절하는데, 그때 이 형태로 한 번 더 보낸다.
+
+    `with_enums=False` 면 enum 도 뺀다. 근거 ID 수십 개짜리 enum 이 여러 자리에 반복되면 길이 제약을
+    빼도 거절된다. enum 을 빼면 모델이 아무 문자열이나 낼 수 있지만, 담당들은 결과를 자기 규격으로
+    다시 검증한다(리포트·대화는 모델이 낸 인용 ID 를 근거 목록과 대조해 없는 것은 버린다).
     """
     if isinstance(schema, list):
-        return [to_gemini_schema(item) for item in schema]
+        return [to_gemini_schema(item, with_bounds=with_bounds, with_enums=with_enums) for item in schema]
     if not isinstance(schema, dict):
         return schema
 
@@ -112,13 +135,15 @@ def to_gemini_schema(schema: Any, *, with_bounds: bool = True) -> Any:
             continue
         if not with_bounds and key in _BOUND_KEYS:
             continue
+        if not with_enums and key == "enum":
+            continue
         if key == "properties" and isinstance(value, dict):
             out["properties"] = {
-                name: to_gemini_schema(item, with_bounds=with_bounds)
+                name: to_gemini_schema(item, with_bounds=with_bounds, with_enums=with_enums)
                 for name, item in value.items()
             }
         elif key == "items":
-            out["items"] = to_gemini_schema(value, with_bounds=with_bounds)
+            out["items"] = to_gemini_schema(value, with_bounds=with_bounds, with_enums=with_enums)
         else:
             out[key] = value
 
@@ -128,7 +153,7 @@ def to_gemini_schema(schema: Any, *, with_bounds: bool = True) -> Any:
         if isinstance(branches, list) and branches:
             concrete = [b for b in branches if not (isinstance(b, dict) and b.get("type") == "null")]
             chosen = to_gemini_schema(
-                concrete[0] if concrete else branches[0], with_bounds=with_bounds
+                concrete[0] if concrete else branches[0], with_bounds=with_bounds, with_enums=with_enums
             )
             if isinstance(chosen, dict):
                 merged = {**chosen, **out}
@@ -180,12 +205,12 @@ def complete(
         f"{config['model']}:generateContent"
     )
 
-    def send(with_bounds: bool) -> dict[str, Any]:
+    def send(with_bounds: bool, with_enums: bool = True) -> dict[str, Any]:
         body: dict[str, Any] = {
             "contents": contents,
             "generationConfig": {
                 "responseMimeType": "application/json",
-                "responseSchema": to_gemini_schema(schema, with_bounds=with_bounds),
+                "responseSchema": to_gemini_schema(schema, with_bounds=with_bounds, with_enums=with_enums),
                 "temperature": 0,
                 "maxOutputTokens": max_tokens,
             },
@@ -213,14 +238,39 @@ def complete(
 
         return _get_gate().run(transmit, operation_name=schema_name)
 
-    try:
-        raw = send(with_bounds=True)
-    except LlmHttpError as error:
-        # 중첩된 배열에 길이 제약이 붙으면 Gemini 가 감당하지 못한다. 제약을 빼고 한 번 더 보낸다 —
-        # 길이는 파서가 어차피 검사하므로, 아예 못 부르는 것보다 낫다.
-        if error.status != 400 or _TOO_MANY_STATES not in error.detail.lower():
+    def too_complex(error: LlmHttpError) -> bool:
+        return error.status == 400 and _TOO_MANY_STATES in error.detail.lower()
+
+    # 스키마 완화 사다리: (길이 제약, enum) 을 켠 채 → 길이 제약만 뺌 → enum 까지 뺌.
+    # 400(too many states) 은 한 칸씩 내려가고, 500 은 enum 이 켜져 있으면 곧장 맨 아래로 간다 —
+    # 500 은 사유를 안 알려 주지만 스키마가 클 때 나는 것이 실측됐고, 크기의 대부분은 enum 이다.
+    # 길이 제약을 먼저 빼는 이유: 길이는 파서가 어차피 검사하고, enum 은 모델이 값을 고르는 데 도움이 된다.
+    FULL, NO_BOUNDS, BARE = (True, True), (False, True), (False, False)
+    NEXT = {FULL: NO_BOUNDS, NO_BOUNDS: BARE}
+    current = FULL
+    limit = _max_schema_chars()
+    if limit > 0:
+        size = len(json.dumps(to_gemini_schema(schema), ensure_ascii=False))
+        if size > limit:
+            LOGGER.warning("GMS 스키마(%s)가 %d자로 상한 %d자를 넘어 enum 없이 보냄", schema_name, size, limit)
+            current = BARE
+    while True:
+        try:
+            raw = send(*current)
+            break
+        except LlmHttpError as error:
+            if too_complex(error) and current in NEXT:
+                current = NEXT[current]
+                LOGGER.warning(
+                    "GMS 스키마 거절(%s): %s 다시 보냄", schema_name,
+                    "배열 길이 제약을 빼고" if current == NO_BOUNDS else "enum 까지 빼고 마지막으로",
+                )
+                continue
+            if error.status == 500 and current != BARE:
+                current = BARE
+                LOGGER.warning("GMS 500(%s): 스키마가 커서일 수 있어 enum 을 빼고 한 번 더 보냄", schema_name)
+                continue
             raise
-        raw = send(with_bounds=False)
 
     try:
         text = raw["candidates"][0]["content"]["parts"][0]["text"]

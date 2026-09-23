@@ -136,6 +136,8 @@ services:
       - GMS_RATE_LIMIT_COOLDOWN_SECONDS=${GMS_RATE_LIMIT_COOLDOWN_SECONDS:-10}
       - GMS_RATE_LIMIT_RETRY_COUNT=${GMS_RATE_LIMIT_RETRY_COUNT:-1}
       - GMS_MAX_QUEUED_REQUESTS=${GMS_MAX_QUEUED_REQUESTS:-40}
+      # 변환된 응답 스키마가 이 글자 수를 넘으면 enum 없이 보낸다(기업 리포트 SWOT 근거 ID enum 이 400 을 냈다). 0 이면 검사 안 함.
+      - GMS_MAX_SCHEMA_CHARS=${GMS_MAX_SCHEMA_CHARS:-30000}
       # 공고에서 회사명·직무명을 뽑는 보완 추출에만 쓴다. 비면 그 보완만 꺼지고 크롤링은 돈다.
       - GMS_KEY=${GMS_KEY:-}
       - TZ=${TZ:-Asia/Seoul}
