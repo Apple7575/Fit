@@ -162,7 +162,6 @@ HTTP 200.
 | `status` | `SUCCESS`, `FAILED` |
 | `result` | 담당 API의 응답 본문과 같은 구조(각 담당 문서 참조). 실패 시 `null` |
 | `error` | 실패 사유 문자열. 성공 시 `null` |
-| `error_code` | 실패 종류. LLM 할당량(429)에 막혔으면 `LLM_QUOTA_EXCEEDED`, 그 밖에는 `null`. 이 값이면 `error`는 사용자에게 그대로 보여도 되는 한 문장이다 |
 | `evidence[]` | 이 담당이 사용한 근거 |
 | `needs[]` | 담당이 총괄에 요청한 추가 담당 호출. `{agent, reason}`. 아래 "위임" 참조 |
 | `tool_calls[]` | 이 담당이 실행 중 호출한 조회 도구 기록. 아래 참조 |
@@ -290,7 +289,6 @@ HTTP 200.
 | 422 | `NO_AVAILABLE_AGENT` | `agent_contexts`에 담당이 하나도 없음 |
 | 502 | `ALL_AGENTS_FAILED` | 선택된 담당이 전부 실패. `detail.agent_results`에 담당별 실패 사유 포함 |
 | 502 | `SUPERVISOR_FAILED` | 계획·종합 모델 연결 실패 등 총괄 자체의 오류. `message`는 오류 유형명만 |
-| 502 | `LLM_QUOTA_EXCEEDED` | 계획·종합 모델 호출이 LLM 할당량(429)에 막혔거나, 선택된 담당이 **전부** 할당량으로 실패. `message`는 사용자에게 보일 문장("AI 요청 한도에 잠시 걸렸습니다. 1분쯤 뒤에 다시 시도해 주세요."). Spring 은 이 코드를 보고 같은 문장을 말풍선에 띄운다 |
 | 503 | (문자열) | 총괄 모델(Qwen) 설정을 읽을 수 없음 |
 
 담당 일부만 실패하면 HTTP 200 + `status: "PARTIAL"`이다. 실패한 담당의 `error`를

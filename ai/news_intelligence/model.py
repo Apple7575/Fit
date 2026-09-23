@@ -10,6 +10,7 @@ from typing import Annotated, Any, Protocol
 from pydantic import Field, StringConstraints
 
 from ai.jd_coaching.baseline import call_qwen
+from ai.llm.contracts import LlmRateLimitedError
 from ai.news_intelligence.budget import remaining_timeout
 from ai.news_intelligence.contracts import (
     CoverageAssessment,
@@ -255,6 +256,8 @@ class QwenNewsModel:
             ):
                 raise NewsOutputError("invalid news JSON") from error
             raise NewsModelUnavailable("news model unavailable") from error
+        except LlmRateLimitedError:
+            raise
         except (RuntimeError, TimeoutError, ConnectionError) as error:
             raise NewsModelUnavailable("news model unavailable") from error
         remaining_timeout(_CALL_TIMEOUT_SECONDS, NewsModelUnavailable)

@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from ai.supervisor.adapters import AgentRegistry, NewsAgentAdapter
+from ai.llm.contracts import LlmRateLimitedError
 from ai.tests.news_intelligence.test_service import build_service, REQUEST
 from ai.supervisor.contracts import NoAvailableAgentError, SupervisorPlan
 from ai.supervisor.graph import build_supervisor_graph, validate_selected_agents
@@ -35,6 +36,7 @@ class RecordingAdapter:
         name,
         barrier=None,
         fail=False,
+        error=None,
         result=None,
         execution_log=None,
         lifecycle_log=None,
@@ -42,6 +44,7 @@ class RecordingAdapter:
         self.name = name
         self.barrier = barrier
         self.fail = fail
+        self.error = error
         self.result = result
         self.execution_log = execution_log
         self.lifecycle_log = lifecycle_log
@@ -66,6 +69,8 @@ class RecordingAdapter:
         time.sleep(0.01)
         if self.fail:
             raise RuntimeError(f"{self.name} failed")
+        if self.error is not None:
+            raise self.error
         if self.lifecycle_log is not None:
             self.lifecycle_log.append(f"{self.name}:finished")
         return self.result or {"agent": self.name}
@@ -126,6 +131,18 @@ def all_contexts():
 
 
 class SupervisorGraphTest(unittest.TestCase):
+    def test_marks_gms_rate_limit_with_stable_worker_error_code(self):
+        result = invoke_graph(
+            FakeModel([SupervisorPlan(selected_agents=["jd"], reason="JD 검토")]),
+            AgentRegistry([
+                RecordingAdapter("jd", error=LlmRateLimitedError("GMS", 10))
+            ]),
+            {"jd": {"job_context_id": "jctx"}},
+        )
+
+        self.assertEqual(result["agent_results"][0].status, "FAILED")
+        self.assertEqual(result["agent_results"][0].error, "GMS_RATE_LIMITED")
+
     def test_real_news_response_survives_qwen_and_fallback_aggregation(self):
         service, _, _, _ = build_service()
         for fallback in (False, True):

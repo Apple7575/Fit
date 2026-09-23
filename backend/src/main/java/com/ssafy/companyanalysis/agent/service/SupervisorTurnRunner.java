@@ -5,6 +5,7 @@ import com.ssafy.companyanalysis.agent.ai.SupervisorClient;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
 import com.ssafy.companyanalysis.agent.domain.Message;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
+import com.ssafy.companyanalysis.global.error.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -112,7 +113,7 @@ public class SupervisorTurnRunner {
                 slot.succeed(result.message(), result.evidence(), List.of());
                 answered.add(slot.getId());
             } else {
-                slot.fail(result.error() == null ? "담당이 답을 만들지 못했습니다." : result.error());
+                slot.fail(failureMessage(result.error()));
             }
         }
         // 컨텍스트는 보냈지만 총괄이 고르지 않은 담당. 실패로 두면 사용자가 장애로 읽는다.
@@ -152,5 +153,12 @@ public class SupervisorTurnRunner {
             return "알 수 없는 이유로 실패했습니다.";
         }
         return message.length() > MAX_REASON ? message.substring(0, MAX_REASON) : message;
+    }
+
+    private static String failureMessage(String error) {
+        if ("GMS_RATE_LIMITED".equals(error)) {
+            return ErrorCode.AI_RATE_LIMITED.getDefaultMessage();
+        }
+        return error == null ? "담당이 답을 만들지 못했습니다." : error;
     }
 }

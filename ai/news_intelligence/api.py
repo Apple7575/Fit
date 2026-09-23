@@ -7,8 +7,6 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
 
-from ai.llm.contracts import QUOTA_ERROR_CODE, QUOTA_USER_MESSAGE, LlmError, find_quota_error
-
 from pydantic import Field
 
 from ai.jd_coaching.baseline import load_qwen_config
@@ -23,6 +21,7 @@ from ai.news_intelligence.model import (
     NewsOutputError,
     QwenNewsModel,
 )
+from ai.llm.contracts import LlmRateLimitedError
 from ai.news_intelligence.repository import (
     CompanyNotFound,
     JobContextNotFound,
@@ -149,13 +148,12 @@ def create_analysis(
             status_code=503,
             detail={"code": "NEWS_SOURCE_UNAVAILABLE"},
         ) from error
-    except (NewsOutputError, NewsModelUnavailable, LlmError) as error:
-        # 뉴스 담당만 도는 턴은 총괄을 거치지 않고 여기로 온다. 할당량이면 총괄과 같은 코드·문장으로 알린다.
-        if find_quota_error(error) is not None:
-            raise HTTPException(
-                status_code=502,
-                detail={"code": QUOTA_ERROR_CODE, "message": QUOTA_USER_MESSAGE},
-            ) from error
+    except LlmRateLimitedError as error:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "GMS_RATE_LIMITED"},
+        ) from error
+    except (NewsOutputError, NewsModelUnavailable) as error:
         raise HTTPException(
             status_code=502,
             detail={"code": "NEWS_MODEL_UNAVAILABLE"},

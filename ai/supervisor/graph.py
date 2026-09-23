@@ -12,6 +12,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
 from ai.supervisor.adapters import AgentRegistry
+from ai.llm.contracts import LlmRateLimitedError
 from ai.supervisor.contracts import (
     AgentResult,
     NoAvailableAgentError,
@@ -25,7 +26,6 @@ from ai.supervisor.delegation import (
     latest_results,
     select_delegations,
 )
-from ai.llm.contracts import QUOTA_ERROR_CODE, QUOTA_USER_MESSAGE, find_quota_error
 from ai.supervisor.evidence import extract_evidence, extract_usage
 from ai.supervisor.model import PlanOutputError, SupervisorModel
 from ai.supervisor.tools import tool_scope
@@ -129,17 +129,6 @@ def success_result(
         usage=extract_usage(result),
         delegated_from=delegated_from,
     )
-
-
-def failure_fields(error: BaseException, default_message: str) -> dict[str, str | None]:
-    """실패한 담당의 error·error_code. LLM 할당량(429)이면 사용자에게 보일 문장과 코드를 붙인다.
-
-    다른 실패는 지금처럼 기술 사유를 남긴다. 할당량만 따로 두는 이유는 사용자가 할 수 있는 일이
-    다르기 때문이다 — 자소서를 고칠 일이 아니라 잠시 뒤 다시 시도할 일이다.
-    """
-    if find_quota_error(error) is not None:
-        return {"error": QUOTA_USER_MESSAGE, "error_code": QUOTA_ERROR_CODE}
-    return {"error": default_message, "error_code": None}
 
 
 def trace_step(
@@ -326,13 +315,21 @@ def build_supervisor_graph(
                     prior_results=prior_results,
                 )
                 return success_result(agent, result, tool_calls, delegated_from)
+            except LlmRateLimitedError:
+                return AgentResult(
+                    agent=agent,
+                    status="FAILED",
+                    error="GMS_RATE_LIMITED",
+                    tool_calls=list(tool_calls),
+                    delegated_from=delegated_from,
+                )
             except Exception as error:
                 return AgentResult(
                     agent=agent,
                     status="FAILED",
+                    error=f"{type(error).__name__}: {error}",
                     tool_calls=list(tool_calls),
                     delegated_from=delegated_from,
-                    **failure_fields(error, f"{type(error).__name__}: {error}"),
                 )
 
     def run_analysis_agent(state: WorkerState) -> dict[str, Any]:
@@ -382,6 +379,13 @@ def build_supervisor_graph(
                     prior_results=successful_results_except(state, "writing"),
                 )
                 return success_result("writing", result, tool_calls)
+            except LlmRateLimitedError:
+                return AgentResult(
+                    agent="writing",
+                    status="FAILED",
+                    error="GMS_RATE_LIMITED",
+                    tool_calls=list(tool_calls),
+                )
             except Exception as error:
                 # 응답에는 사유를 가리지만(사용자 문서 유출 방지) 운영 로그에는 원인을 남긴다.
                 LOGGER.warning(
@@ -392,8 +396,8 @@ def build_supervisor_graph(
                 return AgentResult(
                     agent="writing",
                     status="FAILED",
+                    error="writing worker failed",
                     tool_calls=list(tool_calls),
-                    **failure_fields(error, "writing worker failed"),
                 )
 
     def run_writing_agent(state: SupervisorState) -> dict[str, Any]:
