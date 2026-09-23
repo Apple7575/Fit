@@ -57,7 +57,7 @@ export function InterviewCompanyField({ name, onChange }: InterviewCompanyFieldP
   return (
     <div className="relative">
       <div role="search">
-        <div className="flex h-[42px] items-center rounded-lg border border-slate-200 bg-white pr-1 pl-3 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+        <div className="flex h-[42px] items-center rounded-lg border border-slate-200 bg-white pr-1 pl-3 transition">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="mr-2 size-4 text-slate-400">
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" strokeLinecap="round" />

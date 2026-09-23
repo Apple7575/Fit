@@ -74,7 +74,7 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
           <label className="sr-only" htmlFor="peer-search-keyword">
             비교할 기업명
           </label>
-          <div className="flex h-8 items-center rounded-lg border border-dashed border-slate-300 bg-white pr-1 pl-2.5 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 has-[:disabled]:bg-slate-50">
+          <div className="flex h-8 items-center rounded-lg border border-dashed border-slate-300 bg-white pr-1 pl-2.5 transition has-[:disabled]:bg-slate-50">
             <span aria-hidden="true" className="mr-1 text-slate-400">
               ＋
             </span>

@@ -11,12 +11,17 @@ const MODES = [
 const PILL = 'inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-bold transition';
 const ON = 'bg-slate-950 text-white';
 const OFF = 'text-slate-600 hover:bg-slate-100 hover:text-slate-950';
+/** 어두운 헤더 위의 같은 알약. 켜진 것은 흰 알약, 나머지는 흰 글자로 물러선다 */
+const ON_DARK = 'bg-white text-slate-950';
+const OFF_DARK = 'text-white/70 hover:bg-white/10 hover:text-white';
 
 interface CoverLetterHeaderProps {
   /** 지금 다루는 자소서. 없으면 갈래도 없다(목록 화면) */
   letter?: { id: number; title: string } | null;
   floating?: boolean;
   scrolled?: boolean;
+  /** 어두운 영상 위의 화면(작성). 스크롤해도 흰 띠로 바꾸지 않는다 */
+  dark?: boolean;
 }
 
 /**
@@ -38,7 +43,10 @@ export function CoverLetterHeader({
   letter,
   floating = false,
   scrolled = false,
+  dark = false,
 }: CoverLetterHeaderProps) {
+  const on = dark ? ON_DARK : ON;
+  const off = dark ? OFF_DARK : OFF;
   return (
     <SiteHeader
       aside={
@@ -48,7 +56,7 @@ export function CoverLetterHeader({
               {MODES.map(({ path, label }) => (
                 <li key={label}>
                   <NavLink
-                    className={({ isActive }) => `${PILL} ${isActive ? ON : OFF}`}
+                    className={({ isActive }) => `${PILL} ${isActive ? on : off}`}
                     end={path === ''}
                     to={`/cover-letters/${letter.id}${path}`}
                   >
@@ -61,8 +69,10 @@ export function CoverLetterHeader({
         ) : undefined
       }
       breadcrumb={letter?.title}
+      dark={dark}
       floating={floating}
-      scrolled={letter ? true : scrolled}
+      // 흰 띠에서는 갈래 알약이 늘 보여야 해 스크롤 전부터 내렸다. 어두운 띠는 영상 위에서도 읽힌다
+      scrolled={letter && !dark ? true : scrolled}
     />
   );
 }

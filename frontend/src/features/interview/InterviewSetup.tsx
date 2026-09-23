@@ -217,7 +217,7 @@ export function InterviewSetup({ loading, error = null, onStart }: InterviewSetu
             >
               <input
                 autoFocus
-                className="h-12 w-full rounded-xl border border-slate-200 px-4 text-[16px] text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                className="h-12 w-full rounded-xl border border-slate-200 px-4 text-[16px] text-slate-800 outline-none"
                 id="iv-position"
                 // 백엔드 @Size(max=120) 과 같은 값. 넘겨 보내면 저장·분석이 400 으로 막힌다
                 maxLength={120}
@@ -325,7 +325,7 @@ export function InterviewSetup({ loading, error = null, onStart }: InterviewSetu
                       자기소개서 연동 <span className="font-medium text-slate-400">(선택)</span>
                     </label>
                     <select
-                      className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      className="h-[42px] w-full rounded-lg border border-slate-200 px-3 text-[15px] text-slate-800 outline-none"
                       id="iv-cl"
                       onChange={(e) => setCoverLetterId(e.target.value ? Number(e.target.value) : null)}
                       value={coverLetterId ?? ''}

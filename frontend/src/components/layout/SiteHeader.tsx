@@ -11,7 +11,7 @@ const NAV = [
   { label: '모의 면접', to: '/interviews', match: ['/interviews'] },
 ] as const;
 
-const LINK_BASE = 'rounded-lg px-3 py-2 text-sm transition';
+const LINK_BASE = 'shrink-0 rounded-[10px] px-2.5 py-2 sm:px-3 text-sm whitespace-nowrap transition-colors duration-200';
 
 /**
  * 콘텐츠 위에 떠 있는 띠(헤더·서브바)가 쓰는 한 가지 재질.
@@ -41,8 +41,9 @@ export const HEADER_LINE = 'border-b border-slate-200/80';
  */
 const LINK_TONE = {
   light: {
-    on: 'bg-white/20 font-bold text-white ring-1 ring-white/30',
-    off: 'font-semibold text-white/75 hover:bg-white/10 hover:text-white',
+    // 테두리를 걷고 옅은 흰 막만 남긴다. 테두리까지 두르니 단추처럼 무거웠다
+    on: 'bg-white/[0.12] font-semibold text-white',
+    off: 'font-medium text-white/70 hover:bg-white/[0.08] hover:text-white active:bg-white/[0.12]',
   },
   dark: {
     on: 'bg-slate-100 font-bold text-slate-950',
@@ -72,7 +73,15 @@ interface SiteHeaderProps {
   subnav?: boolean;
   /** 헤더 줄에 얹는 화면별 갈래(자소서의 작성·검토). 브레드크럼 뒤, 전역 메뉴 앞에 선다 */
   aside?: ReactNode;
+  /**
+   * 화면 전체가 어두운 영상 위에 있는 경우(자소서 작성). 스크롤해도 흰 띠로 바꾸지 않고
+   * 어두운 반투명 유리로만 내려온다 — 흰 띠가 내려오면 다른 화면으로 넘어간 것처럼 보였다.
+   */
+  dark?: boolean;
 }
+
+/** 어두운 화면에서 스크롤했을 때의 띠. 영상이 비치되 글자는 읽히는 정도로만 누른다 */
+const DARK_SURFACE = 'border-b border-white/10 bg-slate-950/60 backdrop-blur-xl backdrop-saturate-150';
 
 function isActive(pathname: string, match: readonly string[]) {
   return match.some((prefix) =>
@@ -92,10 +101,11 @@ export function SiteHeader({
   scrolled = false,
   subnav = false,
   aside,
+  dark = false,
 }: SiteHeaderProps) {
   const { pathname } = useLocation();
-  // 어두운 사진·영상 위에 떠 있는 동안만 글자를 흰색으로
-  const light = (overlay || floating) && !scrolled;
+  // 어두운 사진·영상 위에 떠 있는 동안만 글자를 흰색으로. 어두운 화면은 스크롤해도 흰색이다
+  const light = dark || ((overlay || floating) && !scrolled);
   const tone = LINK_TONE[light ? 'light' : 'dark'];
 
   // 바로 아래 서브바가 붙는 화면에서는 헤더 밑줄을 긋지 않는다. 둘이 한 면으로 읽혀야 한다.
@@ -104,7 +114,13 @@ export function SiteHeader({
 
   const frame = floating
     ? `fixed inset-x-0 top-0 z-30 transition-[background-color,border-color,box-shadow] duration-300 ${
-        light ? 'border-b border-transparent bg-transparent' : settled
+        dark
+          ? scrolled
+            ? DARK_SURFACE
+            : 'border-b border-transparent bg-transparent'
+          : light
+            ? 'border-b border-transparent bg-transparent'
+            : settled
       }`
     : overlay
       ? `absolute inset-x-0 top-0 z-30 transition-[background-color,border-color,box-shadow] duration-300 ${
@@ -158,7 +174,15 @@ export function SiteHeader({
         */}
         {aside}
 
-        <nav aria-label="전역 메뉴" className="ml-auto flex items-center gap-1 sm:gap-2">
+        {/*
+          좁은 화면에서는 줄을 바꾸지 않고 옆으로 민다. 줄을 바꾸면 헤더가 두 배로 높아져
+          고정 헤더 높이만큼 비워 둔 본문 첫머리를 덮었고, 로그인·회원가입은 한 글자씩 꺾였다.
+        */}
+        <nav
+          aria-label="전역 메뉴"
+          className="flex min-w-0 flex-1 basis-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] sm:gap-2 [&::-webkit-scrollbar]:hidden"
+        >
+          <span aria-hidden="true" className="ml-auto" />
           {NAV.map(({ label, to, match }) => {
             const active = isActive(pathname, match);
             return (
@@ -172,10 +196,8 @@ export function SiteHeader({
               </Link>
             );
           })}
-          <span
-            aria-hidden="true"
-            className={`mx-1 hidden h-5 w-px sm:block ${light ? 'bg-white/30' : 'bg-slate-200'}`}
-          />
+          {/* 세로 구분선은 걷었다. 메뉴와 계정 사이는 간격만으로 갈린다 */}
+          <span aria-hidden="true" className="w-1 sm:w-3" />
           <AuthButtons onDark={light} />
         </nav>
       </div>

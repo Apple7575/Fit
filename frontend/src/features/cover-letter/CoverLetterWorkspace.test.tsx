@@ -34,13 +34,13 @@ async function confirmPosting(user: ReturnType<typeof userEvent.setup>) {
     sourceKey: 'key-1',
   });
   await user.type(screen.getByLabelText('채용공고 URL (선택)'), 'https://jobs.example.com/1');
-  await user.click(screen.getByRole('button', { name: '확인' }));
+  await user.click(screen.getByRole('button', { name: '공고 불러오기' }));
   await screen.findByDisplayValue('삼성전자');
 }
 
 /** 한 화면에 한 가지만 둔다. AI 검토는 문항을 쓰는 화면에 있다. */
 async function goToItems(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: '문항 1' }));
+  await user.click(screen.getByRole('button', { name: '자기소개서 작성' }));
 }
 
 describe('CoverLetterWorkspace', () => {
@@ -102,7 +102,7 @@ describe('CoverLetterWorkspace', () => {
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다 ✓');
 
-    await user.type(screen.getByDisplayValue('2026 상반기 백엔드'), '!');
+    await user.type(screen.getByLabelText('지원 직무 (선택)'), '!');
 
     expect(screen.queryByText('저장했습니다 ✓')).not.toBeInTheDocument();
   });
@@ -196,11 +196,32 @@ describe('CoverLetterWorkspace', () => {
     const file = new File(['fake'], 'posting.png', { type: 'image/png' });
     await user.upload(screen.getByLabelText('공고 이미지 선택'), file);
     // 주소 칸 옆 단추는 주소 전용이다. 이미지만 넣었으면 눌리지 않는다
-    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: '이미지 1장으로 확인' }));
+    expect(screen.getByRole('button', { name: '공고 불러오기' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '이미지 1장 확인하기' }));
 
     expect(vi.mocked(parseJobPostingImages).mock.calls[0][0]).toHaveLength(1);
     expect(screen.getByLabelText('지원 회사')).toHaveValue('뷰웍스');
+  });
+
+  it('이미지를 읽는 동안 단추 자리에 넣은 장수로 진행을 알린다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(parseJobPostingImages).mockReturnValue(new Promise(() => {}));
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />);
+
+    await user.upload(screen.getByLabelText('공고 이미지 선택'), [
+      new File(['a'], '삼성전자_공고.png', { type: 'image/png' }),
+      new File(['b'], 'image.png', { type: 'image/png' }),
+      new File(['c'], '상세요강.jpg', { type: 'image/jpeg' }),
+    ]);
+    // 넣은 파일의 이름 그대로 보인다
+    expect(screen.getByText('삼성전자_공고.png')).toBeInTheDocument();
+    expect(screen.getByText('image.png')).toBeInTheDocument();
+    expect(screen.getByText('상세요강.jpg')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '이미지 3장 확인하기' }));
+
+    expect(await screen.findByText(/이미지 3장을 확인했어요\. 공고 정보를 읽고 있어요/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '이미지 3장 확인하기' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/조각/)).not.toBeInTheDocument();
   });
 
   it('붙여넣은 이미지를 개별로 뺄 수 있다', async () => {
@@ -238,7 +259,7 @@ describe('CoverLetterWorkspace', () => {
     const huge = new File(['x'], 'long-posting.png', { type: 'image/png' });
     Object.defineProperty(huge, 'size', { value: 9 * 1024 * 1024 });
     await user.upload(screen.getByLabelText('공고 이미지 선택'), huge);
-    await user.click(screen.getByRole('button', { name: '이미지 1장으로 확인' }));
+    await user.click(screen.getByRole('button', { name: '이미지 1장 확인하기' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('나눠 캡처');
     expect(vi.mocked(parseJobPostingImages)).not.toHaveBeenCalled();
@@ -315,5 +336,106 @@ describe('CoverLetterWorkspace', () => {
     await user.type(limit, '0000000000000000000000050');
 
     expect(limit).toHaveValue('50');
+  });
+
+  it('링크가 없을 때의 칸은 한 번에 하나만 펴고, 다시 누르면 접는다', async () => {
+    const user = userEvent.setup();
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />);
+    const image = screen.getByRole('button', { name: '이미지 업로드' });
+    const manual = screen.getByRole('button', { name: '직접 입력' });
+
+    await user.click(image);
+    expect(image).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/로 붙여넣으세요/)).toBeInTheDocument();
+
+    // 다른 칸을 펴면 앞의 칸은 접힌다
+    await user.click(manual);
+    expect(image).toHaveAttribute('aria-pressed', 'false');
+    expect(manual).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText(/로 붙여넣으세요/)).not.toBeInTheDocument();
+
+    // 같은 단추를 다시 누르면 접는다
+    await user.click(manual);
+    expect(manual).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('제목이 없으면 문항으로 넘어가기 전에 제목 창을 띄운다', async () => {
+    const user = userEvent.setup();
+    render(
+      <CoverLetterWorkspace
+        initial={{ ...initial, title: '' }}
+        isLoggedIn
+        onSave={vi.fn()}
+        onReview={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '문항 쓰러가기 →' }));
+    const dialog = screen.getByRole('dialog', { name: '자기소개서 제목을 정해주세요.' });
+    const start = screen.getByRole('button', { name: '작성 시작하기 →' });
+    expect(start).toBeDisabled();
+
+    // Esc 는 취소다 — 창에서 친 것은 반영하지 않는다
+    await user.type(screen.getByLabelText('제목'), '임시');
+    await user.keyboard('{Escape}');
+    expect(dialog).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '문항 쓰러가기 →' }));
+    expect(screen.getByLabelText('제목')).toHaveValue('');
+    await user.type(screen.getByLabelText('제목'), '삼성 백엔드');
+    await user.keyboard('{Enter}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '이제 문항을 채워볼까요?' })).toBeInTheDocument();
+  });
+
+  it('쓰는 중에 제목만 고치고 그 자리에 머문다', async () => {
+    const user = userEvent.setup();
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />);
+    await goToItems(user);
+    await user.type(screen.getByLabelText('답변'), ' 추가');
+
+    await user.click(screen.getByRole('button', { name: '제목 수정' }));
+    expect(screen.getByRole('dialog', { name: '자기소개서 제목을 수정해주세요.' })).toBeInTheDocument();
+    const field = screen.getByLabelText('제목');
+    expect(field).toHaveValue('2026 상반기 백엔드');
+
+    // 취소하면 그대로다
+    await user.clear(field);
+    await user.type(field, '버릴 제목');
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.getByText('2026 상반기 백엔드')).toBeInTheDocument();
+
+    // 비우면 수정할 수 없다
+    await user.click(screen.getByRole('button', { name: '제목 수정' }));
+    await user.clear(screen.getByLabelText('제목'));
+    expect(screen.getByRole('button', { name: '수정하기' })).toBeDisabled();
+
+    await user.type(screen.getByLabelText('제목'), '하반기 백엔드');
+    await user.click(screen.getByRole('button', { name: '수정하기' }));
+    expect(screen.getByText('하반기 백엔드')).toBeInTheDocument();
+    // 기업·직무 단계로 돌아가지 않고, 쓰던 답변도 그대로다
+    expect(screen.getByRole('heading', { name: '이제 문항을 채워볼까요?' })).toBeInTheDocument();
+    expect(screen.getByLabelText('답변')).toHaveValue('데이터 파이프라인을 만들고 싶습니다. 추가');
+  });
+
+  it('이미지는 8장·합계 50MB 까지만 받고, 넘치면 왜 빠졌는지 알린다', async () => {
+    const user = userEvent.setup();
+    render(<CoverLetterWorkspace initial={initial} isLoggedIn onSave={vi.fn()} onReview={vi.fn()} />);
+    const picker = screen.getByLabelText('공고 이미지 선택');
+
+    const nine = Array.from({ length: 9 }, (_, i) => new File(['x'], `p${i}.png`, { type: 'image/png' }));
+    await user.upload(picker, nine);
+    expect(screen.getByLabelText('8번 이미지 빼기')).toBeInTheDocument();
+    expect(screen.queryByLabelText('9번 이미지 빼기')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('최대 8장');
+
+    // 한 장을 빼면 안내를 내린다. 남은 일곱 장 위로 51MB 짜리는 받지 않는다
+    await user.click(screen.getByLabelText('8번 이미지 빼기'));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    const big = new File(['x'], 'big.png', { type: 'image/png' });
+    Object.defineProperty(big, 'size', { value: 51 * 1024 * 1024 });
+    await user.upload(picker, big);
+    expect(screen.queryByLabelText('8번 이미지 빼기')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('최대 50MB');
   });
 });
