@@ -7,7 +7,7 @@ import { useAuth } from '../../features/auth/AuthProvider';
 import { loginReason } from '../../features/auth/loginReason';
 
 const FIELD_CLASS =
-  'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
+  'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -101,7 +101,7 @@ export function LoginPage() {
         <label className="flex items-center gap-2 text-sm font-medium text-slate-600 select-none">
           <input
             checked={rememberMe}
-            className="size-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200"
+            className="size-4 rounded border-slate-300 text-blue-600"
             onChange={(event) => setRememberMe(event.target.checked)}
             type="checkbox"
           />

@@ -607,7 +607,7 @@ export function InterviewSession({
               </>
             ) : (
               <textarea
-                className="mt-1.5 h-32 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-[14px] leading-6 text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                className="mt-1.5 h-32 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-[14px] leading-6 text-slate-700 outline-none"
                 onChange={(e) => setTranscript(e.target.value)}
                 placeholder={phase === 'ready' ? '답변을 시작하면 여기에 받아써집니다.' : ''}
                 value={current.transcript}

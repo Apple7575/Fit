@@ -92,7 +92,7 @@ export function MessageComposer({
             event.preventDefault();
             if (!disabled) void submit();
           }}
-          className="block min-h-[76px] w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-[14px] leading-relaxed text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+          className="block min-h-[76px] w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-[14px] leading-relaxed text-slate-800 outline-none transition disabled:bg-slate-50"
         />
 
         <div className="mt-1.5 flex items-center justify-between gap-2">

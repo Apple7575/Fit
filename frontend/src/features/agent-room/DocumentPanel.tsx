@@ -298,7 +298,7 @@ export function DocumentPanel({
             setSelection((current) => current ? { ...current, draft: event.target.value } : current);
             if (saveError) setSaveError(null);
           }}
-          className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-[13px] leading-5 text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-[13px] leading-5 text-slate-800 outline-none"
         />
         {saveError && <p role="alert" className="mt-1 text-[11px] font-medium text-red-600">{saveError}</p>}
         <div className="mt-2 flex justify-end gap-2">

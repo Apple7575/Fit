@@ -173,7 +173,7 @@ export function CompanySearchForm({ onSearch, onPick }: CompanySearchFormProps) 
         <label className="sr-only" htmlFor="company-search-keyword">
           기업명
         </label>
-        <div className="flex items-center gap-2 rounded-full border border-slate-300 bg-white p-2 shadow-sm transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100 sm:gap-3">
+        <div className="flex items-center gap-2 rounded-full border border-slate-300 bg-white p-2 shadow-sm transition sm:gap-3">
           <svg
             aria-hidden="true"
             className="ml-2 size-5 shrink-0 text-slate-400 sm:ml-3"

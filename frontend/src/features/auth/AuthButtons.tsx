@@ -2,9 +2,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 
 const LINK_CLASS =
-  'rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950';
+  'rounded-[10px] px-2.5 py-2 text-sm font-semibold whitespace-nowrap text-slate-600 transition-colors duration-200 sm:px-3 hover:bg-slate-100 hover:text-slate-950';
 const LINK_CLASS_ON_DARK =
-  'rounded-lg px-3 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white';
+  'rounded-[10px] px-2.5 py-2 text-sm font-semibold whitespace-nowrap text-white/80 transition-colors duration-200 sm:px-3 hover:bg-white/[0.08] hover:text-white';
 
 interface AuthButtonsProps {
   /** 어두운 배경(랜딩의 투명 헤더) 위에 놓일 때 글자를 밝게 */
@@ -19,7 +19,7 @@ export function AuthButtons({ onDark = false }: AuthButtonsProps) {
 
   if (user) {
     return (
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <Link
           // 닉네임은 50자까지다. 띄어쓰기 없이 길게 지으면 헤더가 통째로 옆으로 밀린다
           className={`${linkClass} max-w-[10rem] truncate ${onDark ? 'text-white' : 'text-slate-700'}`}
@@ -42,7 +42,7 @@ export function AuthButtons({ onDark = false }: AuthButtonsProps) {
   }
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2">
+    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
       <Link className={linkClass} to="/login">
         로그인
       </Link>

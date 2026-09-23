@@ -128,7 +128,8 @@ function NewWorkspace() {
         isLoggedIn={!!user}
         onSave={onSave}
         onReview={onReview}
-        onBack={user ? () => navigate(COVER_LETTER_LIST_URL) : undefined}
+        // 게스트도 돌아갈 곳이 있다 — 같은 주소가 게스트에게는 자소서 첫 화면(GuestHome)이다
+        onBack={() => navigate(COVER_LETTER_LIST_URL)}
       />
     </WorkspaceShell>
   );
@@ -150,7 +151,8 @@ function WorkspaceShell({ letter, children }: { letter?: { id: number; title: st
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <CoverLetterHeader floating letter={letter} scrolled={scrolled} />
+      {/* 쓰는 화면은 처음부터 끝까지 영상 위다. 스크롤해도 흰 띠로 바꾸지 않는다 */}
+      <CoverLetterHeader dark floating letter={letter} scrolled={scrolled} />
       {children}
     </div>
   );

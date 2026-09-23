@@ -46,6 +46,7 @@ describe('findProblem', () => {
   it('제목이 비었으면 첫 단계로 돌려보낸다', () => {
     expect(findProblem(letter({ title: '   ' }))).toEqual({
       step: 0,
+      field: 'title',
       message: expect.stringContaining('제목'),
     });
   });

@@ -26,6 +26,8 @@ export interface Problem {
   /** 이 문제가 있는 화면. 0 = 기업·직무, 1 이상 = 그 번째 문항 */
   step: number;
   message: string;
+  /** 칸이 따로 떠 있는 경우. 제목은 본문이 아니라 제목 창에 있어 그 창을 다시 연다 */
+  field?: 'title';
 }
 
 /**
@@ -34,10 +36,10 @@ export interface Problem {
  */
 export function findProblem(input: CoverLetterInput): Problem | null {
   if (input.title.trim() === '') {
-    return { step: 0, message: '자소서 제목을 입력해 주세요.' };
+    return { step: 0, field: 'title', message: '자소서 제목을 입력해 주세요.' };
   }
   if (input.title.length > MAX_TITLE) {
-    return { step: 0, message: `제목은 ${MAX_TITLE}자까지 쓸 수 있어요. 지금 ${input.title.length}자입니다.` };
+    return { step: 0, field: 'title', message: `제목은 ${MAX_TITLE}자까지 쓸 수 있어요. 지금 ${input.title.length}자입니다.` };
   }
   if ((input.targetPosition?.length ?? 0) > MAX_POSITION) {
     return { step: 0, message: `지원 직무는 ${MAX_POSITION}자까지 쓸 수 있어요.` };

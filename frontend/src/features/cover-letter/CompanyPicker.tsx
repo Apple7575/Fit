@@ -8,7 +8,13 @@ interface CompanyPickerProps {
   onChange: (name: string) => void;
 }
 
-/** 지원 회사 선택 — '비교 기업 선택'처럼 검색해 고르거나, 목록에 없으면 직접 입력한다. */
+/**
+ * 지원 회사 선택 — '비교 기업 선택'처럼 검색해서 고른다.
+ *
+ * <p>목록에 없는 이름을 직접 넣는 길은 없앴다. 기업 분석(멀티에이전트)은 DB 에 있는 회사만
+ * 다루므로, 아무 이름이나 받으면 그 뒤 분석이 이어지지 않는다. 값은 여전히 회사 이름
+ * 문자열 하나라 저장 모양은 그대로다.
+ */
 export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
   const [keyword, setKeyword] = useState('');
   // 기업 분석 검색칸과 같다 — 엔터를 치지 않아도 치는 대로 따라온다
@@ -25,15 +31,15 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
 
   if (value) {
     return (
-      <div className="flex h-[42px] items-center justify-between rounded-lg border border-slate-200 bg-white px-2.5">
-        <span className="truncate px-0.5 text-[15px] font-bold text-slate-900">{value}</span>
+      <div className="flex h-12 items-center justify-between rounded-full border border-slate-300 bg-white pr-2 pl-5">
+        <span className="truncate text-[15px] font-bold text-slate-900">{value}</span>
         <button
           onClick={() => {
             onChange('');
             setKeyword('');
             close();
           }}
-          className="rounded-md px-2 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-full px-3 py-1.5 text-[12px] font-medium text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           type="button"
         >
           변경
@@ -42,13 +48,11 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
     );
   }
 
-  const query = keyword.trim();
-
   return (
     <div className="relative">
       <div role="search">
-        <div className="flex h-[42px] items-center rounded-lg border border-slate-200 bg-white pr-1 pl-3 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="mr-2 size-4 text-slate-400">
+        <div className="flex h-12 items-center rounded-full border border-slate-300 bg-white pr-2 pl-5 transition">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="mr-2.5 size-4 shrink-0 text-slate-400">
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" strokeLinecap="round" />
           </svg>
@@ -58,14 +62,14 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
             maxLength={MAX_KEYWORD}
             type="search"
             autoComplete="off"
-            placeholder="기업명 검색 또는 직접 입력"
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-[13.5px] placeholder:text-slate-400"
+            placeholder="기업명을 검색하세요"
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-slate-800 outline-none placeholder:text-slate-400"
           />
         </div>
       </div>
 
       {status !== 'idle' && (
-        <div className="absolute top-full left-0 z-20 mt-1 w-full min-w-64 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+        <div className="absolute top-full left-0 z-20 mt-2 w-full min-w-64 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-[0_12px_32px_-16px_rgba(15,23,42,0.28)]">
           {status === 'loading' && (
             <p className="px-2 py-2 text-[13px] font-medium text-slate-400" role="status">
               검색 중…
@@ -79,7 +83,9 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
           {status === 'success' && (
             <>
               {results.length === 0 ? (
-                <p className="px-2 py-2 text-[13px] font-medium text-slate-400">검색 결과가 없습니다.</p>
+                <p className="px-3 py-4 text-center text-[13px] font-medium text-slate-400">
+                  등록된 기업을 찾을 수 없습니다.
+                </p>
               ) : (
                 <ul
                   aria-label="검색 결과"
@@ -89,7 +95,7 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
                     <li key={company.corpCode}>
                       <button
                         onClick={() => select(displayName(company.corpName))}
-                        className="flex h-14 w-full snap-start items-center justify-between gap-3 rounded-lg px-2.5 text-left transition hover:bg-slate-50"
+                        className="flex h-14 w-full snap-start items-center justify-between gap-3 rounded-xl px-3 text-left transition hover:bg-slate-50"
                         type="button"
                       >
                         <span className="flex min-w-0 flex-col">
@@ -108,27 +114,12 @@ export function CompanyPicker({ value, onChange }: CompanyPickerProps) {
                   ))}
                 </ul>
               )}
-
-              {query !== '' && (
-                <div className="mt-1 border-t border-slate-100 pt-1">
-                  <button
-                    onClick={() => select(query)}
-                    className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-slate-600 transition hover:bg-slate-50"
-                    type="button"
-                  >
-                    <span className="text-slate-400">＋</span>
-                    <span>
-                      “<b className="font-semibold text-slate-800">{query}</b>” 직접 입력
-                    </span>
-                  </button>
-                </div>
-              )}
             </>
           )}
 
           <button
             onClick={close}
-            className="mt-1 w-full rounded-lg px-2 py-1 text-right text-[11px] font-medium text-slate-400 hover:text-slate-600"
+            className="mt-1 w-full rounded-xl px-3 py-1 text-right text-[11px] font-medium text-slate-400 hover:text-slate-600"
             type="button"
           >
             닫기

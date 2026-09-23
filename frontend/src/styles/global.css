@@ -445,3 +445,27 @@ body {
     transition: none;
   }
 }
+
+/*
+ * 기다리는 중의 점 셋. 차례로 짙어졌다 옅어진다. 튀지 않게 옅은 쪽에서도 완전히 사라지지 않는다.
+ * 모션 축소 설정에서는 움직이지 않는 "..." 로 둔다.
+ */
+@keyframes dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.anim-dot {
+  animation: dot 1.2s ease-in-out var(--dot-delay, 0s) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-dot {
+    animation: none;
+    opacity: 1;
+  }
+}
