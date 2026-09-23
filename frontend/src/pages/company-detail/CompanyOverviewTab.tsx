@@ -138,7 +138,7 @@ function SummaryBody({ corpCode, detail }: SummaryBodyProps) {
   const peerList = peers.state.status === 'success' ? peers.state.data : null;
   const rankIndex = peerList ? peerList.findIndex((c) => c.corpCode === corpCode) : -1;
 
-  const tagline = buildTagline(profileData, focusData, metricsData);
+  const tagline = buildTagline(profileData, focusData, metricsData, detail?.corpName ?? null);
   const description = profileData && profileData.businesses.some((s) => s.length > 40)
     ? profileData.businesses.join(' ')
     : null;

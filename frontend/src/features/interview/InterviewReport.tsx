@@ -498,7 +498,10 @@ function QuestionPanel({ item, local }: { item: ReportItem & { no: string }; loc
               )}
               </>
             ) : (
-              <p className={`max-h-full w-full overflow-y-auto ${T.body}`}>
+              // 세로로만 구른다. overflow-y 만 auto 로 두면 브라우저가 overflow-x 도 auto 로
+              // 쳐서, 조금만 삐져나가도 가로 스크롤 막대가 생긴다. min-w-0 은 이 글이 flex
+              // 칸이라 붙인다 — 없으면 최소 너비가 내용 너비가 돼 칸이 줄어들지 못한다.
+              <p className={`max-h-full w-full min-w-0 overflow-x-hidden overflow-y-auto ${T.body}`}>
                 {item.transcript || <span className="text-slate-400">답변 없음</span>}
               </p>
             )}

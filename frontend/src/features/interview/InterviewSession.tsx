@@ -208,7 +208,8 @@ export function InterviewSession({
     setElapsed(0);
     setPhase('recording');
     timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
-    speech.start(setTranscript);
+    // 녹화 전에 직접 타이핑해 둔 글이 있으면 그 뒤에 이어 받아쓴다
+    speech.start(setTranscript, current.transcript);
     recorder.start();
     meter.start();
     vision.start();
@@ -579,7 +580,7 @@ export function InterviewSession({
             </div>
             {phase === 'recording' ? (
               <>
-                <p className="mt-1.5 max-h-56 min-h-32 overflow-y-auto rounded-xl bg-slate-50 p-3 text-[14px] leading-6 break-keep wrap-anywhere text-slate-700">
+                <p className="mt-1.5 max-h-56 min-h-32 overflow-x-hidden overflow-y-auto rounded-xl bg-slate-50 p-3 text-[14px] leading-6 break-keep wrap-anywhere text-slate-700">
                   {current.transcript || <span className="text-slate-400">말씀하시면 여기에 바로 받아써집니다…</span>}
                 </p>
                 {/*

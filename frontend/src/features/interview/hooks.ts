@@ -350,7 +350,13 @@ export function useSpeech() {
     }
   }, []);
 
-  const start = useCallback((onText: (text: string) => void) => {
+  /**
+   * 받아쓰기를 시작한다.
+   *
+   * @param seed 이미 적혀 있던 답변. 녹화 전에 직접 타이핑해 둘 수 있는데, 여기에 넣지
+   *   않으면 첫 마디가 들어오는 순간 그 글을 덮어써 버린다(말한 것만 남는다).
+   */
+  const start = useCallback((onText: (text: string) => void, seed = '') => {
     const Ctor = ctorRef.current;
     if (!Ctor) return;
 
@@ -370,7 +376,8 @@ export function useSpeech() {
      * 확정된 글은 이 인식기 바깥에 쌓는다. 무음이 길면 브라우저가 인식을 끊고 onend 에서
      * 다시 켜는데, 쌓는 자리가 인식기 안에 있으면 그때마다 처음부터 다시 쌓게 된다.
      */
-    finalRef.current = '';
+    // 앞서 적어 둔 글 뒤에 이어 붙인다. 끝에 띄어쓰기를 하나 둬야 말이 붙지 않는다
+    finalRef.current = seed.trimEnd() ? `${seed.trimEnd()} ` : '';
     sinkRef.current = onText;
 
     rec.onresult = (event) => {
