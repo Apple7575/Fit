@@ -2,6 +2,7 @@ import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useRef, useState, type ReactNode, type UIEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, isNotFound, isRateLimited } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { sendMessage } from './api';
 import { DocumentPanel } from './DocumentPanel';
 import { MessageComposer } from './MessageComposer';
@@ -64,7 +65,9 @@ export function RoomWorkspace({ roomId, coverLetterSelector, agentNavigation, on
     }
     return (
       <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4">
-        <p className="text-[14px] font-medium text-red-700">{room.error.message}</p>
+        <p className="text-[14px] font-medium text-red-700">
+          {userMessage(room.error, '검토 방을 불러오지 못했습니다.')}
+        </p>
         <button
           type="button"
           onClick={reloadRoom}
@@ -161,9 +164,18 @@ function RoomBody({
       viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 80;
   };
 
+  /*
+   * 말을 건 직후 대화를 다시 읽는다.
+   *
+   * <p>서버는 답을 시작하기 전에 내 발화와 담당별 대기 자리를 이미 저장해 두었다(TurnService.openTurn).
+   * 그러니 한 번만 더 읽으면 내 말풍선과 "기다리는 중" 말풍선이 바로 보인다. 이걸 빠뜨렸더니
+   * 대화 폴링은 이미 멈춰 있고 다시 읽는 곳은 턴이 다 끝난 뒤뿐이라, 기다리는 내내 화면이
+   * 멈춰 있다가 마지막에 전부 한꺼번에 나타났다.
+   */
   const handleStarted = (id: number) => {
     followLatestMessage.current = true;
     onStarted(id);
+    reloadMessages();
   };
 
   const reviewItem = async (itemId: number) => {
@@ -253,7 +265,9 @@ function RoomBody({
             >
               {messages.status === 'error' && (
                 <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3">
-                  <p className="text-[13px] font-medium text-red-700">{messages.error.message}</p>
+                  <p className="text-[13px] font-medium text-red-700">
+                    {userMessage(messages.error, '대화를 불러오지 못했습니다.')}
+                  </p>
                   <button
                     type="button"
                     onClick={reloadMessages}

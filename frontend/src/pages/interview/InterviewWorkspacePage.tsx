@@ -2,6 +2,7 @@ import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useBlocker, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, isRateLimited, isRetryable } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { analyzeAnswers, createInterview, generateQuestions } from '../../features/interview/api';
@@ -244,7 +245,7 @@ function NewInterviewBody({ userId }: { userId: number }) {
       // 이 단계에서 새로고침해도 이어지도록 주소에 표시를 남긴다(같은 경로라 다시 마운트되지 않는다).
       navigate('/interviews/new?resume=1', { replace: true });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '질문 생성에 실패했습니다.');
+      setError(userMessage(e, '질문 생성에 실패했습니다.'));
       setPhase('setup');
     }
   };
@@ -298,7 +299,7 @@ function NewInterviewBody({ userId }: { userId: number }) {
       });
       setAnalysis(result);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '답변 분석에 실패했습니다.');
+      setError(userMessage(e, '답변 분석에 실패했습니다.'));
       setAnalyzeError(e instanceof ApiError ? e : null);
       setPhase('report'); // 리포트 화면에서 성격에 맞는 복구 수단을 노출
       return;
@@ -308,7 +309,7 @@ function NewInterviewBody({ userId }: { userId: number }) {
     try {
       await persist(config, items, result);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '자동 저장에 실패했습니다. 저장 버튼으로 다시 시도해 주세요.');
+      setError(userMessage(e, '자동 저장에 실패했습니다. 저장 버튼으로 다시 시도해 주세요.'));
       setPhase('report');
     }
   };
@@ -336,7 +337,7 @@ function NewInterviewBody({ userId }: { userId: number }) {
     try {
       await persist(config, sessionItems, analysis);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '저장에 실패했습니다.');
+      setError(userMessage(e, '저장에 실패했습니다.'));
       setSaving(false);
     }
   };
@@ -586,7 +587,7 @@ function SavedLoaded({ id }: { id: number }) {
               </button>
             </InlineNotice>
           ) : (
-            <InlineNotice onRetry={retry}>면접 기록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
+            <InlineNotice onRetry={retry}>{userMessage(state.error, '면접 기록을 불러오지 못했습니다.')}</InlineNotice>
           )}
         </div>
       )}

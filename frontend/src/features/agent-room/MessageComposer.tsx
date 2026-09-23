@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ApiError, isRateLimited } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { Spinner } from '../../components/common/Spinner';
 import { sendMessage } from './api';
 
@@ -53,11 +54,7 @@ export function MessageComposer({
       } else if (caught instanceof ApiError && isRateLimited(caught)) {
         setError('요청이 많습니다. 잠시 후 다시 시도해 주세요.');
       } else {
-        setError(
-          caught instanceof ApiError
-            ? caught.message
-            : '보내지 못했습니다. 잠시 후 다시 시도해 주세요.',
-        );
+        setError(userMessage(caught, '보내지 못했습니다. 잠시 후 다시 시도해 주세요.'));
       }
     } finally {
       setSending(false);

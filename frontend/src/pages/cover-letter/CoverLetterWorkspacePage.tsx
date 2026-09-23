@@ -1,6 +1,7 @@
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { userMessage } from '../../api/errorMessage';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import {
@@ -216,7 +217,7 @@ function ExistingLoaded({ id }: { id: number }) {
               </button>
             </InlineNotice>
           ) : (
-            <InlineNotice onRetry={retry}>자소서를 불러오지 못했습니다. {state.error.message}</InlineNotice>
+            <InlineNotice onRetry={retry}>{userMessage(state.error, '자소서를 불러오지 못했습니다.')}</InlineNotice>
           )}
         </div>
       )}

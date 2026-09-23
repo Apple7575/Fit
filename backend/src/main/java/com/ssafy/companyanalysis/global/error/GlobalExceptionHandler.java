@@ -1,12 +1,14 @@
 package com.ssafy.companyanalysis.global.error;
 
 import com.ssafy.companyanalysis.global.response.ApiResponse;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
@@ -21,11 +23,14 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.util.Set;
+
 /**
  * 모든 예외를 명세의 오류 봉투로 변환한다.
  *
- * <p>예외 메시지를 그대로 내보내지 않는다. 클라이언트에는 {@link ErrorCode} 의 고정 문구만 나가고,
- * 원인은 서버 로그에만 남긴다. 스택트레이스·SQL·내부 경로가 응답에 실리는 것을 막기 위해서다.
+ * <p>예외 메시지를 그대로 내보내지 않는다. 클라이언트에는 {@link ErrorCode} 의 고정 문구나
+ * 우리가 사람에게 하려고 적어 둔 안내만 나가고, 원인은 서버 로그에만 남긴다.
+ * 스택트레이스·SQL·내부 경로가 응답에 실리는 것을 막기 위해서다.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -46,6 +51,9 @@ public class GlobalExceptionHandler {
      * <p>ConstraintViolationException 은 {@code @Validated} 컨트롤러의 쿼리·경로 파라미터
      * 제약(@NotBlank, @Min 등)이 깨질 때 나온다. 이걸 빠뜨리면 사용자 입력 오류가
      * catch-all 로 떨어져 500 이 되므로 반드시 함께 잡는다.
+     *
+     * <p>고정 문구("요청 파라미터가 올바르지 않습니다")만 내보내면 받은 사람이 무엇을 고쳐야
+     * 할지 알 수 없다. 그래서 제약에 사람 말로 적어 둔 안내가 있으면 그것을 대신 보낸다.
      */
     @ExceptionHandler({
             MissingServletRequestParameterException.class,
@@ -57,7 +65,51 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ApiResponse<Void>> handleInvalidParameter(Exception e) {
         log.warn("invalid parameter: {}", e.getMessage());
-        return toResponse(ErrorCode.INVALID_PARAMETER, ErrorCode.INVALID_PARAMETER.getDefaultMessage());
+        String written = writtenMessage(e);
+        return toResponse(ErrorCode.INVALID_PARAMETER,
+                written != null ? written : ErrorCode.INVALID_PARAMETER.getDefaultMessage());
+    }
+
+    /**
+     * 깨진 제약 중 우리가 사람에게 할 말을 적어 둔 것을 찾는다. 없으면 null.
+     *
+     * <p>제약에 {@code message} 를 적지 않으면 Bean Validation 이 기본 문구를 만든다 —
+     * {@code "technical|behavioral"와 일치해야 합니다} 처럼 규칙을 그대로 읽어 준다.
+     * 그건 개발자끼리 쓰는 말이고, 애초에 화면이 고르게 하는 값이라 사용자가 고칠 수도 없다.
+     * 그래서 기본 문구는 절대 내보내지 않고, 직접 적어 둔 것만 골라 보낸다.
+     *
+     * <p>가려내는 기준은 메시지 서식이다. 기본 문구는 {@code {jakarta.validation...message}} 처럼
+     * 중괄호로 싸인 키로 남고, 직접 적은 것은 그 자리에 사람 말이 그대로 있다.
+     *
+     * <p>여러 칸이 한꺼번에 걸리면 그중 하나만 말한다. 한 번에 한 칸씩 짚어 주는 편이
+     * 어디부터 고칠지 고민하지 않아도 되어 빠르다(프론트의 사전 검증도 같은 규칙이다).
+     */
+    private static String writtenMessage(Exception e) {
+        if (e instanceof MethodArgumentNotValidException invalid) {
+            // @RequestBody 본문 검증. Spring 이 ConstraintViolation 을 오류마다 싸 두었다.
+            for (ObjectError error : invalid.getBindingResult().getAllErrors()) {
+                if (!error.contains(ConstraintViolation.class)) continue;
+                String message = writtenMessage(error.unwrap(ConstraintViolation.class));
+                if (message != null) return message;
+            }
+        }
+        if (e instanceof ConstraintViolationException violated) {
+            // @Validated 컨트롤러의 쿼리·경로 파라미터. 목록이 비어 있을 수 있다.
+            Set<ConstraintViolation<?>> violations = violated.getConstraintViolations();
+            if (violations == null) return null;
+            for (ConstraintViolation<?> violation : violations) {
+                String message = writtenMessage(violation);
+                if (message != null) return message;
+            }
+        }
+        return null;
+    }
+
+    /** 직접 적어 둔 안내면 그 문구, 기본 문구면 null */
+    private static String writtenMessage(ConstraintViolation<?> violation) {
+        String template = violation.getMessageTemplate();
+        if (template == null || (template.startsWith("{") && template.endsWith("}"))) return null;
+        return violation.getMessage();
     }
 
     /**

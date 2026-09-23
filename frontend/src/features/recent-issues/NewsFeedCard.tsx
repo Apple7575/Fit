@@ -16,7 +16,8 @@ interface NewsFeedCardProps {
 type FeedStatus = 'loading' | 'success' | 'error';
 
 /**
- * 최신 뉴스 목록 (기본 영역). 제목(원문 새 탭)·설명·관련 사업·게시일은 항상,
+ * 최신 뉴스 목록 (기본 영역). 칸 아무 데나 누르면 원문이 새 탭으로 열린다.
+ * 제목·설명·관련 사업·게시일은 항상,
  * 카테고리 칩은 AI 분류가 있을 때만. "더 많은 뉴스 보기"는 같은 화면에 다음 페이지를 이어 붙인다
  * (상세 페이지 없음). corpCode 가 바뀌면 호출부가 key 로 다시 마운트해 처음부터 읽는다.
  */
@@ -122,11 +123,29 @@ export function NewsFeedCard({ corpCode, onLatestDate }: NewsFeedCardProps) {
   );
 }
 
+/**
+ * 뉴스 한 줄. 제목만이 아니라 칸 전체가 원문으로 가는 클릭 영역이다.
+ *
+ * <p>제목의 링크 하나를 칸 크기로 늘려 덮는 방식을 쓴다(`after:absolute after:inset-0`).
+ * 줄 전체를 감싸는 링크로 만들면 제목·설명·날짜가 한 덩어리로 읽혀 목록을 훑기 어려워지고,
+ * 줄에 onClick 을 다는 방식은 키보드로 갈 수도, 새 탭으로 열 수도 없다. 링크는 그대로 하나뿐이라
+ * 읽어 주는 이름도 예전 그대로다.
+ *
+ * <p>대신 덮개가 글자 위에 얹혀 본문을 드래그해 복사할 수는 없다. 칸 전체를 누를 수 있게 한
+ * 대가이고, 원문으로 보내는 것이 이 목록의 목적이라 그쪽을 택했다.
+ */
 function NewsList({ items }: { items: NewsItem[] }) {
   return (
     <ul aria-label="뉴스 목록" className="divide-y divide-slate-100">
       {items.map((item) => (
-        <li className="flex gap-4 py-4 first:pt-0 last:pb-0" key={item.id}>
+        <li
+          className={`relative flex gap-4 rounded-lg py-4 transition-colors first:pt-0 last:pb-0 ${
+            item.originalUrl
+              ? 'hover:bg-slate-50 has-[a:focus-visible]:bg-slate-50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-blue-300'
+              : ''
+          }`}
+          key={item.id}
+        >
           <span
             className={`mt-0.5 h-fit shrink-0 rounded-md px-3 py-1 text-xs font-bold ${
               item.category ? categoryChipClass(item.category) : 'invisible'
@@ -138,7 +157,7 @@ function NewsList({ items }: { items: NewsItem[] }) {
             <h4 className="text-sm font-bold text-slate-900">
               {item.originalUrl ? (
                 <a
-                  className="underline-offset-2 hover:text-blue-700 hover:underline"
+                  className="underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-blue-700 hover:underline focus-visible:outline-none"
                   href={item.originalUrl}
                   rel="noopener noreferrer"
                   target="_blank"
@@ -168,16 +187,11 @@ function NewsList({ items }: { items: NewsItem[] }) {
                   {formatDateDots(item.publishedAt)}
                 </time>
               )}
+              {/* 칸 전체가 이미 원문으로 가는 링크라, 이 화살표는 그 사실을 보여 주기만 한다 */}
               {item.originalUrl && (
-                <a
-                  aria-label="원문 열기"
-                  className="text-blue-600 hover:text-blue-800"
-                  href={item.originalUrl}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
+                <span aria-hidden="true" className="text-blue-600">
                   ↗
-                </a>
+                </span>
               )}
             </p>
           </article>

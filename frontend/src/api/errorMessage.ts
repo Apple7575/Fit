@@ -23,10 +23,30 @@ const REPHRASED: Record<string, string> = {
 };
 
 /**
+ * 서버가 할 말이 없을 때 내보내는 고정 문구. 이 말이 왔을 때만 위 문구로 갈아 끼운다.
+ *
+ * <p>서버도 어느 칸이 문제인지 짚어 말해 줄 때가 있다("답변은 4000자까지 저장할 수 있습니다").
+ * 그 말이 우리가 준비한 일반론보다 늘 정확하므로, 코드만 보고 갈아 끼우면 안 된다.
+ * 아래 문구는 백엔드 ErrorCode 의 값과 같아야 한다.
+ */
+const STOCK: Record<string, string> = {
+  INVALID_PARAMETER: '요청 파라미터가 올바르지 않습니다.',
+  INTERNAL_ERROR: '서버 오류가 발생했습니다.',
+};
+
+/**
  * 사용자에게 보여 줄 한 줄. 서버가 아닌 곳에서 끊긴 경우(네트워크 등)에는 fallback 을 쓴다.
  */
 export function userMessage(error: unknown, fallback: string): string {
   if (!(error instanceof ApiError)) return fallback;
-  if (error.code && REPHRASED[error.code]) return REPHRASED[error.code];
+
+  const rephrased = error.code ? REPHRASED[error.code] : undefined;
+  if (rephrased) {
+    const stock = STOCK[error.code];
+    // 짚어 주는 말이 왔으면 그대로 전한다. 고정 문구이거나 빈손일 때만 갈아 끼운다.
+    if (stock && error.message && error.message !== stock) return error.message;
+    return rephrased;
+  }
+
   return error.message || fallback;
 }

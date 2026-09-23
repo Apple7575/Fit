@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { LoadingScreen } from '../../components/brand/LoadingScreen';
+import { userMessage } from '../../api/errorMessage';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { CompanyLogo } from '../../features/company-summary/CompanyLogo';
@@ -254,7 +255,7 @@ function ListBody() {
           )}
 
           {state.status === 'error' && (
-            <InlineNotice onRetry={retry}>목록을 불러오지 못했습니다. {state.error.message}</InlineNotice>
+            <InlineNotice onRetry={retry}>{userMessage(state.error, '목록을 불러오지 못했습니다.')}</InlineNotice>
           )}
 
           {state.status === 'success' && (

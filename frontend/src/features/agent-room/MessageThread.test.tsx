@@ -92,6 +92,38 @@ describe('MessageThread', () => {
     expect(screen.getAllByText('글쓰기 담당')).toHaveLength(1);
   });
 
+  it('지난 턴에 답한 에이전트라도 이번 턴에서는 다시 기다리는 자리가 보인다', () => {
+    // 턴을 가리지 않고 "답한 에이전트" 를 모으면, 지난 턴의 답변 때문에 이번 턴의 대기 자리가
+    // 통째로 사라진다. 두 번째 말부터 기다리는 동안 화면이 멈춘 것처럼 보이던 문제다.
+    const running: TurnStatus = {
+      turnId: 200,
+      status: 'RUNNING',
+      agents: [{ agentKey: 'writing', status: 'PENDING', messageId: null, error: null }],
+      supervisor: null,
+    };
+    const justAsked: RoomMessage = {
+      ...base,
+      turnId: 200,
+      messageId: 200,
+      role: 'user',
+      agentKey: null,
+      agentName: null,
+      content: '이번엔 3번 문항 봐줘',
+      status: 'DONE',
+    };
+
+    render(
+      <MessageThread
+        agentNames={names}
+        messages={[userMessage, writingMessage, justAsked]}
+        running={running}
+      />,
+    );
+
+    expect(screen.getByText('이번엔 3번 문항 봐줘')).toBeInTheDocument();
+    expect(screen.getByText('차례를 기다리는 중…')).toBeInTheDocument();
+  });
+
   const supervisor: RoomMessage = {
     ...base,
     messageId: 103,

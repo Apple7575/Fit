@@ -25,6 +25,19 @@ public final class AgentContexts {
     /** AI 총괄이 맡는 담당. 기업 RAG 담당은 아직 총괄이 받지 않아 백엔드에 남아 있다. */
     public static final List<String> AI_AGENTS = List.of("jd", "position", "news", "writing", "company");
 
+    /**
+     * 참여하지 못한 담당에게 붙일 사유. 사용자가 무엇을 채우면 되는지로 적는다.
+     *
+     * <p>"검토할 자소서 답변이 없습니다" 하나로 모든 경우를 덮던 때에는, 공고가 없어서 못 도는
+     * 방에서도 문항을 쓰라는 말이 나왔다. 무엇을 채워야 하는지 알 수 없으니 고칠 수도 없었다.
+     */
+    static final String NEED_POSTING = "채용공고를 먼저 등록해 주세요.";
+    static final String NEED_COMPANY = "지원 회사를 먼저 골라 주세요.";
+    static final String NEED_POSITION_NAME = "지원 직무를 먼저 적어 주세요.";
+    static final String NEED_ANSWER = "검토할 자소서 답변이 없습니다. 문항을 먼저 작성해 주세요.";
+    static final String NEED_ITEM_PICK = "검토할 문항을 하나 골라 주세요.";
+    static final String NEED_QUESTION = "문항의 질문을 먼저 적어 주세요.";
+
     /** 포지션 담당 API 가 이 값만 받는다. */
     private static final String RUBRIC_ID = "experience-depth-v1";
     private static final int MAX_DOCUMENTS = 21;
@@ -84,7 +97,40 @@ public final class AgentContexts {
         // 하므로 거르기도 여기 한 곳에 둔다.
         contexts.keySet().retainAll(context.roomAgentKeys());
 
-        return new Request(documents, Map.copyOf(contexts), List.copyOf(contexts.keySet()));
+        /*
+         * 방이 골랐는데 위에서 빠진 담당에는 사유를 붙인다. "빠졌다" 는 사실은 위 판단을 그대로
+         * 쓰고 여기서는 이유만 적는다 — 조건을 한 번 더 쓰면 둘이 어긋나 "참여한다고 적힌
+         * 담당이 답을 안 하는" 일이 생긴다.
+         */
+        Map<String, String> blocked = new LinkedHashMap<>();
+        for (String agentKey : context.roomAgentKeys()) {
+            if (contexts.containsKey(agentKey)) {
+                continue;
+            }
+            blocked.put(agentKey, reasonFor(agentKey, context, documents.size()));
+        }
+
+        return new Request(documents, Map.copyOf(contexts), List.copyOf(contexts.keySet()),
+                Map.copyOf(blocked));
+    }
+
+    /**
+     * 그 담당이 무엇 때문에 빠졌는지. 위 조건에서 먼저 걸리는 것부터 본다.
+     *
+     * <p>둘 다 없을 수도 있지만 한 번에 하나만 말한다. 채울 것을 여럿 늘어놓으면 어디부터
+     * 손대야 할지 고르는 일이 사용자에게 넘어간다(프론트의 자소서 검증도 같은 규칙이다).
+     */
+    private static String reasonFor(String agentKey, TurnContext context, int documentCount) {
+        return switch (agentKey) {
+            case "jd" -> context.hasJobContext() ? NEED_ANSWER : NEED_POSTING;
+            case "position" -> positionName(context) == null ? NEED_POSITION_NAME : NEED_ANSWER;
+            case "news" -> context.hasJobContext() ? NEED_COMPANY : NEED_POSTING;
+            case "company" -> NEED_COMPANY;
+            case "writing" -> documentCount == 0
+                    ? NEED_ANSWER
+                    : documentCount > 1 ? NEED_ITEM_PICK : NEED_QUESTION;
+            default -> NEED_ANSWER;
+        };
     }
 
     /** 사용자가 확인해 준 직무명이 먼저다. 비어 있으면 공고에 적힌 직무명을 쓴다. */
@@ -133,13 +179,24 @@ public final class AgentContexts {
     /**
      * @param contexts  총괄 요청의 {@code agent_contexts}
      * @param agentKeys {@code contexts} 의 키를 순서대로. 말풍선 자리를 만들 때 쓴다
+     * @param blocked   방이 골랐지만 재료가 없어 빠진 담당 → 무엇을 채우면 되는지
      */
     public record Request(List<SupervisorClient.Document> documents,
                           Map<String, Object> contexts,
-                          List<String> agentKeys) {
+                          List<String> agentKeys,
+                          Map<String, String> blocked) {
 
         public boolean isEmpty() {
             return contexts.isEmpty();
+        }
+
+        /**
+         * 아무도 못 도는 이유 한 줄. 여럿이면 방이 고른 순서대로 첫 번째를 말한다.
+         *
+         * <p>사유를 못 찾는 경우(방에 담당이 없는 등)에는 답변부터 확인하게 한다.
+         */
+        public String blockedReason() {
+            return blocked.values().stream().findFirst().orElse(NEED_ANSWER);
         }
 
         /** 담당이 하나뿐이면 계획 단계를 건너뛴다. 모델 호출이 한 번 줄어든다. */

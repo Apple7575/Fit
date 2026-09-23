@@ -2,7 +2,7 @@ import { LoadingScreen } from '../../components/brand/LoadingScreen';
 import { SiteHeader } from '../../components/layout/SiteHeader';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ApiError } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { ensureDefaultRooms } from '../../features/agent-room/api';
 import { RoomBackdrop, RoomEntry } from '../../features/agent-room/RoomEntry';
 import { CoverLetterHeader } from '../cover-letter/CoverLetterHeader';
@@ -88,7 +88,7 @@ function Workspace({ coverLetterId }: { coverLetterId: number }) {
       })
       .catch((caught: unknown) => {
         if (cancelled) return;
-        setError(caught instanceof ApiError ? caught.message : '대화 목록을 불러오지 못했습니다.');
+        setError(userMessage(caught, '대화 목록을 불러오지 못했습니다.'));
       });
 
     return () => {
