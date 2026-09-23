@@ -67,7 +67,7 @@ def _read_env_value(path: Path, key: str) -> str:
 @lru_cache(maxsize=1)
 def get_news_service() -> NewsIntelligenceService:
     try:
-        config = load_qwen_config(_news_env_file())
+        config = load_qwen_config(_news_env_file(), prefix="NEWS")
         database_url = _required_database_url()
     except (OSError, RuntimeError, ValueError) as error:
         raise HTTPException(

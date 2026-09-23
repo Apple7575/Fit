@@ -73,14 +73,16 @@ def get_supervisor_service() -> SupervisorService:
         os.environ.get("SUPERVISOR_QWEN_ENV_FILE", str(AI_ROOT / ".env"))
     )
     try:
-        config = load_qwen_config(env_file)
+        # 계획(담당 고르기)은 분류 한 번이라 가벼운 모델, 종합은 판단 품질이 중요해 다른 모델.
+        plan_config = load_qwen_config(env_file, prefix="SUPERVISOR_PLAN")
+        aggregate_config = load_qwen_config(env_file, prefix="SUPERVISOR_AGGREGATE")
     except ValueError as error:
         raise HTTPException(
             status_code=503,
             detail="supervisor Qwen configuration unavailable",
         ) from error
     return assemble_supervisor_service(
-        supervisor_model=QwenSupervisorModel(config),
+        supervisor_model=QwenSupervisorModel(plan_config, aggregate_config=aggregate_config),
         jd_provider=get_analysis_service,
         position_provider=get_position_service,
         writing_provider=get_writing_service,

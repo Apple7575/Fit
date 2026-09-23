@@ -24,7 +24,6 @@ import logging
 import os
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from functools import lru_cache
 from typing import Any
 import urllib.error
 import urllib.request
@@ -35,7 +34,7 @@ from ai.llm.contracts import (
     LlmResponseError,
     StructuredCompletion,
 )
-from ai.llm.gms_gate import GmsGateSettings, GmsRateLimitSignal, GmsRequestGate
+from ai.llm.gms_gate import GmsRateLimitSignal, GmsRequestGate, gate_for
 
 NAME = "gms"
 _LABEL = "GMS"
@@ -80,9 +79,18 @@ def _max_schema_chars() -> int:
         return _DEFAULT_MAX_SCHEMA_CHARS
 
 
-@lru_cache(maxsize=1)
-def _get_gate() -> GmsRequestGate:
-    return GmsRequestGate(GmsGateSettings.from_env(os.environ))
+def _get_gate(model: str = "") -> GmsRequestGate:
+    """모델마다 줄을 따로 선다. 한도가 모델별이라 flash-lite 의 429 가 flash 를 멈추면 안 된다."""
+    return gate_for(f"{NAME}:{model}")
+
+
+def _thinking_disabled(model: str) -> bool:
+    """gemini-2.5-flash 는 생각 토큰이 출력 한도를 먹어 JSON 이 MAX_TOKENS 로 끊긴다.
+
+    flash-lite 는 기본이 생각 없음이고 pro 는 0 을 받지 않으므로 flash(비 lite)에만 끈다.
+    """
+    name = model.lower()
+    return "flash" in name and "lite" not in name
 
 
 def _retry_after_seconds(headers: Any) -> float | None:
@@ -215,6 +223,8 @@ def complete(
                 "maxOutputTokens": max_tokens,
             },
         }
+        if _thinking_disabled(config["model"]):
+            body["generationConfig"]["thinkingConfig"] = {"thinkingBudget": 0}
         if system is not None:
             body["systemInstruction"] = system
         request = urllib.request.Request(
@@ -236,7 +246,7 @@ def complete(
             except urllib.error.URLError as error:
                 raise LlmConnectionError(_LABEL, error.reason) from error
 
-        return _get_gate().run(transmit, operation_name=schema_name)
+        return _get_gate(config["model"]).run(transmit, operation_name=schema_name)
 
     def too_complex(error: LlmHttpError) -> bool:
         return error.status == 400 and _TOO_MANY_STATES in error.detail.lower()
