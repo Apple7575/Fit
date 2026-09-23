@@ -21,7 +21,8 @@ public record CoverLetterSaveRequest(
         @Size(max = 120) String targetCompany,
         @Size(max = 120) String targetPosition,
         @Size(max = 80) String jobContextId,
-        @NotEmpty @Valid List<Item> items) {
+        // 화면이 문항을 7개까지만 만든다(MAX_ITEMS). 여유를 두되 무한은 막는다
+        @NotEmpty @Size(max = 20) @Valid List<Item> items) {
 
     public record Item(
             @NotBlank @Size(max = 500) String question,

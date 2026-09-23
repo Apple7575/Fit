@@ -13,6 +13,8 @@ import type { CoverLetterInput } from './types';
  */
 export const MAX_TITLE = 120;
 export const MAX_POSITION = 120;
+/** 공고 등록(JobPostingContextRequest)이 회사명을 100자까지만 받는다. 저장(120)보다 좁은 쪽에 맞춘다 */
+export const MAX_COMPANY = 100;
 export const MAX_QUESTION = 500;
 /** 답변이 아무리 길어도 서버가 받지 않는 한계. 문항별 글자 수 제한과는 별개다 */
 export const MAX_ANSWER = 4000;
@@ -39,6 +41,14 @@ export function findProblem(input: CoverLetterInput): Problem | null {
   }
   if ((input.targetPosition?.length ?? 0) > MAX_POSITION) {
     return { step: 0, message: `지원 직무는 ${MAX_POSITION}자까지 쓸 수 있어요.` };
+  }
+  /*
+   * 회사명은 사용자가 치면 검색칸이 60자로 막지만, 공고를 읽어 채운 값은 길이 제한 없이
+   * 그대로 들어온다. 그 값이 길면 저장이나 공고 등록에서 400 이 나는데, 어느 칸 때문인지
+   * 알 수 없다. 공고 등록 쪽이 더 좁으므로(100자) 그 값에 맞춘다.
+   */
+  if ((input.targetCompany?.length ?? 0) > MAX_COMPANY) {
+    return { step: 0, message: `지원 회사는 ${MAX_COMPANY}자까지 쓸 수 있어요. 이름을 줄여 주세요.` };
   }
 
   for (const [index, item] of input.items.entries()) {

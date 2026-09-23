@@ -11,7 +11,9 @@ import java.util.List;
 public record AnalyzeRequest(
         @Size(max = 20) String interviewType,
         @Size(max = 120) String targetPosition,
-        @NotEmpty @Valid List<Item> items) {
+        // 문항은 3~7개(QuestionGenerateRequest)이고 문항마다 꼬리질문이 하나씩 붙을 수 있다.
+        // 상한이 없으면 문항 수백 개를 한 요청에 담아 보낼 수 있고, 그대로 LLM 으로 간다.
+        @NotEmpty @Size(max = 20) @Valid List<Item> items) {
 
     public record Item(
             @NotBlank @Size(max = 1000) String question,

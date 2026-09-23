@@ -5,7 +5,7 @@ import logging
 import operator
 import os
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -32,6 +32,22 @@ from ai.supervisor.tools import tool_scope
 
 
 CLARIFICATION_HEADING = "덧붙여, 더 고치려면 이것을 알려 주세요"
+
+
+def _plain_message(result: Any) -> str | None:
+    """담당이 돌려준 dict 에서 사람이 읽을 문장만 꺼낸다.
+
+    종합이 실패했을 때 dict 를 통째로 json.dumps 해서 말풍선에 넣던 자리를 대신한다.
+    화면에 내부 구조(키 이름·식별자·usage)가 그대로 노출되는 것은 사용자에게도 무의미하고,
+    무엇이 새어 나온 것처럼 보인다.
+    """
+    if not isinstance(result, Mapping):
+        return None
+    for key in ("message", "answer", "summary", "text"):
+        value = result.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def _with_clarification(message: str, clarification: str) -> str:
@@ -485,7 +501,9 @@ def build_supervisor_graph(
                 results=[lead_result],
             )
         except Exception:
-            return json.dumps(lead_result.result, ensure_ascii=False, sort_keys=True)
+            return _plain_message(lead_result.result) or (
+                "의견을 정리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+            )
 
     def aggregate_results(state: SupervisorState) -> dict[str, Any]:
         started = time.monotonic()
@@ -543,10 +561,13 @@ def build_supervisor_graph(
                 "_used_model": True,
             }
         except Exception:
-            message = "\n".join(
-                f"[{item.agent}] "
-                + json.dumps(item.result, ensure_ascii=False, sort_keys=True)
+            parts = [
+                f"[{item.agent}] {plain}"
                 for item in successes
+                if (plain := _plain_message(item.result))
+            ]
+            message = "\n\n".join(parts) if parts else (
+                "코치들의 의견을 모으지 못했습니다. 잠시 후 다시 시도해 주세요."
             )
         return {"final_message": _with_clarification(message, clarification)}
 

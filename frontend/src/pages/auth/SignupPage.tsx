@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ApiError } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { useAuth } from '../../features/auth/AuthProvider';
 
@@ -43,7 +43,7 @@ export function SignupPage() {
       await signup(trimmedEmail, password, nickname.trim());
       navigate('/verify-sent', { state: { email: trimmedEmail } });
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '회원가입에 실패했습니다.');
+      setError(userMessage(caught, '회원가입에 실패했습니다.'));
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +73,8 @@ export function SignupPage() {
             autoComplete="email"
             className={FIELD_CLASS}
             id="signup-email"
+            // 백엔드 @Size(max=255) 와 같은 값
+            maxLength={255}
             onChange={(event) => setEmail(event.target.value)}
             required
             type="email"
@@ -104,6 +106,7 @@ export function SignupPage() {
             autoComplete="new-password"
             className={`${FIELD_CLASS} ${passwordWeak ? 'border-red-400' : ''}`}
             id="signup-password"
+            maxLength={64}
             minLength={8}
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -124,6 +127,7 @@ export function SignupPage() {
             autoComplete="new-password"
             className={`${FIELD_CLASS} ${mismatch ? 'border-red-400' : ''}`}
             id="signup-password-confirm"
+            maxLength={64}
             minLength={8}
             onChange={(event) => setPasswordConfirm(event.target.value)}
             required

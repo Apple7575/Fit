@@ -58,6 +58,14 @@ describe('findProblem', () => {
     ).toContain('500자');
   });
 
+  it('공고에서 읽어 온 긴 회사명도 보내기 전에 잡는다', () => {
+    // 회사명은 검색칸이 60자로 막지만, 공고를 읽어 채운 값은 길이 제한 없이 들어온다
+    const problem = findProblem(letter({ targetCompany: 'ㄱ'.repeat(101) }));
+
+    expect(problem?.step).toBe(0);
+    expect(problem?.message).toContain('100자');
+  });
+
   it('앞 문항부터 하나씩 짚는다', () => {
     const problem = findProblem(
       letter({

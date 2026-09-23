@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
+import { userMessage } from '../../api/errorMessage';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { loginReason } from '../../features/auth/loginReason';
@@ -36,7 +37,7 @@ export function LoginPage() {
       navigate(redirectTo);
     } catch (caught) {
       if (caught instanceof ApiError) {
-        setError(caught.message);
+        setError(userMessage(caught, '로그인에 실패했습니다.'));
         setNeedsVerification(caught.code === 'EMAIL_NOT_VERIFIED');
       } else {
         setError('로그인에 실패했습니다.');
@@ -69,6 +70,8 @@ export function LoginPage() {
             autoComplete="email"
             className={FIELD_CLASS}
             id="login-email"
+            // 백엔드 @Size(max=255) 와 같은 값
+            maxLength={255}
             onChange={(event) => setEmail(event.target.value)}
             required
             type="email"
@@ -84,6 +87,8 @@ export function LoginPage() {
             autoComplete="current-password"
             className={FIELD_CLASS}
             id="login-password"
+            // 비밀번호는 64자까지다(SignupRequest 의 @Pattern). 더 받아 봐야 400 만 난다
+            maxLength={64}
             onChange={(event) => setPassword(event.target.value)}
             required
             type="password"
