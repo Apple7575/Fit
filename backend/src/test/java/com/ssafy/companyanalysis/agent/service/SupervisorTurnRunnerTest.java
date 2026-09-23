@@ -105,6 +105,24 @@ class SupervisorTurnRunnerTest {
     }
 
     @Test
+    @DisplayName("GMS 제한 초과 담당은 내부 코드 대신 재시도 안내를 남긴다")
+    void rateLimitedAgentGetsRetryMessage() {
+        Map<String, Message> slots = slots("news", "writing", "supervisor");
+        given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
+                .willReturn(new SupervisorClient.Run("PARTIAL", "문장 검토는 완료했습니다.", null,
+                        List.of(new SupervisorClient.AgentResult("news", "FAILED", "",
+                                        "GMS_RATE_LIMITED", List.of()),
+                                success("writing", "첫 문장을 앞으로 올렸습니다.")),
+                        List.of()));
+
+        runner.run(TURN_ID, context());
+
+        assertThat(slots.get("news").getStatus()).isEqualTo(MessageStatus.FAILED);
+        assertThat(slots.get("news").getError())
+                .isEqualTo(ErrorCode.AI_RATE_LIMITED.getDefaultMessage());
+    }
+
+    @Test
     @DisplayName("총괄 호출 자체가 막히면 이 턴의 자리를 모두 실패로 닫는다 — 영원히 도는 자리를 두지 않는다")
     void everySlotIsClosedWhenTheCallItselfFails() {
         Map<String, Message> slots = slots("jd", "writing", "supervisor");

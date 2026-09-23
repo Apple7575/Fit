@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.JsonNode;
 
 import java.util.List;
@@ -70,6 +71,11 @@ public class AgentLlmClient {
                             "generationConfig", generationConfig))
                     .retrieve()
                     .body(JsonNode.class);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 429) {
+                throw new BusinessException(ErrorCode.AI_RATE_LIMITED);
+            }
+            throw new BusinessException(ErrorCode.AI_FAILED);
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.AI_FAILED);
         }

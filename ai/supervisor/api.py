@@ -9,8 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from ai.company_analysis.api import get_company_chat_service
 from ai.jd_coaching.api import get_analysis_service, get_stateless_chat_service
 from ai.jd_coaching.baseline import load_qwen_config
-from ai.llm.contracts import QUOTA_ERROR_CODE, QUOTA_USER_MESSAGE, find_quota_error
-from ai.llm.priority import BACKGROUND, INTERACTIVE, priority_scope
+from ai.llm.contracts import LlmRateLimitedError
 from ai.news_intelligence.api import get_news_service
 from ai.position_coaching.api import get_position_chat_service, get_position_service
 from ai.supervisor.adapters import (
@@ -120,37 +119,37 @@ def create_run(
             raise NoAvailableAgentError("no agent context was provided")
         if request.lead is not None and getattr(request.agent_contexts, request.lead) is None:
             raise NoAvailableAgentError(f"lead agent has no context: {request.lead}")
-        # agent_selection=all 은 사용자가 묻기 전에 방을 한 바퀴 도는 자동 검토다. GMS 한도가 찼을 때
-        # 사용자가 방금 보낸 질문(auto)이 이 요청보다 먼저 나가야 하므로 뒤 순위로 표시한다.
-        level = BACKGROUND if request.agent_selection == "all" else INTERACTIVE
-        with priority_scope(level):
-            return service_provider().run(request)
+        return service_provider().run(request)
     except NoAvailableAgentError as error:
         raise HTTPException(
             status_code=422,
             detail={"code": "NO_AVAILABLE_AGENT", "message": str(error)},
         ) from error
+    except LlmRateLimitedError as error:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "GMS_RATE_LIMITED"},
+        ) from error
     except AllAgentsFailedError as error:
-        # 전원이 할당량으로 막혔으면 그것은 담당들의 실패가 아니라 한도 문제다. 사용자에게 그렇게 알린다.
-        all_quota = all(item.error_code == QUOTA_ERROR_CODE for item in error.results)
+        if error.results and all(
+            item.error == "GMS_RATE_LIMITED" for item in error.results
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail={"code": "GMS_RATE_LIMITED"},
+            ) from error
         raise HTTPException(
             status_code=502,
             detail={
-                "code": QUOTA_ERROR_CODE if all_quota else "ALL_AGENTS_FAILED",
-                "message": QUOTA_USER_MESSAGE if all_quota else str(error),
+                "code": "ALL_AGENTS_FAILED",
+                "message": str(error),
                 "agent_results": [item.model_dump() for item in error.results],
             },
         ) from error
     except HTTPException:
         raise
     except Exception as error:
-        # 계획·종합 모델 호출이 할당량에 막힌 경우. 담당이 아니라 총괄 자체가 못 돈 것이라 여기로 온다.
-        if find_quota_error(error) is not None:
-            raise HTTPException(
-                status_code=502,
-                detail={"code": QUOTA_ERROR_CODE, "message": QUOTA_USER_MESSAGE},
-            ) from error
-        # 그 밖의 총괄 자체의 실패. 내부 메시지는 노출하지 않는다.
+        # 계획·종합 모델 연결 실패 등 총괄 자체의 실패. 내부 메시지는 노출하지 않는다.
         raise HTTPException(
             status_code=502,
             detail={"code": "SUPERVISOR_FAILED", "message": type(error).__name__},

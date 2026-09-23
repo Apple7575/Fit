@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from ai.news_intelligence.contracts import NewsCandidate, NewsContext
+from ai.llm.contracts import LlmRateLimitedError
 from ai.news_intelligence.model import (
     NewsModelUnavailable,
     NewsOutputError,
@@ -55,6 +56,13 @@ class FakeQwen:
 
 
 class QwenNewsModelTest(unittest.TestCase):
+    def test_preserves_gms_rate_limit_error(self):
+        def fail(*args, **kwargs):
+            raise LlmRateLimitedError("GMS", 10)
+
+        with self.assertRaises(LlmRateLimitedError):
+            QwenNewsModel(CONFIG, fail).classify_coverage(CONTEXT, CANDIDATES, "분석")
+
     def assert_preparation_replaced(self, text):
         result = QwenNewsModel(CONFIG, FakeQwen({"signals": [{
             **DRAFT, "preparation_checks": [text],

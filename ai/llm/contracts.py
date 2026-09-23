@@ -26,6 +26,15 @@ class LlmHttpError(LlmError):
         self.detail = detail
 
 
+class LlmRateLimitedError(LlmError):
+    """공급자가 호출 한도를 넘겼거나 게이트 대기 시간이 만료됐다."""
+
+    def __init__(self, provider: str, retry_after_seconds: int | None = None) -> None:
+        super().__init__(f"{provider} rate limit exceeded")
+        self.provider = provider
+        self.retry_after_seconds = retry_after_seconds
+
+
 class LlmConnectionError(LlmError):
     """서버에 닿지 못했다. GPU 서버가 죽어 있을 때 주로 온다."""
 
@@ -62,23 +71,3 @@ class StructuredClient(Protocol):
         max_tokens: int,
         timeout_seconds: int,
     ) -> StructuredCompletion: ...
-
-
-# --- 할당량 오류를 사용자에게 알리기 ------------------------------------------------
-# GMS 를 거친 Gemini 가 429 를 주면(분당·일일 할당량) 재시도해도 같은 답이 온다. 담당이 조용히
-# "답을 만들지 못했습니다" 로 끝나면 사용자는 자소서 탓인지 서버 탓인지 모른다. 코드로 표시하고
-# 화면에 그대로 띄울 한 문장을 여기서 한 번만 정한다.
-QUOTA_ERROR_CODE = "LLM_QUOTA_EXCEEDED"
-QUOTA_USER_MESSAGE = "AI 요청 한도에 잠시 걸렸습니다. 1분쯤 뒤에 다시 시도해 주세요."
-
-
-def find_quota_error(error: BaseException | None) -> LlmHttpError | None:
-    """예외 사슬(__cause__·__context__)을 따라가 429 를 찾는다. 담당들이 LLM 오류를 감싸 올리기 때문이다."""
-    seen: set[int] = set()
-    current = error
-    while current is not None and id(current) not in seen:
-        seen.add(id(current))
-        if isinstance(current, LlmHttpError) and current.status == 429:
-            return current
-        current = current.__cause__ or current.__context__
-    return None

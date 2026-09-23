@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from ai.serve import build_app
 from ai.position_coaching.render import NO_EXPERIENCE_CLAIM_MESSAGE
+from ai.llm.contracts import LlmRateLimitedError
 from ai.supervisor.api import (
     assemble_supervisor_service,
     app,
@@ -54,7 +55,6 @@ VALID_RESPONSE = {
             "status": "SUCCESS",
             "result": {"summary": {}},
             "error": None,
-                "error_code": None,
             "evidence": [],
             "needs": [],
             "tool_calls": [],
@@ -145,6 +145,27 @@ class SupervisorApiTest(unittest.TestCase):
         self.assertEqual(detail["code"], "ALL_AGENTS_FAILED")
         self.assertEqual(detail["agent_results"][0]["agent"], "jd")
 
+    def test_maps_all_gms_rate_limited_workers_to_429(self):
+        error = AllAgentsFailedError(
+            [AgentResult(agent="jd", status="FAILED", error="GMS_RATE_LIMITED")]
+        )
+        service = FakeService(error=error)
+        app.dependency_overrides[get_supervisor_service_provider] = lambda: lambda: service
+
+        response = TestClient(app).post("/internal/runs", json=VALID_REQUEST)
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["detail"], {"code": "GMS_RATE_LIMITED"})
+
+    def test_maps_gms_rate_limit_to_sanitized_429(self):
+        service = FakeService(error=LlmRateLimitedError("GMS", 10))
+        app.dependency_overrides[get_supervisor_service_provider] = lambda: lambda: service
+
+        response = TestClient(app, raise_server_exceptions=False).post("/internal/runs", json=VALID_REQUEST)
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["detail"], {"code": "GMS_RATE_LIMITED"})
+
     def test_maps_unexpected_domain_error_to_502_not_configuration_503(self):
         service = FakeService(error=ValueError("bad graph output: SECRET"))
         app.dependency_overrides[get_supervisor_service_provider] = lambda: lambda: service
@@ -204,7 +225,7 @@ class SupervisorApiTest(unittest.TestCase):
                 writing_result = body["agent_results"][-1]
                 self.assertEqual(writing_result, {
                     "agent": "writing", "status": "FAILED", "result": None,
-                    "error": "writing worker failed", "error_code": None,
+                    "error": "writing worker failed",
                     "evidence": [], "needs": [], "tool_calls": [], "usage": None, "delegated_from": None,
                 })
                 writing_provider.assert_not_called()
@@ -294,7 +315,6 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
             {
                 "agent": "jd", "status": "SUCCESS",
                 "result": {"context_id": "jctx"}, "error": None,
-                "error_code": None,
                 "evidence": [
                     {
                         "evidence_id": "jd:jctx", "source_type": "JOB_POSTING",
@@ -313,7 +333,6 @@ class SupervisorConfigurationApiTest(unittest.TestCase):
                     "message": NO_EXPERIENCE_CLAIM_MESSAGE,
                 },
                 "error": None,
-                "error_code": None,
                 "evidence": [], "needs": [], "tool_calls": [], "usage": None, "delegated_from": None,
             },
         ])
