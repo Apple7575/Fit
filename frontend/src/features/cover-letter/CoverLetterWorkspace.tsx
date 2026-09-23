@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ApiError, isRateLimited } from '../../api/client';
 import { userMessage } from '../../api/errorMessage';
 import { Spinner } from '../../components/common/Spinner';
 import { CompanyPicker } from './CompanyPicker';
 import { ImageIcon, LinkIcon, LoadingDots, PencilIcon, SendIcon, TrashIcon, UploadIcon } from './icons';
+import { resolveCompany } from './resolveCompany';
 import {
   UNTITLED_COVER_LETTER,
   parseJobPosting,
@@ -471,12 +472,18 @@ export function CoverLetterWorkspace({
    * 문항을 쓰다가 제목만 고칠 때(확인해도 그 자리에 머문다). null 이면 닫혀 있다.
    */
   const [titleModal, setTitleModal] = useState<'start' | 'edit' | null>(null);
+  /*
+   * 공고(주소·이미지)를 읽는 중. 끝나면 회사·직무가 바뀌므로 그 전에 문항으로 넘어가면
+   * 읽기 전 값으로 제목을 짓고 넘어가 버린다. 읽는 동안은 넘어가는 길을 잠근다.
+   */
+  const [postingBusy, setPostingBusy] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
   const openTitleModal = (mode: 'start' | 'edit' = 'start') => {
     setTitleError(null);
     setTitleModal(mode);
   };
   const goStep = (next: Step) => {
+    if (next !== META_STEP && postingBusy) return;
     if (next === META_STEP || metaReady) setStep(next);
     else openTitleModal();
   };
@@ -561,7 +568,7 @@ export function CoverLetterWorkspace({
           단계를 옮겨도 입력한 것이 날아가지 않도록 지우지 않고 감추기만 한다.
         */}
         <div className={step === META_STEP ? 'mt-8' : 'hidden'}>
-          <JobPostingBar alt={alt} onAlt={setAlt} onParsed={applyPosting} />
+          <JobPostingBar alt={alt} onAlt={setAlt} onBusyChange={setPostingBusy} onParsed={applyPosting} />
         </div>
 
         {/*
@@ -840,6 +847,7 @@ export function CoverLetterWorkspace({
               <button
                 className="inline-flex h-12 items-center justify-center rounded-2xl bg-blue-600 px-7 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(37,99,235,0.7)] transition-colors duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/40 disabled:shadow-none"
                 // 바로 넘어가지 않고 제목을 확인한다. 이미 있으면 채워진 채로 뜬다
+                disabled={postingBusy}
                 onClick={() => openTitleModal('start')}
                 type="button"
               >
@@ -1000,11 +1008,14 @@ const MAX_POSTING_UPLOAD_LABEL = '50MB';
 function JobPostingBar({
   alt,
   onAlt,
+  onBusyChange,
   onParsed,
 }: {
   /** 지금 펼친 대체 입력. 회사·직무 칸(manual)은 바깥에 있어 상태도 바깥이 쥔다 */
   alt: AltInput;
   onAlt: (next: AltInput) => void;
+  /** 공고를 읽기 시작하고 끝날 때 알린다. 그동안 부모는 다음 단계로 가는 길을 잠근다 */
+  onBusyChange: (busy: boolean) => void;
   onParsed: (
     companyName: string | null,
     positions: string[],
@@ -1013,6 +1024,8 @@ function JobPostingBar({
   ) => void;
 }) {
   const [url, setUrl] = useState('');
+  // DB 에 없는 회사의 공고. 이 이름으로 안내 창을 띄우고, 공고 내용은 받지 않는다
+  const [unregistered, setUnregistered] = useState<string | null>(null);
   // 이미지를 모으는 칸. 붙여넣기와 파일 고르기는 모이는 곳이 같다
   const imageOpen = alt === 'image' || alt === 'file';
   const pasteZone = useRef<HTMLDivElement>(null);
@@ -1053,6 +1066,35 @@ function JobPostingBar({
 
   const urlReady = url.trim() !== '' && url.trim() !== blockedUrl;
 
+  useEffect(() => {
+    onBusyChange(status === 'loading');
+  }, [status, onBusyChange]);
+
+  /*
+   * 읽어 온 공고를 넘기기 전에 회사를 DB 에서 찾아본다. 없으면 회사도 직무도 공고 주소도 받지
+   * 않고 안내 창만 띄운다 — 등록되지 않은 회사는 AI 검토가 되지 않아, 채워 두면 끝에 가서야 막힌다.
+   * 공고에서 회사명을 못 찾은 경우(null)는 그대로 넘긴다. 회사는 검색칸에서 고르면 된다.
+   * 넘겼으면 true.
+   */
+  const acceptParsed = async (
+    companyName: string | null,
+    positions: string[],
+    sourceUrl: string,
+    sourceKey: string | null,
+  ) => {
+    let registeredName: string | null = null;
+    if (companyName) {
+      const found = await resolveCompany(companyName);
+      if (found.status === 'missing') {
+        setUnregistered(companyName);
+        return false;
+      }
+      registeredName = found.name;
+    }
+    onParsed(registeredName, positions, sourceUrl, sourceKey);
+    return true;
+  };
+
   /*
    * 주소와 이미지는 각자 단추를 갖는다. 예전에는 단추 하나가 둘을 겸해서, 이미지를 넣어 놓고
    * 엉뚱하게 주소 칸 옆 단추를 눌러야 했다 — 무엇을 읽는 단추인지 화면만 봐서는 알 수 없었다.
@@ -1064,9 +1106,14 @@ function JobPostingBar({
     setMessage('');
     try {
       const result = await parseJobPosting(target);
-      onParsed(result.companyName, result.positions, result.sourceUrl ?? target, result.sourceKey);
+      const accepted = await acceptParsed(
+        result.companyName,
+        result.positions,
+        result.sourceUrl ?? target,
+        result.sourceKey,
+      );
       // 잘 됐다는 말은 하지 않는다. 회사·직무 칸이 채워진 것으로 이미 보인다.
-      setStatus('done');
+      setStatus(accepted ? 'done' : 'idle');
       setMessage('');
     } catch (error) {
       if (error instanceof ApiError && error.code === 'JOB_POSTING_PARSE_FAILED') {
@@ -1142,7 +1189,16 @@ function JobPostingBar({
         return;
       }
       const result = await parseJobPostingImages(prepared);
-      onParsed(result.companyName, result.positions, result.sourceUrl ?? '', result.sourceKey);
+      const accepted = await acceptParsed(
+        result.companyName,
+        result.positions,
+        result.sourceUrl ?? '',
+        result.sourceKey,
+      );
+      if (!accepted) {
+        setStatus('idle');
+        return;
+      }
       setStatus('done');
       setImages([]);
     } catch (error) {
@@ -1411,7 +1467,66 @@ function JobPostingBar({
           )}
         </div>
       )}
+
+      {unregistered && (
+        <NoticeDialog onClose={() => setUnregistered(null)} title="아직 등록되지 않은 기업이에요">
+          <b className="font-semibold text-slate-900">{unregistered}</b> 은(는) Fit 에 등록되지 않은 기업이라
+          이 공고로는 AI 검토를 할 수 없어요. 다른 공고를 넣거나, 직접 입력에서 등록된 기업을 골라 주세요.
+        </NoticeDialog>
+      )}
     </div>
+  );
+}
+
+/**
+ * 확인 하나만 있는 안내 창. 제목 창과 같은 판(흰 판·둥근 모서리·뒤를 누르는 막)을 쓰고,
+ * 문서에 바로 붙여 고정 헤더까지 덮는다. Esc 로도 닫힌다.
+ */
+function NoticeDialog({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      aria-describedby="cl-notice-body"
+      aria-labelledby="cl-notice-title"
+      aria-modal="true"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 px-5 backdrop-blur-sm"
+      role="alertdialog"
+    >
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 text-slate-900 shadow-2xl sm:p-7">
+        <h2 className="text-lg font-extrabold tracking-tight" id="cl-notice-title">
+          {title}
+        </h2>
+        <p className="mt-3 text-[14px] leading-6 break-keep text-slate-600" id="cl-notice-body">
+          {children}
+        </p>
+        <div className="mt-6 flex justify-end">
+          <button
+            autoFocus
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-6 text-sm font-bold text-white transition-colors hover:bg-blue-700"
+            onClick={onClose}
+            type="button"
+          >
+            확인
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1430,30 +1545,121 @@ function PositionSelect({
   onSelect: (value: string) => void;
   onTypeInstead: () => void;
 }) {
+  /*
+   * 기본 <select> 는 펼친 목록을 운영체제가 그려서 각진 회색 네모로 떴다. 알약 칸 아래
+   * 둥근 목록(지원 회사 검색 결과와 같은 모양)을 직접 편다. 포커스는 단추에 둔 채
+   * 위아래 화살표로 옮기고 Enter 로 고른다. 맨 끝은 '직접 입력' 이다.
+   */
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const root = useRef<HTMLDivElement>(null);
+  const options = [...choices, TYPE_INSTEAD];
+  const listId = 'cl-position-list';
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const pick = (value: string) => {
+    setOpen(false);
+    if (value === TYPE_INSTEAD) onTypeInstead();
+    else onSelect(value);
+  };
+
+  const openList = () => {
+    setActive(Math.max(0, choices.indexOf(selected)));
+    setOpen(true);
+  };
+
   return (
-    <>
-      <select
+    <div className="relative" ref={root}>
+      <button
+        aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
+        aria-controls={listId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="flex h-12 w-full items-center justify-between gap-2 rounded-full border border-slate-300 bg-white pr-4 pl-5 text-left text-[15px] transition-colors hover:border-slate-400 focus:outline-none"
         id="cl-position"
-        value={selected}
-        onChange={(event) => {
-          if (event.target.value === TYPE_INSTEAD) {
-            onTypeInstead();
+        onClick={() => (open ? setOpen(false) : openList())}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            setOpen(false);
             return;
           }
-          onSelect(event.target.value);
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (!open) {
+              openList();
+              return;
+            }
+            const step = event.key === 'ArrowDown' ? 1 : -1;
+            setActive((at) => (at + step + options.length) % options.length);
+            return;
+          }
+          if ((event.key === 'Enter' || event.key === ' ') && open && active >= 0) {
+            event.preventDefault();
+            pick(options[active]);
+          }
         }}
-        className="h-12 w-full rounded-full border border-slate-300 bg-white px-5 text-[15px] text-slate-800 transition focus:outline-none"
+        type="button"
       >
-        <option value="">직무를 고르세요</option>
-        {choices.map((choice) => (
-          <option key={choice} value={choice}>
-            {choice}
-          </option>
-        ))}
-        <option value={TYPE_INSTEAD}>직접 입력</option>
-      </select>
-      <p className="mt-1 text-[12px] text-slate-400">공고에서 직무 {choices.length}개를 찾았어요.</p>
-    </>
+        <span className={`truncate ${selected ? 'text-slate-900' : 'text-slate-400'}`}>
+          {selected || '직무를 고르세요'}
+        </span>
+        <svg
+          aria-hidden="true"
+          className={`size-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_12px_32px_-16px_rgba(15,23,42,0.28)]">
+          <ul
+            aria-label="공고에서 찾은 직무"
+            className="max-h-[280px] overflow-y-auto overscroll-contain p-1.5"
+            id={listId}
+            role="listbox"
+          >
+            {options.map((option, index) => {
+              const typing = option === TYPE_INSTEAD;
+              const chosen = !typing && option === selected;
+              return (
+                <li
+                  aria-selected={chosen}
+                  className={`flex cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-[14px] transition-colors ${
+                    typing ? 'mt-1 border-t border-slate-100 text-slate-500' : chosen ? 'font-semibold text-blue-700' : 'text-slate-700'
+                  } ${index === active ? 'bg-slate-100' : chosen ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                  id={`${listId}-${index}`}
+                  key={option}
+                  // 누르는 순간 단추가 포커스를 잃어 목록이 먼저 닫히지 않게 한다
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => pick(option)}
+                  onMouseEnter={() => setActive(index)}
+                  role="option"
+                >
+                  <span className="min-w-0 truncate">{typing ? '+ 직접 입력' : option}</span>
+                  {chosen && <span aria-hidden="true">✓</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      <p className="mt-1.5 pl-1 text-[12px] text-slate-400">공고에서 직무 {choices.length}개를 찾았어요.</p>
+    </div>
   );
 }
 
