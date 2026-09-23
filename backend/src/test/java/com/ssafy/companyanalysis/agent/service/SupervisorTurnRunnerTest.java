@@ -105,6 +105,50 @@ class SupervisorTurnRunnerTest {
     }
 
     @Test
+    @DisplayName("어느 담당이든 JSON 문자열을 보내면 말풍선에는 안전한 안내만 남긴다")
+    void jsonMessagesNeverReachAgentBubbles() {
+        Map<String, Message> slots = slots("jd", "supervisor");
+        given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
+                .willReturn(new SupervisorClient.Run("SUCCESS", "{\"internal\":true}", null,
+                        List.of(success("jd", "{\"score\":72}")), List.of()));
+
+        runner.run(TURN_ID, context());
+
+        assertThat(slots.get("jd").getContent())
+                .isEqualTo("분석은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.");
+        assertThat(slots.get("supervisor").getContent())
+                .isEqualTo("종합은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.");
+    }
+
+    @Test
+    @DisplayName("30턴 동안 모든 담당의 JSON 원문은 어떤 말풍선에도 저장되지 않는다")
+    void thirtyTurnsNeverPersistRawJsonFromAnyAgent() {
+        List<String> agents = List.of("jd", "position", "writing", "news", "company");
+
+        for (int turn = 1; turn <= 30; turn++) {
+            int currentTurn = turn;
+            Map<String, Message> slots = slots("jd", "position", "writing", "news", "company", "supervisor");
+            given(messageRepository.findByParentMessageIdOrderByIdAsc(TURN_ID + currentTurn))
+                    .willReturn(new ArrayList<>(slots.values()));
+            List<SupervisorClient.AgentResult> results = agents.stream()
+                    .map(agent -> success(agent, "{\"agent\":\"" + agent + "\",\"turn\":" + currentTurn + "}"))
+                    .toList();
+            given(supervisorClient.run(anyString(), any(), any(), any(), any(), anyBoolean()))
+                    .willReturn(new SupervisorClient.Run("SUCCESS", "{\"turn\":" + currentTurn + "}", null,
+                            results, List.of()));
+
+            runner.run(TURN_ID + currentTurn, context());
+
+            for (String agent : agents) {
+                assertThat(slots.get(agent).getContent())
+                        .isEqualTo("분석은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.");
+            }
+            assertThat(slots.get("supervisor").getContent())
+                    .isEqualTo("종합은 완료됐지만 읽을 수 있는 요약을 만들지 못했습니다. 다시 요청해 주세요.");
+        }
+    }
+
+    @Test
     @DisplayName("GMS 제한 초과 담당은 내부 코드 대신 재시도 안내를 남긴다")
     void rateLimitedAgentGetsRetryMessage() {
         Map<String, Message> slots = slots("news", "writing", "supervisor");
