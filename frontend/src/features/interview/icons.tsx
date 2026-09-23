@@ -11,6 +11,10 @@ export type IconName =
   | 'close'
   | 'stop'
   | 'mic'
+  // 리포트의 두 갈래 탭
+  | 'video'
+  | 'transcript'
+  | 'feedback'
   // 말하기 지표
   | 'speed'
   | 'filler'
@@ -48,6 +52,25 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect height="10" rx="3" width="6" x="9" y="3" />
       <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+    </>
+  ),
+  video: (
+    <>
+      <rect height="12" rx="2.5" width="14" x="2.5" y="6" />
+      <path d="m16.5 13 5 3V8l-5 3v2Z" />
+    </>
+  ),
+  transcript: (
+    <>
+      <rect height="16" rx="2.5" width="14" x="5" y="4" />
+      <path d="M8.5 9h7M8.5 12.5h7M8.5 16h4" />
+    </>
+  ),
+  // 말풍선 안의 체크. filler(점 세 개) 와 한자리에 놓이지 않아 헷갈리지 않는다
+  feedback: (
+    <>
+      <path d="M20 4H4v12h4v4l5-4h7V4Z" />
+      <path d="m8.5 10 2.5 2.5 4.5-4.5" />
     </>
   ),
   speed: (

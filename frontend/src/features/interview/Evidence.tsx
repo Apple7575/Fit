@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import type { DeckCard } from './Deck';
 import { EVENT_META, type ClipEvent, type ClipEventKind, type MetricRow } from './delivery';
 import { EvidenceClip } from './EvidenceClip';
 import { FaceCompare } from './FaceCompare';
-import { Icon } from './icons';
 import { GuideImage } from './GuideImage';
-import { FIX_FIGURE, IMPACT, pickFocus, type Focus } from './metricFocus';
-import { groupMetrics } from './metricGroups';
+import { Icon } from './icons';
+import { FIX_FIGURE, IMPACT, orderMetrics } from './metricFocus';
 import { METRIC_ICON } from './metricIcons';
 import { T, TONE } from './reportTokens';
 import type { VisionSample } from './vision';
@@ -54,159 +53,73 @@ interface Clip {
 }
 
 /**
- * 말투와 자세 결과.
+ * 말투와 자세를 한 장에 하나씩 볼 카드로 만든다.
  *
- * <p>전에는 네 묶음을 카드로 늘어놓고, 카드를 누르면 팝업이 열리고, 팝업 안에서 또 지표를
- * 골라야 했다. 값은 다 있었지만 "그래서 뭘 하라는 건데"에 닿기까지 두 번을 눌러야 했고,
- * 숫자 옆에는 그 숫자가 왜 그 범위여야 하는지가 없었다.
- *
- * <p>그래서 뒤집었다. 열일곱 개를 고르게 늘어놓는 대신 먼저 고칠 것 세 개만 펴 놓고,
- * 하나하나를 <b>무엇이 → 왜 문제 → 어떻게</b> 세 줄로 적는다. 팝업은 없앴다. 나머지 값은
- * 아래 "모두 보기"에 접어 둔다 — 보고 싶은 사람은 여전히 다 볼 수 있다.
+ * <p>살펴볼 것이 앞, 적정이 뒤, 재지 못한 것이 맨 뒤다(orderMetrics). 그냥 두면 가장 먼저
+ * 볼 것이 나오고, 화살표를 누르는 만큼 덜 급한 것으로 간다. 열일곱 개를 다 담되 한 번에
+ * 한 장만 보여 주므로 "뭘 봐야 하지"가 생기지 않는다.
  */
-export function MetricFocus({
-  rows,
-  clip,
-  onSeek,
-}: {
-  rows: MetricRow[];
-  clip: Clip | undefined;
-  /** 근거 장면을 누르면 위쪽 영상도 그 지점으로 옮긴다 */
-  onSeek?: (ms: number) => void;
-}) {
-  const [showAll, setShowAll] = useState(false);
-  if (rows.length === 0) return null;
-  const focus = pickFocus(rows);
-
-  return (
-    <div>
-      {focus.fixes.length > 0 ? (
-        <ul className="space-y-2.5">
-          {focus.fixes.map((row) => (
-            <FixCard clip={clip} key={row.key} onSeek={onSeek} row={row} />
-          ))}
-        </ul>
-      ) : (
-        <p className="flex items-start gap-2.5 rounded-xl bg-emerald-50/70 p-4">
-          <Icon className="mt-0.5 size-5 shrink-0 text-emerald-600" name="check" />
-          <span className="text-[15px] font-bold leading-7 break-keep text-emerald-800">
-            잰 항목이 모두 권장 범위 안이었어요. 이대로 가면 됩니다.
-          </span>
-        </p>
-      )}
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-        <p className={T.caption}>{tally(focus)}</p>
-        <button
-          aria-expanded={showAll}
-          className="rounded-lg px-2 py-1 text-[12px] font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-          onClick={() => setShowAll((v) => !v)}
-          type="button"
-        >
-          {showAll ? '접기' : `잰 값 ${rows.length}개 모두 보기`}
-        </button>
-      </div>
-
-      {showAll && <AllMetrics rows={rows} />}
-    </div>
-  );
+export function metricCards(rows: MetricRow[], clip: Clip | undefined, onSeek?: (ms: number) => void): DeckCard[] {
+  return orderMetrics(rows).map((row) => ({
+    key: row.key,
+    tone: row.tone,
+    node: <MetricCard clip={clip} onSeek={onSeek} row={row} />,
+  }));
 }
 
-/** "12개 적정 · 1개 더 있음 · 2개 재지 못함" 처럼 남은 것을 한 줄로 */
-function tally(focus: Focus): string {
-  const parts: string[] = [];
-  if (focus.okCount > 0) parts.push(`${focus.okCount}개 적정`);
-  if (focus.restCount > 0) parts.push(`살펴볼 것 ${focus.restCount}개 더`);
-  if (focus.noneCount > 0) parts.push(`${focus.noneCount}개는 재지 못함`);
-  return parts.length > 0 ? parts.join(' · ') : '잰 값이 없어요';
-}
-
-/**
- * 먼저 고칠 것 한 장. 세 줄이 전부 펴져 있다 — 누르지 않아도 읽힌다.
- * 접어 두는 것은 근거(그 순간의 영상·음량 흐름)뿐이다.
- */
-function FixCard({ row, clip, onSeek }: { row: MetricRow; clip: Clip | undefined; onSeek?: (ms: number) => void }) {
-  const [open, setOpen] = useState(false);
-  // 녹화가 없으면 보여줄 근거도 없다. 빈 단추를 두고 "없어요"라고 답하지 않는다
+/** 지표 한 장. 무엇이 → 왜 중요한지 → 그렇게 본 근거 차례로 내려간다 */
+function MetricCard({ row, clip, onSeek }: { row: MetricRow; clip: Clip | undefined; onSeek?: (ms: number) => void }) {
+  const tone = TONE[row.tone];
   const hasEvidence =
     clip != null && (EVENT_OF[row.key] != null || row.key === '표정' || WAVE_METRICS.has(row.key));
 
   return (
-    <li className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="flex items-start gap-4">
+    <div>
+      <div className="flex items-start gap-5">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-red-50/60 text-red-600">
+            <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${tone.soft} ${tone.text}`}>
               <Icon className="size-5" name={METRIC_ICON[row.key] ?? 'scan'} />
             </span>
-            <span className="text-[14px] font-extrabold text-slate-900">{row.key}</span>
-            {/* 값은 근거지 주인공이 아니다. 이름 옆에 작게 붙인다 */}
-            <span className={`rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${TONE.warn.chip}`}>
-              {row.value}
-            </span>
+            <span className={T.section}>{row.key}</span>
+            <span className={`rounded-full px-2.5 py-1 text-[13px] font-bold ring-1 ${tone.chip}`}>{row.value}</span>
           </div>
 
-          {/* 그래서 어떻게 보였고 뭘 하면 되는지. 이 카드에서 가장 크게 읽혀야 하는 줄이다 */}
-          {row.hint && <p className="mt-2.5 text-[15px] font-bold leading-7 break-keep text-slate-900">{row.hint}</p>}
-          {IMPACT[row.key] && <p className={`mt-1.5 ${T.body}`}>{IMPACT[row.key]}</p>}
+          {/*
+            어긋난 것에는 어떻게 보였고 뭘 하면 되는지가 적혀 있다(hint). 적정인 것에는 그런
+            글이 없는데, 빈자리로 두면 "좋다"는 말이 어디에도 없어진다. 한 줄로 대신한다.
+          */}
+          <p className={`mt-4 ${T.hero}`}>
+            {row.hint ?? (row.tone === 'good' ? '권장 범위 안이에요. 이대로 가면 됩니다.' : '이번에는 재지 못했어요.')}
+          </p>
+          {IMPACT[row.key] && <p className={`mt-2 max-w-[52ch] ${T.body}`}>{IMPACT[row.key]}</p>}
         </div>
 
-        {/* 그림은 거들 뿐이다. 파일이 없으면 조용히 빠지고 글은 그대로 칸을 채운다 */}
+        {/*
+          그림은 ✗ 와 ✓ 를 나란히 세운 한 장이다. 정사각으로 잘라내면(object-cover) 가운데
+          빈 곳만 남고 두 사람이 다 사라진다. 4:3 을 그대로 두고 안쪽에 맞춘다.
+          파일이 없으면 조용히 빠지고 글은 그대로 칸을 채운다.
+        */}
         {FIX_FIGURE[row.key] && (
           <GuideImage
             alt=""
-            className="hidden size-24 shrink-0 rounded-xl object-cover ring-1 ring-slate-200 sm:block"
+            className="hidden aspect-[4/3] w-44 shrink-0 rounded-xl bg-slate-50 object-contain sm:block"
             name={FIX_FIGURE[row.key]}
           />
         )}
       </div>
 
-      {hasEvidence && (
-        <>
-          <button
-            aria-expanded={open}
-            className="mt-3 flex items-center gap-1 text-[12px] font-semibold text-slate-500 transition hover:text-slate-800"
-            onClick={() => setOpen((v) => !v)}
-            type="button"
-          >
-            {open ? '근거 접기' : '그렇게 본 근거'}
-            <Icon className={`size-4 transition ${open ? '-rotate-90' : 'rotate-90'}`} name="next" />
-          </button>
-          {open && (
-            <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
-              <Evidence clip={clip} onSeek={onSeek} row={row} />
-              <p className={T.caption}>
-                {HOW[row.key] ?? '이 브라우저에서 계산한 값이에요.'} 권장 범위는 일반적인 기준이라 회사와 직무에
-                따라 알맞은 값이 다를 수 있어요.
-              </p>
-            </div>
-          )}
-        </>
-      )}
-    </li>
-  );
-}
-
-/** 잰 값 전체. 묶음별로 이름과 값만 늘어놓는다 — 훑어보는 자리지 읽는 자리가 아니다. */
-function AllMetrics({ rows }: { rows: MetricRow[] }) {
-  return (
-    <div className="mt-3 space-y-3">
-      {groupMetrics(rows).map((g) => (
-        <div key={g.key}>
-          <p className={T.label}>{g.title}</p>
-          <ul className="mt-1.5 divide-y divide-slate-100 rounded-xl bg-slate-50/70 px-3">
-            {g.rows.map((r) => (
-              <li className="flex items-center gap-2 py-2" key={r.key}>
-                <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${TONE[r.tone].dot}`} />
-                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-700">{r.key}</span>
-                <span className={`shrink-0 text-[13px] font-semibold tabular-nums ${TONE[r.tone].text}`}>
-                  {r.value}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      <div className="mt-6 border-t border-slate-100 pt-5">
+        {hasEvidence && (
+          <div className="mb-4">
+            <Evidence clip={clip} onSeek={onSeek} row={row} />
+          </div>
+        )}
+        <p className={T.caption}>
+          {HOW[row.key] ?? '이 브라우저에서 계산한 값이에요.'} 권장 범위는 일반적인 기준이라 회사와 직무에 따라
+          알맞은 값이 다를 수 있어요.
+        </p>
+      </div>
     </div>
   );
 }
@@ -263,7 +176,7 @@ function WaveStrip({ clip, onSeek }: { clip: Clip; onSeek?: (ms: number) => void
   return (
     <div>
       <p className={T.label}>음량 흐름 · 회색은 소리가 없던 구간</p>
-      <div className="mt-2 flex h-16 w-full items-end gap-[2px]">
+      <div className="mt-2 flex h-20 w-full items-end gap-[2px]">
         {wave.map((v, i) => {
           const at = i * step;
           const quiet = silences.some((s) => at >= s.startMs && at <= s.endMs);
