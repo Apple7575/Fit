@@ -67,32 +67,47 @@ export function metricCards(rows: MetricRow[], clip: Clip | undefined, onSeek?: 
   }));
 }
 
-/** 지표 한 장. 무엇이 → 왜 중요한지 → 그렇게 본 근거 차례로 내려간다 */
+/**
+ * 지표 한 장. 무엇이 → 왜 중요한지 → 그렇게 본 근거 차례로 내려간다.
+ *
+ * <p>근거가 없는 지표(어깨 수평처럼 짚을 구간이 없는 것)는 글이 위쪽에만 몰려 아래가 텅
+ * 빈다. 그럴 때는 내용을 칸 가운데에 놓고 그림을 크게 써서 빈자리를 메운다.
+ */
 function MetricCard({ row, clip, onSeek }: { row: MetricRow; clip: Clip | undefined; onSeek?: (ms: number) => void }) {
   const tone = TONE[row.tone];
   const hasEvidence =
     clip != null && (EVENT_OF[row.key] != null || row.key === '표정' || WAVE_METRICS.has(row.key));
 
   return (
-    <div>
-      <div className="flex items-start gap-5">
+    <div className={`flex h-full flex-col ${hasEvidence ? '' : 'justify-center'}`}>
+      <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${tone.soft} ${tone.text}`}>
-              <Icon className="size-5" name={METRIC_ICON[row.key] ?? 'scan'} />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone.soft} ${tone.text}`}>
+              <Icon className="size-6" name={METRIC_ICON[row.key] ?? 'scan'} />
             </span>
-            <span className={T.section}>{row.key}</span>
-            <span className={`rounded-full px-2.5 py-1 text-[13px] font-bold ring-1 ${tone.chip}`}>{row.value}</span>
+            <span className="text-[18px] font-extrabold text-slate-900">{row.key}</span>
+            {/* 어떻게 쟀는지는 화면을 채우는 대신 여기 숨겨 둔다. 궁금한 사람만 짚어 보면 된다 */}
+            <span
+              className={`rounded-full px-3 py-1 text-[14px] font-bold ring-1 ${tone.chip}`}
+              title={HOW[row.key]}
+            >
+              {row.value}
+            </span>
           </div>
 
           {/*
             어긋난 것에는 어떻게 보였고 뭘 하면 되는지가 적혀 있다(hint). 적정인 것에는 그런
             글이 없는데, 빈자리로 두면 "좋다"는 말이 어디에도 없어진다. 한 줄로 대신한다.
           */}
-          <p className={`mt-4 ${T.hero}`}>
+          <p className="mt-5 max-w-[34ch] text-[22px] leading-9 font-extrabold break-keep wrap-anywhere text-slate-950">
             {row.hint ?? (row.tone === 'good' ? '권장 범위 안이에요. 이대로 가면 됩니다.' : '이번에는 재지 못했어요.')}
           </p>
-          {IMPACT[row.key] && <p className={`mt-2 max-w-[52ch] ${T.body}`}>{IMPACT[row.key]}</p>}
+          {IMPACT[row.key] && (
+            <p className="mt-3 max-w-[42ch] text-[16px] leading-7 break-keep wrap-anywhere text-slate-500">
+              {IMPACT[row.key]}
+            </p>
+          )}
         </div>
 
         {/*
@@ -103,23 +118,19 @@ function MetricCard({ row, clip, onSeek }: { row: MetricRow; clip: Clip | undefi
         {FIX_FIGURE[row.key] && (
           <GuideImage
             alt=""
-            className="hidden aspect-[4/3] w-44 shrink-0 rounded-xl bg-slate-50 object-contain sm:block"
+            className={`hidden aspect-[4/3] shrink-0 rounded-2xl bg-slate-50 object-contain sm:block ${
+              hasEvidence ? 'w-48' : 'w-64'
+            }`}
             name={FIX_FIGURE[row.key]}
           />
         )}
       </div>
 
-      <div className="mt-6 border-t border-slate-100 pt-5">
-        {hasEvidence && (
-          <div className="mb-4">
-            <Evidence clip={clip} onSeek={onSeek} row={row} />
-          </div>
-        )}
-        <p className={T.caption}>
-          {HOW[row.key] ?? '이 브라우저에서 계산한 값이에요.'} 권장 범위는 일반적인 기준이라 회사와 직무에 따라
-          알맞은 값이 다를 수 있어요.
-        </p>
-      </div>
+      {hasEvidence && (
+        <div className="mt-6 border-t border-slate-100 pt-5">
+          <Evidence clip={clip} onSeek={onSeek} row={row} />
+        </div>
+      )}
     </div>
   );
 }
