@@ -100,6 +100,7 @@ public class RoomService {
 
         // 자소서 저장 뒤 공고 분석이 끝난 경우에도 전에 생성된 방이 새 공고를 보게 한다.
         existing.forEach(room -> room.setJobContextId(contextId));
+        existing.forEach(RoomService::renameLegacySoloTitle);
 
         List<Room> created = new ArrayList<>();
         for (AgentType type : selectable) {
@@ -235,6 +236,22 @@ public class RoomService {
                 .replace("(유)", "")
                 .replaceAll("[\\s.]", "")
                 .toLowerCase();
+    }
+
+    /** 담당 이름을 바꾸기 전에 깔린 전담 방의 제목. 전담 방은 담당 이름을 제목으로 받는다. */
+    private static final Map<String, AgentType> LEGACY_SOLO_TITLES = Map.of(
+            "포지션 담당", AgentType.POSITION,
+            "기업 RAG 담당", AgentType.COMPANY);
+
+    /**
+     * 옛 이름이 그대로 제목인 전담 방만 새 이름으로 바꾼다. 마이그레이션으로 두지 않은 것은
+     * 번호가 다른 브랜치와 겹치면 배포가 막히기 때문이다. 사용자가 고친 제목은 건드리지 않는다.
+     */
+    private static void renameLegacySoloTitle(Room room) {
+        AgentType type = LEGACY_SOLO_TITLES.get(room.getTitle());
+        if (type != null && isSoloRoomFor(room, type)) {
+            room.rename(type.displayName());
+        }
     }
 
     private static boolean isSoloRoomFor(Room room, AgentType type) {

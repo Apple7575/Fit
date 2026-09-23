@@ -67,7 +67,7 @@ class RoomControllerTest {
         return new RoomResponse(31L, "네이버 백엔드 합동 검토",
                 new RoomResponse.CoverLetterRef(12L, "2026 상반기 네이버 지원"),
                 new RoomResponse.JobContextRef("ctx-1", "네이버", "백엔드 엔지니어"),
-                List.of(new RoomResponse.Agent("company", "기업 RAG 담당", false, true,
+                List.of(new RoomResponse.Agent("company", "기업분석 담당", false, true,
                                 Map.of("companies", List.of(Map.of("corpCode", "00126380",
                                         "name", "네이버", "ragReady", true)))),
                         new RoomResponse.Agent("supervisor", "총괄", true, true, Map.of())),
@@ -150,7 +150,7 @@ class RoomControllerTest {
     @DisplayName("에이전트 설정 변경은 그 에이전트 하나만 돌려준다")
     void updateAgentConfigReturnsSingleAgent() throws Exception {
         given(roomService.updateAgentConfig(any(), anyLong(), eq("position"), any()))
-                .willReturn(new RoomResponse.Agent("position", "포지션 담당", false, true,
+                .willReturn(new RoomResponse.Agent("position", "경험 담당", false, true,
                         Map.of("jobRole", "backend")));
 
         String body = objectMapper.writeValueAsString(Map.of("config", Map.of("jobRole", "backend")));

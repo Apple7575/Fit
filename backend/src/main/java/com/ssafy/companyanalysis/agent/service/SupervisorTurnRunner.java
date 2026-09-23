@@ -1,6 +1,7 @@
 package com.ssafy.companyanalysis.agent.service;
 
 import com.ssafy.companyanalysis.agent.ai.NewsAnalysisClient;
+import com.ssafy.companyanalysis.agent.ai.PlainText;
 import com.ssafy.companyanalysis.agent.ai.SupervisorClient;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
 import com.ssafy.companyanalysis.agent.domain.Message;
@@ -171,7 +172,7 @@ public class SupervisorTurnRunner {
         }
         String text = value.trim();
         if (text.charAt(0) != '{' && text.charAt(0) != '[') {
-            return text;
+            return PlainText.of(text);
         }
         try {
             JsonNode parsed = JSON.readTree(text);
@@ -181,7 +182,7 @@ public class SupervisorTurnRunner {
         } catch (Exception ignored) {
             // JSON처럼 시작해도 문장이라면 원문을 보존한다.
         }
-        return text;
+        return PlainText.of(text);
     }
 
     private static String failureMessage(String error) {

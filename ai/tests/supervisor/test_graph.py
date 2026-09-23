@@ -143,7 +143,7 @@ class SupervisorGraphTest(unittest.TestCase):
             {"jd": {"job_context_id": "jctx"}},
         )
 
-        self.assertEqual(result["final_message"], "### JD 검토\n요구 역량을 보강하세요.")
+        self.assertEqual(result["final_message"], "■ JD 검토\n요구 역량을 보강하세요.")
         self.assertNotIn('"score"', result["final_message"])
 
     def test_marks_gms_rate_limit_with_stable_worker_error_code(self):
@@ -180,7 +180,7 @@ class SupervisorGraphTest(unittest.TestCase):
                 self.assertEqual(source["published_at"], "2026-09-15T12:00:00Z")
                 self.assertEqual(source["url"], "https://example.test/stored/1")
                 if fallback:
-                    self.assertTrue(output["final_message"].startswith("### 뉴스 분석\n"))
+                    self.assertTrue(output["final_message"].startswith("■ 뉴스 분석\n"))
                     self.assertNotIn('"analysis"', output["final_message"])
                 else:
                     self.assertTrue(output["final_message"].startswith("종합 결과"))
@@ -751,7 +751,7 @@ class SupervisorGraphTest(unittest.TestCase):
 
         self.assertEqual(
             result["final_message"],
-            "### 직무 분석\nposition 의견\n\n### JD 검토\njd 의견",
+            "■ 경험 분석\nposition 의견\n\n■ JD 검토\njd 의견",
         )
         self.assertEqual(len(result["agent_results"]), 2)
 

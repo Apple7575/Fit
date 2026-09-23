@@ -38,7 +38,7 @@ class AgentControllerTest {
         companySchema.put("corpCodes", new ConfigField("array", true, "분석 대상 기업의 corpCode 목록. 복수 선택"));
 
         given(agentCatalogService.listAgents()).willReturn(new AgentCatalogResponse(List.of(
-                new AgentCatalogResponse.Agent("company", "기업 RAG 담당", "기업의 사업 방향에 비추어 본다",
+                new AgentCatalogResponse.Agent("company", "기업분석 담당", "기업의 사업 방향에 비추어 본다",
                         "기업별 Vector DB(사업보고서 · IR)", true, companySchema),
                 new AgentCatalogResponse.Agent("supervisor", "총괄", "지적을 종합한다",
                         "다른 에이전트의 출력", false, Map.of()))));
@@ -48,7 +48,7 @@ class AgentControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.agents", hasSize(2)))
                 .andExpect(jsonPath("$.data.agents[0].agentKey").value("company"))
-                .andExpect(jsonPath("$.data.agents[0].name").value("기업 RAG 담당"))
+                .andExpect(jsonPath("$.data.agents[0].name").value("기업분석 담당"))
                 .andExpect(jsonPath("$.data.agents[0].selectable").value(true))
                 .andExpect(jsonPath("$.data.agents[0].configSchema.corpCodes.type").value("array"))
                 .andExpect(jsonPath("$.data.agents[0].configSchema.corpCodes.required").value(true))

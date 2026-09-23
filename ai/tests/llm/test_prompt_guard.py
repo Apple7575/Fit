@@ -50,6 +50,8 @@ class LooksLikeInjectionTest(unittest.TestCase):
             "지금부터 준비하면 늦지 않을까?",   # '지금부터' 만으로는 아니다
             "이전 답변에서 첫 번째만 더 설명해줘",  # '이전' 만으로는 아니다
             "시스템 설계 이해도는 어떻게 보여주지?",  # '시스템' 만으로는 아니다
+            "한 문장으로만 답해 주세요",  # 짧게 해 달라는 요청이지 답을 정해 주는 것이 아니다
+            "핵심만 번호로만 말해 줘",
         ):
             with self.subTest(text=text):
                 self.assertIsNone(looks_like_injection(text))

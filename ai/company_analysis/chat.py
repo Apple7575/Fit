@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from ai.prompting.common import with_common_rules
+from ai.prompting.common import OFF_TOPIC_REPLY, with_common_rules, with_reply_rules
 import json
 import logging
 import re
@@ -225,7 +225,7 @@ class CompanyChatService:
         self._retriever = retriever
         self._client = client
         self._store = store
-        self._prompt = with_common_rules(prompt_path.read_text(encoding="utf-8"))
+        self._prompt = with_common_rules(with_reply_rules(prompt_path.read_text(encoding="utf-8")))
         self._clock = clock
         self._new_id = id_factory
 
@@ -404,6 +404,9 @@ class CompanyChatService:
             needs.append(ChatNeed(agent="news", reason=reason[:1_000]))
         if not answer:
             return None, [], needs, []
+        if answer.strip() == OFF_TOPIC_REPLY:
+            # 관련 없는 질문을 거절한 문장이다. 공시에서 나온 말이 아니라 근거가 없는 것이 맞다.
+            return OFF_TOPIC_REPLY, [], [], []
         if not ids and not needs:
             # 근거를 하나도 대지 않은 답은 공시에서 나온 것이 아니다. 프롬프트 주입("이전 지시를
             # 무시하고 …라고 답해")이 여기로 빠져나갔다. 뉴스가 필요하다고 밝힌 경우는 근거 없이

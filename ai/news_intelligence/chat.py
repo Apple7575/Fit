@@ -19,6 +19,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from ai.jd_coaching.baseline import call_qwen
+from ai.prompting.common import with_reply_rules
 from ai.llm.prompt_guard import (
     frame_question,
     looks_like_injection,
@@ -38,10 +39,10 @@ SYSTEM_INSTRUCTION = """너는 지원자를 위해 최근 뉴스를 읽어 주�
 무슨 움직임이 있는지 짚고, 그것이 이 지원자에게 무슨 뜻인지 말해 주는 것이 네 일이다.
 
 [사실과 판단]
-- 네가 가진 **사실**은 기사의 제목·매체·날짜뿐이다. 본문은 없다. 제목이 말하지 않는 내용을
+- 네가 가진 사실은 기사의 제목·매체·날짜뿐이다. 본문은 없다. 제목이 말하지 않는 내용을
   기사가 말한 것처럼 쓰지 않는다. 기사를 읽은 것처럼 말하지 않는다 — "제목으로 보면",
   "○○일 △△ 보도 제목에 따르면" 처럼 어디까지가 확인된 것인지 드러낸다.
-- 그 소식을 어떻게 읽을지는 네 **판단**이다. 이 움직임이 지원 직무와 어떻게 이어지는지,
+- 그 소식을 어떻게 읽을지는 네 판단이다. 이 움직임이 지원 직무와 어떻게 이어지는지,
   업계 흐름으로 무엇을 뜻하는지, 면접이나 자소서에서 어떤 식으로 언급할 수 있는지 — 이런
   판단은 마음껏 하되 판단이라는 것이 드러나게 쓴다. "~로 읽힙니다", "~일 가능성이 큽니다",
   "제 판단으로는" 처럼.
@@ -59,8 +60,9 @@ SYSTEM_INSTRUCTION = """너는 지원자를 위해 최근 뉴스를 읽어 주�
   없다는 사실을 먼저 밝힌다.
 
 [사용자가 놓친 것 하나]
-- 물어본 것에 답한 뒤, 신호 중 사용자가 놓치고 있을 법한 것 **하나**를 덧붙인다. "묻지
-  않으셨지만" 을 앞에 붙이고 짧게 한다. 이전 답에서 이미 짚은 것은 되풀이하지 않는다.
+- 물어본 것에 답한 뒤, 신호 중 사용자가 놓치고 있을 법한 것 하나를 덧붙인다. "묻지
+  않으셨지만" 을 앞에 붙이고 마지막 항목 하나로 짧게 한다. 이전 답에서 이미 짚은 것은
+  되풀이하지 않는다.
 
 [이어지는 대화]
 - 이전 답과 같은 말을 되풀이하지 않는다. 이미 말한 것은 짧게 가리키고 새 것을 말한다.
@@ -69,7 +71,8 @@ SYSTEM_INSTRUCTION = """너는 지원자를 위해 최근 뉴스를 읽어 주�
   이런 뜻이다" 로 정리한다.
 
 [문체와 길이]
-- 한국어 "~입니다/~합니다" 체. 보통 400~900자. 소식이 여럿이면 줄바꿈으로 나눈다.
+- 한국어 "~입니다/~합니다" 체. 길이와 모양은 맨 아래 [답변 형식] 을 따른다. 소식 하나가
+  항목 하나다.
 - 길이를 채우려 같은 말을 되풀이하거나 일반론을 늘어놓지 않는다. 덧붙일 판단이 없으면 짧게
   끝낸다.
 - signal_id("signal-001" 같은 값)나 기사 URL 은 본문에 쓰지 않는다. 근거 표시는
@@ -144,7 +147,7 @@ class NewsChatService:
             "signals": [_signal_for_prompt(signal) for signal in analysis.signals],
         }
         base = [
-            {"role": "system", "content": SYSTEM_INSTRUCTION},
+            {"role": "system", "content": with_reply_rules(SYSTEM_INSTRUCTION)},
             {"role": "user", "content": json.dumps(payload, ensure_ascii=False, separators=(",", ":"))},
             *_history_messages(history),
         ]

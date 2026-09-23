@@ -1,6 +1,7 @@
 package com.ssafy.companyanalysis.agent.service;
 
 import com.ssafy.companyanalysis.agent.ai.CompanyAnalysisClient;
+import com.ssafy.companyanalysis.agent.ai.PlainText;
 import com.ssafy.companyanalysis.agent.domain.AgentType;
 import com.ssafy.companyanalysis.agent.domain.Message;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
@@ -70,7 +71,8 @@ public class AgentTaskRunner {
                     ? companyAnalysisClient.report(corpCode)
                     : companyAnalysisClient.answer(
                             context.userMessage(), corpCode, context.jobContextId(), context.conversation());
-            message.succeed(answer.message(), answer.evidence(), List.of());
+            // 화면이 마크다운을 그리지 않는다. 총괄 경로(SupervisorTurnRunner)와 같은 거름망을 쓴다.
+            message.succeed(PlainText.of(answer.message()), answer.evidence(), List.of());
         } catch (Exception e) {
             log.warn("에이전트 실행 실패: messageId={}, agent={}, reason={}",
                     messageId, message.getAgentKey(), e.getMessage());

@@ -11,6 +11,9 @@ import com.ssafy.companyanalysis.agent.domain.Room;
 import com.ssafy.companyanalysis.agent.dto.MessageSendRequest;
 import com.ssafy.companyanalysis.agent.dto.TurnStartedResponse;
 import com.ssafy.companyanalysis.agent.dto.TurnStatusResponse;
+import com.ssafy.companyanalysis.agent.policy.AgentInputPolicy;
+import com.ssafy.companyanalysis.agent.policy.InputSource;
+import com.ssafy.companyanalysis.agent.policy.PolicyDecision;
 import com.ssafy.companyanalysis.agent.repository.JobContextRepository;
 import com.ssafy.companyanalysis.agent.repository.MessageRepository;
 import com.ssafy.companyanalysis.agent.repository.RoomRepository;
@@ -65,6 +68,7 @@ public class TurnService {
     private final TurnExecutor turnExecutor;
     private final AnalysisRateLimiter rateLimiter;
     private final AgentCatalogProperties properties;
+    private final AgentInputPolicy inputPolicy;
     private final TransactionTemplate transactionTemplate;
 
     public TurnService(RoomRepository roomRepository,
@@ -74,6 +78,7 @@ public class TurnService {
                        TurnExecutor turnExecutor,
                        AnalysisRateLimiter rateLimiter,
                        AgentCatalogProperties properties,
+                       AgentInputPolicy inputPolicy,
                        PlatformTransactionManager transactionManager) {
         this.roomRepository = roomRepository;
         this.messageRepository = messageRepository;
@@ -82,6 +87,7 @@ public class TurnService {
         this.turnExecutor = turnExecutor;
         this.rateLimiter = rateLimiter;
         this.properties = properties;
+        this.inputPolicy = inputPolicy;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
@@ -99,8 +105,18 @@ public class TurnService {
         }
         rateLimiter.check(userId);
 
-        List<CoverLetterItem> items = targetItems(room, request.coverLetterItemId());
         String content = request.content().trim();
+        PolicyDecision policyDecision = inputPolicy.evaluate(content, InputSource.CHAT);
+        if (!policyDecision.allowsExecution()) {
+            List<String> agentKeys = refusalParticipants(room);
+            if (agentKeys.isEmpty()) {
+                throw new BusinessException(ErrorCode.INVALID_PARAMETER, "이 방에서 사용할 수 있는 담당이 없습니다.");
+            }
+            OpenedTurn refused = openRefusedTurn(roomId, agentKeys, content, policyDecision.reply());
+            return refusedResponse(refused);
+        }
+
+        List<CoverLetterItem> items = targetItems(room, request.coverLetterItemId());
         TurnContext context = contextOf(room, items, content, request.writingReview());
 
         AgentContexts.Request plan = AgentContexts.of(context);
@@ -108,6 +124,13 @@ public class TurnService {
         if (agentKeys.isEmpty()) {
             // 무엇을 채우면 되는지 말한다. 담당마다 필요한 것이 달라 한 문장으로 덮을 수 없다.
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, plan.blockedReason());
+        }
+
+        // 위험하거나 규칙을 뚫으려는 발화는 AI 를 부르지 않고 바로 거절한다.
+        Optional<InputGuard.Verdict> blocked = InputGuard.screen(content);
+        if (blocked.isPresent()) {
+            OpenedTurn refused = openRefusedTurn(roomId, agentKeys, content, blocked.get().reply());
+            return refusedResponse(refused);
         }
 
         OpenedTurn turn = openTurn(roomId, agentKeys, content);
@@ -122,6 +145,28 @@ public class TurnService {
                         .map(slot -> new TurnStartedResponse.AgentSlot(
                                 slot.getAgentKey(), slot.getStatus().name()))
                         .toList());
+    }
+
+    private TurnStartedResponse refusedResponse(OpenedTurn refused) {
+        return new TurnStartedResponse(
+                refused.rootId(),
+                refused.rootId(),
+                MessageStatus.DONE.name(),
+                refused.slots().stream()
+                        .map(slot -> new TurnStartedResponse.AgentSlot(
+                                slot.getAgentKey(), slot.getStatus().name()))
+                        .toList());
+    }
+
+    private List<String> refusalParticipants(Room room) {
+        List<String> keys = new ArrayList<>(room.getAgents().stream()
+                .filter(agent -> properties.isAgentVisible(agent.agentKey()))
+                .map(agent -> agent.agentKey())
+                .toList());
+        if (keys.size() >= 2 && !keys.contains(AgentType.SUPERVISOR.key())) {
+            keys.add(AgentType.SUPERVISOR.key());
+        }
+        return keys;
     }
 
     /** 자동 검토 한 바퀴가 쓸 한도. 방마다가 아니라 바퀴마다 한 장이다. */
@@ -242,6 +287,25 @@ public class TurnService {
                     .toList();
             messageRepository.saveAll(slots);
             return new OpenedTurn(root.getId(), slots);
+        });
+    }
+
+    /**
+     * 막은 발화에 답할 자리 하나만 만들고 거절 문구로 바로 닫는다.
+     *
+     * <p>담당마다 같은 거절을 되풀이하면 말풍선만 늘어난다. 총괄이 있는 방은 총괄이, 전담 방은 그
+     * 담당이 한 번 답한다. 턴이 만들어지는 즉시 끝나므로 화면은 기다리지 않는다.
+     */
+    private OpenedTurn openRefusedTurn(Long roomId, List<String> agentKeys, String content, String reply) {
+        String responder = agentKeys.contains(AgentType.SUPERVISOR.key())
+                ? AgentType.SUPERVISOR.key()
+                : agentKeys.get(0);
+        return transactionTemplate.execute(status -> {
+            Message root = messageRepository.save(Message.fromUser(roomId, content));
+            Message slot = Message.pendingAgent(roomId, root.getId(), responder);
+            slot.succeed(reply, List.of(), List.of());
+            messageRepository.save(slot);
+            return new OpenedTurn(root.getId(), List.of(slot));
         });
     }
 
