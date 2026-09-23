@@ -168,7 +168,7 @@ class PositionChatServiceTest(unittest.TestCase):
 
         system = self.caller.messages[0]["content"]
         self.assertIn("채용공고 담당", system)
-        self.assertIn("기업 분석", system)
+        self.assertIn("기업분석 담당", system)
         self.assertIn("글쓰기 담당", system)
 
     def test_injection_rule_covers_the_current_question(self):

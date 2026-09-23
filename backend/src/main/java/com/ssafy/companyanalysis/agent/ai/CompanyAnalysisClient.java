@@ -29,7 +29,7 @@ public class CompanyAnalysisClient {
 
     private static final String PATH = "/company/internal/messages";
     private static final String REPORT_PATH = "/company/internal/reports/";
-    private static final String AGENT_NAME = "기업 RAG 담당";
+    private static final String AGENT_NAME = "기업분석 담당";
     private static final int MAX_MESSAGE = 4_000;
     private static final int MAX_CONVERSATION = 20;
     private static final int MAX_CONVERSATION_CONTENT = 4_000;

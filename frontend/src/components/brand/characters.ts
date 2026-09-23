@@ -59,7 +59,7 @@ export const COACHES: Character[] = [
   {
     key: 'owl',
     name: '부엉이',
-    role: '포지션 담당',
+    role: '경험 담당',
     agentKey: 'position',
     hex: '#c4b5fd',
     face: 'wide',
@@ -108,7 +108,8 @@ export function characterForAgent(agentKey: string | null | undefined): Characte
 export function characterForRoomTitle(title: string): CharacterKey {
   if (title.includes('채용공고')) return 'hamster';
   if (title.includes('기업')) return 'otter';
-  if (title.includes('포지션')) return 'owl';
+  // '포지션' 은 이름을 바꾸기 전에 만들어진 방 제목이다.
+  if (title.includes('경험') || title.includes('포지션')) return 'owl';
   if (title.includes('뉴스')) return 'fox';
   if (title.includes('글쓰기')) return 'chick';
   return 'lead';

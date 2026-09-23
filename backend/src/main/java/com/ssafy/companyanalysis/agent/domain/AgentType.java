@@ -19,11 +19,11 @@ public enum AgentType {
             "방에 붙은 채용공고 분석", true,
             schema()),
 
-    COMPANY("company", "기업 RAG 담당", "기업의 사업 방향과 강점의 부합 여부를 분석합니다.",
+    COMPANY("company", "기업분석 담당", "기업의 사업 방향과 강점의 부합 여부를 분석합니다.",
             "기업별 Vector DB(사업보고서 · IR)", true,
             schema("corpCodes", new ConfigField("array", true, "분석 대상 기업의 corpCode 목록. 복수 선택"))),
 
-    POSITION("position", "포지션 담당", "직무 요구 수준에 맞는 기술적 깊이를 검증합니다.",
+    POSITION("position", "경험 담당", "직무 요구 수준에 맞는 기술적 깊이를 검증합니다.",
             "모델 지식 + 직무별 관점 힌트", true,
             schema("jobRole", new ConfigField("string", true, "지원 직무. 자소서의 지원 직무가 그대로 들어온다"))),
 

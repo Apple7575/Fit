@@ -751,7 +751,7 @@ class SupervisorGraphTest(unittest.TestCase):
 
         self.assertEqual(
             result["final_message"],
-            "### 직무 분석\nposition 의견\n\n### JD 검토\njd 의견",
+            "### 경험 분석\nposition 의견\n\n### JD 검토\njd 의견",
         )
         self.assertEqual(len(result["agent_results"]), 2)
 

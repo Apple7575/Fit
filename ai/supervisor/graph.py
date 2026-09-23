@@ -34,7 +34,7 @@ from ai.supervisor.tools import tool_scope
 CLARIFICATION_HEADING = "덧붙여, 더 고치려면 이것을 알려 주세요"
 _AGENT_HEADINGS = {
     "jd": "JD 검토",
-    "position": "직무 분석",
+    "position": "경험 분석",
     "writing": "글쓰기 첨삭",
     "news": "뉴스 분석",
     "company": "기업 분석",

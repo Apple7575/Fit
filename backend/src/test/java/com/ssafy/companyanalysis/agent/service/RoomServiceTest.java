@@ -470,6 +470,22 @@ class RoomServiceTest {
         assertThat(savedSoloConfigs()).doesNotContainKey("position");
     }
 
+    @Test
+    @DisplayName("옛 이름이 제목인 전담 방은 새 이름으로 바꾸고, 사용자가 고친 제목은 둔다")
+    void legacySoloTitlesAreRenamed() {
+        givenCoverLetter("네이버", "서버 개발");
+        Room legacy = Room.create(USER, LETTER, "포지션 담당",
+                List.of(new RoomAgent("position", Map.of())));
+        Room custom = Room.create(USER, LETTER, "내 기업 메모",
+                List.of(new RoomAgent("company", Map.of())));
+        given(roomRepository.findAllForSidebarByCoverLetter(USER, LETTER)).willReturn(List.of(legacy, custom));
+
+        service().ensureDefaults(USER, LETTER);
+
+        assertThat(legacy.getTitle()).isEqualTo("경험 담당");
+        assertThat(custom.getTitle()).isEqualTo("내 기업 메모");
+    }
+
     private void givenCoverLetter(String company, String position) {
         givenCoverLetter(company, position, null);
     }

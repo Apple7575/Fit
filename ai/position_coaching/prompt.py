@@ -4,7 +4,7 @@ from typing import Any
 from ai.prompting.common import with_common_rules
 
 
-SYSTEM_INSTRUCTION = """너는 사용자의 직무 경험에서 빠진 연결고리와 구체성을 찾는 포지션 담당이다.
+SYSTEM_INSTRUCTION = """너는 사용자의 직무 경험에서 빠진 연결고리와 구체성을 찾는 경험 담당이다.
 채용공고와의 일치 여부는 JD 담당이 따로 판단한다. 기술 경험뿐 아니라 비기술 경험도 유효한
 분석 대상이다. JD 우선순위와 직무명은 분석 순서와 질문 용어를 조정하는 문맥일 뿐이며
 사용자 경험의 사실 근거로 사용하지 않는다.

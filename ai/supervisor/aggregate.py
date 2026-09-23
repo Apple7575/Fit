@@ -31,7 +31,7 @@ PARROT_MIN_CHARS = 25
 
 AGENT_LABELS: dict[str, str] = {
     "jd": "채용공고",
-    "position": "포지션",
+    "position": "경험",
     "news": "뉴스",
     "company": "기업",
     "writing": "글쓰기",
