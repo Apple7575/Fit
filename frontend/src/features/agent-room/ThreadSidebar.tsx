@@ -83,7 +83,7 @@ export function ThreadSidebar({ rooms, selectedRoomId, onSelect, wrap = false }:
         >
           <span className={`relative shrink-0 ${sleeping ? 'opacity-60 grayscale' : ''}`}>
             <CharacterSlot
-              character={isGroup ? 'lead' : characterForRoomTitle(room.title)}
+              character={isGroup ? 'fox' : characterForRoomTitle(room.title)}
               interactive={false}
               mood={sleeping ? 'sleepy' : 'neutral'}
               size={20}

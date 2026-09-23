@@ -26,16 +26,15 @@ const SCRIPT: Line[] = [
     who: 'otter',
     text: '사업보고서 기준 DS 부문이 매출 58%, 설비투자도 파운드리에 몰려 있어요. 지원동기를 이 방향에 연결하면 좋아요.',
   },
-  { who: 'fox', text: '최근 30일 HBM 관련 이슈가 12건이에요. 첫 문장 근거로 쓸 수 있어요.' },
   {
     who: 'owl',
     text: '백엔드라면 면접관은 장애 대응 경험을 물어봅니다. 3문단을 그 관점으로 다듬어요.',
   },
   { who: 'chick', text: '문장이 길어요. 둘로 나누고 수치는 문장 앞에 두세요.' },
   {
-    who: 'lead',
-    text: '정리할게요. 근거 세 개(HBM 이슈 → DS 투자 방향 → 공정 경험)를 이 순서로 배치하세요.',
-    basedOn: ['fox', 'otter', 'hamster'],
+    who: 'fox',
+    text: '정리할게요. 근거 세 개(DS 투자 방향 → 공정 경험 → 장애 대응 경험)를 이 순서로 배치하세요.',
+    basedOn: ['otter', 'hamster', 'owl'],
   },
 ];
 
@@ -118,13 +117,13 @@ export function AgentDemo() {
             Review room
           </p>
           <h2 className="display-lg text-balance" id="agent-title">
-            자소서 하나에
+            자소서 하나를
             <br />
-            코치 다섯이 붙습니다.
+            코치 5명이 함께 봅니다.
           </h2>
           {/* 한글은 기본값이면 단어 한가운데서 줄이 바뀐다("답하 / 고,"). 띄어쓰기에서만 끊는다 */}
           <p className="body-lg mt-5 max-w-[40ch] break-keep text-white/70">
-            다섯이 각자 답하면, 총괄 담당이 근거 순서로 정리합니다.
+            코치들이 각자 답하면 총괄 담당이 근거 순서대로 정리합니다.
           </p>
           {/* 줄 간격은 gap-y-1 + 줄바꿈 칸(0높이)이 합쳐져 칩 사이 8px 이 된다 */}
           <ul className="mt-8 flex flex-wrap gap-x-2 gap-y-1" aria-label="코치 목록">
@@ -154,7 +153,7 @@ export function AgentDemo() {
           role="img"
         >
           <div className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-500">
-            <CharacterSlot character="lead" interactive={false} size={22} />
+            <CharacterSlot character="fox" interactive={false} size={22} />
             함께 논의 · 삼성전자 DS 자소서
             <span className="ml-auto inline-flex items-center gap-1 text-blue-600">
               <span className="size-1.5 animate-pulse rounded-full bg-blue-600" /> 답하는 중
