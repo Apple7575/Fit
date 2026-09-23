@@ -101,7 +101,7 @@ public class TurnService {
 
         List<CoverLetterItem> items = targetItems(room, request.coverLetterItemId());
         String content = request.content().trim();
-        TurnContext context = contextOf(room, items, content);
+        TurnContext context = contextOf(room, items, content, request.writingReview());
 
         AgentContexts.Request plan = AgentContexts.of(context);
         List<String> agentKeys = participants(plan);
@@ -252,6 +252,12 @@ public class TurnService {
      * 없는 식별자를 AI 에 넘기면 채용공고·뉴스 담당이 404 로 떨어진다.
      */
     private TurnContext contextOf(Room room, List<CoverLetterItem> items, String content) {
+        return contextOf(room, items, content, false);
+    }
+
+    /** 글쓰기 검토 버튼은 방 설정과 무관하게 글쓰기 담당만 실행할 전용 컨텍스트를 만든다. */
+    private TurnContext contextOf(Room room, List<CoverLetterItem> items, String content,
+                                  boolean writingReview) {
         Optional<JobContext> jobContext = room.getJobContextId() == null
                 ? Optional.empty()
                 : jobContextRepository.findById(room.getJobContextId());
@@ -262,7 +268,7 @@ public class TurnService {
                 jobContext.map(JobContext::getContextId).orElse(null),
                 jobContext.map(JobContext::getPositionName).orElse(null),
                 conversationOf(room.getId()),
-                configsOf(room),
+                configsOf(room, writingReview),
                 AUTO_REVIEW_INSTRUCTION.equals(content));
     }
 
@@ -361,7 +367,16 @@ public class TurnService {
      * 안 실린다 — 전에 만들어져 그 담당이 붙어 있는 방도 마찬가지다.
      */
     private Map<String, Map<String, Object>> configsOf(Room room) {
+        return configsOf(room, false);
+    }
+
+    private Map<String, Map<String, Object>> configsOf(Room room, boolean writingReview) {
         Map<String, Map<String, Object>> configs = new LinkedHashMap<>();
+        if (writingReview) {
+            // 버튼 요청은 다른 담당·총괄이 붙은 방에서도 글쓰기 담당만 실행한다.
+            configs.put(AgentType.WRITING.key(), Map.of());
+            return configs;
+        }
         room.getAgents().stream()
                 .filter(agent -> properties.isAgentVisible(agent.agentKey()))
                 .forEach(agent -> configs.put(agent.agentKey(), agent.config()));

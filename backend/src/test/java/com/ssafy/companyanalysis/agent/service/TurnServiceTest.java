@@ -249,6 +249,20 @@ class TurnServiceTest {
     }
 
     @Test
+    @DisplayName("글쓰기 검토 버튼은 다른 담당을 고른 방에서도 글쓰기 자리만 만든다")
+    void writingReviewButtonOnlyRunsWritingAgent() {
+        roomWithJobContext("ctx-1", "jd", "company", "position", "news", "writing");
+        JobContext context = jobContext("ctx-1", "백엔드");
+        given(jobContextRepository.findById("ctx-1")).willReturn(Optional.of(context));
+
+        TurnStartedResponse response = service.start(
+                USER, ROOM, new MessageSendRequest("글쓰기 검토", 500L, true));
+
+        assertThat(response.agents()).extracting(TurnStartedResponse.AgentSlot::agentKey)
+                .containsExactly("writing");
+    }
+
+    @Test
     @DisplayName("재료가 다 있어도 꺼 둔 담당은 자리를 안 만든다 — 전에 만들어져 그 담당이 붙은 방도 같다")
     void aDisabledAgentGetsNoSlotEvenWhenItsInputIsReady() {
         // 뉴스 담당이 돌 조건을 다 채운 방이다. 공고와 여덟 자리 기업코드가 둘 다 있다.

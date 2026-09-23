@@ -102,7 +102,7 @@ describe('DocumentPanel 선택 수정', () => {
     expect(screen.queryByText('앞 문장 바꿀 부분 뒤 문장')).not.toBeInTheDocument();
     expect(screen.getByText('성장하겠습니다.')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: '이 문항 검토' }));
+    await userEvent.click(screen.getByRole('button', { name: '글쓰기 검토' }));
 
     expect(onReviewItem).toHaveBeenCalledWith(202);
   });
