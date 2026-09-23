@@ -99,6 +99,33 @@ class PositionAnalysisServiceTest(unittest.TestCase):
         self.assertEqual(len(qwen.calls), 2)
         self.assertIn("검증 오류", qwen.calls[1]["messages"][-1]["content"])
 
+    def test_normalizes_duplicate_elements_and_code_owned_judgment(self):
+        inconsistent = valid_output()
+        finding = inconsistent["findings"][0]
+        finding["present_elements"] = [
+            {"element": "ACTION", "quote": "Redis를 활용해"},
+            {"element": "ACTION", "quote": "서비스 성능을 개선했습니다"},
+        ]
+        finding["missing_elements"] = ["SITUATION", "VERIFICATION", "RESULT"]
+        finding["verdict"] = "CLAIM_ONLY"
+        qwen = FakeQwen([inconsistent])
+        service = PositionAnalysisService(config=CONFIG, qwen_caller=qwen)
+
+        result = service.analyze(
+            "experience-depth-v1", POSITION_CONTEXT, DOCUMENTS, []
+        )
+
+        normalized = result["findings"][0]
+        self.assertEqual(normalized["present_elements"], [
+            {"element": "ACTION", "quote": "Redis를 활용해"},
+        ])
+        self.assertEqual(
+            normalized["missing_elements"],
+            ["SITUATION", "ROLE", "VERIFICATION", "RESULT"],
+        )
+        self.assertEqual(normalized["verdict"], "PARTIAL")
+        self.assertEqual(len(qwen.calls), 1)
+
     def test_fails_after_second_invalid_output(self):
         invalid = valid_output()
         invalid["findings"][0]["claim"]["document_id"] = "unknown"
@@ -142,6 +169,11 @@ class ModelSchemaTest(unittest.TestCase):
         self.assertEqual(claim["properties"]["quote"]["maxLength"], 200)
         element = model_schema["properties"]["findings"]["items"]["properties"]["present_elements"]["items"]
         self.assertEqual(element["properties"]["quote"]["maxLength"], 80)
+        finding = model_schema["properties"]["findings"]["items"]
+        self.assertNotIn("missing_elements", finding["required"])
+        self.assertNotIn("missing_elements", finding["properties"])
+        self.assertNotIn("verdict", finding["required"])
+        self.assertNotIn("verdict", finding["properties"])
         # 저장 스키마는 그대로다
         self.assertIn("NO_EXPERIENCE_CLAIM", stored["properties"]["analysis_status"]["enum"])
 
