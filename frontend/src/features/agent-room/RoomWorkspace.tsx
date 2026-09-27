@@ -126,6 +126,9 @@ function RoomBody({
   // 자소서 원문은 여기서 한 번만 부른다.
   const doc = useOptionalCoverLetter(data.coverLetter?.id ?? null);
   const agentNames = Object.fromEntries(data.agents.map((agent) => [agent.agentKey, agent.name]));
+  // 서버는 담당 둘 이상인 방에만 총괄을 자동으로 붙인다. 그 방의 담당별 답변은 총괄이
+  // 종합하는 내부 재료이므로 대화창에는 총괄 결론만 보인다.
+  const supervisorOnly = data.agents.some((agent) => agent.agentKey === 'supervisor' && agent.auto);
   const items = doc.state.status === 'success' ? doc.state.data.items : [];
   const selectedCandidateId =
     selection && selection.coverLetterId === data.coverLetter?.id ? selection.itemId : null;
@@ -277,7 +280,12 @@ function RoomBody({
                 </div>
               )}
 
-              <MessageThread messages={thread} running={turn} agentNames={agentNames} />
+              <MessageThread
+                messages={thread}
+                running={turn}
+                agentNames={agentNames}
+                supervisorOnly={supervisorOnly}
+              />
             </div>
 
             <MessageComposer
