@@ -201,6 +201,52 @@ describe('MessageThread', () => {
     expect(screen.getByText('종합')).toBeInTheDocument();
   });
 
+  it('총괄 논의에서는 담당별 답변과 대기 자리를 숨기고 총괄 답변만 보인다', () => {
+    const running: TurnStatus = {
+      turnId: 100,
+      status: 'RUNNING',
+      agents: [{ agentKey: 'news', status: 'RUNNING', messageId: null, error: null }],
+      supervisor: { agentKey: 'supervisor', status: 'PENDING', messageId: null, error: null },
+    };
+
+    render(
+      <MessageThread
+        messages={[userMessage, writingMessage, supervisor]}
+        running={running}
+        agentNames={names}
+        supervisorOnly
+      />,
+    );
+
+    expect(screen.getByText('2번 문항 봐줘')).toBeInTheDocument();
+    expect(screen.getByText('두괄식으로 올리고 기술 서술을 붙이세요.')).toBeInTheDocument();
+    expect(screen.queryByText('결론이 뒤에 묻혀 있습니다.')).not.toBeInTheDocument();
+    expect(screen.queryByText('뉴스/트렌드 담당')).not.toBeInTheDocument();
+    expect(screen.queryByText('근거')).not.toBeInTheDocument();
+  });
+
+  it('총괄 논의에서 진행 중에는 담당 대신 총괄의 대기 자리만 보인다', () => {
+    const running: TurnStatus = {
+      turnId: 100,
+      status: 'RUNNING',
+      agents: [{ agentKey: 'news', status: 'RUNNING', messageId: null, error: null }],
+      supervisor: { agentKey: 'supervisor', status: 'PENDING', messageId: null, error: null },
+    };
+
+    render(
+      <MessageThread
+        messages={[userMessage, writingMessage]}
+        running={running}
+        agentNames={names}
+        supervisorOnly
+      />,
+    );
+
+    expect(screen.getByText('차례를 기다리는 중…')).toBeInTheDocument();
+    expect(screen.queryByText('결론이 뒤에 묻혀 있습니다.')).not.toBeInTheDocument();
+    expect(screen.queryByText('뉴스/트렌드 담당')).not.toBeInTheDocument();
+  });
+
   it('담당마다 이름표 색이 다르다 — 누가 한 말인지 눈으로 갈린다', () => {
     const news: RoomMessage = {
       ...base,

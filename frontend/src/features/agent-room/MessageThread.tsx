@@ -9,6 +9,8 @@ interface MessageThreadProps {
   /** 도는 중인 턴. 아직 자리도 생기지 않은 에이전트를 먼저 보여준다. */
   running: TurnStatus | null;
   agentNames: Record<string, string>;
+  /** 총괄 논의 방에서는 내부 담당 답변을 감추고 종합만 보여 준다. */
+  supervisorOnly?: boolean;
 }
 
 const rowId = (messageId: number) => `room-message-${messageId}`;
@@ -298,7 +300,12 @@ function PendingRow({
   );
 }
 
-export function MessageThread({ messages, running, agentNames }: MessageThreadProps) {
+export function MessageThread({
+  messages,
+  running,
+  agentNames,
+  supervisorOnly = false,
+}: MessageThreadProps) {
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -314,7 +321,12 @@ export function MessageThread({ messages, running, agentNames }: MessageThreadPr
     timer.current = setTimeout(() => setFocusedId(null), 1600);
   };
 
-  const lookup = new Map(messages.map((message) => [message.messageId, message]));
+  // 총괄 논의의 담당별 결과는 총괄이 종합하는 내부 재료다. 저장은 유지하되 대화창에는
+  // 사용자 발화와 총괄 결론만 남긴다. 그래야 근거 칩도 감춘 담당 말풍선으로 이동하지 않는다.
+  const visibleMessages = supervisorOnly
+    ? messages.filter((message) => message.role === 'user' || message.agentKey === 'supervisor')
+    : messages;
+  const lookup = new Map(visibleMessages.map((message) => [message.messageId, message]));
   /*
    * 이번 턴에 이미 자리가 생긴 담당. 자리가 있으면 그 줄이 스스로 상태를 보여 주므로
    * (AgentRow 가 PENDING·RUNNING 을 그린다) 대기 줄을 덧붙이지 않는다.
@@ -324,15 +336,16 @@ export function MessageThread({ messages, running, agentNames }: MessageThreadPr
    * 멈춘 것처럼 보였던 이유다.
    */
   const seatedThisTurn = new Set(
-    messages
+    visibleMessages
       .filter((message) => message.role === 'agent' && message.turnId === running?.turnId)
       .map((message) => message.agentKey),
   );
   const waiting = (running?.agents ?? [])
     .concat(running?.supervisor ? [running.supervisor] : [])
+    .filter((agent) => !supervisorOnly || agent.agentKey === 'supervisor')
     .filter((agent) => !seatedThisTurn.has(agent.agentKey) && agent.status !== 'DONE');
 
-  if (messages.length === 0 && waiting.length === 0) {
+  if (visibleMessages.length === 0 && waiting.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-[13px] text-slate-400">
         아직 대화가 없습니다. 아래에 무엇을 봐 달라고 적어 보세요.
@@ -342,7 +355,7 @@ export function MessageThread({ messages, running, agentNames }: MessageThreadPr
 
   return (
     <ul aria-label="대화 내역" className="flex flex-col gap-4">
-      {messages.map((message) => {
+      {visibleMessages.map((message) => {
         if (isAutoReview(message)) {
           return <AutoReviewRow key={message.messageId} message={message} />;
         }
