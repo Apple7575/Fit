@@ -69,7 +69,11 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
         ))}
       </ul>
 
-      <div className="relative">
+      {/*
+        검색창은 오른쪽 끝에 붙여 둔다. 그냥 두면 고른 기업 수에 따라 좌우로 옮겨 다녀,
+        기업을 하나 더할 때마다 다음에 누를 자리가 바뀐다.
+      */}
+      <div className="relative ml-auto shrink-0">
         <div className="flex items-center" role="search">
           <label className="sr-only" htmlFor="peer-search-keyword">
             비교할 기업명
@@ -99,8 +103,9 @@ export function PeerPicker({ target, peers, onChange }: PeerPickerProps) {
           </div>
         </div>
 
+        {/* 검색창이 오른쪽 끝이라 목록도 오른쪽에 맞춰 편다. 왼쪽 기준이면 화면을 넘는다 */}
         {status !== 'idle' && (
-          <div className="absolute top-full left-0 z-20 mt-1 min-w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+          <div className="absolute top-full right-0 z-20 mt-1 min-w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
             {status === 'loading' && (
               <p className="px-2 py-1.5 text-xs font-semibold text-slate-400" role="status">
                 검색 중…

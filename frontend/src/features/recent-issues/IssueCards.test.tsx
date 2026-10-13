@@ -164,7 +164,8 @@ describe('IssueKpiRow / IssueDistributionCard', () => {
     expect(screen.getByText(/중요 이슈 수 · 투자 이슈 · 기술 이슈 은\(는\)/)).toBeInTheDocument();
   });
 
-  it('explains the distribution card when nothing was classified', () => {
+  it('갈래 분석이 없으면 통째로 숨는다', () => {
+    // 없다고 적는 카드를 띄우면 뉴스 목록 옆이 빈 채로 340px 를 붙들고 있었다
     const { container } = render(
       <IssueDistributionCard
         onRetry={() => {}}
@@ -174,7 +175,7 @@ describe('IssueKpiRow / IssueDistributionCard', () => {
         }}
       />,
     );
-    expect(container).not.toBeEmptyDOMElement();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('draws one donut arc per category with the total in the middle', () => {
@@ -212,31 +213,29 @@ describe('IssueKpiRow / IssueDistributionCard', () => {
 });
 
 describe('TopNewsCard', () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  it('renders ranked items with category and importance, and explains when empty', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        ok({
-          items: [
+  it('renders ranked items with category and importance', () => {
+    render(
+      <TopNewsCard
+        onRetry={vi.fn()}
+        state={{
+          status: 'success',
+          data: [
             { rank: 1, id: 10250, title: '1위 뉴스', category: '실적', importanceScore: 9.6 },
-            { rank: 2, id: 10241, title: '2위 뉴스' },
+            { rank: 2, id: 10241, title: '2위 뉴스', category: null, importanceScore: null },
           ],
-        }),
-      ),
+        }}
+      />,
     );
-    const first = render(<TopNewsCard corpCode="A" />);
-    expect(await screen.findByRole('heading', { name: '중요 뉴스 TOP 2' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '중요 뉴스 TOP 2' })).toBeInTheDocument();
     expect(screen.getByText('1위 뉴스')).toBeInTheDocument();
     expect(screen.getByText('실적')).toBeInTheDocument();
     expect(screen.getByText('9.6')).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    first.unmount();
+  });
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok({ items: [] })));
-    const second = render(<TopNewsCard corpCode="B" />);
-    await waitFor(() => expect(second.container.querySelector('[role="status"]')).toBeNull());
-    expect(second.container).not.toBeEmptyDOMElement();
+  it('중요도를 매긴 이슈가 없으면 통째로 숨는다', () => {
+    // 없다고 적는 카드를 띄우면 옆 칸이 빈 채로 340px 를 붙들고 있었다
+    const { container } = render(<TopNewsCard onRetry={vi.fn()} state={{ status: 'success', data: [] }} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });

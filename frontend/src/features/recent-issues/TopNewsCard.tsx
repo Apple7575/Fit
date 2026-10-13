@@ -1,10 +1,11 @@
-import { EmptyCard } from '../../components/common/EmptyCard';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import { categoryChipClass } from './categoryStyle';
-import { useTopNews } from './hooks';
+import type { QueryState } from '../../hooks/useApiQuery';
+import type { TopNewsItem } from './types';
 
 interface TopNewsCardProps {
-  corpCode: string;
+  state: QueryState<TopNewsItem[]>;
+  onRetry: () => void;
 }
 
 const RANK_STYLE = ['bg-amber-500 text-white', 'bg-slate-400 text-white', 'bg-orange-700 text-white'];
@@ -13,9 +14,7 @@ const RANK_STYLE = ['bg-amber-500 text-white', 'bg-slate-400 text-white', 'bg-or
  * 중요 뉴스 TOP 3 (AI 중요도 기준). 없거나 404 면 통째로 숨긴다 — 목록과 독립.
  * 상세 이동 버튼은 두지 않는다.
  */
-export function TopNewsCard({ corpCode }: TopNewsCardProps) {
-  const { state, retry } = useTopNews(corpCode);
-
+export function TopNewsCard({ state, onRetry }: TopNewsCardProps) {
   if (state.status === 'loading') {
     return (
       <div
@@ -30,18 +29,13 @@ export function TopNewsCard({ corpCode }: TopNewsCardProps) {
   if (state.status === 'error') {
     if (state.error.status === 404 || state.error.code === 'COMPANY_NOT_FOUND') return null;
     return (
-      <InlineNotice onRetry={retry}>
+      <InlineNotice onRetry={onRetry}>
         중요 뉴스를 불러오지 못했습니다. {state.error.message}
       </InlineNotice>
     );
   }
-  if (state.data.length === 0) {
-    return (
-      <EmptyCard title="중요 이슈">
-        중요도를 매긴 이슈가 아직 없어요. 아래 최신 뉴스로 흐름을 볼 수 있습니다.
-      </EmptyCard>
-    );
-  }
+  // 중요도를 매긴 이슈가 없으면 숨긴다 (IssueDistributionCard 와 같은 까닭)
+  if (state.data.length === 0) return null;
 
   return (
     <section
