@@ -1,4 +1,3 @@
-import { EmptyCard } from '../../components/common/EmptyCard';
 import type { ComparisonInsightsState } from './useComparisonInsights';
 
 interface ComparisonInsightsCardProps {
@@ -21,13 +20,8 @@ export function ComparisonInsightsCard({ state }: ComparisonInsightsCardProps) {
       </div>
     );
   }
-  if (state.status === 'error' || state.data.length === 0) {
-    return (
-      <EmptyCard title="핵심 인사이트">
-        비교 인사이트는 아직 준비 중이에요. 아래 표와 그래프에서 직접 비교해 볼 수 있습니다.
-      </EmptyCard>
-    );
-  }
+  // 없으면 통째로 숨긴다. "준비 중" 카드를 띄우면 차트 옆에 빈 칸만 한 덩이 남는다
+  if (state.status === 'error' || state.data.length === 0) return null;
 
   return (
     <section

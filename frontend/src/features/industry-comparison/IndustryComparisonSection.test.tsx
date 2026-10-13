@@ -202,8 +202,8 @@ describe('ComparisonResult', () => {
     expect(screen.getByText(/기준 2025년/)).toBeInTheDocument();
   });
 
-  it('explains insights when empty and when there are no companies', () => {
-    const { unmount } = render(
+  it('인사이트가 비면 카드를 숨기고 차트가 한 줄을 다 쓴다', () => {
+    const { container, unmount } = render(
       <ComparisonResult
         comparison={comparison}
         insights={{ status: 'success', data: [] }}
@@ -211,9 +211,9 @@ describe('ComparisonResult', () => {
         trends={trendsOk}
       />,
     );
-    // 비어도 카드는 자리를 지키고 왜 없는지 알려 준다
-    expect(screen.getByRole('heading', { name: '핵심 인사이트' })).toBeInTheDocument();
-    expect(screen.getByText(/비교 인사이트는 아직 준비 중/)).toBeInTheDocument();
+    // "준비 중" 카드를 띄우면 차트 옆에 빈 칸만 한 덩이 남는다
+    expect(screen.queryByRole('heading', { name: '핵심 인사이트' })).not.toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('minmax(320px,1fr)');
     unmount();
 
     render(

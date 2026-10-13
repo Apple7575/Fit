@@ -1,4 +1,3 @@
-import { EmptyCard } from '../../components/common/EmptyCard';
 import { DonutChart } from '../../components/charts/DonutChart';
 import { InlineNotice } from '../../components/common/InlineNotice';
 import type { QueryState } from '../../hooks/useApiQuery';
@@ -35,13 +34,12 @@ export function IssueDistributionCard({ state, onRetry }: IssueDistributionCardP
   }
 
   const { distribution } = state.data;
-  if (distribution.byCategory.length === 0) {
-    return (
-      <EmptyCard title="이슈 분포">
-        이슈를 갈래별로 나누는 분석이 아직 준비되지 않았어요. 최신 뉴스는 아래에서 볼 수 있습니다.
-      </EmptyCard>
-    );
-  }
+  /*
+   * 갈래 분석이 없으면 통째로 숨긴다. 전에는 "아직 준비되지 않았어요" 카드를 띄웠는데,
+   * 그 옆 카드까지 비면 뉴스 목록 옆에 빈 칸만 한 줄 남아 화면이 뚫린 것처럼 보였다.
+   * 없는 것을 없다고 적는 카드보다, 뉴스 목록이 그 폭을 쓰는 편이 낫다.
+   */
+  if (distribution.byCategory.length === 0) return null;
   const total =
     distribution.total ?? distribution.byCategory.reduce((acc, c) => acc + c.count, 0);
   const segments = distribution.byCategory.map((c, i) => ({

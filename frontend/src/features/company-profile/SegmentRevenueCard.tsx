@@ -1,6 +1,7 @@
 import { EmptyCard } from '../../components/common/EmptyCard';
 import { useState } from 'react';
 import { formatAmount } from '../../utils/formatAmount';
+import { realUndisclosed } from './segmentName';
 import type { ProfileSegment } from './types';
 
 interface SegmentRevenueCardProps {
@@ -49,7 +50,11 @@ export function SegmentRevenueCard({
     };
   });
   const excluded = disclosed.filter((s) => (s.revenue ?? 0) <= 0);
-  const undisclosed = segments.filter((s) => s.revenue === null);
+  /*
+   * 같은 사업부가 이름만 달리 두 번 오는 기록이 있어(삼성전자의 "DX 부문"과 "DX"), 위에서
+   * 수치를 다 보여 준 부문이 아래에 "미공시" 로 또 붙었다. 이름을 맞춰 보고 걷어낸다.
+   */
+  const undisclosed = realUndisclosed(segments);
 
   /** 범례에 적는 비중. 공시값이 있으면 그대로 쓰고, 없으면 전체(음수 포함) 대비로 낸다 */
   const shareOf = (segment: ProfileSegment) =>

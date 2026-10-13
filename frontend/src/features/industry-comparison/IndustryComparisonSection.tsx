@@ -220,9 +220,17 @@ export function ComparisonResult({
     );
   }
 
+  /*
+   * 인사이트가 없으면 차트가 한 줄을 다 쓴다. 빈 칸이 320px 를 붙들고 있으면 화면이 뚫려
+   * 보인다. 불러오는 중에는 자리를 잡아 둔다 — 곧 나타날 카드 때문에 폭이 한 번 더
+   * 출렁이는 것이 빈 칸보다 눈에 띈다.
+   */
+  const hasInsights =
+    insights.status === 'loading' || (insights.status === 'success' && insights.data.length > 0);
+
   return (
     <>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
+      <div className={`grid gap-4 ${hasInsights ? 'xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]' : ''}`}>
         <section
           aria-labelledby="comparison-chart-title"
           className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-slate-200/70"
@@ -269,7 +277,7 @@ export function ComparisonResult({
             * 매출 성장률·영업이익률은 연도별 매출·영업이익에서 계산 · 공시가 없는 해는 선을 끊어 표시
           </p>
         </section>
-        <ComparisonInsightsCard state={insights} />
+        {hasInsights && <ComparisonInsightsCard state={insights} />}
       </div>
 
       <section
