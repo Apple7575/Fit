@@ -31,9 +31,9 @@ type: `feature` · `fix` · `docs` · `refactor` · `chore`
 ## 로컬 실행
 
 ```bash
-cd infra
-cp .env.example .env    # POSTGRES_PASSWORD 입력 필요
-docker compose up -d --build
+./infra/local.sh
 ```
 
-접속: http://localhost
+접속: http://localhost:3000
+
+자세한 내용은 [infra/README.md](infra/README.md)를 참고한다.

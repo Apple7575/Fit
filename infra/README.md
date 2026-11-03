@@ -31,7 +31,7 @@
 
 ```
 infra/
-├── docker-compose.yml        앱 스택 (postgres / backend / frontend)
+├── docker-compose.yml        앱 스택 (postgres / backend / ai / frontend)
 ├── docker-compose.local.yml  로컬 오버라이드 (포트 노출)
 ├── .env.{prod,dev,local}.example
 ├── local.sh                  로컬 실행 진입점
@@ -127,7 +127,7 @@ env-secrets-<환경>         (Jenkins Secret file, 비밀값)
 ```
 
 Jenkins 에 있어야 하는 **Secret file 2개**: `env-secrets-prod`, `env-secrets-dev`.
-**없으면 배포가 실패한다.** 형식은 [`env-secrets.example`](env-secrets.example) 참고.
+**없으면 배포가 실패한다.** 형식은 아래와 같다.
 
 ```
 POSTGRES_PASSWORD=<현재 DB 비밀번호와 동일하게>
