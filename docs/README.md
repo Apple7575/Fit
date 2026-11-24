@@ -11,6 +11,7 @@
 | [frontend/README.md](../frontend/README.md) | 프론트엔드 개발 |
 | [data/README.md](../data/README.md) | 데이터 파이프라인 |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 브랜치·커밋·MR 규칙 요약 |
+| [GitHub 이전 가이드](github-migration.md) | 최종본과 커밋 이력 이전 절차 |
 
 ## 현행 문서
 

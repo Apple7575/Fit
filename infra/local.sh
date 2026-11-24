@@ -23,16 +23,19 @@ die()   { printf '\n오류: %s\n' "$*" >&2; exit 1; }
 
 ensure_env_file() {
     if [ ! -f "$ENV_FILE" ]; then
+        [ -f "$EXAMPLE" ] || die "README.md의 전체 스택 설정을 보고 infra/$ENV_FILE 을 만들어 주세요."
         cp "$EXAMPLE" "$ENV_FILE"
         info "      $ENV_FILE      없음 -> $EXAMPLE 에서 생성했습니다"
         return
     fi
 
     # 예제에만 있는 키를 찾는다. 예제가 늘어났을 때 조용히 어긋나는 것을 막는다.
-    local missing
-    missing=$(comm -23 \
+    local missing=""
+    if [ -f "$EXAMPLE" ]; then
+        missing=$(comm -23 \
         <(grep -oE '^[A-Z_]+=' "$EXAMPLE" | sort -u) \
         <(grep -oE '^[A-Z_]+=' "$ENV_FILE" | sort -u) | tr -d '=' | tr '\n' ' ')
+    fi
 
     if [ -n "${missing// /}" ]; then
         info "      $ENV_FILE      있음"
@@ -48,7 +51,7 @@ ensure_env_file() {
         grep -qE "^$key=." "$ENV_FILE" || gone="$gone $key"
     done
     [ -z "$gone" ] || die "$ENV_FILE 에 필수 항목이 없습니다:$gone
-       $EXAMPLE 을 보고 채우거나, $ENV_FILE 을 지우고 다시 실행하세요."
+       README.md의 전체 스택 설정을 보고 채워 주세요."
 }
 
 port_in_use() {

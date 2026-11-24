@@ -35,23 +35,39 @@ AI 서버는 외부에 열지 않고, 프록시에서 `/ai/` 경로를 차단합
 | [`infra/`](infra/README.md) | 배포와 운영 구성 | Docker Compose, nginx, Jenkins, PostgreSQL 18 |
 | [`docs/`](docs/README.md) | 저장소 전체 문서 목차 | |
 
-## 실행
+## 로컬에서 보기
 
-Docker가 필요합니다. 아래 명령으로 전체 스택을 띄운 뒤 `http://localhost:3000`에 접속합니다.
+### 화면 데모
 
-```bash
-./infra/local.sh
-```
-
-첫 실행은 이미지 빌드로 3~5분 걸립니다. 로컬 DB에는 기업 데이터가 없으므로 검색 결과가 비어 있는 것이 정상입니다.
-
-화면만 보려면 백엔드 없이 mock 데이터로 실행할 수 있습니다.
+Node.js 24에서 프론트엔드를 실행한 뒤 `http://localhost:5173`에 접속합니다. 기본 개발 모드는 mock 데이터를 사용합니다.
 
 ```bash
 cd frontend
 npm ci
 npm run dev
 ```
+
+### 전체 스택
+
+Docker Compose가 실행 중인 상태에서 저장소 루트의 아래 명령을 Bash로 실행한 뒤 `http://localhost:3000`에 접속합니다. Windows에서는 Git Bash 또는 WSL을 사용할 수 있습니다.
+
+```bash
+./infra/local.sh
+```
+
+처음 실행하기 전에 `infra/.env.local`을 만들고 아래 내용을 입력합니다. 비밀번호 예시는 로컬 실행 전용입니다.
+
+```dotenv
+ENV_NAME=local
+COMPOSE_PROJECT_NAME=ca-local
+TAG=local
+POSTGRES_PASSWORD=fit-local-dev
+AI_ROOT_PATH=
+AI_INTERVIEW_PROVIDER=gms
+VLLM_BASE_URL=http://host.docker.internal:8000
+```
+
+로컬 DB에는 기업 데이터가 없으므로 검색 결과가 비어 있을 수 있습니다. AI 연동과 데이터 적재 방법은 [인프라 문서](infra/README.md)와 [데이터 문서](data/README.md)를 참고하세요. 이 공개 저장소에서는 `.env`와 `.env.*` 파일을 로컬에서 작성합니다. Vite에서 실제 API를 호출하려면 `frontend/.env.api`에 `VITE_API_MOCK=false`를 설정하고 `npm run dev:api`를 실행합니다.
 
 ## 테스트
 
@@ -64,5 +80,5 @@ python -m unittest discover -s ai/tests -t .  # AI (저장소 루트에서 실�
 ## 문서
 
 - [문서 목차](docs/README.md)
-- [기여 규칙](CONTRIBUTING.md)
-- 포팅 매뉴얼과 시연 시나리오: `main` 브랜치의 `exec/`
+- [GitHub 이전 가이드](docs/github-migration.md)
+- [개발 당시 기여 규칙](CONTRIBUTING.md)
