@@ -14,6 +14,14 @@ SSAFY 15기 특화 프로젝트(빅데이터 분산 트랙, 서울 5반 A504) �
 
 기업 데이터는 OpenDART 공시와 Google News RSS에서 수집합니다. 기업 시드는 상장사 2,662개사입니다.
 
+## 실제 화면
+
+![Fit 홈 화면](docs/screenshots/01-home.png)
+
+[기업 검색](docs/screenshots/02-companies.png) · [기업 상세](docs/screenshots/03-company-overview.png) · [자기소개서](docs/screenshots/04-cover-letters.png) · [모의 면접 로그인](docs/screenshots/05-interviews.png)
+
+로컬에서 React와 Spring Boot를 실행하고 PostgreSQL에 기업 시드를 적재한 뒤 캡처했습니다.
+
 ## 구조
 
 ```
