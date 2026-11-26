@@ -14,13 +14,15 @@
 
 | 기업 검색 | 기업 상세 |
 | --- | --- |
-| ![삼성전자 검색 결과](docs/screenshots/02-companies.png) | ![삼성전자 상세 화면](docs/screenshots/03-company-overview.png) |
+| ![삼성전자 검색 결과](docs/screenshots/02-companies.png) | ![삼성전자 기업 소개와 핵심 지표](docs/screenshots/07-company-metrics.png) |
+| **사업부 매출과 주요 제품** | **모의 면접 질문과 답변** |
+| ![삼성전자 사업부별 매출과 주요 제품](docs/screenshots/08-company-business.png) | ![모의 면접 질문과 답변 녹화 화면](docs/screenshots/09-interview-session.png) |
 | **자기소개서** | **모의 면접 진입** |
 | ![자기소개서 시작 화면](docs/screenshots/04-cover-letters.png) | ![로그인 후 모의 면접 홈](docs/screenshots/05-interviews.png) |
 
 [새 면접 설정 화면](docs/screenshots/06-interview-setup.png)
 
-> React·Spring Boot·PostgreSQL을 로컬에서 연결해 찍었습니다. 기업 검색과 상세는 적재한 기업 시드를 사용했고, 면접 홈과 설정은 로컬 테스트 계정으로 로그인해 확인했습니다.
+> React·Spring Boot·PostgreSQL을 로컬에서 연결해 찍었습니다. 기업 검색과 상세에는 적재한 사업보고서 시드를 사용했습니다. 모의 면접 진행 화면은 로컬 테스트 계정으로 로그인한 뒤 예시 질문과 브라우저 가상 카메라를 사용해 캡처했습니다.
 
 ## 1. Introduction
 
