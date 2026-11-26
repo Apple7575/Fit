@@ -16,9 +16,11 @@
 | --- | --- |
 | ![삼성전자 검색 결과](docs/screenshots/02-companies.png) | ![삼성전자 상세 화면](docs/screenshots/03-company-overview.png) |
 | **자기소개서** | **모의 면접 진입** |
-| ![자기소개서 시작 화면](docs/screenshots/04-cover-letters.png) | ![모의 면접 로그인 화면](docs/screenshots/05-interviews.png) |
+| ![자기소개서 시작 화면](docs/screenshots/04-cover-letters.png) | ![로그인 후 모의 면접 홈](docs/screenshots/05-interviews.png) |
 
-> React·Spring Boot·PostgreSQL을 로컬에서 연결해 찍었습니다. 기업 검색과 상세는 적재한 기업 시드를 사용했고, 면접은 로그인 진입 화면입니다.
+[새 면접 설정 화면](docs/screenshots/06-interview-setup.png)
+
+> React·Spring Boot·PostgreSQL을 로컬에서 연결해 찍었습니다. 기업 검색과 상세는 적재한 기업 시드를 사용했고, 면접 홈과 설정은 로컬 테스트 계정으로 로그인해 확인했습니다.
 
 ## 1. Introduction
 
@@ -41,12 +43,13 @@ Fit은 **기업 파악 → 공고와 내 경험 연결 → 글과 말로 연습*
 
 | 계층 | 기술 |
 | --- | --- |
-| 웹 | React 19, TypeScript 6, Vite 8, Tailwind CSS 4, MediaPipe |
-| API | Java 21, Spring Boot 4.1, Spring Security, JPA, Flyway |
-| AI | Python 3.12, FastAPI, LangGraph, LLM, 사업보고서 RAG |
-| 데이터 | OpenDART, Google News RSS, Python, Hadoop, Spark, PostgreSQL 18 |
-| 인프라 | Docker Compose, nginx, Jenkins |
-| 테스트 | Vitest, JUnit, Python unittest |
+| 웹 | ![React 19](https://img.shields.io/badge/React%2019-61DAFB?style=flat-square&logo=react&logoColor=20232A) ![TypeScript 6](https://img.shields.io/badge/TypeScript%206-3178C6?style=flat-square&logo=typescript&logoColor=white) ![Vite 8](https://img.shields.io/badge/Vite%208-646CFF?style=flat-square&logo=vite&logoColor=white) ![Tailwind CSS 4](https://img.shields.io/badge/Tailwind%20CSS%204-067D90?style=flat-square&logo=tailwindcss&logoColor=white) ![MediaPipe](https://img.shields.io/badge/MediaPipe-007C82?style=flat-square&logo=mediapipe&logoColor=white) |
+| 백엔드 | ![Java 21](https://img.shields.io/badge/Java%2021-A55718?style=flat-square) ![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot%204.1-427B19?style=flat-square&logo=springboot&logoColor=white) ![Spring Security](https://img.shields.io/badge/Spring%20Security-427B19?style=flat-square&logo=springsecurity&logoColor=white) ![JPA](https://img.shields.io/badge/JPA-59666C?style=flat-square&logo=hibernate&logoColor=white) ![Flyway](https://img.shields.io/badge/Flyway-B52325?style=flat-square&logo=flyway&logoColor=white) |
+| AI | ![Python 3.12](https://img.shields.io/badge/Python%203.12-3776AB?style=flat-square&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-007F73?style=flat-square&logo=fastapi&logoColor=white) ![LangGraph](https://img.shields.io/badge/LangGraph-235849?style=flat-square&logo=langgraph&logoColor=white) ![LLM](https://img.shields.io/badge/LLM-463488?style=flat-square) ![사업보고서 RAG](https://img.shields.io/badge/%EC%82%AC%EC%97%85%EB%B3%B4%EA%B3%A0%EC%84%9C%20RAG-463488?style=flat-square) |
+| 데이터 | ![Apache Hadoop](https://img.shields.io/badge/Apache%20Hadoop-66512F?style=flat-square&logo=apachehadoop&logoColor=white) ![Apache Spark](https://img.shields.io/badge/Apache%20Spark-AF391A?style=flat-square&logo=apachespark&logoColor=white) ![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL%2018-4169A1?style=flat-square&logo=postgresql&logoColor=white) |
+| 인프라 / CI | ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-1866B5?style=flat-square&logo=docker&logoColor=white) ![nginx](https://img.shields.io/badge/nginx-007E39?style=flat-square&logo=nginx&logoColor=white) ![Jenkins](https://img.shields.io/badge/Jenkins-A93E33?style=flat-square&logo=jenkins&logoColor=white) |
+| 테스트 | ![Vitest](https://img.shields.io/badge/Vitest-486A22?style=flat-square&logo=vitest&logoColor=white) ![JUnit](https://img.shields.io/badge/JUnit-A22C39?style=flat-square&logo=junit5&logoColor=white) ![Python unittest](https://img.shields.io/badge/Python%20unittest-3776AB?style=flat-square&logo=python&logoColor=white) |
+| 외부 데이터 | OpenDART 공시 · Google News RSS |
 
 ## 4. Architecture
 
@@ -147,6 +150,7 @@ VLLM_BASE_URL=http://host.docker.internal:8000
 - 새 DB에는 기업 데이터가 비어 있습니다. 기업 검색부터 보려면 [데이터 적재 안내](data/README.md)에 따라 로컬 DB에 기업 마스터를 먼저 넣습니다.
 - Vite 개발 서버에서 실제 API를 쓸 때는 `frontend/.env.api`에 `VITE_API_MOCK=false`를 설정한 뒤 `npm run dev:api`를 실행합니다. 로컬 Spring API는 기본 포트 8080을 사용합니다.
 - 모델 호출에는 사용하는 공급자의 별도 설정이 필요합니다. [인프라 설정](infra/README.md) · [담당별 LLM 설정](ai/docs/llm-model-assignment.md)
+- 로컬 회원가입은 로컬 DB에 계정을 만듭니다. SMTP가 비어 있으면 Spring 로그에 인증 링크가 출력됩니다. 링크의 호스트와 포트가 현재 프론트 주소와 다르면 `/verify?token=…` 경로를 유지하고 프론트 주소로 바꿔 엽니다.
 
 ## 9. Directory Structure
 
